@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PetPogo Mall</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary-fixed": "#7fe6db",
+                      "surface": "#fff4f3",
+                      "primary": "#a83206",
+                      "tertiary-container": "#fdd34d",
+                      "on-tertiary-fixed": "#463600",
+                      "surface-dim": "#ffc7c3",
+                      "surface-bright": "#fff4f3",
+                      "on-primary-container": "#470e00",
+                      "surface-container-low": "#ffedeb",
+                      "on-surface": "#4e2120",
+                      "background": "#fff4f3",
+                      "primary-container": "#ff784e",
+                      "on-secondary": "#bffff7",
+                      "on-error-container": "#570008",
+                      "surface-variant": "#ffd2cf",
+                      "surface-container-lowest": "#ffffff",
+                      "outline": "#a36764",
+                      "inverse-surface": "#240304",
+                      "outline-variant": "#e09c98",
+                      "on-secondary-fixed": "#003e39",
+                      "on-secondary-fixed-variant": "#005d57",
+                      "on-tertiary": "#fff2d4",
+                      "on-tertiary-fixed-variant": "#675200",
+                      "secondary": "#006760",
+                      "inverse-on-surface": "#ce8c88",
+                      "surface-tint": "#a83206",
+                      "on-surface-variant": "#834c4a",
+                      "error-dim": "#9f0519",
+                      "primary-fixed": "#ff784e",
+                      "primary-fixed-dim": "#f3683b",
+                      "on-background": "#4e2120",
+                      "secondary-container": "#7fe6db",
+                      "tertiary-fixed-dim": "#eec540",
+                      "surface-container-highest": "#ffd2cf",
+                      "on-primary-fixed-variant": "#571400",
+                      "secondary-dim": "#005a54",
+                      "on-error": "#ffefee",
+                      "surface-container": "#ffe1df",
+                      "error-container": "#fb5151",
+                      "error": "#b31b25",
+                      "tertiary": "#705900",
+                      "on-primary-fixed": "#000000",
+                      "primary-dim": "#952800",
+                      "surface-container-high": "#ffdad7",
+                      "on-secondary-container": "#00534d",
+                      "inverse-primary": "#fe6f42",
+                      "on-tertiary-container": "#5c4900",
+                      "tertiary-fixed": "#fdd34d",
+                      "secondary-fixed-dim": "#71d7cd",
+                      "on-primary": "#ffefeb",
+                      "tertiary-dim": "#624d00"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Plus Jakarta Sans"],
+                      "body": ["Plus Jakarta Sans"],
+                      "label": ["Plus Jakarta Sans"]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="bg-[#fff4f3]/80 backdrop-blur-xl docked full-width top-0 z-50 shadow-[0_10px_40px_-15px_rgba(78,33,32,0.06)] fixed w-full">
+<div class="flex items-center justify-between px-6 h-16 w-full max-w-screen-xl mx-auto">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-orange-600 text-2xl" style="font-variation-settings: 'FILL' 1;">pets</span>
+<h1 class="text-2xl font-extrabold tracking-tighter text-orange-600">PetPogo</h1>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-stone-500 hover:opacity-80 transition-opacity cursor-pointer">search</span>
+<span class="material-symbols-outlined text-stone-500 hover:opacity-80 transition-opacity cursor-pointer">shopping_cart</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border-2 border-white shadow-sm">
+<img alt="User profile" data-alt="Professional studio headshot of a smiling man with a friendly expression against a clean soft grey background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqIQA4fBVi8IKbxXVCvuzl29ObqRO2IcP6p0WecoV01Ac0gWQnLysQOnNXt9-pJqjT1ILKHSwhIMQPtTT1A-waVGuqFhtaFRx7nH8NkRbb9l6PGlJvLwsdkoQSSP8eUpye9O-0MD4lzQFC86F5tEhGSenlJJ4D5gocb75ZJbYp601UeSrjL_O7Z2oWv9cJLKStZzDv2jo5glx90BDzl6EPxUX7kHtDo0enAypaEkCXGkU49attZag5lX5kR-vsFnxZOMnPSac71vQ"/>
+</div>
+</div>
+</div>
+</header>
+<main class="pt-20 px-6 max-w-screen-xl mx-auto space-y-10">
+<!-- Hero Banner: New PetPhone Launch -->
+<section class="relative h-[420px] rounded-lg overflow-hidden group shadow-2xl">
+<div class="absolute inset-0 bg-gradient-to-r from-primary/80 to-transparent z-10"></div>
+<img alt="New PetPhone Launch" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="Modern smartphone with a holographic pet tracking interface held by a Golden Retriever, vibrant lifestyle lighting with warm sun flares" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4ZH3P9cPkkRCHxkeO9tXyNJejThk2Uq3G_Xaxpowb6v1zQjAiwjT8vlB-DHjJiIM5Hy5v1Vr0LrnBq6Yg0KlVTTd9Mv2etaVowa-jWsNX1XYgXHbItrcyPBwOmnjVYU1Nko6dCUpRP8RGlS7PD0vVhbLXrvv-OK1z_rb805VlDmGMGwV17kuItw2x6_6KfN-pyUjsPpyR6u8OD_uzBKrRPwpybZGt4wm50c5p6FbCnTTWkzrFnjuwe01bFqZxvP12RT1zx4jUkck"/>
+<div class="relative z-20 h-full flex flex-col justify-center p-10 max-w-lg space-y-4">
+<span class="inline-block px-4 py-1 bg-tertiary-container text-on-tertiary-fixed text-xs font-bold rounded-full w-fit tracking-wider uppercase">Coming Soon</span>
+<h2 class="text-5xl font-extrabold text-on-primary leading-tight tracking-tighter">New PetPhone Launch</h2>
+<p class="text-on-primary/90 text-lg font-medium">The world's first smart companion device designed for your pet's paw. Real-time health tracking and mood analysis.</p>
+<button class="bg-surface text-primary font-bold px-8 py-3 rounded-xl w-fit shadow-lg hover:scale-105 transition-transform active:scale-95">Pre-order Now</button>
+</div>
+</section>
+<!-- Categories Section -->
+<section class="space-y-6">
+<div class="flex justify-between items-end">
+<h3 class="text-3xl font-extrabold tracking-tight">Categories</h3>
+<span class="text-primary font-bold text-sm cursor-pointer hover:underline">View All</span>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+<!-- Food -->
+<div class="bg-surface-container-low p-6 rounded-lg group cursor-pointer transition-all hover:bg-surface-container-highest">
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<p class="text-2xl font-black tracking-tighter">Food</p>
+<p class="text-stone-500 text-sm font-medium">1.2k Products</p>
+</div>
+<span class="material-symbols-outlined text-primary text-4xl" style="font-variation-settings: 'FILL' 1;">restaurant</span>
+</div>
+<div class="mt-8 overflow-hidden rounded-xl h-24">
+<img alt="Pet Food" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" data-alt="Artisanal ceramic bowl filled with colorful high-quality organic pet kibble and fresh greens on a clean wood surface" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtrD9oM12p4wOVd22TydoN9AVpg0_5QM6WabZ7b5lUCoi3v9nY1SzFaNoGj2S0t79X3-sQHyMdbo7CWwTqSGe8cI-BhbGU0N3Cuq2Vw-isuV-Eg21PfNp5DBP-EyAHgy0fEcuVvjPSk8VhfDbyv9yRF3f5PUw2MZdxn8_TAIB4tXNxUNU9f_lIndULsuY7-Os0OhmQ_ZqcZ_jvQvxvwz4Zf7gnf9e-KrEwpevitG8a5nJ4A9noaJGstiwbapxmwQjz2nSZm9jX8fo"/>
+</div>
+</div>
+<!-- Toys -->
+<div class="bg-secondary-container p-6 rounded-lg group cursor-pointer transition-all hover:opacity-90">
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<p class="text-2xl font-black tracking-tighter text-on-secondary-container">Toys</p>
+<p class="text-on-secondary-container/70 text-sm font-medium">850 Products</p>
+</div>
+<span class="material-symbols-outlined text-secondary text-4xl" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+<div class="mt-8 overflow-hidden rounded-xl h-24">
+<img alt="Pet Toys" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" data-alt="Assorted colorful plush dog toys and rubber balls scattered on a bright turquoise background with soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD99KQnS6tEOJeKTg_B0DMiADT0LBh62VxvOsMJN3CBbAyGtY3lFR-zdCcfbKeEsvHcIObdvCD9ycVSxr1pnPyIwDYNkpLFCV2sLuP7J3Nof_gYPySZiJbZpGY-BeixlkkKEYV8BlDuWhMWI3M3_izyki5ufQ8bhrrbrwloZCmI0oXv0t38AuQgDY-LZLrIK5AzHkkMi28emd4Res1e7tiTgtZ4fBFj4Q-UOTXrlmsb3Cf9meqvU75YBoGcYiGO4gm7uHEAMcZ2ZmI"/>
+</div>
+</div>
+<!-- Wearables -->
+<div class="bg-surface-container-high p-6 rounded-lg group cursor-pointer transition-all hover:bg-surface-container-highest md:col-span-1 col-span-2">
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<p class="text-2xl font-black tracking-tighter">Wearables</p>
+<p class="text-stone-500 text-sm font-medium">420 Products</p>
+</div>
+<span class="material-symbols-outlined text-primary text-4xl" style="font-variation-settings: 'FILL' 1;">watch</span>
+</div>
+<div class="mt-8 overflow-hidden rounded-xl h-24">
+<img alt="Pet Wearables" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" data-alt="Sleek modern smart collar with LED indicator lights on a minimalist background, tech-forward aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCMr1vdFEFvgJerUArHE-B-4GzLLw_z3BvvMk7s6jghuRtw22ywTx-mJMIXJb77RVYvQ2-v9O-I4IMgxp4EMD1jSfdVswiRlQGPaUSfthxqjgZVkb4ZeeQtJDLXHyNhx9gNUgfbHoa19BDGPcrYqabkaCHWPWWeFnTsqYtUfJ7GgwfPPGzjAkY6aZOrr6r_CAfm0RstEd9fVxZIkbNiW3eRYzOOkXhdLCFVDaUqhCz2ULZikc55eEP7tmyCKy8AGh1CyM_Cwlojac"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Product List -->
+<section class="space-y-6">
+<div class="flex justify-between items-end">
+<h3 class="text-3xl font-extrabold tracking-tight text-on-surface">Trending Now</h3>
+<div class="flex gap-2">
+<button class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-stone-500">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+<!-- Product Card 1 -->
+<div class="bg-surface-container-lowest p-4 rounded-lg shadow-[0_20px_50px_-20px_rgba(78,33,32,0.1)] hover:shadow-xl transition-shadow group">
+<div class="relative rounded-lg overflow-hidden h-48 bg-surface-container">
+<img alt="Premium Collar" class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="Hand-stitched leather dog collar with gold brass hardware resting on a piece of dark wood, premium boutique photography style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAR5t3Itl1biPiXLQUE50m_XA242BVvHGiYjNc-GIjNTsvjC0cx_JH6hXP_BXh26b1oTrJgIej8vgo01eEne44yO7WVrzowilI2mdA_fl6v2zpsRtL0fgs0MFbAtVxCh37LZ8l_bwGO2yeko8cslxPuJO4uolrWdZ7sjq5qJ3E3XAgtkANQa2zgZ3LS8l_sqxX3lC9TXznoBanLOlqMW3kf3I1u9wBUfxSefFtvz4ApW1s5IYTwE7dbj0H61B4VXWThoNO31-OYtTg"/>
+<div class="absolute top-2 right-2 bg-white/90 backdrop-blur rounded-full p-1.5 shadow-sm text-primary">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</div>
+</div>
+<div class="mt-4 space-y-2">
+<h4 class="text-lg font-bold truncate">Premium Leather Collar</h4>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-tertiary text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-sm font-bold">4.9</span>
+<span class="text-stone-400 text-xs font-medium">(128 reviews)</span>
+</div>
+<div class="flex justify-between items-center pt-2">
+<span class="text-xl font-extrabold text-primary">$45.00</span>
+<button class="bg-primary text-on-primary p-2 rounded-full flex items-center justify-center active:scale-90 transition-transform">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="bg-surface-container-lowest p-4 rounded-lg shadow-[0_20px_50px_-20px_rgba(78,33,32,0.1)] hover:shadow-xl transition-shadow group">
+<div class="relative rounded-lg overflow-hidden h-48 bg-surface-container">
+<img alt="Organic Treats" class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="Close-up of bone-shaped homemade organic dog biscuits in a clear glass jar, warm kitchen lighting background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFLIq3UE29rDtMb1JpXTVEzNzizrcJojRnRTzdhC3BDUGHdshyIhNFZUQ_xqEZhx0i1iyqt_lUYdxqt5Ji8XxugllfsccHtc2tfjYpwZcpRR8dm7O1K8Unb3YL3kS4XQgxnzrjBRxmunJmR-pyeX_GbTjXYGlaL_SGTZze_2ZLiUlW0roG-qnQtig81tcLUQ_RPr45Byu0lhUfDi6DZ4BBB2DyjU9aaMR1nppYDGlsWJLRFxcka1mUzcel65GG_fMzeTsAKMLHftE"/>
+</div>
+<div class="mt-4 space-y-2">
+<h4 class="text-lg font-bold truncate">Organic Salmon Bites</h4>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-tertiary text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-sm font-bold">4.7</span>
+<span class="text-stone-400 text-xs font-medium">(340 reviews)</span>
+</div>
+<div class="flex justify-between items-center pt-2">
+<span class="text-xl font-extrabold text-primary">$18.50</span>
+<button class="bg-primary text-on-primary p-2 rounded-full flex items-center justify-center active:scale-90 transition-transform">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="bg-surface-container-lowest p-4 rounded-lg shadow-[0_20px_50px_-20px_rgba(78,33,32,0.1)] hover:shadow-xl transition-shadow group">
+<div class="relative rounded-lg overflow-hidden h-48 bg-surface-container">
+<img alt="Plush Bed" class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="Ultra-soft grey faux fur donut-shaped pet bed on a light colored rug in a sunlit modern living room" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAyw82oOJLxaECJb0k-zrfz63DSPMIP9AQd-xdeJm7i5zMHoXsLMT5CWZUabDuZHVODmv3eNFFBZQfNn-jfWdeD-gwCGrYx_j_paAJ4mpGqSnU2ZYIiSVxTcR86eaT4crkd_0LErm_Krh1oOUdXzldDVxL_4ZvM9Y9Ig8pfXALXKG_YtMwBYTzwJR6oJ2KoW0W5Q8gQ5eEdoEeEhpUvclbHyoSxcv9aSVkVhWM4RlMCUDvXvKm7ikCP3TF4SfGfc8hQ8sOo3RwAmc"/>
+</div>
+<div class="mt-4 space-y-2">
+<h4 class="text-lg font-bold truncate">Cloud-9 Plush Bed</h4>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-tertiary text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-sm font-bold">5.0</span>
+<span class="text-stone-400 text-xs font-medium">(95 reviews)</span>
+</div>
+<div class="flex justify-between items-center pt-2">
+<span class="text-xl font-extrabold text-primary">$89.00</span>
+<button class="bg-primary text-on-primary p-2 rounded-full flex items-center justify-center active:scale-90 transition-transform">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 4 -->
+<div class="bg-surface-container-lowest p-4 rounded-lg shadow-[0_20px_50px_-20px_rgba(78,33,32,0.1)] hover:shadow-xl transition-shadow group">
+<div class="relative rounded-lg overflow-hidden h-48 bg-surface-container">
+<img alt="Smart Feeder" class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="Modern white automatic pet feeder with digital display screen on a minimalist tiled floor, high-tech kitchen gadgets" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBti7XOFkWoMYziirRyAacwfffNAVccUZkPR4Sp8QTo4iti4TmxkvwEANRgQrPJJQHkMGq79jYL45V_CC_2Oy0qoiwy_vNiLsH_Pe6FJnMB2fPk9Bat9BjtQBZSClthjdR14eMGHW91ApvKNC4GDe60iiwzVDBltE50Gt11zKkV-rJjzR5w7v8f7GPQBZRYAXCQETcd78EtrcXFPwlyxhhoGQSrJ3XGiZUpA6mqm2BofR4rBkHwv3r6AYJMYFPk9XSLTCCQTHHBmIo"/>
+</div>
+<div class="mt-4 space-y-2">
+<h4 class="text-lg font-bold truncate">Auto-Feed Smart V2</h4>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-tertiary text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-sm font-bold">4.8</span>
+<span class="text-stone-400 text-xs font-medium">(212 reviews)</span>
+</div>
+<div class="flex justify-between items-center pt-2">
+<span class="text-xl font-extrabold text-primary">$129.99</span>
+<button class="bg-primary text-on-primary p-2 rounded-full flex items-center justify-center active:scale-90 transition-transform">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Nearby Stores Section -->
+<section class="space-y-6 pb-12">
+<div class="flex justify-between items-end">
+<h3 class="text-3xl font-extrabold tracking-tight">Nearby Stores</h3>
+</div>
+<div class="flex gap-6 overflow-x-auto pb-4 no-scrollbar">
+<!-- Main Featured Store: 聚宠生活馆 -->
+<div class="min-w-[320px] bg-secondary-container rounded-lg p-1 flex flex-col group cursor-pointer shadow-lg">
+<div class="relative h-48 rounded-t-lg overflow-hidden">
+<img alt="JuChong Life Hall" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" data-alt="Interior of a luxury modern pet boutique with wood accents, large windows, and shelves of designer pet accessories" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAaEUGF-iIU_5J03IlrLOf819AUN4JQu_nLp_xQaxP1YiH9K9VMwPMwK6-CEPSbiw5LYpJ8Am6JjcfvJcqWz2azGuqZ8oTl6VU8chvddgA_MrHlW1hwR5qJt6WrI_Ittv5CmI1Cr7mdrUFawQh9rN69Z7zSnG1a5EvFjtQTYo05Kq27ZN73VYssn49ID0TBvDz_9J0038jGPFxwShu88xbsioF-jnJ24SClk5UhvDFCLRmxHD9zmyaqIs5KgDwYMboxHpMs_u1MvWY"/>
+<div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-secondary">
+                            1.2 km away
+                        </div>
+</div>
+<div class="p-5 space-y-3">
+<div class="flex justify-between items-start">
+<h4 class="text-xl font-extrabold text-on-secondary-container">聚宠生活馆</h4>
+<div class="flex items-center bg-white/50 px-2 py-0.5 rounded-full">
+<span class="material-symbols-outlined text-xs text-secondary" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-xs font-bold ml-1 text-on-secondary-container">4.9</span>
+</div>
+</div>
+<p class="text-on-secondary-container/80 text-sm leading-relaxed">JuChong Life Hall (聚宠生活馆) offers premium grooming, daycare, and an curated selection of organic pet treats.</p>
+<div class="flex gap-2 pt-2">
+<span class="px-3 py-1 bg-white/40 text-on-secondary-container text-[10px] font-bold rounded-full uppercase tracking-widest">Grooming</span>
+<span class="px-3 py-1 bg-white/40 text-on-secondary-container text-[10px] font-bold rounded-full uppercase tracking-widest">Cafe</span>
+</div>
+</div>
+</div>
+<!-- Store 2 -->
+<div class="min-w-[320px] bg-surface-container-high rounded-lg p-1 flex flex-col group cursor-pointer shadow-sm">
+<div class="relative h-48 rounded-t-lg overflow-hidden">
+<img alt="Pet Spa" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" data-alt="Modern minimalist pet grooming salon with pastel pink walls and industrial lighting, a dog being pampered by a professional" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdhRP8trkkZrktWh0ol6CJfrtJGGzEh0-wwLVP-9pzlZr77yAXSlWgNfBMxurMgFKu7LGFng3mJVtVu6Ew-qqd09c7vAR3x6lhnTatAW7iUJ5jyv_Sj48yOZh7mJzwxSsE_-hHUc4NDzuMxggh0j3IKck7qt6URA_wJF-EbNxC--b8zHLQhqlG0tjKraAirgADJQGkphN1eDu8Fh3rr6h2iYIlX77ps3KTwKV_i54lOqzZ-8NHPTPYerBuL2TNlfrnXsyxu6c7EDI"/>
+<div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-primary">
+                            3.5 km away
+                        </div>
+</div>
+<div class="p-5 space-y-3">
+<div class="flex justify-between items-start">
+<h4 class="text-xl font-extrabold">Paw-some Retreat</h4>
+<div class="flex items-center bg-white/50 px-2 py-0.5 rounded-full">
+<span class="material-symbols-outlined text-xs text-primary" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-xs font-bold ml-1">4.6</span>
+</div>
+</div>
+<p class="text-stone-500 text-sm leading-relaxed">Relax and unwind. We provide specialized spa treatments for small breeds and sensory play areas.</p>
+<div class="flex gap-2 pt-2">
+<span class="px-3 py-1 bg-white/40 text-stone-600 text-[10px] font-bold rounded-full uppercase tracking-widest">Spa</span>
+<span class="px-3 py-1 bg-white/40 text-stone-600 text-[10px] font-bold rounded-full uppercase tracking-widest">Training</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pt-3 pb-8 bg-white/70 dark:bg-stone-900/70 backdrop-blur-2xl rounded-t-[32px] shadow-[0_-10px_40px_-10px_rgba(78,33,32,0.08)]">
+<a class="flex flex-col items-center justify-center text-stone-400 dark:text-stone-500 px-5 py-1.5 hover:text-orange-500 active:scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-stone-400 dark:text-stone-500 px-5 py-1.5 hover:text-orange-500 active:scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined mb-1">chat_bubble</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide">Message</span>
+</a>
+<a class="flex flex-col items-center justify-center text-stone-400 dark:text-stone-500 px-5 py-1.5 hover:text-orange-500 active:scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined mb-1">group</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide">Community</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 rounded-full px-5 py-1.5 active:scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">shopping_bag</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide">Mall</span>
+</a>
+<a class="flex flex-col items-center justify-center text-stone-400 dark:text-stone-500 px-5 py-1.5 hover:text-orange-500 active:scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide">Profile</span>
+</a>
+</nav>
+</body></html>

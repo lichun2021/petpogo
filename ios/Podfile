@@ -1,0 +1,88 @@
+# Uncomment this line to define a global platform for your project
+# platform :ios, '13.0'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
+
+target 'Runner' do
+  use_frameworks!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      # 模拟器排除 arm64（本地调试用）
+      config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
+      # Release/Profile 强制只保留真机架构，防止 x86_64 打包进 IPA
+      if config.name == 'Release' || config.name == 'Profile'
+        config.build_settings['ARCHS'] = 'arm64'
+        config.build_settings['VALID_ARCHS'] = 'arm64'
+        config.build_settings['ONLY_ACTIVE_ARCH'] = 'NO'
+      end
+    end
+  end
+
+  # 在 Runner.xcodeproj 的 Runner target 加 Strip Simulator Slices 脚本
+  runner_project_path = File.expand_path('../Runner.xcodeproj', __FILE__)
+  runner_project = Xcodeproj::Project.open(runner_project_path)
+  runner_target = runner_project.targets.find { |t| t.name == 'Runner' }
+
+  if runner_target
+    # Release/Profile config 也强制 arm64
+    runner_target.build_configurations.each do |config|
+      if config.name == 'Release' || config.name == 'Profile'
+        config.build_settings['ARCHS'] = 'arm64'
+        config.build_settings['VALID_ARCHS'] = 'arm64'
+        config.build_settings['ONLY_ACTIVE_ARCH'] = 'NO'
+      end
+    end
+
+    # 避免重复添加
+    unless runner_target.shell_script_build_phases.any? { |p| p.name == 'Strip Simulator Slices' }
+      phase = runner_target.new_shell_script_build_phase('Strip Simulator Slices')
+      phase.shell_script = <<~'SCRIPT'
+        APP_PATH="${TARGET_BUILD_DIR}/${WRAPPER_NAME}"
+        find "$APP_PATH" -name '*.framework' -type d | while read -r FW; do
+          BIN="$FW/$(basename ${FW%.framework})"
+          [ -f "$BIN" ] || continue
+          if lipo -info "$BIN" 2>/dev/null | grep -q x86_64; then
+            if lipo -info "$BIN" 2>/dev/null | grep -q arm64; then
+              lipo -remove x86_64 -output "$BIN" "$BIN" && echo "Stripped x86_64 from $(basename $FW)"
+            fi
+          fi
+        done
+      SCRIPT
+    end
+
+    runner_project.save
+  end
+end

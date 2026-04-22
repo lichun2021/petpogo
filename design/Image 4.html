@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PetPogo Community</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-fixed": "#7fe6db",
+                    "surface": "#fff4f3",
+                    "primary": "#a83206",
+                    "tertiary-container": "#fdd34d",
+                    "on-tertiary-fixed": "#463600",
+                    "surface-dim": "#ffc7c3",
+                    "surface-bright": "#fff4f3",
+                    "on-primary-container": "#470e00",
+                    "surface-container-low": "#ffedeb",
+                    "on-surface": "#4e2120",
+                    "background": "#fff4f3",
+                    "primary-container": "#ff784e",
+                    "on-secondary": "#bffff7",
+                    "on-error-container": "#570008",
+                    "surface-variant": "#ffd2cf",
+                    "surface-container-lowest": "#ffffff",
+                    "outline": "#a36764",
+                    "inverse-surface": "#240304",
+                    "outline-variant": "#e09c98",
+                    "on-secondary-fixed": "#003e39",
+                    "on-secondary-fixed-variant": "#005d57",
+                    "on-tertiary": "#fff2d4",
+                    "on-tertiary-fixed-variant": "#675200",
+                    "secondary": "#006760",
+                    "inverse-on-surface": "#ce8c88",
+                    "surface-tint": "#a83206",
+                    "on-surface-variant": "#834c4a",
+                    "error-dim": "#9f0519",
+                    "primary-fixed": "#ff784e",
+                    "primary-fixed-dim": "#f3683b",
+                    "on-background": "#4e2120",
+                    "secondary-container": "#7fe6db",
+                    "tertiary-fixed-dim": "#eec540",
+                    "surface-container-highest": "#ffd2cf",
+                    "on-primary-fixed-variant": "#571400",
+                    "secondary-dim": "#005a54",
+                    "on-error": "#ffefee",
+                    "surface-container": "#ffe1df",
+                    "error-container": "#fb5151",
+                    "error": "#b31b25",
+                    "tertiary": "#705900",
+                    "on-primary-fixed": "#000000",
+                    "primary-dim": "#952800",
+                    "surface-container-high": "#ffdad7",
+                    "on-secondary-container": "#00534d",
+                    "inverse-primary": "#fe6f42",
+                    "on-tertiary-container": "#5c4900",
+                    "tertiary-fixed": "#fdd34d",
+                    "secondary-fixed-dim": "#71d7cd",
+                    "on-primary": "#ffefeb",
+                    "tertiary-dim": "#624d00"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Plus Jakarta Sans"],
+                    "body": ["Plus Jakarta Sans"],
+                    "label": ["Plus Jakarta Sans"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .masonry {
+            column-count: 2;
+            column-gap: 1rem;
+        }
+        @media (min-width: 768px) {
+            .masonry {
+                column-count: 3;
+            }
+        }
+        .masonry-item {
+            break-inside: avoid;
+            margin-bottom: 1rem;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-[#fff4f3]/80 backdrop-blur-xl shadow-[0_10px_40px_-15px_rgba(78,33,32,0.06)]">
+<div class="flex items-center justify-between px-6 h-16 w-full max-w-screen-xl mx-auto">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-orange-600 text-2xl">pets</span>
+<h1 class="text-2xl font-extrabold tracking-tighter text-orange-600">PetPogo</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-stone-500 hover:opacity-80 transition-opacity active:scale-95">search</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border-2 border-primary-container">
+<img alt="User profile" data-alt="close-up portrait of a friendly man with a warm smile in soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAjsUi5jx410VheI4OFKitk8AVzCx52ciceUWQpcigQUMJIGU6RUCivlbwBSNYRiGTl-L10GS5hw_hPYrHHRTMFiuXjIzm8mIDmg4qY7ixPbWiXl_S7pSlyQuKhyjc4xj7QxbDpPIAUiJc7ooed8OFP5iBEHUU07Dd2LY6aFVy3umOPeJruSpwh5wG0I5BSJA6GkLYiJ2bySDupneXBqIk2eNOr2udHoAY_BEntPw_IHlY4koHo4-0WjkR6GBLfJltd2i2RiUt9fl8"/>
+</div>
+</div>
+</div>
+</header>
+<main class="pt-20 px-4 max-w-screen-xl mx-auto">
+<!-- Sticky Tabs & Filters -->
+<div class="sticky top-16 z-40 bg-surface/90 backdrop-blur-md pt-4 pb-6">
+<div class="flex items-center justify-center gap-8 mb-6">
+<button class="relative py-2 text-stone-500 font-semibold tracking-wide transition-all hover:text-primary">
+                    Following
+                </button>
+<button class="relative py-2 text-primary font-bold tracking-wide transition-all">
+                    Discover
+                    <span class="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary rounded-full"></span>
+</button>
+</div>
+<div class="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+<button class="bg-primary text-on-primary px-5 py-2 rounded-full whitespace-nowrap text-sm font-bold shadow-lg shadow-primary/20">All Pets</button>
+<button class="bg-surface-container-low text-on-surface-variant px-5 py-2 rounded-full whitespace-nowrap text-sm font-semibold">Dogs</button>
+<button class="bg-surface-container-low text-on-surface-variant px-5 py-2 rounded-full whitespace-nowrap text-sm font-semibold">Cats</button>
+<button class="bg-surface-container-low text-on-surface-variant px-5 py-2 rounded-full whitespace-nowrap text-sm font-semibold">Birds</button>
+<button class="bg-surface-container-low text-on-surface-variant px-5 py-2 rounded-full whitespace-nowrap text-sm font-semibold">Others</button>
+</div>
+</div>
+<!-- Masonry Grid -->
+<div class="masonry">
+<!-- Item 1: Video/Story Style -->
+<div class="masonry-item">
+<div class="relative bg-surface-container-lowest rounded-lg overflow-hidden group shadow-sm">
+<div class="absolute top-3 right-3 z-10 bg-black/20 backdrop-blur-md rounded-full p-1.5">
+<span class="material-symbols-outlined text-white text-sm" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</div>
+<img alt="Cute dog" class="w-full aspect-[3/4] object-cover group-hover:scale-105 transition-transform duration-500" data-alt="candid shot of a golden retriever puppy tilting its head curiously in a sunlit grassy backyard" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0pZ8a2ktPcIPgFWxbdFNqflv9GOr6-MCHrLQkxznvp9i7hRPWgAetgviiI6x-AuyYKseF0_zkt09EwxqBs8YD1DISjMn_8BuJayIUS2NIqv2a5ZmkLhe-gcyf0Vxv82iioOrm1SUtUCXEwm_ZHvB6zy5Ul0r8dSVRWrZhdAfA2otXKmvphhFc_hL2V0yfFKJzJQJnvoMf4mVGAQRFHzva3U-SiInnHsXhjNWY78Jv_1jzTnKOlmeuLR8YpuO5NG66AFc7C5VUVnQ"/>
+<div class="p-4">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-bold text-on-surface text-lg">Cooper</h3>
+<button class="material-symbols-outlined text-error hover:scale-110 transition-transform">favorite</button>
+</div>
+<p class="text-sm text-on-surface-variant line-clamp-2">Just found the perfect spot for an afternoon nap! ☀️</p>
+</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="masonry-item">
+<div class="bg-surface-container-lowest rounded-lg overflow-hidden group shadow-sm">
+<img alt="Cat with glasses" class="w-full aspect-square object-cover group-hover:scale-105 transition-transform duration-500" data-alt="cool ginger cat wearing stylish sunglasses sitting on a white balcony with turquoise ocean background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfI6OSkLG6REfYT9D1GBMZb5dz9irzgLp1W1UnvbxtumUlw8-qZb669Zpz0chebkxPsUFE29F0gHKG0VGbhMrHp_vEYvXBPnoJjrnbeAUpayNazCsLQVxS5oF9k-vFpinFUgjlnyD-1m1CSskfU6uNYRZ8ot0BilBvw5fCAi1-jwXz4zeIlVZdBMo7sIibM8IiL46QCLB6Ky_bM4O7oZw_AYQ6Mm8ifsPF216XDglypgfr7ndKWjM7zmYjovsQEeNr4dic31zJdR8"/>
+<div class="p-4">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-bold text-on-surface text-lg">Mochi</h3>
+<button class="material-symbols-outlined text-stone-300 hover:text-error transition-colors">favorite</button>
+</div>
+<p class="text-sm text-on-surface-variant line-clamp-2">Beach vibes only today. 🕶️🌊</p>
+</div>
+</div>
+</div>
+<!-- Item 3: Tall Asymmetric -->
+<div class="masonry-item">
+<div class="bg-secondary-container/10 rounded-lg overflow-hidden group shadow-sm">
+<div class="p-4 bg-secondary-container/20">
+<span class="text-[10px] uppercase font-black tracking-widest text-secondary">Featured Story</span>
+</div>
+<img alt="Cat playing" class="w-full aspect-[2/3] object-cover group-hover:scale-105 transition-transform duration-500" data-alt="dynamic shot of a calico cat jumping through the air chasing a colorful feather toy in a bright modern living room" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBcniEQK_9U8WHdV-dZLHIBVewrcYnDa8DPfsjq7HhWWSIiC8fnJOzW1ANeuu_VRB6M4CC5t7C9RF_MQ8Hh3VKFZ0Fs5Eo2fbwo2mUaJvoUM0bcxcSZu975vX0syvplYoYtXEVrp5pX-N2pqj3I7_ibhG8mv98BZIgB3iJnnpP__9pcHjPDvp9z6Kz7nkGBysTeUIcrylcjmV4e3utnDANhD-BisKLt_YHzxa96fO_oegjWChp6YN4Hpm18wl9_Utz72Y6iVpw6aI"/>
+<div class="p-4">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-bold text-on-surface text-lg">Luna</h3>
+<button class="material-symbols-outlined text-error hover:scale-110 transition-transform">favorite</button>
+</div>
+<p class="text-sm text-on-surface-variant line-clamp-2">Hunting skills are 10/10 today! 🧶</p>
+</div>
+</div>
+</div>
+<!-- Item 4 -->
+<div class="masonry-item">
+<div class="bg-surface-container-lowest rounded-lg overflow-hidden group shadow-sm">
+<img alt="Dog wearing clothes" class="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-500" data-alt="charming french bulldog wearing a yellow raincoat standing on a wet pavement after a rainy day" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCk6bdaL3jIeAQ4Wt1aezpMlE6xQHiJnB9LyOX445RZK_AgcjNbMnp2sbBpjziiWItTYiJPufqla2coE20rjthZLXrIYwYZ8vlkG1X88gyr7Pfa284H-SR_fWKNW7vIGyv6NVFMV7pHsVCCPrpzmdYt0q-Yyxy2rOovna73wZJLuNNG7IdWVCO_HQliCTeTnY2obiF_L4wiCs5-oJeTaF9VMKiXwxvhDfZOkiPgvyEXv2oaTFk8kxOk_I5q-Ri_bG0L1QG8ncVJXAA"/>
+<div class="p-4">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-bold text-on-surface text-lg">Oliver</h3>
+<button class="material-symbols-outlined text-stone-300 hover:text-error transition-colors">favorite</button>
+</div>
+<p class="text-sm text-on-surface-variant line-clamp-2">Ready for the rain! ☔️</p>
+</div>
+</div>
+</div>
+<!-- Item 5 -->
+<div class="masonry-item">
+<div class="bg-surface-container-lowest rounded-lg overflow-hidden group shadow-sm">
+<img alt="Hamster" class="w-full aspect-[4/5] object-cover group-hover:scale-105 transition-transform duration-500" data-alt="tiny dwarf hamster peeking out of a ceramic mushroom house in a whimsical terrarium setup" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCzfeRXF50781c-NgzfpTGftavhxLY0k5iF-2QWp7ZGmjlJ64sxS4qTl9Wejr2r1M9PPLimSPKAjpvh7w2G7p9ggkr6oYoRgCDK6JhAPE3x0JDQplSPO_8-OuNe8sruacOkvZu5UamuKKgDdoAYyMcskuCqX6j9CHboi4M2q3WURE98hnFlkstl7IkMwD36TabbMBeU76PZhoWmUoJXnHuzyYr9sbPJRHUxJbHWkN42H1l23JvkkKF3RdOxotqVSbD3gcVNsXAnLBM"/>
+<div class="p-4">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-bold text-on-surface text-lg">Pip</h3>
+<button class="material-symbols-outlined text-error hover:scale-110 transition-transform">favorite</button>
+</div>
+<p class="text-sm text-on-surface-variant line-clamp-2">Is it snack time yet? 🥕</p>
+</div>
+</div>
+</div>
+<!-- Item 6 -->
+<div class="masonry-item">
+<div class="bg-tertiary-container/10 rounded-lg overflow-hidden group shadow-sm">
+<img alt="Two dogs" class="w-full aspect-square object-cover group-hover:scale-105 transition-transform duration-500" data-alt="two beagles sitting side-by-side in a field of wildflowers during golden hour sunset" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAnGdbOZfW-dCmUPHtgu4zg5KpUv30gD6KBg3yxbea6YvPpOrCydaRPTlFJzRk5K1bYCyBdHclXVMgnwIHbalFwVEFE83IeAvAkorNK_QZ44DArGu2NSXO3wqcH8RXkT7BvuahByVTMGIKmwYNQlU8cVwR0C2BpXZSWHPmmReea2dZeYJ9FqTAIt06HD3YZxNdVuQvkWdyQ3Ll9tnrFnPHlcPguOR0BjrB0queNQNqcvE8P11CcBFJBaLFe-fWUwNyRVnm3lR6JmW8"/>
+<div class="p-4">
+<div class="flex items-center justify-between mb-1">
+<h3 class="font-bold text-on-surface text-lg">Bento &amp; Boo</h3>
+<button class="material-symbols-outlined text-stone-300 hover:text-error transition-colors">favorite</button>
+</div>
+<p class="text-sm text-on-surface-variant line-clamp-2">Double the trouble, double the fun! 🐾🐾</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Floating Action Button (SUPPRESSED based on context: Details/Community, but usually allowed in Home/Dashboard. Keeping hidden per rule unless specifically asked, but user wanted "Community Screen") -->
+<!-- User didn't request a FAB, and instructions say to suppress on non-primary-dashboard screens unless perfectly aligned. -->
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-white/70 backdrop-blur-2xl flex justify-around items-center px-4 pt-3 pb-8 rounded-t-[32px] shadow-[0_-10px_40px_-10px_rgba(78,33,32,0.08)]">
+<!-- Home -->
+<a class="flex flex-col items-center justify-center text-stone-400 px-5 py-1.5 hover:text-orange-500 active:scale-90 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide">Home</span>
+</a>
+<!-- Message -->
+<a class="flex flex-col items-center justify-center text-stone-400 px-5 py-1.5 hover:text-orange-500 active:scale-90 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide">Message</span>
+</a>
+<!-- Community (Active) -->
+<a class="flex flex-col items-center justify-center bg-orange-100 text-orange-700 rounded-full px-5 py-1.5 transition-all active:scale-90" href="#">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide">Community</span>
+</a>
+<!-- Mall -->
+<a class="flex flex-col items-center justify-center text-stone-400 px-5 py-1.5 hover:text-orange-500 active:scale-90 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_bag">shopping_bag</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide">Mall</span>
+</a>
+<!-- Profile -->
+<a class="flex flex-col items-center justify-center text-stone-400 px-5 py-1.5 hover:text-orange-500 active:scale-90 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-semibold tracking-wide">Profile</span>
+</a>
+</nav>
+</body></html>
