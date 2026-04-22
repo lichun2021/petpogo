@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import 'shared/theme/app_theme.dart';
 import 'shared/theme/app_colors.dart';
+import 'core/providers/locale_provider.dart';
 import 'features/home/home_page.dart';
 import 'features/message/message_page.dart';
 import 'features/community/community_page.dart';
@@ -11,17 +13,41 @@ import 'features/mall/mall_page.dart';
 import 'features/profile/profile_page.dart';
 import 'features/bind_device/select_device_page.dart';
 import 'features/bind_device/scan_qr_page.dart';
+import 'features/bind_device/bind_success_page.dart';
 import 'features/profile/settings_page.dart';
+import 'features/pet/add_pet_page.dart';
+import 'features/pet/pet_detail_page.dart';
+import 'l10n/app_localizations.dart';
+
+export 'l10n/app_localizations.dart';
+
+/// 便捷扩展：直接 context.l10n 获取本地化实例
+extension AppL10nX on BuildContext {
+  AppL10n get l10n => AppL10n.of(this)!;
+}
 
 class PetPogoApp extends ConsumerWidget {
   const PetPogoApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider);
     return MaterialApp.router(
       title: 'PetPogo',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      locale: locale,
+      // 多语言支持
+      localizationsDelegates: const [
+        AppL10n.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('zh'),
+        Locale('en'),
+      ],
       routerConfig: _router,
     );
   }
@@ -40,15 +66,25 @@ final _router = GoRouter(
         GoRoute(path: '/profile',   builder: (_, __) => const ProfilePage()),
       ],
     ),
-    GoRoute(path: '/settings',       builder: (_, __) => const SettingsPage()),
-    GoRoute(path: '/bind-device',    builder: (_, __) => const SelectDevicePage()),
+    GoRoute(path: '/settings',      builder: (_, __) => const SettingsPage()),
+    GoRoute(path: '/bind-device',   builder: (_, __) => const SelectDevicePage()),
     GoRoute(
       path: '/scan-qr/:deviceType',
-      builder: (_, state) => ScanQrPage(deviceType: state.pathParameters['deviceType'] ?? 'KeyTracker'),
+      builder: (_, state) => ScanQrPage(
+        deviceType: state.pathParameters['deviceType'] ?? 'KeyTracker',
+      ),
     ),
+    GoRoute(path: '/bind-success/:deviceType',
+      builder: (_, state) => BindSuccessPage(
+        deviceType: state.pathParameters['deviceType'] ?? 'KeyTracker',
+      ),
+    ),
+    GoRoute(path: '/add-pet',       builder: (_, __) => const AddPetPage()),
+    GoRoute(path: '/pet-detail',    builder: (_, __) => const PetDetailPage()),
   ],
 );
 
+// ── Main Shell ────────────────────────────────────────────────
 class MainShell extends StatefulWidget {
   final Widget child;
   const MainShell({super.key, required this.child});
@@ -62,20 +98,20 @@ class _MainShellState extends State<MainShell> {
 
   static const _tabs = ['/', '/message', '/community', '/mall', '/profile'];
 
-  static const _navItems = [
-    _NavItem(icon: Icons.home_outlined,        activeIcon: Icons.home_rounded,          label: 'Home'),
-    _NavItem(icon: Icons.chat_bubble_outline,   activeIcon: Icons.chat_bubble_rounded,   label: 'Message'),
-    _NavItem(icon: Icons.people_outline,        activeIcon: Icons.people_rounded,        label: 'Community'),
-    _NavItem(icon: Icons.shopping_bag_outlined, activeIcon: Icons.shopping_bag_rounded,  label: 'Mall'),
-    _NavItem(icon: Icons.person_outline,        activeIcon: Icons.person_rounded,        label: 'Profile'),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final navItems = [
+      _NavItem(icon: Icons.home_outlined,        activeIcon: Icons.home_rounded,          label: l10n.navHome),
+      _NavItem(icon: Icons.chat_bubble_outline,   activeIcon: Icons.chat_bubble_rounded,   label: l10n.navMessage),
+      _NavItem(icon: Icons.people_outline,        activeIcon: Icons.people_rounded,        label: l10n.navCommunity),
+      _NavItem(icon: Icons.shopping_bag_outlined, activeIcon: Icons.shopping_bag_rounded,  label: l10n.navMall),
+      _NavItem(icon: Icons.person_outline,        activeIcon: Icons.person_rounded,        label: l10n.navProfile),
+    ];
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: widget.child,
-      // ── 玻璃态底部导航栏（Glass & Gradient rule）──────
       extendBody: true,
       bottomNavigationBar: _GlassBottomNav(
         currentIndex: _currentIndex,
@@ -83,13 +119,13 @@ class _MainShellState extends State<MainShell> {
           setState(() => _currentIndex = index);
           context.go(_tabs[index]);
         },
-        items: _navItems,
+        items: navItems,
       ),
     );
   }
 }
 
-// ── 玻璃态导航栏实现 ──────────────────────────────────
+// ── 玻璃态导航栏 ──────────────────────────────────────────────
 class _GlassBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -107,8 +143,7 @@ class _GlassBottomNav extends StatelessWidget {
       borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       child: Container(
         decoration: BoxDecoration(
-          // surface 70% 透明度 + blur 24px — 设计规范 Glass rule
-          color: AppColors.surface.withOpacity(0.88),
+          color: AppColors.surface.withOpacity(0.92),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           boxShadow: [
             BoxShadow(
@@ -142,7 +177,7 @@ class _GlassBottomNav extends StatelessWidget {
   }
 }
 
-class _NavButton extends StatelessWidget {
+class _NavButton extends StatefulWidget {
   final _NavItem item;
   final bool selected;
   final VoidCallback onTap;
@@ -150,38 +185,85 @@ class _NavButton extends StatelessWidget {
   const _NavButton({required this.item, required this.selected, required this.onTap});
 
   @override
+  State<_NavButton> createState() => _NavButtonState();
+}
+
+class _NavButtonState extends State<_NavButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_NavButton old) {
+    super.didUpdateWidget(old);
+    if (widget.selected && !old.selected) {
+      _ctrl.forward(from: 0);
+    } else if (!widget.selected && old.selected) {
+      _ctrl.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOutCubic,
         padding: EdgeInsets.symmetric(
-          horizontal: selected ? 18 : 14,
+          horizontal: widget.selected ? 18 : 14,
           vertical: 8,
         ),
         decoration: BoxDecoration(
-          // Active：暖橙 pill 背景（设计稿原样）
-          color: selected ? AppColors.primaryContainer.withOpacity(0.25) : Colors.transparent,
+          color: widget.selected
+              ? AppColors.primaryContainer.withOpacity(0.25)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              selected ? item.activeIcon : item.icon,
-              color: selected ? AppColors.primary : AppColors.onSurfaceVariant,
-              size: 24,
+            ScaleTransition(
+              scale: _scale,
+              child: Icon(
+                widget.selected ? widget.item.activeIcon : widget.item.icon,
+                color: widget.selected
+                    ? AppColors.primary
+                    : AppColors.onSurfaceVariant,
+                size: 24,
+              ),
             ),
             const SizedBox(height: 2),
-            Text(
-              item.label,
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
               style: TextStyle(
                 fontFamily: 'Plus Jakarta Sans',
                 fontSize: 10,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected ? AppColors.primary : AppColors.onSurfaceVariant,
+                fontWeight:
+                    widget.selected ? FontWeight.w700 : FontWeight.w500,
+                color: widget.selected
+                    ? AppColors.primary
+                    : AppColors.onSurfaceVariant,
               ),
+              child: Text(widget.item.label),
             ),
           ],
         ),

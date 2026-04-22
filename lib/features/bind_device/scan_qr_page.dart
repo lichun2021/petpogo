@@ -119,19 +119,13 @@ class _ScanQrPageState extends State<ScanQrPage> with SingleTickerProviderStateM
             child: _found
                 ? ElevatedButton(
                     onPressed: () {
-                      context.go('/');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('${widget.deviceType} 绑定成功！'),
-                          backgroundColor: AppColors.primary,
-                        ),
-                      );
+                      context.go('/bind-success/${widget.deviceType}');
                     },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('已找到二维码，完成绑定', style: TextStyle(fontSize: 16)),
+                    child: const Text('完成绑定', style: TextStyle(fontSize: 16)),
                   )
                 : TextButton(
                     onPressed: _simulateFound,

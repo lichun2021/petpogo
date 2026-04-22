@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/theme/app_colors.dart';
+import '../../app.dart' show AppL10nX;
 import 'widgets/device_card.dart';
 import 'widgets/ai_translate_panel.dart';
 import 'widgets/no_device_banner.dart';
 
-/// 首页 — 设计稿 Image 1/2 还原
-/// 布局：玻璃态 AppBar → 问候语 → AI 翻译面板 → 设备列表
-/// 全局：surface 背景，无分割线
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
@@ -16,14 +14,13 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
-  // TODO: 从 Riverpod provider 读取
   final bool _hasDevice = true;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.surface,
-      // ── FAB: 添加设备 ───────────────────────────────
       floatingActionButton: FloatingActionButton(
         onPressed: () {},
         backgroundColor: AppColors.secondaryContainer,
@@ -33,20 +30,14 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
       body: CustomScrollView(
         slivers: [
-          // ── AppBar（玻璃态）────────────────────────
+          // ── AppBar 固定顶部 ──────────────────────────
           SliverAppBar(
-            floating: true,
-            backgroundColor: AppColors.surface.withOpacity(0.8),
+            pinned: true,          // 固定，不随内容滚动
+            floating: false,
+            backgroundColor: AppColors.surface.withOpacity(0.95),
             surfaceTintColor: Colors.transparent,
             elevation: 0,
             shadowColor: Colors.transparent,
-            flexibleSpace: ClipRect(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.surface.withOpacity(0.8),
-                ),
-              ),
-            ),
             title: Row(
               children: [
                 Icon(Icons.pets_rounded, color: AppColors.primary, size: 24),
@@ -69,7 +60,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                 child: CircleAvatar(
                   radius: 18,
                   backgroundColor: AppColors.surfaceContainerHighest,
-                  child: Icon(Icons.person_rounded, color: AppColors.onSurfaceVariant, size: 20),
+                  child: Icon(Icons.person_rounded,
+                      color: AppColors.onSurfaceVariant, size: 20),
                 ),
               ),
             ],
@@ -82,9 +74,9 @@ class _HomePageState extends ConsumerState<HomePage> {
               delegate: SliverChildListDelegate([
 
                 // ── 问候语 ─────────────────────────────
-                const Text(
-                  'Hello, Human!',
-                  style: TextStyle(
+                Text(
+                  l10n.homeGreeting,
+                  style: const TextStyle(
                     fontFamily: 'Plus Jakarta Sans',
                     fontSize: 30,
                     fontWeight: FontWeight.w800,
@@ -94,7 +86,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Ready to understand what Buddy is thinking today?',
+                  l10n.homeSubtitle,
                   style: TextStyle(
                     fontFamily: 'Plus Jakarta Sans',
                     fontSize: 14,
@@ -116,8 +108,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Connected Devices',
-                        style: TextStyle(
+                        l10n.homeConnectedDevices,
+                        style: const TextStyle(
                           fontFamily: 'Plus Jakarta Sans',
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
@@ -126,7 +118,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                         ),
                       ),
                       Text(
-                        '2 Devices Active',
+                        l10n.homeDevicesActive(2),
                         style: TextStyle(
                           fontFamily: 'Plus Jakarta Sans',
                           fontSize: 13,
@@ -137,7 +129,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  DeviceCard(
+                  const DeviceCard(
                     deviceType: 'KeyTracker',
                     deviceName: 'KeyTracker',
                     isOnline: true,
@@ -145,7 +137,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     location: '南山区科技园',
                   ),
                   const SizedBox(height: 12),
-                  DeviceCard(
+                  const DeviceCard(
                     deviceType: 'PetPhone',
                     deviceName: 'PetPhone',
                     isOnline: true,

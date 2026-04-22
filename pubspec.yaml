@@ -1,13 +1,15 @@
 name: petpogo_app
 description: PetPogo - Pet Hardware & Community App
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_localizations:
     sdk: flutter
 
   # State Management
@@ -44,7 +46,7 @@ dependencies:
   mobile_scanner: ^5.2.3
 
   # Utils
-  intl: ^0.19.0
+  intl: ^0.20.2
   uuid: ^4.4.0
   url_launcher: ^6.3.0
   permission_handler: ^11.3.1
@@ -64,6 +66,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  generate: true
   assets:
     - assets/images/
     - assets/animations/
