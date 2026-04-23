@@ -1,88 +1,62 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:go_router/go_router.dart';
+import 'package:go_router/go_router.dart'; // context.go() / context.push() 需要
 
 import 'shared/theme/app_theme.dart';
 import 'shared/theme/app_colors.dart';
 import 'core/providers/locale_provider.dart';
-import 'features/home/home_page.dart';
-import 'features/message/message_page.dart';
-import 'features/community/community_page.dart';
-import 'features/mall/mall_page.dart';
-import 'features/profile/profile_page.dart';
-import 'features/bind_device/select_device_page.dart';
-import 'features/bind_device/scan_qr_page.dart';
-import 'features/bind_device/bind_success_page.dart';
-import 'features/profile/settings_page.dart';
-import 'features/pet/add_pet_page.dart';
-import 'features/pet/pet_detail_page.dart';
+import 'core/router/app_router.dart';   // ← 路由集中管理
+import 'core/router/app_routes.dart';   // ← 路由路径常量
 import 'l10n/app_localizations.dart';
 
 export 'l10n/app_localizations.dart';
 
-/// 便捷扩展：直接 context.l10n 获取本地化实例
+/// 便捷扩展：任意 Widget 内用 context.l10n 获取当前语言的翻译
 extension AppL10nX on BuildContext {
   AppL10n get l10n => AppL10n.of(this)!;
 }
 
+/// 应用根 Widget
+///
+/// 职责：
+///   1. 配置全局主题
+///   2. 配置多语言（中/英）
+///   3. 挂载路由（来自 core/router/app_router.dart）
+///   4. 监听 localeProvider，语言切换时自动重建
 class PetPogoApp extends ConsumerWidget {
   const PetPogoApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 监听语言设置（设置页切换语言后自动触发重建）
     final locale = ref.watch(localeProvider);
+
     return MaterialApp.router(
       title: 'PetPogo',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       locale: locale,
-      // 多语言支持
+
+      // ── 多语言代理 ─────────────────────────────────────────
       localizationsDelegates: const [
-        AppL10n.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
+        AppL10n.delegate,                      // 项目自有翻译
+        GlobalMaterialLocalizations.delegate,  // Material 组件翻译
+        GlobalWidgetsLocalizations.delegate,   // Widget 方向支持
+        GlobalCupertinoLocalizations.delegate, // Cupertino 组件翻译
       ],
       supportedLocales: const [
-        Locale('zh'),
-        Locale('en'),
+        Locale('zh'), // 中文（默认）
+        Locale('en'), // English
       ],
-      routerConfig: _router,
+
+      // ── 路由配置 ───────────────────────────────────────────
+      // appRouter 定义在 core/router/app_router.dart
+      // 所有页面路由、过渡动画、守卫逻辑都集中在那里管理
+      routerConfig: appRouter,
     );
   }
 }
-
-final _router = GoRouter(
-  initialLocation: '/',
-  routes: [
-    ShellRoute(
-      builder: (context, state, child) => MainShell(child: child),
-      routes: [
-        GoRoute(path: '/',          builder: (_, __) => const HomePage()),
-        GoRoute(path: '/message',   builder: (_, __) => const MessagePage()),
-        GoRoute(path: '/community', builder: (_, __) => const CommunityPage()),
-        GoRoute(path: '/mall',      builder: (_, __) => const MallPage()),
-        GoRoute(path: '/profile',   builder: (_, __) => const ProfilePage()),
-      ],
-    ),
-    GoRoute(path: '/settings',      builder: (_, __) => const SettingsPage()),
-    GoRoute(path: '/bind-device',   builder: (_, __) => const SelectDevicePage()),
-    GoRoute(
-      path: '/scan-qr/:deviceType',
-      builder: (_, state) => ScanQrPage(
-        deviceType: state.pathParameters['deviceType'] ?? 'KeyTracker',
-      ),
-    ),
-    GoRoute(path: '/bind-success/:deviceType',
-      builder: (_, state) => BindSuccessPage(
-        deviceType: state.pathParameters['deviceType'] ?? 'KeyTracker',
-      ),
-    ),
-    GoRoute(path: '/add-pet',       builder: (_, __) => const AddPetPage()),
-    GoRoute(path: '/pet-detail',    builder: (_, __) => const PetDetailPage()),
-  ],
-);
 
 // ── Main Shell ────────────────────────────────────────────────
 class MainShell extends StatefulWidget {
@@ -94,9 +68,18 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
+  // 当前选中的底部导航 Tab 索引（0=首页 1=消息 2=社区 3=商城 4=我的）
   int _currentIndex = 0;
 
-  static const _tabs = ['/', '/message', '/community', '/mall', '/profile'];
+  // ✅ 使用 AppRoutes 常量，不硬编码字符串
+  // 修改路由路径时只需改 AppRoutes，这里自动同步
+  static const _tabs = [
+    AppRoutes.home,       // '/'
+    AppRoutes.message,    // '/message'
+    AppRoutes.community,  // '/community'
+    AppRoutes.mall,       // '/mall'
+    AppRoutes.profile,    // '/profile'
+  ];
 
   @override
   Widget build(BuildContext context) {

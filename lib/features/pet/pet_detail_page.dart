@@ -5,7 +5,9 @@ import '../../app.dart' show AppL10nX;
 
 /// 宠物详情页 — 健康卡、AI翻译历史、设备关联
 class PetDetailPage extends StatelessWidget {
-  const PetDetailPage({super.key});
+  /// 从路由参数传入的宠物 ID（用于加载详情数据）
+  final String petId;
+  const PetDetailPage({super.key, this.petId = ''});
 
   @override
   Widget build(BuildContext context) {

@@ -32,11 +32,21 @@ class AppConfig {
   // ──────────────────────────────────────────────
   // App 信息
   // ──────────────────────────────────────────────
-  static const String appVersion     = '1.0.1';
+  static const String appVersion     = '1.0.2';
   static const String defaultLang    = 'zh-CN';
 
   // ──────────────────────────────────────────────
   // 分页
   // ──────────────────────────────────────────────
   static const int pageSize          = 20;
+
+  // ──────────────────────────────────────────────
+  // ApiClient 专用（统一入口）
+  // ──────────────────────────────────────────────
+  /// ApiClient 使用的基础地址（与 baseUrl 保持一致，可按需切换）
+  static const String apiBaseUrl = baseUrl;
+
+  /// 是否 Debug 模式（控制日志拦截器开关）
+  /// Flutter 会在 release 构建时自动优化掉 assert/kDebugMode
+  static const bool isDebug = bool.fromEnvironment('dart.vm.product') == false;
 }

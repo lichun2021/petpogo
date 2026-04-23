@@ -1,7 +1,7 @@
 name: petpogo_app
 description: PetPogo - Pet Hardware & Community App
 publish_to: 'none'
-version: 1.0.1+2
+version: 1.0.2+3
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -40,6 +40,7 @@ dependencies:
   image_picker: ^1.1.2
   video_player: ^2.8.6
   record: ^6.0.0
+  path_provider: ^2.1.2        # 获取临时目录存储录音文件
   just_audio: ^0.9.39
 
   # QR Scanner
