@@ -6,10 +6,10 @@ class MallPage extends StatelessWidget {
   const MallPage({super.key});
 
   static const _products = [
-    _ProductData(name: 'Premium Leather Collar', price: '\$45.00', rating: 4.9, reviews: 128, emoji: '🦮'),
-    _ProductData(name: 'Organic Salmon Bites',   price: '\$18.50', rating: 4.7, reviews: 340, emoji: '🐟'),
-    _ProductData(name: 'Cloud-9 Plush Bed',      price: '\$89.00', rating: 5.0, reviews: 95,  emoji: '🛏️'),
-    _ProductData(name: 'Auto-Feed Smart V2',     price: '\$129.99', rating: 4.8, reviews: 212, emoji: '⏰'),
+    _ProductData(name: '高级首圈（皮质款）', price: '¥298', rating: 4.9, reviews: 128, emoji: '🦮'),
+    _ProductData(name: '有机三文鱼零食', price: '¥128', rating: 4.7, reviews: 340, emoji: '🐟'),
+    _ProductData(name: '云朵豪华宠物床', price: '¥569', rating: 5.0, reviews: 95,  emoji: '🛏️'),
+    _ProductData(name: '智能自动餐具 V2', price: '¥899', rating: 4.8, reviews: 212, emoji: '⏰'),
   ];
 
   @override
@@ -27,15 +27,7 @@ class MallPage extends StatelessWidget {
             surfaceTintColor: Colors.transparent,
             elevation: 0,
             shadowColor: Colors.transparent,
-            title: Row(
-              children: [
-                Icon(Icons.pets_rounded, color: AppColors.primary, size: 22),
-                const SizedBox(width: 6),
-                Text('PetPogo',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 22,
-                        fontWeight: FontWeight.w800, color: AppColors.primary)),
-              ],
-            ),
+            title: const SizedBox.shrink(), // 隐藏标题
             actions: [
               IconButton(icon: Icon(Icons.search_rounded, color: AppColors.onSurfaceVariant), onPressed: () {}),
               IconButton(icon: Icon(Icons.shopping_cart_outlined, color: AppColors.onSurfaceVariant), onPressed: () {}),
@@ -314,16 +306,16 @@ class _NearbyStoresRow extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,
         children: const [
-          _StoreCard(name: '聚宠生活馆', desc: 'Premium grooming, daycare, and a curated selection of organic pet treats.',
-              distance: '1.2 km', rating: '4.9', tags: ['Grooming', 'Cafe'],
+          _StoreCard(name: '聚宠生活馆', desc: '专业洗洗美容、宠物寄养及优选有机零食。',
+              distance: '1.2 公里', rating: '4.9', tags: ['洗洗', '卡幾'],
               bgColor: AppColors.secondaryContainer, textColor: AppColors.onSecondaryContainer, emoji: '🏪'),
           SizedBox(width: 16),
-          _StoreCard(name: 'Paw-some Retreat', desc: 'Specialized spa treatments for small breeds and sensory play areas.',
-              distance: '3.5 km', rating: '4.6', tags: ['Spa', 'Training'],
+          _StoreCard(name: '毛孩乐园馆', desc: '小型犬猫专属温泉治疗及感官再猫场所。',
+              distance: '3.5 公里', rating: '4.6', tags: ['温泉SPA', '训练'],
               bgColor: AppColors.surfaceContainerHigh, textColor: AppColors.onSurface, emoji: '🛁'),
           SizedBox(width: 16),
-          _StoreCard(name: 'Pet Paradise', desc: 'One-stop shop for all your pet needs. Food, toys, and accessories.',
-              distance: '5.0 km', rating: '4.4', tags: ['Shop', 'Food'],
+          _StoreCard(name: '宠物乐园', desc: '宠物用品一站式购物，零食、玩具、配件全都有。',
+              distance: '5.0 公里', rating: '4.4', tags: ['购物', '食品'],
               bgColor: AppColors.surfaceContainerLow, textColor: AppColors.onSurface, emoji: '🌿'),
         ],
       ),
@@ -362,7 +354,7 @@ class _StoreCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(999)),
-                    child: Text('$distance away',
+                    child: Text('$distance 外',
                         style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 10,
                             fontWeight: FontWeight.w700, color: AppColors.secondary)),
                   ),

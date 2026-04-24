@@ -138,9 +138,9 @@ class AiPrediction {
   });
 
   factory AiPrediction.fromJson(Map<String, dynamic> json) => AiPrediction(
-    label:      json['label'] as String,
-    labelZh:    json['label_zh'] as String,
-    confidence: (json['confidence'] as num).toDouble(),
+    label:      (json['label']      as String?)  ?? 'unknown',
+    labelZh:    (json['label_zh']   as String?)  ?? '未知',
+    confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
   );
 
   /// 置信度百分比（用于 UI 显示，如 "87%"）
@@ -181,12 +181,32 @@ class AiAnalysisResult {
     required this.processingTimeMs,
   });
 
+  /// 默认/空白预测项（字段为 null 时的兜底）
+  static AiPrediction _emptyPred(String label) => AiPrediction(
+    label: label, labelZh: '未知', confidence: 0.0,
+  );
+
   factory AiAnalysisResult.fromJson(Map<String, dynamic> json) {
-    final speciesPred = AiPrediction.fromJson(json['species'] as Map<String, dynamic>);
-    final primaryPred = AiPrediction.fromJson(json['primary_emotion'] as Map<String, dynamic>);
-    final emotionList = (json['emotions'] as List)
-        .map((e) => AiPrediction.fromJson(e as Map<String, dynamic>))
-        .toList();
+    // ── 物种（服务端偶尔返回 null，录音太短或无法识别时）
+    final speciesRaw = json['species'];
+    final speciesPred = speciesRaw is Map<String, dynamic>
+        ? AiPrediction.fromJson(speciesRaw)
+        : _emptyPred('unknown');
+
+    // ── 主情绪
+    final primaryRaw = json['primary_emotion'];
+    final primaryPred = primaryRaw is Map<String, dynamic>
+        ? AiPrediction.fromJson(primaryRaw)
+        : _emptyPred('relaxed');
+
+    // ── 情绪列表
+    final emotionsRaw = json['emotions'];
+    final emotionList = emotionsRaw is List
+        ? emotionsRaw
+            .whereType<Map<String, dynamic>>()
+            .map(AiPrediction.fromJson)
+            .toList()
+        : <AiPrediction>[];
 
     return AiAnalysisResult(
       species:                  PetSpecies.fromLabel(speciesPred.label),
@@ -194,9 +214,9 @@ class AiAnalysisResult {
       emotions:                 emotionList,
       primaryEmotion:           PetEmotion.fromLabel(primaryPred.label),
       primaryEmotionPrediction: primaryPred,
-      advice:                   json['advice'] as String,
-      durationSeconds:          (json['duration_seconds'] as num).toDouble(),
-      processingTimeMs:         (json['processing_time_ms'] as num).toDouble(),
+      advice:           (json['advice'] as String?) ?? '录音时间过短，请重新录制 2 秒以上',
+      durationSeconds:  (json['duration_seconds'] as num?)?.toDouble() ?? 0.0,
+      processingTimeMs: (json['processing_time_ms'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }

@@ -22,6 +22,7 @@ import '../data/repository/ai_voice_repository.dart';
 enum AiTranslatePhase {
   idle,       // 待机：显示"按住说话"按钮
   recording,  // 录音中：显示波形动画 + 计时
+  tooShort,   // 录音太短：提示"请录长一点"
   analyzing,  // 分析中：显示上传 / AI 处理动画
   result,     // 结果：显示物种 + 情绪 + 建议
   error,      // 出错：显示错误提示
@@ -68,6 +69,9 @@ class AiTranslateController extends StateNotifier<AiTranslateState> {
   /// record 包的录音实例
   final AudioRecorder _recorder = AudioRecorder();
 
+  /// 精确计时器（从按下开始，松开时读取，替代 tick 计数）
+  final _stopwatch = Stopwatch();
+
   /// 录音文件存储路径
   String? _recordingPath;
 
@@ -104,6 +108,9 @@ class AiTranslateController extends StateNotifier<AiTranslateState> {
       ),
       path: _recordingPath!,
     );
+    _stopwatch
+      ..reset()
+      ..start(); // 开始计时
     debugPrint('[AiCtrl] 录音已开始，文件路径: $_recordingPath');
 
     state = state.copyWith(
@@ -127,8 +134,28 @@ class AiTranslateController extends StateNotifier<AiTranslateState> {
   // ── 停止录音 + 上传分析 ───────────────────────────────
   /// 调用时机：用户松开录音按钮（或录音超过 10 秒）
   Future<void> stopAndAnalyze() async {
-    debugPrint('[AiCtrl] stopAndAnalyze() called, phase=${state.phase}');
+    debugPrint('[AiCtrl] stopAndAnalyze() called, elapsed=${_stopwatch.elapsedMilliseconds}ms');
     if (state.phase != AiTranslatePhase.recording) return;
+    _stopwatch.stop();
+    final elapsedMs = _stopwatch.elapsedMilliseconds;
+
+    // ── 不足 2 秒：取消上传，提示用户 ────────────────
+    if (elapsedMs < 2000) {
+      debugPrint('[AiCtrl] 录音太短 (${elapsedMs}ms)，取消上传');
+      await _recorder.stop();
+      // 删除太短的录音文件（没用）
+      if (_recordingPath != null) {
+        final f = File(_recordingPath!);
+        if (f.existsSync()) f.deleteSync();
+      }
+      // 切换到 tooShort 状态，2 秒后自动回到 idle
+      state = state.copyWith(phase: AiTranslatePhase.tooShort);
+      await Future.delayed(const Duration(seconds: 2));
+      if (state.phase == AiTranslatePhase.tooShort) {
+        state = const AiTranslateState();
+      }
+      return;
+    }
 
     // 停止录音，获取文件路径
     final path = await _recorder.stop();
@@ -149,12 +176,11 @@ class AiTranslateController extends StateNotifier<AiTranslateState> {
 
     result.when(
       success: (data) {
-        // 成功：保留录音文件供用户回放验证准确性（不再删除）
         debugPrint('[AiCtrl] 分析成功，保留录音文件: $path');
         state = state.copyWith(
           phase: AiTranslatePhase.result,
           result: data,
-          recordingPath: path, // 保留路径，供 UI 回放
+          recordingPath: path,
         );
       },
       failure: (err) {

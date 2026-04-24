@@ -32,7 +32,7 @@ class AppConfig {
   // ──────────────────────────────────────────────
   // App 信息
   // ──────────────────────────────────────────────
-  static const String appVersion     = '1.0.2';
+  static const String appVersion     = '1.0.4';
   static const String defaultLang    = 'zh-CN';
 
   // ──────────────────────────────────────────────

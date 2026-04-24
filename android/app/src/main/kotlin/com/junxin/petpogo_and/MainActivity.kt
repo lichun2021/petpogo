@@ -1,4 +1,4 @@
-package com.ucloudlink.petpogo_app
+package com.junxin.petpogo_and
 
 import io.flutter.embedding.android.FlutterActivity
 

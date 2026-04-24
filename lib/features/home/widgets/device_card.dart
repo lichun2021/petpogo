@@ -20,8 +20,8 @@ class DeviceCard extends StatelessWidget {
     this.nowPlaying,
   });
 
-  bool get _isKeyTracker => deviceType == 'KeyTracker';
-  bool get _isPetPhone   => deviceType == 'PetPhone';
+  bool get _isCollar  => deviceType == '项圈';
+  bool get _isRobot   => deviceType == '机器人';
 
   @override
   Widget build(BuildContext context) {
@@ -44,8 +44,8 @@ class DeviceCard extends StatelessWidget {
                 decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
                 child: Center(
                   child: Icon(
-                    _isKeyTracker ? Icons.key_rounded : Icons.smartphone_rounded,
-                    color: _isKeyTracker ? AppColors.secondary : AppColors.primary,
+                    _isCollar ? Icons.watch_rounded : Icons.smart_toy_rounded,
+                    color: _isCollar ? AppColors.secondary : AppColors.primary,
                     size: 24,
                   ),
                 ),
@@ -94,7 +94,7 @@ class DeviceCard extends StatelessWidget {
             ],
           ),
 
-          if (_isPetPhone && nowPlaying != null) ...[
+          if (_isRobot && nowPlaying != null) ...[
             const SizedBox(height: 14),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),

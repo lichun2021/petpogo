@@ -25,15 +25,7 @@ class ProfilePage extends StatelessWidget {
             surfaceTintColor: Colors.transparent,
             elevation: 0,
             shadowColor: Colors.transparent,
-            title: Row(
-              children: [
-                Icon(Icons.pets_rounded, color: AppColors.primary, size: 22),
-                const SizedBox(width: 6),
-                Text('PetPogo',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 22,
-                        fontWeight: FontWeight.w800, color: AppColors.primary)),
-              ],
-            ),
+            title: const SizedBox.shrink(), // 隐藏标题
             actions: [
               IconButton(icon: Icon(Icons.notifications_rounded, color: AppColors.onSurfaceVariant), onPressed: () {}),
               Padding(
@@ -79,7 +71,7 @@ class ProfilePage extends StatelessWidget {
 
                 GestureDetector(
                   onTap: () => context.push('/pet-detail'),
-                  child: _PetCard(name: 'Doudou', breed: 'British Shorthair', type: 'CAT',
+                  child: _PetCard(name: '豆豆', breed: '英短豆', type: '猫',
                     typeColor: AppColors.secondaryContainer, typeTextColor: AppColors.onSecondaryContainer,
                     statusLabel: l10n.profileVaccinated, statusOk: true, emoji: '🐱'),
                 ),
@@ -88,7 +80,7 @@ class ProfilePage extends StatelessWidget {
 
                 GestureDetector(
                   onTap: () => context.push('/pet-detail'),
-                  child: _PetCard(name: 'Max', breed: 'Golden Retriever', type: 'DOG',
+                  child: _PetCard(name: '麦克斯', breed: '金毛寻回犬', type: '狗',
                     typeColor: AppColors.tertiaryContainer.withOpacity(0.7), typeTextColor: AppColors.onTertiaryFixed,
                     statusLabel: l10n.profileCheckupDue, statusOk: false, emoji: '🐕'),
                 ),
@@ -169,7 +161,7 @@ class _UserInfoCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Alex Rivera',
+                Text('李小明',
                     style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 20,
                         fontWeight: FontWeight.w800, letterSpacing: -0.4, color: AppColors.onSurface)),
                 Text(l10n.profilePetParentSince('2022'),

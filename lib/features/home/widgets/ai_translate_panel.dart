@@ -116,6 +116,8 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
         return _buildIdle(state);
       case AiTranslatePhase.recording:
         return _buildRecording(state);
+      case AiTranslatePhase.tooShort:
+        return _buildTooShort();
       case AiTranslatePhase.analyzing:
         return _buildAnalyzing();
       case AiTranslatePhase.result:
@@ -276,6 +278,11 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
 
   // ── Phase 4: 分析结果 ────────────────────────────────────
   Widget _buildResult(AiAnalysisResult result) {
+    // 物种未识别时：不显示情绪，只提示重录
+    if (result.species == PetSpecies.unknown) {
+      return _buildUnknownSpecies(result);
+    }
+
     final state = ref.read(aiTranslateControllerProvider);
     final emotion = result.primaryEmotion;
     final emotionColor = Color(emotion.colorHex);
@@ -404,6 +411,84 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
           Text('音频 ${result.durationSeconds.toStringAsFixed(1)}s · 处理 ${result.processingTimeMs.toStringAsFixed(0)}ms',
               style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11, color: AppColors.onSurfaceVariant)),
         ]),
+      ],
+    );
+  }
+
+  // ── Phase: 录音太短（< 2秒）提示 ────────────────────────────
+  Widget _buildTooShort() {
+    return Column(
+      key: const ValueKey('tooShort'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.primaryContainer.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+          ),
+          child: Row(children: [
+            Icon(Icons.mic_rounded, color: AppColors.primary, size: 32),
+            const SizedBox(width: 14),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('请按長一点👌',
+                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15,
+                        fontWeight: FontWeight.w800, color: AppColors.primary)),
+                const SizedBox(height: 3),
+                Text('至少需要 2 秒麦克风输入，AI 才能准确识别宠物声音',
+                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                        color: AppColors.onSurfaceVariant)),
+              ],
+            )),
+          ]),
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
+  // ── 物种未识别结果卡片 ───────────────────────────────────
+  /// 录音上传成功但模型无法识别物种时显示（不显示情绪）
+  Widget _buildUnknownSpecies(AiAnalysisResult result) {
+    final state = ref.read(aiTranslateControllerProvider);
+    return Column(
+      key: const ValueKey('unknownSpecies'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 图标 + 标题
+        Row(children: [
+          Container(
+            width: 52, height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.primaryContainer.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Center(child: Text('🐾', style: TextStyle(fontSize: 26))),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('未能识别物种', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.onSurface)),
+            const SizedBox(height: 3),
+            Text('建议录制 3~5 秒清晰的叫声效果更好',
+                style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                    color: AppColors.onSurfaceVariant)),
+          ])),
+          IconButton(onPressed: _reset, icon: Icon(Icons.refresh_rounded,
+              color: AppColors.onSurfaceVariant), tooltip: '重新录音'),
+        ]),
+
+        // 如有录音文件可回放
+        if (state.recordingPath != null) ...[
+          const SizedBox(height: 12),
+          _PlaybackBar(audioPath: state.recordingPath!, player: _player,
+              isPlaying: _isPlaying, duration: result.durationSeconds),
+        ],
+        const SizedBox(height: 4),
       ],
     );
   }

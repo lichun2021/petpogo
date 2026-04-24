@@ -53,9 +53,12 @@ class AiVoiceRepository {
 
           sw.stop();
 
-          // ── 响应日志 ─────────────────────────────────
+          // ── 完整原始响应（方便对比接口格式）─────────────
           debugPrint('[$_tag] ✅ 响应成功 (${sw.elapsedMilliseconds}ms)');
           debugPrint('[$_tag]   HTTP 状态: ${response.statusCode}');
+          debugPrint('[$_tag] ══ 原始 JSON ══════════════════════════');
+          debugPrint('[$_tag] ${response.data}');
+          debugPrint('[$_tag] ═══════════════════════════════════════');
 
           final raw = response.data as Map<String, dynamic>;
           debugPrint('[$_tag]   物种: ${raw['species']?['label_zh']} '
@@ -67,7 +70,7 @@ class AiVoiceRepository {
             debugPrint('[$_tag]   情绪#${i + 1}: ${e['label_zh']} '
                 '(${((e['confidence'] ?? 0) * 100).toStringAsFixed(1)}%)');
           }
-          debugPrint('[$_tag]   建议: ${(raw['advice'] as String?)?.substring(0, 30)}...');
+          debugPrint('[$_tag]   建议: ${(raw['advice'] as String? ?? '').substring(0, ((raw['advice'] as String? ?? '').length).clamp(0, 30))}...');
           debugPrint('[$_tag]   服务端耗时: ${raw['processing_time_ms']}ms');
 
           return AiAnalysisResult.fromJson(raw);

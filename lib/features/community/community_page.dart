@@ -16,12 +16,12 @@ class _CommunityPageState extends State<CommunityPage>
   int _selectedCategory = 0;
 
   final _posts = [
-    _PostData(name: 'Cooper',      caption: 'Just found the perfect spot for an afternoon...', liked: true,  hasVideo: true,  aspect: 3 / 4, emoji: '☀️'),
-    _PostData(name: 'Oliver',      caption: 'Ready for the rain! ☔️',                          liked: false, hasVideo: false, aspect: 9 / 16, emoji: '🌂'),
-    _PostData(name: 'Mochi',       caption: 'Beach vibes only today. 🕶️🌊',                   liked: false, hasVideo: false, aspect: 1,      emoji: '🌊'),
-    _PostData(name: 'Pip',         caption: 'Is it snack time yet? 🥕',                        liked: true,  hasVideo: false, aspect: 4 / 5, emoji: '🥕'),
-    _PostData(name: 'Luna',        caption: 'Hunting skills are 10/10 today! 🧶',              liked: true,  hasVideo: false, aspect: 2 / 3, emoji: '🧶', isFeatured: true),
-    _PostData(name: 'Bento & Boo', caption: 'Double the trouble, double the fun! 🐾🐾',       liked: false, hasVideo: false, aspect: 1,      emoji: '🐾'),
+    _PostData(name: '可比',      caption: '找到了下午晒太阳的最佳位置 ☀️',    liked: true,  hasVideo: true,  aspect: 3 / 4,  emoji: '☀️'),
+    _PostData(name: '奥利',      caption: '下雨天准备好了！☔️',               liked: false, hasVideo: false, aspect: 9 / 16, emoji: '🌂'),
+    _PostData(name: '麻薯',      caption: '今天只想感受海边的风 🕶️🌊',        liked: false, hasVideo: false, aspect: 1,      emoji: '🌊'),
+    _PostData(name: '小点',      caption: '到零食时间了吗？🥕',               liked: true,  hasVideo: false, aspect: 4 / 5,  emoji: '🥕'),
+    _PostData(name: '露娜',      caption: '今天的捕猎技能满分！🧶',           liked: true,  hasVideo: false, aspect: 2 / 3,  emoji: '🧶', isFeatured: true),
+    _PostData(name: '便当 & 布布', caption: '两只一起，双倍的麻烦，双倍的快乐！🐾🐾', liked: false, hasVideo: false, aspect: 1,  emoji: '🐾'),
   ];
 
   @override

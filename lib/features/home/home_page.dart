@@ -32,28 +32,13 @@ class _HomePageState extends ConsumerState<HomePage> {
         slivers: [
           // ── AppBar 固定顶部 ──────────────────────────
           SliverAppBar(
-            pinned: true,          // 固定，不随内容滚动
+            pinned: true,
             floating: false,
             backgroundColor: AppColors.surface.withOpacity(0.95),
             surfaceTintColor: Colors.transparent,
             elevation: 0,
             shadowColor: Colors.transparent,
-            title: Row(
-              children: [
-                Icon(Icons.pets_rounded, color: AppColors.primary, size: 24),
-                const SizedBox(width: 6),
-                Text(
-                  'PetPogo',
-                  style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ],
-            ),
+            title: const SizedBox.shrink(), // 隐藏标题
             actions: [
               Padding(
                 padding: const EdgeInsets.only(right: 16),
@@ -130,20 +115,20 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                   const SizedBox(height: 14),
                   const DeviceCard(
-                    deviceType: 'KeyTracker',
-                    deviceName: 'KeyTracker',
+                    deviceType: '项圈',
+                    deviceName: '宠物项圈',
                     isOnline: true,
                     battery: 85,
                     location: '南山区科技园',
                   ),
                   const SizedBox(height: 12),
                   const DeviceCard(
-                    deviceType: 'PetPhone',
-                    deviceName: 'PetPhone',
+                    deviceType: '机器人',
+                    deviceName: '宠物机器人',
                     isOnline: true,
                     battery: 72,
                     location: '南山区科技园',
-                    nowPlaying: 'Calming Pet Melodies',
+                    nowPlaying: '轻音乐 - 舒缓放松',
                   ),
                 ] else ...[
                   const NoDeviceBanner(),
