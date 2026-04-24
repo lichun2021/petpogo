@@ -12,7 +12,7 @@ import 'l10n/app_localizations.dart';
 
 export 'l10n/app_localizations.dart';
 
-/// 便捷扩展：任意 Widget 内用 context.l10n 获取当前语言的翻译
+/// 便捷扩展：任意 Widget 内用 context.l10n 获取当前语言的识别
 extension AppL10nX on BuildContext {
   AppL10n get l10n => AppL10n.of(this)!;
 }
@@ -40,10 +40,10 @@ class PetPogoApp extends ConsumerWidget {
 
       // ── 多语言代理 ─────────────────────────────────────────
       localizationsDelegates: const [
-        AppL10n.delegate,                      // 项目自有翻译
-        GlobalMaterialLocalizations.delegate,  // Material 组件翻译
+        AppL10n.delegate,                      // 项目自有识别
+        GlobalMaterialLocalizations.delegate,  // Material 组件识别
         GlobalWidgetsLocalizations.delegate,   // Widget 方向支持
-        GlobalCupertinoLocalizations.delegate, // Cupertino 组件翻译
+        GlobalCupertinoLocalizations.delegate, // Cupertino 组件识别
       ],
       supportedLocales: const [
         Locale('zh'), // 中文（默认）

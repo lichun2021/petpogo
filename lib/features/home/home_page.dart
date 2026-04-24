@@ -4,6 +4,7 @@ import '../../shared/theme/app_colors.dart';
 import '../../app.dart' show AppL10nX;
 import 'widgets/device_card.dart';
 import 'widgets/ai_translate_panel.dart';
+import 'widgets/ai_image_panel.dart';
 import 'widgets/no_device_banner.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -82,8 +83,13 @@ class _HomePageState extends ConsumerState<HomePage> {
 
                 const SizedBox(height: 24),
 
-                // ── AI 翻译面板 ────────────────────────
+                // ── AI 语音识别面板 ─────────────────────
                 const AiTranslatePanel(),
+
+                const SizedBox(height: 16),
+
+                // ── AI 图像情绪识别面板 ─────────────────
+                const AiImagePanel(),
 
                 const SizedBox(height: 28),
 

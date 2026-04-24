@@ -70,7 +70,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>PetPogo 需要使用相机扫描设备二维码，以便绑定您的 KeyTracker 或 PetPhone 设备。</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>PetPogo 需要使用麦克风录制宠物声音，通过 AI 翻译功能分析宠物情绪。</string>
+	<string>PetPogo 需要使用麦克风录制宠物声音，通过 AI 识别功能分析宠物情绪。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>PetPogo 需要访问相册，以便您上传宠物照片到社区或个人资料。</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

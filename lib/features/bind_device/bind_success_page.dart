@@ -122,7 +122,7 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                             const SizedBox(height: 14),
                             _FeatureRow(icon: Icons.music_note_rounded, label: '播放舒缓音乐', color: AppColors.secondary),
                             const SizedBox(height: 14),
-                            _FeatureRow(icon: Icons.graphic_eq_rounded, label: 'AI 宠物语音翻译', color: AppColors.tertiary),
+                            _FeatureRow(icon: Icons.graphic_eq_rounded, label: 'AI 宠物语音识别', color: AppColors.tertiary),
                           ],
                   ),
                 ),

@@ -16,8 +16,8 @@
   "@homeDevicesActive": { "placeholders": { "count": { "type": "int" } } },
   "homeAddDevice": "添加设备",
 
-  "aiTranslateTitle": "AI 宠物翻译",
-  "aiTranslateBadge": "AI 翻译已启动",
+  "aiTranslateTitle": "AI 宠物识别",
+  "aiTranslateBadge": "AI 识别已启动",
   "aiTranslateDesc": "把手机对准你的宠物\n然后录制它发出的声音。",
   "aiTranslateHoldRecord": "长按录音",
   "aiTranslateRecording": "正在录音...",
@@ -25,7 +25,7 @@
   "aiTranslateStop": "停止录音",
   "aiTranslateAnalyzing": "AI 正在分析宠物声音...",
   "aiTranslatePetSays": "💬 宠物说：",
-  "aiTranslateAgain": "再次翻译",
+  "aiTranslateAgain": "再次识别",
 
   "deviceOnline": "在线",
   "deviceOffline": "离线",

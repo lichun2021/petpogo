@@ -3,7 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../app.dart' show AppL10nX;
 
-/// 宠物详情页 — 健康卡、AI翻译历史、设备关联
+/// 宠物详情页 — 健康卡、AI识别历史、设备关联
 class PetDetailPage extends StatelessWidget {
   /// 从路由参数传入的宠物 ID（用于加载详情数据）
   final String petId;
@@ -115,8 +115,8 @@ class PetDetailPage extends StatelessWidget {
 
                 const SizedBox(height: 20),
 
-                // ── AI 翻译历史 ─────────────────────────
-                _SectionTitle('AI 翻译记录'),
+                // ── AI 识别历史 ─────────────────────────
+                _SectionTitle('AI 识别记录'),
                 const SizedBox(height: 12),
                 ...[
                   _TranslateHistoryCard(time: '今天 14:30', emoji: '🥺', content: '主人快来抱我！我好想你了嘛～',

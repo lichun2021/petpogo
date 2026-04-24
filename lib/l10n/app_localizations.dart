@@ -166,13 +166,13 @@ abstract class AppL10n {
   /// No description provided for @aiTranslateTitle.
   ///
   /// In zh, this message translates to:
-  /// **'AI 宠物翻译'**
+  /// **'AI 宠物识别'**
   String get aiTranslateTitle;
 
   /// No description provided for @aiTranslateBadge.
   ///
   /// In zh, this message translates to:
-  /// **'AI 翻译已启动'**
+  /// **'AI 识别已启动'**
   String get aiTranslateBadge;
 
   /// No description provided for @aiTranslateDesc.
@@ -220,7 +220,7 @@ abstract class AppL10n {
   /// No description provided for @aiTranslateAgain.
   ///
   /// In zh, this message translates to:
-  /// **'再次翻译'**
+  /// **'再次识别'**
   String get aiTranslateAgain;
 
   /// No description provided for @deviceOnline.

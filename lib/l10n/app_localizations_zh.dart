@@ -44,10 +44,10 @@ class AppL10nZh extends AppL10n {
   String get homeAddDevice => '添加设备';
 
   @override
-  String get aiTranslateTitle => 'AI 宠物翻译';
+  String get aiTranslateTitle => 'AI 宠物识别';
 
   @override
-  String get aiTranslateBadge => 'AI 翻译已启动';
+  String get aiTranslateBadge => 'AI 识别已启动';
 
   @override
   String get aiTranslateDesc => '把手机对准你的宠物\n然后录制它发出的声音。';
@@ -71,7 +71,7 @@ class AppL10nZh extends AppL10n {
   String get aiTranslatePetSays => '💬 宠物说：';
 
   @override
-  String get aiTranslateAgain => '再次翻译';
+  String get aiTranslateAgain => '再次识别';
 
   @override
   String get deviceOnline => '在线';

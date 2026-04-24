@@ -6,7 +6,7 @@
 -->
 <network-security-config>
     <domain-config cleartextTrafficPermitted="true">
-        <!-- AI 翻译服务 -->
+        <!-- AI 识别服务 -->
         <domain includeSubdomains="false">49.234.39.11</domain>
     </domain-config>
 </network-security-config>

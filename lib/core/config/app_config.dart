@@ -25,7 +25,7 @@ class AppConfig {
   static const String timSecretKey   = '';   // TODO: 腾讯云 IM SecretKey
 
   // ──────────────────────────────────────────────
-  // AI 翻译服务
+  // AI 识别服务
   // ──────────────────────────────────────────────
   static const String translationBaseUrl = 'http://YOUR_TRANSLATION_HOST:8078';
 

@@ -39,7 +39,7 @@ petpogo_app/
 │   │   ├── models/                   # (待创建) 数据模型
 │   │   └── storage/                  # (待创建) 本地存储
 │   ├── features/
-│   │   ├── home/                     # 🏠 首页 + AI翻译
+│   │   ├── home/                     # 🏠 首页 + AI识别
 │   │   ├── bind_device/              # 📡 设备绑定流程
 │   │   ├── message/                  # 💬 消息 IM
 │   │   ├── community/                # 🌐 社区图文/视频
@@ -60,7 +60,7 @@ petpogo_app/
 
 | Index | Tab | 路由 | 文件 | 游客可用 |
 |-------|-----|------|------|----------|
-| 0 | 🏠 首页 | `/` | `home/home_page.dart` | ✅ (AI翻译可用) |
+| 0 | 🏠 首页 | `/` | `home/home_page.dart` | ✅ (AI识别可用) |
 | 1 | 💬 消息 | `/message` | `message/message_page.dart` | ❌ 需登录 |
 | 2 | 🌐 社区 | `/community` | `community/community_page.dart` | ✅ 可浏览 |
 | 3 | 🛍️ 商城 | `/mall` | `mall/mall_page.dart` | ✅ 可浏览 |
@@ -92,7 +92,7 @@ amapAndroidKey = 'YOUR_AMAP_ANDROID_KEY'   // 高德地图
 amapIosKey     = 'YOUR_AMAP_IOS_KEY'       // 高德地图
 timSdkAppId    = 0                          // 腾讯云 IM
 timSecretKey   = ''                         // 腾讯云 IM
-translationBaseUrl = 'http://HOST:8078'     // AI翻译服务
+translationBaseUrl = 'http://HOST:8078'     // AI识别服务
 ```
 
 ### `lib/core/config/shop_config.dart`
@@ -323,7 +323,7 @@ Response:
 }
 ```
 
-### 5.7 AI 宠物翻译（独立服务）
+### 5.7 AI 宠物识别（独立服务）
 
 ```
 Base URL: http://YOUR_TRANSLATION_HOST:8078
@@ -528,10 +528,10 @@ Body: { deviceSn, loginCustomerId, streamNo }
 
 ---
 
-## 九、AI 翻译流程
+## 九、AI 识别流程
 
 ```
-首页 AI 翻译面板（游客可用）
+首页 AI 识别面板（游客可用）
     │
     ▼
 长按录音按钮
@@ -545,7 +545,7 @@ POST http://TRANSLATION_HOST:8078/analyze
 multipart/form-data: audio_file + session_id
     │
     ├─ 成功 ──► 展示情绪卡片
-    │           ├─ 翻译文字
+    │           ├─ 识别文字
     │           ├─ 情绪百分比（撒娇78% / 开心45%）
     │           └─ 互动建议
     │
@@ -578,7 +578,7 @@ mobile_scanner:        ^5.2.3    # 二维码扫描
 | 阶段 | 内容 | 状态 |
 |------|------|------|
 | Phase 1 | 框架骨架 + 5Tab导航 + 主题 | ✅ 完成 |
-| Phase 2 | 首页 + AI翻译 + 设备卡 | ✅ UI完成，API待接入 |
+| Phase 2 | 首页 + AI识别 + 设备卡 | ✅ UI完成，API待接入 |
 | Phase 2 | 设备绑定流程（扫码）| ✅ UI完成，API待接入 |
 | Phase 3 | 社区图文瀑布流 + 短视频 | ✅ UI完成，API待后台 |
 | Phase 4 | 消息页 + IM聊天 | ✅ UI完成，腾讯IM待配置 |
@@ -766,6 +766,6 @@ mobile_scanner:        ^5.2.3    # 二维码扫描
 
 | 首页 (Home) | 社区 (Community) | 商城 (Mall) | 我的 (Profile) |
 |------------|-----------------|------------|---------------|
-| AI翻译 + 设备卡片 | 瀑布流宠物内容 | 商品 + 附近门店 | 用户信息 + 宠物列表 |
+| AI识别 + 设备卡片 | 瀑布流宠物内容 | 商品 + 附近门店 | 用户信息 + 宠物列表 |
 
 > 关键视觉特征：暖粉底色(`#fff4f3`)、棕红主色(`#a83206`)、圆润卡片、无边框分区、Plus Jakarta Sans 字体

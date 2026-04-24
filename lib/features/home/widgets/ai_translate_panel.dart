@@ -9,7 +9,7 @@ import '../../../shared/theme/app_colors.dart';
 import '../controller/ai_translate_controller.dart';
 import '../data/models/ai_analysis_model.dart';
 
-/// AI 宠物语音翻译面板
+/// AI 宠物语音识别面板
 ///
 /// 接入真实 API：POST http://49.234.39.11:8002/analyze
 /// 支持：猫 / 狗 两种物种，6 种情绪识别
@@ -141,7 +141,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
           ),
           const SizedBox(width: 10),
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('AI 宠物语音翻译',
+            Text('AI 宠物语音识别',
                 style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15,
                     fontWeight: FontWeight.w700, color: AppColors.onSurface)),
             Text('支持猫咪 🐱 和狗狗 🐶',

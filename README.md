@@ -1,6 +1,6 @@
 # PetPogo App
 
-宠物 AI 语音翻译 & 硬件管理移动应用（Flutter）
+宠物 AI 语音识别 & 硬件管理移动应用（Flutter）
 
 - **包名 Android**：`com.junxin.petpogo_and`
 - **包名 iOS**：`com.junxin.petpogo`

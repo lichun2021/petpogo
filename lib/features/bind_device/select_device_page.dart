@@ -67,7 +67,7 @@ class SelectDevicePage extends StatelessWidget {
               iconColor: AppColors.primary,
               name: l10n.bindDevicePetPhone,
               desc: l10n.bindDevicePetPhoneDesc,
-              features: ['远程通话', 'AI 声音翻译', '舒缓音乐', '定位'],
+              features: ['远程通话', 'AI 声音识别', '舒缓音乐', '定位'],
               gradient: LinearGradient(
                 colors: [AppColors.primaryContainer.withOpacity(0.3), AppColors.surfaceContainerLowest],
                 begin: Alignment.topLeft, end: Alignment.bottomRight,
