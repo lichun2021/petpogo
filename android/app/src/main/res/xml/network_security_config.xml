@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  网络安全配置
+  允许对内部 API 服务器（HTTP）的明文流量
+  生产环境应升级接口为 HTTPS
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- AI 翻译服务 -->
+        <domain includeSubdomains="false">49.234.39.11</domain>
+    </domain-config>
+</network-security-config>

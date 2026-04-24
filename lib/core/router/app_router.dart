@@ -32,7 +32,10 @@ import '../../features/pet/pet_detail_page.dart';
 import '../../features/bind_device/select_device_page.dart';
 import '../../features/bind_device/scan_qr_page.dart';
 import '../../features/bind_device/bind_success_page.dart';
+import '../../features/auth/login_page.dart';
 import '../../app.dart' show MainShell;
+
+import 'package:flutter/foundation.dart';
 
 /// 全局唯一的路由实例
 ///
@@ -44,6 +47,9 @@ final appRouter = GoRouter(
 
   // 调试模式下打印路由日志（生产环境建议关闭）
   debugLogDiagnostics: false,
+
+  // 页面跳转日志（开发阶段）
+  observers: [_NavLogger()],
 
   // ── 路由守卫（预留，接入登录功能时取消注释）────────────────
   // redirect: (context, state) {
@@ -117,6 +123,8 @@ final appRouter = GoRouter(
         ),
       ),
     ),
+    // 子页面 — 登录页（从下滑入）
+    _slide(AppRoutes.login, const LoginPage()),
   ],
 );
 
@@ -192,3 +200,22 @@ CustomTransitionPage _fadeScalePage(GoRouterState state, Widget page) =>
         );
       },
     );
+
+// ── 页面导航日志 Observer ─────────────────────────────────
+/// 开发阶段记录所有页面跳转，方便排查路由问题
+class _NavLogger extends NavigatorObserver {
+  @override
+  void didPush(Route route, Route? previousRoute) {
+    debugPrint('[路由] push → ${route.settings.name ?? route.runtimeType}');
+  }
+
+  @override
+  void didPop(Route route, Route? previousRoute) {
+    debugPrint('[路由] pop  ← (返回到 ${previousRoute?.settings.name ?? "?"})');
+  }
+
+  @override
+  void didReplace({Route? newRoute, Route? oldRoute}) {
+    debugPrint('[路由] replace: ${oldRoute?.settings.name} → ${newRoute?.settings.name}');
+  }
+}

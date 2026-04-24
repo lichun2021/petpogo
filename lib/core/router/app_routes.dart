@@ -13,6 +13,7 @@ abstract class AppRoutes {
   static const settings    = '/settings';
   static const addPet      = '/add-pet';
   static const bindDevice  = '/bind-device';
+  static const login       = '/login';   // 登录页
 
   // ── 带参数路由（用方法生成，杜绝拼错） ──────────────
   static String scanQr(String deviceType)    => '/scan-qr/$deviceType';

@@ -62,10 +62,6 @@ class _CommunityPageState extends State<CommunityPage>
             title: Row(
               children: [
                 Icon(Icons.pets_rounded, color: AppColors.primary, size: 22),
-                const SizedBox(width: 6),
-                Text('PetPogo',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 22,
-                        fontWeight: FontWeight.w800, color: AppColors.primary)),
               ],
             ),
             actions: [

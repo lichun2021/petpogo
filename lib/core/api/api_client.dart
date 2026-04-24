@@ -16,6 +16,7 @@
 /// ════════════════════════════════════════════════════════════
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_config.dart';
 import 'api_exception.dart';
@@ -54,13 +55,8 @@ class ApiClient {
       //    这是架构核心：上层代码不再需要了解 Dio 的异常类型
       _ErrorInterceptor(),
 
-      // 3. 日志拦截器：仅 Debug 模式开启，打印请求/响应详情
-      if (AppConfig.isDebug)
-        LogInterceptor(
-          requestBody: true,   // 打印请求体（用于调试 POST 参数）
-          responseBody: true,  // 打印响应体（用于调试服务器返回）
-          requestHeader: false, // 请求头不打印（Token 敏感信息）
-        ),
+      // 3. 日志拦截器：仅 Debug 模式开启，完整打印 进/出 参数
+      if (AppConfig.isDebug) _DevLogInterceptor(),
     ]);
   }
 
@@ -164,7 +160,64 @@ class _AuthInterceptor extends Interceptor {
   }
 }
 
-// ── 错误转换拦截器 ─────────────────────────────────────────
+// ── 开发日志拦截器 ────────────────────────────────────────
+/// 完整打印每个请求的 进/出 参数，方便开发调试
+/// 使用 debugPrint 确保日志能被 ./log.sh 捕获
+class _DevLogInterceptor extends Interceptor {
+  // 记录请求开始时间，用于计算耗时
+  final _startTimes = <String, DateTime>{};
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    final key = '${options.method}:${options.path}';
+    _startTimes[key] = DateTime.now();
+
+    debugPrint('\n┌─── [API 请求] ─────────────────────────────');
+    debugPrint('│ ${options.method} ${options.uri}');
+    // 请求头（过滤掉 Authorization 的具体 token 值，只显示是否有）
+    final headers = Map<String, dynamic>.from(options.headers);
+    if (headers.containsKey('Authorization')) {
+      headers['Authorization'] = 'Bearer ***';
+    }
+    debugPrint('│ Headers: $headers');
+    if (options.queryParameters.isNotEmpty) {
+      debugPrint('│ Query: ${options.queryParameters}');
+    }
+    if (options.data != null) {
+      debugPrint('│ Body: ${options.data}');
+    }
+    debugPrint('└─────────────────────────────────────────────');
+    handler.next(options);
+  }
+
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    final key = '${response.requestOptions.method}:${response.requestOptions.path}';
+    final ms = DateTime.now().difference(_startTimes.remove(key) ?? DateTime.now()).inMilliseconds;
+
+    debugPrint('\n┌─── [API 响应] ─────────────────────────────');
+    debugPrint('│ ${response.statusCode} ${response.requestOptions.uri}  (${ms}ms)');
+    debugPrint('│ Body: ${response.data}');
+    debugPrint('└─────────────────────────────────────────────');
+    handler.next(response);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    final key = '${err.requestOptions.method}:${err.requestOptions.path}';
+    _startTimes.remove(key);
+
+    debugPrint('\n┌─── [API 错误] ─────────────────────────────');
+    debugPrint('│ ${err.requestOptions.method} ${err.requestOptions.uri}');
+    debugPrint('│ Type: ${err.type}');
+    debugPrint('│ Status: ${err.response?.statusCode}');
+    debugPrint('│ Body: ${err.response?.data}');
+    debugPrint('│ Msg: ${err.message}');
+    debugPrint('└─────────────────────────────────────────────');
+    handler.next(err);
+  }
+}
+
 /// 把 DioException 转换为 ApiException
 ///
 /// 这是最重要的拦截器：经过这里之后，上层代码（Repository/Controller）

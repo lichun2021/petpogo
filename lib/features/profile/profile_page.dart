@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../app.dart' show AppL10nX;
+import '../auth/controller/auth_controller.dart';
+import '../../core/router/app_routes.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
-  static const bool _isLoggedIn = true;
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    if (!_isLoggedIn) return _GuestProfileView();
+    final auth = ref.watch(authControllerProvider);
+
+    if (!auth.isLoggedIn) return _GuestProfileView();
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -99,7 +102,9 @@ class ProfilePage extends StatelessWidget {
 
                 Center(
                   child: TextButton.icon(
-                    onPressed: () {},
+                    onPressed: () async {
+                      await ref.read(authControllerProvider.notifier).logout();
+                    },
                     icon: Icon(Icons.logout_rounded, color: AppColors.error, size: 18),
                     label: Text(l10n.profileLogout,
                         style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15,
@@ -358,7 +363,9 @@ class _GuestProfileView extends StatelessWidget {
             Text(l10n.profileGuestSubtitle,
                 style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14, color: AppColors.onSurfaceVariant)),
             const SizedBox(height: 28),
-            ElevatedButton(onPressed: () {}, child: Text(l10n.profileLoginRegister)),
+            ElevatedButton(
+                onPressed: () => context.push(AppRoutes.login),
+                child: Text(l10n.profileLoginRegister)),
           ],
         ),
       ),
