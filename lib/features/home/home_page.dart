@@ -15,6 +15,7 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  // TODO: 接入真实设备状态 — ref.watch(deviceControllerProvider).hasDevice
   final bool _hasDevice = true;
 
   @override
@@ -121,7 +122,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                   const SizedBox(height: 14),
                   const DeviceCard(
-                    deviceType: '项圈',
+                    deviceType: DeviceType.collar,
                     deviceName: '宠物项圈',
                     isOnline: true,
                     battery: 85,
@@ -129,7 +130,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                   const SizedBox(height: 12),
                   const DeviceCard(
-                    deviceType: '机器人',
+                    deviceType: DeviceType.robot,
                     deviceName: '宠物机器人',
                     isOnline: true,
                     battery: 72,

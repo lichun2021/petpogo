@@ -1,5 +1,10 @@
-/// 所有 API URL 常量
-/// 用法：ApiEndpoints.pets → '/pets'
+import '../config/app_config.dart';
+
+/// 所有 API 路径常量
+///
+/// 路径常量只保存路径部分（如 '/pets'），
+/// 完整地址由 ApiClient 拼接（baseUrl + path）。
+/// AI 服务的根地址统一从 [AppConfig.aiServiceBase] 读取。
 abstract class ApiEndpoints {
   // ── 业务后端（PetPogo 自有服务）────────────────────────
   static const pets        = '/pets';
@@ -16,9 +21,11 @@ abstract class ApiEndpoints {
   static String petDetail(String id) => '/pets/$id';
   static String deviceDetail(String id) => '/devices/$id';
 
-  // ── AI 语音分析服务（独立部署）────────────────────────────
-  /// AI 服务的完整 baseUrl（独立于业务后端地址）
-  static const aiServiceBase = 'http://49.234.39.11:8002';
+  // ── AI 服务（独立部署）─────────────────────────────────────
+  /// AI 服务根地址 — 统一从 AppConfig 读取，不在此处硬编码
+  ///
+  /// 修改部署地址请前往 [AppConfig.aiServiceBase]
+  static String get aiServiceBase => AppConfig.aiServiceBase;
 
   // —— 语音模块：POST /voice/analyze ——
   /// 上传音频并返回物种 + 情绪分析结果
@@ -31,7 +38,7 @@ abstract class ApiEndpoints {
   /// 查询服务健康状态
   static const aiHealth = '/health';
 
-  // 保留旧名以兴语音接口（已接入的代码无需修改）
+  // 保留旧名兼容已接入的语音接口代码（无需修改调用方）
   @Deprecated('Use aiVoiceAnalyze')
   static const aiAnalyze = aiVoiceAnalyze;
 }

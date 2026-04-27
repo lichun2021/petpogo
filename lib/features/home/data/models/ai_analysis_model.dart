@@ -71,51 +71,54 @@ enum PetEmotion {
 
   /// 中文显示名称
   String get displayName {
-    switch (this) {
-      case PetEmotion.relaxed:    return '放松';
-      case PetEmotion.excited:    return '兴奋';
-      case PetEmotion.anxious:    return '焦虑';
-      case PetEmotion.alert:      return '警觉';
-      case PetEmotion.aggressive: return '攻击性';
-      case PetEmotion.pain:       return '疼痛';
-    }
+    const names = {
+      PetEmotion.relaxed:    '放松',
+      PetEmotion.excited:    '兴奋',
+      PetEmotion.anxious:    '焦虑',
+      PetEmotion.alert:      '警觉',
+      PetEmotion.aggressive: '攻击性',
+      PetEmotion.pain:       '疼痛',
+    };
+    return names[this] ?? '未知';
   }
 
   /// 情绪对应 emoji
   String get emoji {
-    switch (this) {
-      case PetEmotion.relaxed:    return '😌';
-      case PetEmotion.excited:    return '🤩';
-      case PetEmotion.anxious:    return '😰';
-      case PetEmotion.alert:      return '👀';
-      case PetEmotion.aggressive: return '😾';
-      case PetEmotion.pain:       return '😿';
-    }
+    const emojis = {
+      PetEmotion.relaxed:    '😌',
+      PetEmotion.excited:    '🤩',
+      PetEmotion.anxious:    '😰',
+      PetEmotion.alert:      '👀',
+      PetEmotion.aggressive: '😾',
+      PetEmotion.pain:       '😿',
+    };
+    return emojis[this] ?? '🐾';
   }
 
   /// 情绪对应颜色（用于进度条 / 标签背景）
-  /// 返回 hex 颜色值字符串
   int get colorHex {
-    switch (this) {
-      case PetEmotion.relaxed:    return 0xFF4CAF50; // 绿色 — 积极
-      case PetEmotion.excited:    return 0xFFFF9800; // 橙色 — 活跃
-      case PetEmotion.anxious:    return 0xFF9C27B0; // 紫色 — 需关注
-      case PetEmotion.alert:      return 0xFF2196F3; // 蓝色 — 专注
-      case PetEmotion.aggressive: return 0xFFF44336; // 红色 — 危险
-      case PetEmotion.pain:       return 0xFFE91E63; // 粉红 — 紧急
-    }
+    const colors = {
+      PetEmotion.relaxed:    0xFF4CAF50, // 绿色 — 积极
+      PetEmotion.excited:    0xFFFF9800, // 橙色 — 活跃
+      PetEmotion.anxious:    0xFF9C27B0, // 紫色 — 需关注
+      PetEmotion.alert:      0xFF2196F3, // 蓝色 — 专注
+      PetEmotion.aggressive: 0xFFF44336, // 红色 — 危险
+      PetEmotion.pain:       0xFFE91E63, // 粉红 — 紧急
+    };
+    return colors[this] ?? 0xFF9E9E9E;
   }
 
   /// 给主人的简短行动建议（UI 提示条用）
   String get quickTip {
-    switch (this) {
-      case PetEmotion.relaxed:    return '状态很好，继续保持！';
-      case PetEmotion.excited:    return '它很兴奋，可以一起玩耍！';
-      case PetEmotion.anxious:    return '它有些焦虑，给予安慰吧';
-      case PetEmotion.alert:      return '它在警戒，检查周围环境';
-      case PetEmotion.aggressive: return '它有攻击倾向，保持距离';
-      case PetEmotion.pain:       return '⚠️ 可能感到疼痛，请及时就医';
-    }
+    const tips = {
+      PetEmotion.relaxed:    '状态很好，继续保持！',
+      PetEmotion.excited:    '它很兴奋，可以一起玩耍！',
+      PetEmotion.anxious:    '它有些焦虑，给予安慰吧',
+      PetEmotion.alert:      '它在警戒，检查周围环境',
+      PetEmotion.aggressive: '它有攻击倾向，保持距离',
+      PetEmotion.pain:       '⚠️ 可能感到疼痛，请及时就医',
+    };
+    return tips[this] ?? '';
   }
 }
 

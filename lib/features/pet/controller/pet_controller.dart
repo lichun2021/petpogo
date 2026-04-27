@@ -229,6 +229,5 @@ class PetController extends StateNotifier<PetState> {
 ///   ref.read(petControllerProvider.notifier).loadPets();
 final petControllerProvider =
     StateNotifierProvider<PetController, PetState>((ref) {
-  // 从 Riverpod 容器中获取 PetRepository（自动处理依赖链）
-  return PetController(ref.read(petRepositoryProvider));
+  return PetController(ref.watch(petRepositoryProvider));
 });

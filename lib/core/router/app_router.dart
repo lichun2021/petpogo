@@ -33,7 +33,7 @@ import '../../features/bind_device/select_device_page.dart';
 import '../../features/bind_device/scan_qr_page.dart';
 import '../../features/bind_device/bind_success_page.dart';
 import '../../features/auth/login_page.dart';
-import '../../app.dart' show MainShell;
+import '../../features/shell/main_shell.dart';
 
 import 'package:flutter/foundation.dart';
 

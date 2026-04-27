@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -25,7 +24,6 @@ class AiTranslatePanel extends ConsumerStatefulWidget {
 
 class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
     with SingleTickerProviderStateMixin {
-  Timer? _recordTimer;
   late AnimationController _pulseCtrl;
 
   /// just_audio 播放器（用于回放录音）
@@ -47,7 +45,6 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
 
   @override
   void dispose() {
-    _recordTimer?.cancel();
     _pulseCtrl.dispose();
     _player.dispose();
     super.dispose();
@@ -57,34 +54,27 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
   void _startRecording() {
     final phase = ref.read(aiTranslateControllerProvider).phase;
     debugPrint('[AI] _startRecording called, current phase=$phase');
-    if (phase != AiTranslatePhase.idle) return; // 防止重复触发
+    if (phase != AiTranslatePhase.idle) return;
 
     HapticFeedback.mediumImpact();
     ref.read(aiTranslateControllerProvider.notifier).startRecording();
     _pulseCtrl.repeat(reverse: true);
-
-    // 每秒触发一次计时
-    _recordTimer?.cancel();
-    _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      ref.read(aiTranslateControllerProvider.notifier).tickRecordingTime();
-    });
+    // Timer 已由 Controller 内部管理，此处无需处理
   }
 
   // ── 停止录音 ────────────────────────────────────────────
   void _stopRecording() {
     final phase = ref.read(aiTranslateControllerProvider).phase;
     debugPrint('[AI] _stopRecording called, current phase=$phase');
-    if (phase != AiTranslatePhase.recording) return; // 没在录音则忽略
+    if (phase != AiTranslatePhase.recording) return;
 
     HapticFeedback.lightImpact();
-    _recordTimer?.cancel();
     _pulseCtrl.stop();
     ref.read(aiTranslateControllerProvider.notifier).stopAndAnalyze();
   }
 
   // ── 重置 ────────────────────────────────────────────────
   void _reset() {
-    _recordTimer?.cancel();
     _pulseCtrl.stop();
     ref.read(aiTranslateControllerProvider.notifier).reset();
   }

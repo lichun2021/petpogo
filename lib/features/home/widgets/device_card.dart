@@ -2,8 +2,16 @@ import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../app.dart' show AppL10nX;
 
+// ── 设备类型枚举 ──────────────────────────────────────────
+/// 支持的设备类型，替代原来的字符串 magic value
+enum DeviceType {
+  collar,  // 宠物项圈（KeyTracker）
+  robot,   // 宠物机器人（PetPhone）
+}
+
+// ── 设备卡片 ──────────────────────────────────────────────
 class DeviceCard extends StatelessWidget {
-  final String deviceType;
+  final DeviceType deviceType;
   final String deviceName;
   final bool isOnline;
   final int battery;
@@ -20,8 +28,8 @@ class DeviceCard extends StatelessWidget {
     this.nowPlaying,
   });
 
-  bool get _isCollar  => deviceType == '项圈';
-  bool get _isRobot   => deviceType == '机器人';
+  bool get _isCollar => deviceType == DeviceType.collar;
+  bool get _isRobot  => deviceType == DeviceType.robot;
 
   @override
   Widget build(BuildContext context) {

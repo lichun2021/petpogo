@@ -10,6 +10,7 @@
 ///    - AiVoiceRepository：上传音频到 /analyze 接口
 /// ════════════════════════════════════════════════════════════
 
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -72,6 +73,9 @@ class AiTranslateController extends StateNotifier<AiTranslateState> {
   /// 精确计时器（从按下开始，松开时读取，替代 tick 计数）
   final _stopwatch = Stopwatch();
 
+  /// 每秒更新录音时长的定时器（由 Controller 自己管理，不依赖 UI）
+  Timer? _ticker;
+
   /// 录音文件存储路径
   String? _recordingPath;
 
@@ -117,10 +121,16 @@ class AiTranslateController extends StateNotifier<AiTranslateState> {
       phase: AiTranslatePhase.recording,
       recordingSeconds: 0,
     );
+
+    // 启动每秒计时器（Controller 自己管理，不依赖 UI 层）
+    _ticker?.cancel();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      _tickRecordingTime();
+    });
   }
 
-  /// 录音计时器：每秒由 UI 层调用一次（用 Timer 驱动）
-  void tickRecordingTime() {
+  /// 录音计时器：每秒递增一次（由内部 Timer 驱动，外部不需调用）
+  void _tickRecordingTime() {
     if (state.phase != AiTranslatePhase.recording) return;
     final secs = state.recordingSeconds + 1;
     // 超过 10 秒自动停止（AI 接口建议 1-10 秒）
@@ -132,10 +142,12 @@ class AiTranslateController extends StateNotifier<AiTranslateState> {
   }
 
   // ── 停止录音 + 上传分析 ───────────────────────────────
-  /// 调用时机：用户松开录音按钮（或录音超过 10 秒）
+  /// 调用时机：用户松开录音按钮（或录音超过 10 秒自动触发）
   Future<void> stopAndAnalyze() async {
     debugPrint('[AiCtrl] stopAndAnalyze() called, elapsed=${_stopwatch.elapsedMilliseconds}ms');
     if (state.phase != AiTranslatePhase.recording) return;
+    _ticker?.cancel(); // 停止计时器
+    _ticker = null;
     _stopwatch.stop();
     final elapsedMs = _stopwatch.elapsedMilliseconds;
 
@@ -195,6 +207,8 @@ class AiTranslateController extends StateNotifier<AiTranslateState> {
   // ── 重置 ──────────────────────────────────────────────
   /// 回到初始状态（用户点击"重新录音"或关闭结果面板）
   Future<void> reset() async {
+    _ticker?.cancel(); // 先停计时器，再停录音
+    _ticker = null;
     if (await _recorder.isRecording()) {
       await _recorder.stop();
     }
@@ -208,6 +222,7 @@ class AiTranslateController extends StateNotifier<AiTranslateState> {
 
   @override
   void dispose() {
+    _ticker?.cancel();
     _recorder.dispose();
     super.dispose();
   }
@@ -216,5 +231,5 @@ class AiTranslateController extends StateNotifier<AiTranslateState> {
 // ── Provider ─────────────────────────────────────────────
 final aiTranslateControllerProvider =
     StateNotifierProvider<AiTranslateController, AiTranslateState>((ref) {
-  return AiTranslateController(ref.read(aiVoiceRepositoryProvider));
+  return AiTranslateController(ref.watch(aiVoiceRepositoryProvider));
 });

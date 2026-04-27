@@ -20,6 +20,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_exception.dart';
 import '../../../../core/api/result.dart';
+import '../../../../core/config/app_config.dart';
 import 'models/auth_model.dart';
 
 // ── Storage 键名常量（统一管理，防止拼写错误）──────────────────
@@ -28,8 +29,11 @@ const _kAccount    = 'auth_account';
 const _kName       = 'auth_name';
 const _kMerchantId = 'auth_merchant_id';
 
-/// 登录接口地址（独立服务器，与主 API 不同）
-const _loginUrl = 'http://49.234.39.11:8008/admin/sys/index/login';
+/// 登录接口完整 URL
+///
+/// 根地址统一从 [AppConfig.authServiceBase] 读取，不在此处硬编码。
+/// 修改服务器地址请前往 [AppConfig]。
+final _loginUrl = '${AppConfig.authServiceBase}/admin/sys/index/login';
 
 class AuthRepository {
   final ApiClient _client;
@@ -170,7 +174,7 @@ class AuthRepository {
 // ── Riverpod Provider ─────────────────────────────────────
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(
-    ref.read(apiClientProvider),
+    ref.watch(apiClientProvider),
     const FlutterSecureStorage(),
   );
 });
