@@ -79,7 +79,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               Row(children: [
                 Icon(Icons.pets_rounded, color: AppColors.primary, size: 36),
                 const SizedBox(width: 10),
-                Text('PetPogo',
+                Text('萌宠智伴',
                     style: TextStyle(fontFamily: 'Plus Jakarta Sans',
                         fontSize: 28, fontWeight: FontWeight.w800,
                         color: AppColors.primary)),

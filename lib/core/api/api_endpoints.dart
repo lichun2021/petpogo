@@ -16,13 +16,22 @@ abstract class ApiEndpoints {
   static String petDetail(String id) => '/pets/$id';
   static String deviceDetail(String id) => '/devices/$id';
 
-  // ── AI 语音分析服务（独立部署）────────────────────────
+  // ── AI 语音分析服务（独立部署）────────────────────────────
   /// AI 服务的完整 baseUrl（独立于业务后端地址）
   static const aiServiceBase = 'http://49.234.39.11:8002';
 
+  // —— 语音模块：POST /voice/analyze ——
   /// 上传音频并返回物种 + 情绪分析结果
-  static const aiAnalyze   = '/analyze';
+  static const aiVoiceAnalyze = '/voice/analyze';
+
+  // —— 图像模块：POST /dog/analyze ——
+  /// 上传狗狗图片并返回 13 类情绪分析结果
+  static const aiDogAnalyze   = '/dog-image/analyze';
 
   /// 查询服务健康状态
-  static const aiHealth    = '/health';
+  static const aiHealth = '/health';
+
+  // 保留旧名以兴语音接口（已接入的代码无需修改）
+  @Deprecated('Use aiVoiceAnalyze')
+  static const aiAnalyze = aiVoiceAnalyze;
 }

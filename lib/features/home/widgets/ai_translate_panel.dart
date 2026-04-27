@@ -94,7 +94,6 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
     final state = ref.watch(aiTranslateControllerProvider);
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
