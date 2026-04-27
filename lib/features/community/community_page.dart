@@ -1,27 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:go_router/go_router.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../app.dart' show AppL10nX;
+import '../message/controller/im_controller.dart';
+import '../../core/router/app_routes.dart';
 
-class CommunityPage extends StatefulWidget {
+class CommunityPage extends ConsumerStatefulWidget {
   const CommunityPage({super.key});
 
   @override
-  State<CommunityPage> createState() => _CommunityPageState();
+  ConsumerState<CommunityPage> createState() => _CommunityPageState();
 }
 
-class _CommunityPageState extends State<CommunityPage>
+class _CommunityPageState extends ConsumerState<CommunityPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _selectedCategory = 0;
 
   final _posts = [
-    _PostData(name: '可比',      caption: '找到了下午晒太阳的最佳位置 ☀️',    liked: true,  hasVideo: true,  aspect: 3 / 4,  emoji: '☀️'),
-    _PostData(name: '奥利',      caption: '下雨天准备好了！☔️',               liked: false, hasVideo: false, aspect: 9 / 16, emoji: '🌂'),
-    _PostData(name: '麻薯',      caption: '今天只想感受海边的风 🕶️🌊',        liked: false, hasVideo: false, aspect: 1,      emoji: '🌊'),
-    _PostData(name: '小点',      caption: '到零食时间了吗？🥕',               liked: true,  hasVideo: false, aspect: 4 / 5,  emoji: '🥕'),
-    _PostData(name: '露娜',      caption: '今天的捕猎技能满分！🧶',           liked: true,  hasVideo: false, aspect: 2 / 3,  emoji: '🧶', isFeatured: true),
-    _PostData(name: '便当 & 布布', caption: '两只一起，双倍的麻烦，双倍的快乐！🐾🐾', liked: false, hasVideo: false, aspect: 1,  emoji: '🐾'),
+    _PostData(userId: 'user_001', name: '可比',       caption: '找到了下午晒太阳的最佳位置 ☀️',        liked: true,  hasVideo: true,  aspect: 3 / 4,  emoji: '☀️'),
+    _PostData(userId: 'user_002', name: '奥利',       caption: '下雨天准备好了！☔️',                  liked: false, hasVideo: false, aspect: 9 / 16, emoji: '🌂'),
+    _PostData(userId: 'user_003', name: '麻薯',       caption: '今天只想感受海边的风 🕶️🌊',           liked: false, hasVideo: false, aspect: 1,      emoji: '🌊'),
+    _PostData(userId: 'user_004', name: '小点',       caption: '到零食时间了吗？🥕',                  liked: true,  hasVideo: false, aspect: 4 / 5,  emoji: '🥕'),
+    _PostData(userId: 'user_005', name: '露娜',       caption: '今天的捕猎技能满分！🧶',              liked: true,  hasVideo: false, aspect: 2 / 3,  emoji: '🧶', isFeatured: true),
+    _PostData(userId: 'user_006', name: '便当 & 布布', caption: '两只一起，双倍的麻烦，双倍的快乐！🐾🐾', liked: false, hasVideo: false, aspect: 1,  emoji: '🐾'),
   ];
 
   @override
@@ -34,6 +38,15 @@ class _CommunityPageState extends State<CommunityPage>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  // ── 点击头像：底部面板 ──────────────────────────────────
+  void _showUserPanel(BuildContext context, _PostData post) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.45),
+      builder: (_) => _UserActionDialog(post: post),
+    );
   }
 
   @override
@@ -52,7 +65,7 @@ class _CommunityPageState extends State<CommunityPage>
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
-            pinned: true,           // 固定顶部
+            pinned: true,
             floating: false,
             snap: false,
             backgroundColor: AppColors.surface.withOpacity(0.95),
@@ -129,13 +142,186 @@ class _CommunityPageState extends State<CommunityPage>
       crossAxisCount: 2,
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       itemCount: _posts.length,
-      itemBuilder: (_, i) => _PostCard(post: _posts[i]),
+      itemBuilder: (_, i) => _PostCard(
+        post: _posts[i],
+        onAvatarTap: () => _showUserPanel(context, _posts[i]),
+      ),
     );
   }
 }
 
+// ── 居中操作弹窗 ─────────────────────────────────────────────
+class _UserActionDialog extends ConsumerStatefulWidget {
+  final _PostData post;
+  const _UserActionDialog({required this.post});
+
+  @override
+  ConsumerState<_UserActionDialog> createState() => _UserActionDialogState();
+}
+
+class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
+  bool _adding = false;
+  bool _added  = false;
+
+  Future<void> _addFriend() async {
+    setState(() => _adding = true);
+    final ok = await ref.read(imControllerProvider.notifier).addFriend(
+      toUserId: widget.post.userId,
+      wording: '我在 PetPogo 看到你的宠物，想加个好友～',
+    );
+    if (!mounted) return;
+    setState(() { _adding = false; _added = ok; });
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('好友申请已发送给 ${widget.post.name} 的主人 🐾'),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      // 读取错误消息
+      final err = ref.read(imControllerProvider).errorMessage ?? '发送失败，请重试';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(err), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final post = widget.post;
+    // 居中 Dialog 卡片布局
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 40, spreadRadius: -4)],
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+          CircleAvatar(
+            radius: 36,
+            backgroundColor: AppColors.primaryContainer,
+            child: Text(
+              post.emoji,
+              style: const TextStyle(fontSize: 32),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '${post.name} 的主人',
+            style: TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              fontSize: 18, fontWeight: FontWeight.w700,
+              color: AppColors.onSurface,
+            ),
+          ),
+          Text(
+            '@${post.userId}',
+            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13, color: AppColors.onSurfaceVariant),
+          ),
+          const SizedBox(height: 24),
+
+          // 操作按钮（全宽，不加额外 Padding，Dialog 本身已有 24 水平内边距）
+          Row(
+            children: [
+              Expanded(
+                child: _ActionButton(
+                  icon: Icons.chat_bubble_rounded,
+                  label: '发私信',
+                  color: AppColors.primaryContainer,
+                  textColor: AppColors.primary,
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(AppRoutes.chat(post.userId));
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _adding
+                    ? _ActionButton(
+                        icon: Icons.hourglass_top_rounded,
+                        label: '发送中…',
+                        color: AppColors.surfaceContainerHigh,
+                        textColor: AppColors.onSurfaceVariant,
+                        onTap: null,
+                      )
+                    : _added
+                        ? _ActionButton(
+                            icon: Icons.check_circle_rounded,
+                            label: '申请已发',
+                            color: AppColors.surfaceContainerHigh,
+                            textColor: AppColors.primary,
+                            onTap: null,
+                          )
+                        : _ActionButton(
+                            icon: Icons.person_add_rounded,
+                            label: '加好友',
+                            color: AppColors.primary,
+                            textColor: AppColors.onPrimary,
+                            onTap: _addFriend,
+                          ),
+              ),
+            ],
+          ),
+        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color, textColor;
+  final VoidCallback? onTap;
+
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.textColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: textColor, size: 18),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(
+              fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+              fontWeight: FontWeight.w700, color: textColor,
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── 分类筛选 chip ────────────────────────────────────────────
 class _CategoryChip extends StatelessWidget {
   final String label;
   final bool selected;
@@ -165,9 +351,11 @@ class _CategoryChip extends StatelessWidget {
   }
 }
 
+// ── 帖子卡片 ─────────────────────────────────────────────────
 class _PostCard extends StatefulWidget {
   final _PostData post;
-  const _PostCard({required this.post});
+  final VoidCallback onAvatarTap;
+  const _PostCard({required this.post, required this.onAvatarTap});
 
   @override
   State<_PostCard> createState() => _PostCardState();
@@ -237,16 +425,36 @@ class _PostCardState extends State<_PostCard> {
             ],
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 头像 + 名字 + 点赞
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(post.name,
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700,
-                            fontSize: 16, color: AppColors.onSurface)),
+                    // ✅ 头像：点击触发加好友面板
+                    GestureDetector(
+                      onTap: widget.onAvatarTap,
+                      child: Hero(
+                        tag: 'avatar_${post.userId}',
+                        child: CircleAvatar(
+                          radius: 14,
+                          backgroundColor: AppColors.primaryContainer,
+                          child: Text(post.emoji, style: const TextStyle(fontSize: 12)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: widget.onAvatarTap,
+                        child: Text(post.name,
+                          style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700,
+                              fontSize: 13, color: AppColors.onSurface),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
                     GestureDetector(
                       onTap: () => setState(() => _liked = !_liked),
                       child: AnimatedSwitcher(
@@ -261,7 +469,7 @@ class _PostCardState extends State<_PostCard> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Text(post.caption,
                     maxLines: 2, overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
@@ -275,13 +483,15 @@ class _PostCardState extends State<_PostCard> {
   }
 }
 
+// ── 数据模型 ─────────────────────────────────────────────────
 class _PostData {
-  final String name, caption, emoji;
+  final String userId, name, caption, emoji;
   final bool liked, hasVideo;
   final double aspect;
   final bool isFeatured;
 
   const _PostData({
+    required this.userId,
     required this.name, required this.caption, required this.liked,
     required this.hasVideo, required this.aspect, required this.emoji,
     this.isFeatured = false,

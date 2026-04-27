@@ -154,11 +154,10 @@ class AppTheme {
         ),
 
         // ── Input — "Clear Field" 风格 ─────────────────
-        // 填充式，焦点时底部 3px 青绿线
+        // 填充式，无任何边框（包括焦点状态）
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: AppColors.surfaceContainer,
-          // 无全边框
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -167,10 +166,13 @@ class AppTheme {
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
-          // 焦点时只有底部 3px 线
-          focusedBorder: UnderlineInputBorder(
+          focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.secondary, width: 3),
+            borderSide: BorderSide.none,  // 无焦点边框
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           hintStyle: GoogleFonts.plusJakartaSans(

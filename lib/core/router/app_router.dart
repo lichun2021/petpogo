@@ -33,6 +33,7 @@ import '../../features/bind_device/select_device_page.dart';
 import '../../features/bind_device/scan_qr_page.dart';
 import '../../features/bind_device/bind_success_page.dart';
 import '../../features/auth/login_page.dart';
+import '../../features/message/chat_page.dart';
 import '../../features/shell/main_shell.dart';
 
 import 'package:flutter/foundation.dart';
@@ -123,6 +124,18 @@ final appRouter = GoRouter(
         ),
       ),
     ),
+
+    // IM 聊天页（参数：对方 userId = merchantId 字符串）
+    GoRoute(
+      path: AppRoutes.chatTemplate,
+      pageBuilder: (context, state) => _slidePage(
+        state,
+        ChatPage(
+          userId: state.pathParameters['userId'] ?? '',
+        ),
+      ),
+    ),
+
     // 子页面 — 登录页（从下滑入）
     _slide(AppRoutes.login, const LoginPage()),
   ],

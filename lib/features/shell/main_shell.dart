@@ -49,7 +49,7 @@ class _MainShellState extends State<MainShell> {
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: widget.child,
-      extendBody: true,
+      extendBody: false,        // 关闭：让系统自动为 body 预留导航栏高度
       bottomNavigationBar: GlassBottomNav(
         currentIndex: _currentIndex,
         onTap: (index) {

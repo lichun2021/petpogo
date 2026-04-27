@@ -18,6 +18,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/auth_repository.dart';
 import '../data/models/auth_model.dart';
+import '../../message/controller/im_controller.dart';
 
 // ── 认证状态枚举 ────────────────────────────────────────────
 enum AuthStatus {
@@ -126,12 +127,22 @@ class AuthController extends StateNotifier<AuthState> {
   ///
   /// 这里集中管理"登录后需要做什么"，便于扩展
   void _loadUserData() {
-    debugPrint('[AuthCtrl] 触发设备 & 宠物数据加载');
+    final user = state.user;
+    if (user == null) return;
+
+    // ① IM 登录（Debug 时自动用本地生成的 UserSig）
+    _ref.read(imControllerProvider.notifier).loginIm(
+      userId: user.merchantId.toString(),
+      userSig: user.imUserSig ?? '',   // 后端接入后会有实际値
+    );
+
     // TODO: 设备列表（接口就绪后取消注释）
     // _ref.read(deviceListProvider.notifier).fetchAll();
 
     // TODO: 宠物列表（接口就绪后取消注释）
     // _ref.read(petListProvider.notifier).fetchAll();
+
+    debugPrint('[AuthCtrl] 触发 IM 登录 (userId=${user.merchantId})');
   }
 }
 

@@ -11,9 +11,15 @@ pluginManagement {
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 
     repositories {
+        // 国内镜像（优先），避免 dl.google.com TLS 握手失败
         maven { url = uri("https://maven.aliyun.com/repository/google") }
         maven { url = uri("https://maven.aliyun.com/repository/central") }
         maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
+        maven { url = uri("https://maven.aliyun.com/repository/jcenter") }
+        // 腾讯云镜像（tencent_cloud_chat_sdk AGP 依赖）
+        maven { url = uri("https://mirrors.tencent.com/nexus/repository/maven-public/") }
+        // 备选原始源
         google()
         mavenCentral()
         gradlePluginPortal()
