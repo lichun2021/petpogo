@@ -30,7 +30,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel>
   _Phase _phase = _Phase.idle;
   File? _imageFile;
   String? _errorMessage;
-  DogImageAnalysisResult? _result;
+  PetImageAnalysisResult? _result;
   late AnimationController _shimmerCtrl;
 
   @override
@@ -198,9 +198,9 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel>
 
         const SizedBox(height: 10),
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const Text('🐶', style: TextStyle(fontSize: 12)),
+          const Text('🐾', style: TextStyle(fontSize: 12)),
           const SizedBox(width: 4),
-          Text('目前支持狗狗图像分析',
+          Text('支持猫咪 & 狗狗图像情绪识别',
               style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 10,
                   color: AppColors.onSurfaceVariant.withOpacity(0.6))),
         ]),
@@ -296,7 +296,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel>
                 ])))),
       ]),
       const SizedBox(height: 14),
-      Text('正在识别狗狗情绪，请稍候',
+      Text('正在识别宠物情绪，请稍候',
           style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13, color: AppColors.onSurfaceVariant)),
       const SizedBox(height: 8),
     ]);
@@ -330,7 +330,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel>
                         fontWeight: FontWeight.w700, color: emotionColor))),
           ]),
           const SizedBox(height: 2),
-          Text('狗狗图像情绪识别', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+          Text('宠物图像情绪识别', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
               fontSize: 11, color: AppColors.onSurfaceVariant)),
         ])),
         IconButton(onPressed: _reset,
@@ -369,7 +369,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel>
       ...r.top3.asMap().entries.map((entry) {
         final idx  = entry.key;
         final pred = entry.value;
-        final emo  = DogEmotion.fromLabel(pred.label);
+        final emo  = PetEmotion.fromLabel(pred.label);
         final col  = Color(emo.colorHex);
         final isTop = idx == 0;
         return Padding(

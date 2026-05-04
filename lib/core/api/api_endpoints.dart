@@ -31,9 +31,9 @@ abstract class ApiEndpoints {
   /// 上传音频并返回物种 + 情绪分析结果
   static const aiVoiceAnalyze = '/voice/analyze';
 
-  // —— 图像模块：POST /dog/analyze ——
-  /// 上传狗狗图片并返回 13 类情绪分析结果
-  static const aiDogAnalyze   = '/dog-image/analyze';
+  // —— 图像模块：POST /dog-image/analyze（猫/狗通用，服务端路由待统一）——
+  /// 上传宠物图片并返回情绪分析结果
+  static const aiPetImageAnalyze = '/image/analyze';
 
   /// 查询服务健康状态
   static const aiHealth = '/health';

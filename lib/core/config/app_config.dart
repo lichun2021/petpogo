@@ -58,7 +58,7 @@ class AppConfig {
   /// 完整登录 URL = [authServiceBase] + '/admin/sys/index/login'
   ///
   /// 部署地址变更时只改这里，AuthRepository 无需修改。
-  static const String authServiceBase = 'http://49.234.39.11:8008';
+  static const String authServiceBase = 'http://115.29.196.61:3000';
 
   /// 旧版翻译服务地址（保留，待接入时替换）
   static const String translationBaseUrl = 'http://YOUR_TRANSLATION_HOST:8078';

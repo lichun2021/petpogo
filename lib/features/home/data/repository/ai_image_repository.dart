@@ -1,9 +1,9 @@
 /// ════════════════════════════════════════════════════════════
-///  AI 图像 Repository — 纯业务层
+///  AI 图像 Repository — 纯业务层（猫 + 狗通用）
 ///
 ///  职责：
-///    ✅ 上传图片到 POST /dog/analyze
-///    ✅ 解析 DogImageAnalysisResult
+///    ✅ 上传图片到 POST /dog-image/analyze 或 /cat-image/analyze
+///    ✅ 解析 PetImageAnalysisResult
 ///    ✅ 完整打印请求/响应日志
 ///    ❌ 不包含 UI 逻辑
 /// ════════════════════════════════════════════════════════════
@@ -31,12 +31,12 @@ class AiImageRepository {
     _dio.interceptors.add(_AiImageLogInterceptor());
   }
 
-  /// 上传图片 → 获取 13 类情绪分析结果
-  Future<Result<DogImageAnalysisResult>> analyze(File imageFile) =>
+  /// 上传图片 → 获取情绪分析结果（猫/狗均适用）
+  Future<Result<PetImageAnalysisResult>> analyze(File imageFile) =>
       guardResult(() async {
         final fileSize = imageFile.lengthSync();
         debugPrint('[$_tag] ▶ 开始上传图像分析');
-        debugPrint('[$_tag]   URL  : ${ApiEndpoints.aiServiceBase}${ApiEndpoints.aiDogAnalyze}');
+        debugPrint('[$_tag]   URL  : ${ApiEndpoints.aiServiceBase}${ApiEndpoints.aiPetImageAnalyze}');
         debugPrint('[$_tag]   文件 : ${imageFile.path}');
         debugPrint('[$_tag]   大小 : ${(fileSize / 1024).toStringAsFixed(1)} KB');
 
@@ -58,7 +58,7 @@ class AiImageRepository {
 
         try {
           final response = await _dio.post(
-            ApiEndpoints.aiDogAnalyze,
+            ApiEndpoints.aiPetImageAnalyze,
             data: formData,
             options: Options(headers: {'Accept': 'application/json'}),
           );
@@ -71,7 +71,7 @@ class AiImageRepository {
           debugPrint('[$_tag] ═══════════════════════════════════════');
 
           final raw = response.data as Map<String, dynamic>;
-          final result = DogImageAnalysisResult.fromJson(raw);
+          final result = PetImageAnalysisResult.fromJson(raw);
 
           debugPrint('[$_tag]   主情绪: ${result.primaryPrediction.labelZh} '
               '(${result.primaryPrediction.percentText})');
