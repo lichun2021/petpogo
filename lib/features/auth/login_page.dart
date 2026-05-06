@@ -8,6 +8,7 @@
 ///    ❌ 不包含任何业务逻辑（全部在 AuthController）
 /// ════════════════════════════════════════════════════════════
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/theme/app_colors.dart';
@@ -21,41 +22,102 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
-  final _accountCtrl  = TextEditingController();
+  final _phoneCtrl    = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _codeCtrl     = TextEditingController();
+  
   bool _obscure = true;
+  bool _isSmsLogin = true;
+
+  bool _isSendingSms = false;
+  int _countdown = 0;
+  Timer? _timer;
 
   @override
   void dispose() {
-    _accountCtrl.dispose();
+    _phoneCtrl.dispose();
     _passwordCtrl.dispose();
+    _codeCtrl.dispose();
+    _timer?.cancel();
     super.dispose();
   }
 
-  void _submit() {
-    final account  = _accountCtrl.text.trim();
-    final password = _passwordCtrl.text.trim();
-    if (account.isEmpty || password.isEmpty) {
+  void _startCountdown() {
+    setState(() {
+      _countdown = 60;
+    });
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_countdown > 0) {
+        setState(() => _countdown--);
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  Future<void> _sendSms() async {
+    final phone = _phoneCtrl.text.trim();
+    if (phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入账号和密码')),
+        const SnackBar(content: Text('请输入手机号')),
       );
       return;
     }
-    ref.read(authControllerProvider.notifier).login(
-      account: account,
-      password: password,
-    );
+    setState(() => _isSendingSms = true);
+    final error = await ref.read(authControllerProvider.notifier).sendSms(phone);
+    if (!mounted) return;
+    setState(() => _isSendingSms = false);
+
+    if (error == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('验证码已发送，请注意查收')),
+      );
+      _startCountdown();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: AppColors.error),
+      );
+    }
+  }
+
+  void _submit() {
+    final phone = _phoneCtrl.text.trim();
+    if (phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请输入手机号')),
+      );
+      return;
+    }
+
+    if (_isSmsLogin) {
+      final code = _codeCtrl.text.trim();
+      if (code.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('请输入验证码')),
+        );
+        return;
+      }
+      ref.read(authControllerProvider.notifier).loginWithSms(phone: phone, code: code);
+    } else {
+      final password = _passwordCtrl.text.trim();
+      if (password.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('请输入密码')),
+        );
+        return;
+      }
+      ref.read(authControllerProvider.notifier).loginWithPwd(phone: phone, password: password);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
 
-    // 监听状态变化：成功 → 自动返回上一页；失败 → 弹出提示
     ref.listen<AuthState>(authControllerProvider, (_, next) {
       if (next.status == AuthStatus.loggedIn) {
-        // 登录成功，返回上一页（Profile 页会自动刷新显示已登录状态）
-        if (context.mounted) Navigator.of(context).pop();
+        // 路由守卫检测到 loggedIn 后会自动跳回首页，无需手动 pop
+        debugPrint('[LoginPage] 登录成功，等待路由守卫跳转');
       } else if (next.status == AuthStatus.error && next.errorMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -79,7 +141,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               Row(children: [
                 Icon(Icons.pets_rounded, color: AppColors.primary, size: 36),
                 const SizedBox(width: 10),
-                Text('萌宠智伴',
+                const Text('萌宠智伴',
                     style: TextStyle(fontFamily: 'Plus Jakarta Sans',
                         fontSize: 28, fontWeight: FontWeight.w800,
                         color: AppColors.primary)),
@@ -93,51 +155,134 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       fontSize: 28, fontWeight: FontWeight.w800,
                       color: AppColors.onSurface)),
               const SizedBox(height: 6),
-              Text('登录后管理您的宠物与设备',
+              Text('未注册手机号验证后自动创建账号',
                   style: TextStyle(fontFamily: 'Plus Jakarta Sans',
                       fontSize: 14, color: AppColors.onSurfaceVariant)),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 30),
 
-              // ── 账号输入框 ────────────────────────────────
-              _FieldLabel('账号'),
+              // ── 切换登录方式 ──────────────────────────────
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => setState(() => _isSmsLogin = true),
+                    child: Text('短信登录',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: _isSmsLogin ? FontWeight.w800 : FontWeight.w600,
+                            color: _isSmsLogin ? AppColors.primary : AppColors.onSurfaceVariant)),
+                  ),
+                  const SizedBox(width: 24),
+                  GestureDetector(
+                    onTap: () => setState(() => _isSmsLogin = false),
+                    child: Text('密码登录',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: !_isSmsLogin ? FontWeight.w800 : FontWeight.w600,
+                            color: !_isSmsLogin ? AppColors.primary : AppColors.onSurfaceVariant)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // ── 手机号输入框 ────────────────────────────────
+              const _FieldLabel('手机号'),
               const SizedBox(height: 8),
               TextField(
-                controller: _accountCtrl,
-                keyboardType: TextInputType.text,
+                controller: _phoneCtrl,
+                keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.next,
                 style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
                     fontSize: 15, color: AppColors.onSurface),
                 decoration: _inputDecoration(
-                  hint: '请输入账号',
-                  prefixIcon: Icons.person_outline_rounded,
+                  hint: '请输入手机号',
+                  prefixIcon: Icons.phone_android_rounded,
                 ),
               ),
 
               const SizedBox(height: 20),
 
-              // ── 密码输入框 ────────────────────────────────
-              _FieldLabel('密码'),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _passwordCtrl,
-                obscureText: _obscure,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _submit(),
-                style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 15, color: AppColors.onSurface),
-                decoration: _inputDecoration(
-                  hint: '请输入密码',
-                  prefixIcon: Icons.lock_outline_rounded,
-                  suffix: GestureDetector(
-                    onTap: () => setState(() => _obscure = !_obscure),
-                    child: Icon(_obscure
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                        size: 20, color: AppColors.onSurfaceVariant),
+              // ── 验证码 / 密码输入框 ────────────────────────────────
+              if (_isSmsLogin) ...[
+                const _FieldLabel('验证码'),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _codeCtrl,
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _submit(),
+                        style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 15, color: AppColors.onSurface),
+                        decoration: _inputDecoration(
+                          hint: '请输入验证码',
+                          prefixIcon: Icons.message_outlined,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 96,
+                      height: 52,
+                      child: OutlinedButton(
+                        onPressed: (_countdown > 0 || _isSendingSms) ? null : _sendSms,
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          side: BorderSide(
+                            color: (_countdown > 0 || _isSendingSms)
+                                ? AppColors.outline
+                                : AppColors.primary,
+                          ),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: _isSendingSms
+                            ? SizedBox(
+                                width: 18, height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.primary,
+                                ))
+                            : Text(
+                                _countdown > 0 ? '${_countdown}s 后重发' : '获取验证码',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: _countdown > 0
+                                      ? AppColors.onSurfaceVariant
+                                      : AppColors.primary,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                const _FieldLabel('密码'),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _passwordCtrl,
+                  obscureText: _obscure,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _submit(),
+                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 15, color: AppColors.onSurface),
+                  decoration: _inputDecoration(
+                    hint: '请输入密码',
+                    prefixIcon: Icons.lock_outline_rounded,
+                    suffix: GestureDetector(
+                      onTap: () => setState(() => _obscure = !_obscure),
+                      child: Icon(_obscure
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                          size: 20, color: AppColors.onSurfaceVariant),
+                    ),
                   ),
                 ),
-              ),
+              ],
 
               const SizedBox(height: 36),
 
@@ -161,21 +306,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           child: CircularProgressIndicator(
                               color: Colors.white, strokeWidth: 2.5),
                         )
-                      : const Text('登录',
+                      : const Text('登录 / 注册',
                           style: TextStyle(fontFamily: 'Plus Jakarta Sans',
                               fontSize: 16, fontWeight: FontWeight.w700)),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // ── 游客入口 ──────────────────────────────────
-              Center(
-                child: TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text('暂不登录，以游客身份浏览',
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                          fontSize: 13, color: AppColors.onSurfaceVariant)),
                 ),
               ),
             ],
@@ -185,7 +318,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  // ── 输入框样式 ─────────────────────────────────────────
   InputDecoration _inputDecoration({
     required String hint,
     required IconData prefixIcon,

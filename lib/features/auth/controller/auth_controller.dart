@@ -16,9 +16,13 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/api/api_client.dart';
 import '../data/auth_repository.dart';
 import '../data/models/auth_model.dart';
 import '../../message/controller/im_controller.dart';
+import '../../pet/controller/pet_controller.dart';
+import '../../device/data/repository/device_repository.dart';
+import '../../profile/data/user_stats_provider.dart';
 
 // ── 认证状态枚举 ────────────────────────────────────────────
 enum AuthStatus {
@@ -42,9 +46,10 @@ class AuthState {
   });
 
   /// 便捷判断
-  bool get isGuest    => status == AuthStatus.guest;
-  bool get isLoggedIn => status == AuthStatus.loggedIn;
-  bool get isLoading  => status == AuthStatus.loading;
+  bool get isGuest      => status == AuthStatus.guest;
+  bool get isLoggedIn   => status == AuthStatus.loggedIn;
+  bool get isLoading    => status == AuthStatus.loading;
+  bool get isRestoring  => status == AuthStatus.restoring;
 
   /// 当前用户名（未登录时为空字符串）
   String get displayName => user?.name ?? '';
@@ -89,19 +94,18 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
-  // ── 登录 ───────────────────────────────────────────────
-  Future<void> login({
-    required String account,
-    required String password,
+  Future<void> loginWithSms({
+    required String phone,
+    required String code,
   }) async {
-    debugPrint('[AuthCtrl] [状态] → loading (account=$account)');
+    debugPrint('[AuthCtrl] [状态] → loading (phone=$phone, type=sms)');
     state = state.copyWith(status: AuthStatus.loading);
 
-    final result = await _repo.login(account: account, password: password);
+    final result = await _repo.loginWithSms(phone: phone, code: code);
 
     result.when(
       success: (user) {
-        debugPrint('[AuthCtrl] [状态] loading → loggedIn (${user.name} / merchantId=${user.merchantId})');
+        debugPrint('[AuthCtrl] [状态] loading → loggedIn (${user.name})');
         state = AuthState(status: AuthStatus.loggedIn, user: user);
         _loadUserData();
       },
@@ -115,6 +119,73 @@ class AuthController extends StateNotifier<AuthState> {
     );
   }
 
+  Future<void> loginWithPwd({
+    required String phone,
+    required String password,
+  }) async {
+    debugPrint('[AuthCtrl] [状态] → loading (phone=$phone, type=pwd)');
+    state = state.copyWith(status: AuthStatus.loading);
+
+    final result = await _repo.loginWithPwd(phone: phone, password: password);
+
+    result.when(
+      success: (user) {
+        debugPrint('[AuthCtrl] [状态] loading → loggedIn (${user.name})');
+        state = AuthState(status: AuthStatus.loggedIn, user: user);
+        _loadUserData();
+      },
+      failure: (err) {
+        debugPrint('[AuthCtrl] [状态] loading → error (${err.message})');
+        state = AuthState(
+          status: AuthStatus.error,
+          errorMessage: err.userMessage,
+        );
+      },
+    );
+  }
+
+  Future<String?> sendSms(String phone) async {
+    final result = await _repo.sendSms(phone);
+    return result.when(
+      success: (_) => null,
+      failure: (err) => err.userMessage,
+    );
+  }
+
+  // legacy compatibility
+  Future<void> login({
+    required String account,
+    required String password,
+  }) async {
+    return loginWithPwd(phone: account, password: password);
+  }
+
+  // ── JWT 过期强制登出（由 _ErrorInterceptor 401 触发）──────
+  /// 不弹对话框，直接清除本地状态 → guest
+  /// UI 层监听 isGuest 后自动提示重新登录
+  Future<void> forceLogout() async {
+    debugPrint('[AuthCtrl] JWT 已过期，强制登出');
+    await _repo.logout();
+    state = const AuthState(
+      status: AuthStatus.guest,
+      errorMessage: '登录已过期，请重新验证',
+    );
+  }
+
+  // ── IM UserSig 过期刷新（无需重新登录）──────────────────
+  /// 由 ImController 的 onUserSigExpired 回调触发
+  /// 返回新的 UserSig，失败返回 null
+  Future<String?> refreshImUserSig() async {
+    final result = await _repo.refreshImUserSig();
+    return result.when(
+      success: (sig) => sig,
+      failure: (err) {
+        debugPrint('[AuthCtrl] ⚠️ 刷新 UserSig 失败: ${err.message}');
+        return null;
+      },
+    );
+  }
+
   // ── 退出登录 ───────────────────────────────────────────
   Future<void> logout() async {
     debugPrint('[AuthCtrl] [状态] loggedIn → guest (退出登录)');
@@ -122,37 +193,56 @@ class AuthController extends StateNotifier<AuthState> {
     state = const AuthState.guest();
   }
 
+  // ── 刷新用户资料（改昵称后调用）────────────────────────
+  Future<void> refreshUser() async {
+    final updated = await _repo.fetchProfile();
+    if (updated != null) {
+      state = state.copyWith(user: updated);
+      debugPrint('[AuthCtrl] 用户资料已刷新: ${updated.name}');
+    }
+  }
+
   // ── 登录后触发数据加载 ─────────────────────────────────
-  /// 登录成功 / 会话恢复后，加载用户相关数据
-  ///
-  /// 这里集中管理"登录后需要做什么"，便于扩展
+  /// 登录成功 / 会话恢复后，并行加载用户相关数据
   void _loadUserData() {
     final user = state.user;
     if (user == null) return;
 
-    // ① IM 登录（Debug 时自动用本地生成的 UserSig）
-    _ref.read(imControllerProvider.notifier).loginIm(
-      userId: user.merchantId.toString(),
-      userSig: user.imUserSig ?? '',   // 后端接入后会有实际値
-    );
+    // ① IM 登录
+    final imUserId  = user.id.isNotEmpty ? user.id : user.merchantId.toString();
+    final imUserSig = user.imUserSig;
+    if (imUserSig.isNotEmpty) {
+      _ref.read(imControllerProvider.notifier).loginIm(
+        userId:  imUserId,
+        userSig: imUserSig,
+      );
+      debugPrint('[AuthCtrl] 触发 IM 登录 (userId=$imUserId)');
+    } else {
+      debugPrint('[AuthCtrl] ⚠️ imUserSig 为空，跳过 IM 登录');
+    }
 
-    // TODO: 设备列表（接口就绪后取消注释）
-    // _ref.read(deviceListProvider.notifier).fetchAll();
+    // ② 并行拉取：宠物列表 / 设备列表 / 用户统计
+    _ref.read(petControllerProvider.notifier).loadPets();
+    _ref.read(deviceListProvider.notifier).load();
+    _ref.read(userStatsProvider.notifier).loadMyStats();
 
-    // TODO: 宠物列表（接口就绪后取消注释）
-    // _ref.read(petListProvider.notifier).fetchAll();
-
-    debugPrint('[AuthCtrl] 触发 IM 登录 (userId=${user.merchantId})');
+    debugPrint('[AuthCtrl] 并行加载: 宠物 / 设备 / 用户统计');
   }
 }
 
 // ── Provider ─────────────────────────────────────────────
 final authControllerProvider =
     StateNotifierProvider<AuthController, AuthState>((ref) {
-  return AuthController(
+  final controller = AuthController(
     ref.read(authRepositoryProvider),
     ref,
   );
+  // 注入 JWT 401 → forceLogout 回调
+  // ApiClient 持有回调函数指针，不直接引用 Riverpod，避免循环依赖
+  ref.read(apiClientProvider).onUnauthorized = () {
+    controller.forceLogout();
+  };
+  return controller;
 });
 
 /// 便捷只读 Provider（View 只需要监听状态，不操作）

@@ -35,9 +35,7 @@ class PetRepository {
   ///   - Success → 宠物列表（可能为空列表 []）
   ///   - Failure → ApiException（网络错误、401等）
   Future<Result<List<PetModel>>> fetchPets() => guardResult(() async {
-    // 调用 GET /pets，返回数组
-    final data = await _client.get<List<dynamic>>(ApiEndpoints.pets);
-    // 把每个 JSON Map 解析为 PetModel
+    final data = await _client.get<List<dynamic>>('/sdkapi/pet/list');
     return data
         .map((e) => PetModel.fromJson(e as Map<String, dynamic>))
         .toList();

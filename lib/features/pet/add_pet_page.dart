@@ -1,40 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/api/api_client.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../app.dart' show AppL10nX;
+import '../pet/controller/pet_controller.dart';
+
 
 /// 添加宠物页 — 三步流程：选类型 → 填信息 → 完成
-class AddPetPage extends StatefulWidget {
+class AddPetPage extends ConsumerStatefulWidget {
   const AddPetPage({super.key});
 
   @override
-  State<AddPetPage> createState() => _AddPetPageState();
+  ConsumerState<AddPetPage> createState() => _AddPetPageState();
 }
 
-class _AddPetPageState extends State<AddPetPage>
+class _AddPetPageState extends ConsumerState<AddPetPage>
     with SingleTickerProviderStateMixin {
   int _step = 0; // 0=选类型 1=填信息 2=完成
 
-  // 选择的宠物类型
+  // 目前只支持猫和狗
   int _selectedType = 0;
-  final _petTypes = [
-    {'emoji': '🐱', 'label': '猫', 'labelEn': 'Cat'},
-    {'emoji': '🐶', 'label': '狗', 'labelEn': 'Dog'},
-    {'emoji': '🐰', 'label': '兔子', 'labelEn': 'Rabbit'},
-    {'emoji': '🐹', 'label': '仓鼠', 'labelEn': 'Hamster'},
-    {'emoji': '🐦', 'label': '鸟', 'labelEn': 'Bird'},
-    {'emoji': '🐟', 'label': '鱼', 'labelEn': 'Fish'},
-    {'emoji': '🦎', 'label': '爬行', 'labelEn': 'Reptile'},
-    {'emoji': '🐾', 'label': '其他', 'labelEn': 'Other'},
+  final _petTypes = <Map<String, dynamic>>[
+    {'emoji': '🐱', 'label': '猫', 'labelEn': 'Cat',  'species': 'cat',
+     'desc': '英短、舓斯、无毛、波斯、缅因...', 'color': 0xFFE8F4FD},
+    {'emoji': '🐶', 'label': '狗', 'labelEn': 'Dog',  'species': 'dog',
+     'desc': '金毛、柯基、法斗、和山、哈士奇...', 'color': 0xFFFFF3E0},
   ];
 
   // 步骤2表单
   final _nameCtrl    = TextEditingController();
   final _breedCtrl   = TextEditingController();
   String? _birthday;
-  String _gender = '男';
+  String _gender = '公';
   bool _isLoading = false;
 
   late AnimationController _successCtrl;
@@ -69,11 +69,44 @@ class _AddPetPageState extends State<AddPetPage>
 
   Future<void> _submit() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-    setState(() { _isLoading = false; _step = 2; });
-    _successCtrl.forward();
-    HapticFeedback.mediumImpact();
+
+    final selected = _petTypes[_selectedType];
+    final species  = selected['species'] as String;
+    // 后端 gender: 1=男 2=女 0=未知
+    final genderInt = _gender == '公' ? 1 : 2;
+
+    try {
+      final client = ref.read(apiClientProvider);
+      await client.post<Map<String, dynamic>>(
+        '/sdkapi/pet/create',
+        data: {
+          'name':     _nameCtrl.text.trim(),
+          'species':  species,
+          'breed':    _breedCtrl.text.trim(),
+          'gender':   genderInt,
+          if (_birthday != null) 'birthday': _birthday,
+        },
+      );
+
+      // 刷新宠物列表（让 profile 页实时更新）
+      await ref.read(petControllerProvider.notifier).loadPets();
+
+      if (!mounted) return;
+      setState(() { _isLoading = false; _step = 2; });
+      _successCtrl.forward();
+      HapticFeedback.mediumImpact();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('添加失败：$e',
+              style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
@@ -94,30 +127,38 @@ class _AddPetPageState extends State<AddPetPage>
                 },
               )
             : null,
-        title: Text(
-          _step == 0 ? '选择宠物类型' : _step == 1 ? '宠物信息' : '添加成功',
-          style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
+        title: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: Text(
+            _step == 0 ? '选择宠物类型' : _step == 1 ? '宠物信息' : '添加成功',
+            key: ValueKey(_step),
+            style: const TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+            ),
           ),
         ),
         centerTitle: true,
       ),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 350),
-        transitionBuilder: (child, anim) => FadeTransition(
-          opacity: anim,
-          child: SlideTransition(
-            position: Tween<Offset>(begin: const Offset(0.08, 0), end: Offset.zero).animate(anim),
-            child: child,
+      body: Column(
+        children: [
+          // ── 进度条：固定不动，仅颜色变化 ─────────────────────
+          if (_step < 2) _StepIndicator(current: _step, total: 2),
+
+          // ── 内容区：仅淡入淡出，无位移 ─────────────────────
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 280),
+              transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
+              child: _step == 0
+                  ? _buildStep0(l10n)
+                  : _step == 1
+                      ? _buildStep1(l10n)
+                      : _buildStep2(l10n),
+            ),
           ),
-        ),
-        child: _step == 0
-            ? _buildStep0(l10n)
-            : _step == 1
-                ? _buildStep1(l10n)
-                : _buildStep2(l10n),
+        ],
       ),
     );
   }
@@ -126,63 +167,125 @@ class _AddPetPageState extends State<AddPetPage>
   Widget _buildStep0(dynamic l10n) {
     return Column(
       key: const ValueKey(0),
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 步骤指示器
-        _StepIndicator(current: 0, total: 2),
-        const SizedBox(height: 8),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text('你的宠物是哪种？',
-              style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 26,
-                  fontWeight: FontWeight.w800, color: AppColors.onSurface, letterSpacing: -0.5)),
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('你的宠物是哪种？',
+                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 24,
+                      fontWeight: FontWeight.w800, color: AppColors.onSurface, letterSpacing: -0.5)),
+              const SizedBox(height: 4),
+              Text('目前支持猫和狗的健康监测与AI分析',
+                  style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+                      color: AppColors.onSurfaceVariant)),
+            ],
+          ),
         ),
         const SizedBox(height: 24),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 0.9,
-              ),
-              itemCount: _petTypes.length,
-              itemBuilder: (_, i) {
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: SizedBox(
+            height: 260,
+            child: Row(
+              children: List.generate(_petTypes.length, (i) {
                 final t = _petTypes[i];
                 final selected = _selectedType == i;
-                return GestureDetector(
-                  onTap: () { HapticFeedback.selectionClick(); setState(() => _selectedType = i); },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOutCubic,
-                    decoration: BoxDecoration(
-                      color: selected ? AppColors.primaryContainer.withOpacity(0.25) : AppColors.surfaceContainerLowest,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: selected ? AppColors.primary : Colors.transparent,
-                        width: 2,
-                      ),
-                      boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, spreadRadius: -4)],
+                final cardColor = Color(t['color'] as int);
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left:  i == 0 ? 0 : 8,
+                      right: i == _petTypes.length - 1 ? 0 : 8,
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(t['emoji']!, style: const TextStyle(fontSize: 32)),
-                        const SizedBox(height: 6),
-                        Text(t['label']!, style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans', fontSize: 12, fontWeight: FontWeight.w700,
-                          color: selected ? AppColors.primary : AppColors.onSurfaceVariant,
-                        )),
-                      ],
+                    child: GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _selectedType = i);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        decoration: BoxDecoration(
+                          color: selected ? cardColor : AppColors.surfaceContainerLowest,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: selected ? AppColors.primary : Colors.transparent,
+                            width: 2.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: selected
+                                  ? AppColors.primaryGlow.withOpacity(0.22)
+                                  : AppColors.cardShadow,
+                              blurRadius: selected ? 20 : 10,
+                              spreadRadius: -4,
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            AnimatedScale(
+                              scale: selected ? 1.1 : 1.0,
+                              duration: const Duration(milliseconds: 220),
+                              // 缩小 emoji 避免卡片太满
+                              child: Text(t['emoji']!,
+                                  style: const TextStyle(fontSize: 54)),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(t['label']!,
+                                style: TextStyle(
+                                  fontFamily: 'Plus Jakarta Sans', fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: selected ? AppColors.primary : AppColors.onSurface,
+                                )),
+                            const SizedBox(height: 4),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              child: Text(t['desc']!,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontFamily: 'Plus Jakarta Sans', fontSize: 10,
+                                    color: AppColors.onSurfaceVariant, height: 1.5,
+                                  )),
+                            ),
+                            // 固定高度占位——避免卡片高度随选择状态变化
+                            const SizedBox(height: 12),
+                            AnimatedOpacity(
+                              opacity: selected ? 1.0 : 0.0,
+                              duration: const Duration(milliseconds: 200),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: const Text('✓ 已选择',
+                                    style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                                        fontSize: 10, fontWeight: FontWeight.w700,
+                                        color: Colors.white)),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 );
-              },
+              }),
             ),
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
-          child: PrimaryButton(label: '下一步', icon: Icons.arrow_forward_rounded, onPressed: _nextStep),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          child: PrimaryButton(
+              label: '下一步', icon: Icons.arrow_forward_rounded, onPressed: _nextStep),
         ),
       ],
     );
@@ -193,11 +296,10 @@ class _AddPetPageState extends State<AddPetPage>
     final selected = _petTypes[_selectedType];
     return SingleChildScrollView(
       key: const ValueKey(1),
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _StepIndicator(current: 1, total: 2),
           const SizedBox(height: 8),
 
           // 宠物头像（emoji 大图）
@@ -243,21 +345,20 @@ class _AddPetPageState extends State<AddPetPage>
           _FieldLabel('性别'),
           const SizedBox(height: 8),
           Wrap(
-            spacing: 10, runSpacing: 8,
-            children: ['男', '女', '未知'].map((g) {
+            spacing: 12, runSpacing: 8,
+            children: ['公', '母'].map((g) {
               final sel = _gender == g;
               return GestureDetector(
                 onTap: () { HapticFeedback.selectionClick(); setState(() => _gender = g); },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
-                  margin: const EdgeInsets.only(right: 10),
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
                   decoration: BoxDecoration(
                     color: sel ? AppColors.primary : AppColors.surfaceContainerLowest,
                     borderRadius: BorderRadius.circular(999),
                     boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 8, spreadRadius: -4)],
                   ),
-                  child: Text(g == '男' ? '♂ 男' : g == '女' ? '♀ 女' : '❓ 未知',
+                  child: Text(g == '公' ? '♂ 公' : '♀ 母',
                       style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: sel ? Colors.white : AppColors.onSurfaceVariant)),
@@ -356,7 +457,7 @@ class _AddPetPageState extends State<AddPetPage>
 
             // 下一步：绑定设备
             PressableButton(
-              onTap: () => context.go('/bind-device'),
+              onTap: () => context.push('/bind-device'),
               child: Container(
                 width: double.infinity, height: 52,
                 decoration: BoxDecoration(

@@ -31,6 +31,15 @@ class PetModel {
   /// 是否已接种疫苗
   final bool vaccinated;
 
+  /// 头像 URL
+  final String avatar;
+
+  /// 体重 (kg)
+  final double weight;
+
+  /// 简介
+  final String bio;
+
   /// 关联的设备 ID（KeyTracker / PetPhone）
   final String linkedDeviceId;
 
@@ -42,6 +51,9 @@ class PetModel {
     this.birthday = '',
     this.gender = 'unknown',
     this.emoji = '🐾',
+    this.avatar = '',
+    this.weight = 0,
+    this.bio = '',
     this.vaccinated = false,
     this.linkedDeviceId = '',
   });
@@ -49,17 +61,45 @@ class PetModel {
   // ── JSON 序列化 ───────────────────────────────────────
 
   /// 从服务端响应 JSON 创建 PetModel
-  factory PetModel.fromJson(Map<String, dynamic> json) => PetModel(
-    id:             json['id'] as String? ?? '',
-    name:           json['name'] as String? ?? '',
-    type:           json['type'] as String? ?? 'other',
-    breed:          json['breed'] as String? ?? '',
-    birthday:       json['birthday'] as String? ?? '',
-    gender:         json['gender'] as String? ?? 'unknown',
-    emoji:          json['emoji'] as String? ?? '🐾',
-    vaccinated:     json['vaccinated'] as bool? ?? false,
-    linkedDeviceId: json['linkedDeviceId'] as String? ?? '',
-  );
+  factory PetModel.fromJson(Map<String, dynamic> json) {
+    // 后端返回的是 species 字段（字符串）
+    final species = (json['species'] as String?)?.toLowerCase() ?? 'other';
+    // id / device_id 后端返回 int（大雪花 ID），需转 String
+    final id       = json['id']?.toString() ?? '';
+    final deviceId = json['device_id']?.toString() ?? '';
+    // birthday 可能带 T00:00:00.000Z，只取日期部分
+    final rawBirthday = json['birthday']?.toString() ?? '';
+    final birthday = rawBirthday.length >= 10 ? rawBirthday.substring(0, 10) : rawBirthday;
+    // gender 后端存 int：1=公 2=母 0=未知
+    final genderInt = json['gender'] as int? ?? 0;
+    final gender = genderInt == 1 ? 'male' : genderInt == 2 ? 'female' : 'unknown';
+
+    return PetModel(
+      id:             id,
+      name:           (json['name'] as String?) ?? '',
+      type:           species,
+      breed:          (json['breed'] as String?) ?? '',
+      birthday:       birthday,
+      gender:         gender,
+      emoji:          _emojiForSpecies(species),
+      avatar:         (json['avatar'] as String?) ?? '',
+      weight:         (json['weight'] as num?)?.toDouble() ?? 0,
+      bio:            (json['bio'] as String?) ?? '',
+      linkedDeviceId: deviceId,
+    );
+  }
+
+  static String _emojiForSpecies(String s) {
+    switch (s) {
+      case 'cat':     return '🐱';
+      case 'dog':     return '🐶';
+      case 'rabbit':  return '🐰';
+      case 'hamster': return '🐹';
+      case 'bird':    return '🐦';
+      case 'fish':    return '🐟';
+      default:        return '🐾';
+    }
+  }
 
   /// 转为 JSON，用于 POST/PUT 请求体
   Map<String, dynamic> toJson() => {

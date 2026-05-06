@@ -4,15 +4,36 @@ import 'package:go_router/go_router.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../app.dart' show AppL10nX;
 import '../auth/controller/auth_controller.dart';
+import '../auth/data/models/auth_model.dart';
+import '../pet/controller/pet_controller.dart';
+import 'data/user_stats_provider.dart';
 import '../../core/router/app_routes.dart';
 
-class ProfilePage extends ConsumerWidget {
+class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = context.l10n;
-    final auth = ref.watch(authControllerProvider);
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends ConsumerState<ProfilePage> {
+  bool _loaded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n     = context.l10n;
+    final auth     = ref.watch(authControllerProvider);
+    final petState = ref.watch(petControllerProvider);
+    final stats    = ref.watch(userStatsProvider).stats;
+
+    // 登录后首次刷新数据
+    if (auth.isLoggedIn && !_loaded) {
+      _loaded = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(userStatsProvider.notifier).loadMyStats();
+        ref.read(petControllerProvider.notifier).loadPets();
+      });
+    }
 
     if (!auth.isLoggedIn) return _GuestProfileView();
 
@@ -50,7 +71,7 @@ class ProfilePage extends ConsumerWidget {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
 
-                _UserInfoCard(l10n: l10n),
+                _UserInfoCard(l10n: l10n, user: auth.user, stats: stats),
                 const SizedBox(height: 28),
 
                 // ── My Pets ─────────────────────────
@@ -72,23 +93,21 @@ class ProfilePage extends ConsumerWidget {
 
                 const SizedBox(height: 12),
 
-                GestureDetector(
-                  onTap: () => context.push('/pet-detail'),
-                  child: _PetCard(name: '豆豆', breed: '英短豆', type: '猫',
-                    typeColor: AppColors.secondaryContainer, typeTextColor: AppColors.onSecondaryContainer,
-                    statusLabel: l10n.profileVaccinated, statusOk: true, emoji: '🐱'),
-                ),
+                // 真实宠物列表 — 横向 PageView
+                if (petState.isLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (petState.pets.isEmpty)
+                  _EmptyPets(l10n: l10n)
+                else
+                  _PetPageView(
+                    pets: petState.pets,
+                    speciesLabel: _speciesLabel,
+                  ),
 
                 const SizedBox(height: 10),
-
-                GestureDetector(
-                  onTap: () => context.push('/pet-detail'),
-                  child: _PetCard(name: '麦克斯', breed: '金毛寻回犬', type: '狗',
-                    typeColor: AppColors.tertiaryContainer.withOpacity(0.7), typeTextColor: AppColors.onTertiaryFixed,
-                    statusLabel: l10n.profileCheckupDue, statusOk: false, emoji: '🐕'),
-                ),
-
-                const SizedBox(height: 28),
 
                 // ── 菜单 ─────────────────────────────
                 _MenuGroup(items: [
@@ -122,68 +141,119 @@ class ProfilePage extends ConsumerWidget {
 
 class _UserInfoCard extends StatelessWidget {
   final dynamic l10n;
-  const _UserInfoCard({required this.l10n});
+  final UserInfo? user;
+  final dynamic stats; // UserStats?
+  const _UserInfoCard({required this.l10n, required this.user, this.stats});
 
   @override
   Widget build(BuildContext context) {
+    final nickname    = user?.name.isNotEmpty == true ? user!.name : '宠友';
+    final phone       = user?.account ?? '';
+    final maskedPhone = phone.length == 11
+        ? '${phone.substring(0, 3)}****${phone.substring(7)}'
+        : phone;
+    final avatarUrl   = user?.avatar ?? '';
+
+    // 统计数字
+    final postStr     = stats != null ? '${stats.postCount}'     : '0';
+    final followerStr = stats != null ? '${stats.followerCount}' : '0';
+    final likeStr     = stats != null ? '${stats.likeCount}'     : '0';
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLow, borderRadius: BorderRadius.circular(24),
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 24, spreadRadius: -6)],
       ),
       child: Row(
         children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 80, height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle, color: AppColors.surfaceContainerHigh,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12)],
-                ),
-                child: const Center(child: Text('🧑', style: TextStyle(fontSize: 38))),
-              ),
-              Positioned(
-                bottom: -4, right: -4,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.tertiaryContainer, borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: AppColors.surface, width: 2),
-                  ),
-                  child: Text('LV. 12',
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 9,
-                          fontWeight: FontWeight.w800, color: AppColors.onTertiaryFixed)),
-                ),
-              ),
-            ],
+          // ── 头像 ───────────────────────────────────────────
+          Container(
+            width: 80, height: 80,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.surfaceContainerHigh,
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12)],
+            ),
+            child: ClipOval(
+              child: avatarUrl.isNotEmpty
+                  ? Image.network(avatarUrl, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          const Center(child: Text('🧑', style: TextStyle(fontSize: 38))))
+                  : const Center(child: Text('🧑', style: TextStyle(fontSize: 38))),
+            ),
           ),
+
           const SizedBox(width: 20),
+
+          // ── 用户信息 ───────────────────────────────────────
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('李小明',
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 20,
-                        fontWeight: FontWeight.w800, letterSpacing: -0.4, color: AppColors.onSurface)),
-                Text(l10n.profilePetParentSince('2022'),
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12, color: AppColors.onSurfaceVariant)),
+                Text(nickname,
+                    style: const TextStyle(
+                        fontFamily: 'Plus Jakarta Sans', fontSize: 20,
+                        fontWeight: FontWeight.w800, letterSpacing: -0.4,
+                        color: AppColors.onSurface)),
+                if (maskedPhone.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(maskedPhone,
+                      style: TextStyle(
+                          fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                          color: AppColors.onSurfaceVariant)),
+                ],
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    _StatCol(value: '24',   label: l10n.profilePosts),
+                    _StatCol(value: postStr,     label: l10n.profilePosts),
                     const SizedBox(width: 20),
-                    _StatCol(value: '1.2k', label: l10n.profileFollowers),
+                    _StatCol(value: followerStr, label: l10n.profileFollowers),
                     const SizedBox(width: 20),
-                    _StatCol(value: '850',  label: l10n.profileFollowing),
+                    _StatCol(value: likeStr,     label: '获赞'),
                   ],
                 ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── 工具函数 ───────────────────────────────────────────
+String _speciesLabel(String type) {
+  switch (type) {
+    case 'cat':     return '猫';
+    case 'dog':     return '狗';
+    case 'rabbit':  return '兔子';
+    case 'hamster': return '仓鼠';
+    case 'bird':    return '鸟';
+    case 'fish':    return '鱼';
+    default:        return '宠物';
+  }
+}
+
+// ── 宠物列表为空占位符 ────────────────────────────────
+class _EmptyPets extends StatelessWidget {
+  final dynamic l10n;
+  const _EmptyPets({required this.l10n});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      alignment: Alignment.center,
+      child: Column(
+        children: [
+          Text('🐾', style: TextStyle(fontSize: 40)),
+          const SizedBox(height: 12),
+          Text('还没有宠物，快去添加第一只吧！',
+              style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                  color: AppColors.onSurfaceVariant)),
         ],
       ),
     );
@@ -208,61 +278,282 @@ class _StatCol extends StatelessWidget {
   }
 }
 
-class _PetCard extends StatelessWidget {
-  final String name, breed, type, statusLabel, emoji;
-  final Color typeColor, typeTextColor;
-  final bool statusOk;
+// ── 宠物卡片可滑动容器（PageView + 圆点指示）──────────────────
+class _PetPageView extends StatefulWidget {
+  final List pets;
+  final String Function(String) speciesLabel;
+  const _PetPageView({required this.pets, required this.speciesLabel});
 
-  const _PetCard({required this.name, required this.breed, required this.type,
-    required this.typeColor, required this.typeTextColor,
-    required this.statusLabel, required this.statusOk, required this.emoji});
+  @override
+  State<_PetPageView> createState() => _PetPageViewState();
+}
+
+class _PetPageViewState extends State<_PetPageView> {
+  int _page = 0;
+  late final PageController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = PageController(viewportFraction: 1.0);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest, borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 20, spreadRadius: -5, offset: const Offset(0, 4))],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 72, height: 72,
-            decoration: BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: BorderRadius.circular(16)),
-            child: Center(child: Text(emoji, style: const TextStyle(fontSize: 36))),
+    final pets = widget.pets;
+    return Column(
+      children: [
+        SizedBox(
+          height: 88,  // 紧凑高度
+          child: PageView.builder(
+            controller: _ctrl,
+            itemCount: pets.length,
+            onPageChanged: (i) => setState(() => _page = i),
+            itemBuilder: (_, i) {
+              final pet = pets[i] as dynamic;
+              return GestureDetector(
+                  onTap: () => Navigator.of(context).pushNamed('/pet-detail'),
+                  child: _PetCard(
+                    name:          pet.name as String,
+                    breed:         pet.breed as String,
+                    type:          widget.speciesLabel(pet.type as String),
+                    typeColor:     pet.type == 'cat'
+                        ? AppColors.secondaryContainer
+                        : AppColors.tertiaryContainer,
+                    typeTextColor: pet.type == 'cat'
+                        ? AppColors.onSecondaryContainer
+                        : AppColors.onTertiaryFixed,
+                    emoji:         pet.emoji as String,
+                    gender:        pet.gender as String,
+                    birthday:      pet.birthday as String,
+                  ),
+              );
+            },
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+        // 圆点指示（只有多宠物时显示）
+        if (pets.length > 1) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(pets.length, (i) => AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width:  i == _page ? 18 : 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: i == _page
+                    ? AppColors.primary
+                    : AppColors.onSurfaceVariant.withOpacity(0.25),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            )),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+
+// ── 宠物卡片（渐变设计）────────────────────────────────────
+class _PetCard extends StatelessWidget {
+  final String name, breed, type, emoji, gender, birthday;
+  final Color typeColor, typeTextColor;
+
+  const _PetCard({
+    required this.name,
+    required this.breed,
+    required this.type,
+    required this.typeColor,
+    required this.typeTextColor,
+    required this.emoji,
+    this.gender = '',
+    this.birthday = '',
+  });
+
+  // 物种对应渐变色
+  List<Color> get _gradients => type == '猫'
+      ? [const Color(0xFF6EC6F5), const Color(0xFF4A90D9)]
+      : [const Color(0xFFFFB347), const Color(0xFFE07B39)];
+
+  String _ageText() {
+    if (birthday.isEmpty) return '';
+    try {
+      final birth = DateTime.parse(birthday);
+      final now   = DateTime.now();
+      int age = now.year - birth.year;
+      if (now.month < birth.month ||
+          (now.month == birth.month && now.day < birth.day)) age--;
+      if (age <= 0) {
+        final months = (now.year - birth.year) * 12 + now.month - birth.month;
+        return months <= 0 ? '刚出生' : '$months个月';
+      }
+      return '$age岁';
+    } catch (_) { return ''; }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final age    = _ageText();
+    final isMale = gender == 'male';
+    final isFemale = gender == 'female';
+    final gLabel = isMale ? '♂ 公' : isFemale ? '♀ 母' : '';
+    final gColor = isMale ? const Color(0xFF1A6BB5) : const Color(0xFFB51A6B);
+    final gBg    = isMale ? const Color(0xFFDCEEFF) : const Color(0xFFFFDCEE);
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: _gradients,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _gradients.first.withOpacity(0.45),
+            blurRadius: 24, spreadRadius: -4, offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // ── 装饰圆圈（背景） ──────────────────────
+          Positioned(
+            right: -18, top: -18,
+            child: Container(
+              width: 100, height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.10),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 30, bottom: -30,
+            child: Container(
+              width: 80, height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.07),
+              ),
+            ),
+          ),
+
+          // ── 内容 ──────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+            child: Row(
               children: [
-                Row(
+                // 左：emoji + 光晕
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(name, style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 17,
-                        fontWeight: FontWeight.w800, color: AppColors.onSurface)),
-                    const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(color: typeColor, borderRadius: BorderRadius.circular(999)),
-                      child: Text(type, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 9,
-                          fontWeight: FontWeight.w900, letterSpacing: 0.8, color: typeTextColor)),
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.22),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withOpacity(0.30),
+                            blurRadius: 10, spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(emoji,
+                            style: const TextStyle(fontSize: 22)),
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(breed, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13, color: AppColors.onSurfaceVariant)),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(statusOk ? Icons.check_circle_rounded : Icons.warning_rounded,
-                        size: 14, color: statusOk ? AppColors.online : AppColors.error),
-                    const SizedBox(width: 5),
-                    Text(statusLabel,
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11,
-                            fontWeight: FontWeight.w700, letterSpacing: 0.5,
-                            color: statusOk ? AppColors.secondary : AppColors.error)),
-                  ],
+
+                const SizedBox(width: 16),
+
+                // 右：信息
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // 名字 + 性别
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontFamily: 'Plus Jakarta Sans',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                    letterSpacing: -0.3)),
+                          ),
+                          if (gLabel.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            Padding(
+                              padding: const EdgeInsets.only(right: 10),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 9, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: gBg,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(gLabel,
+                                    style: TextStyle(
+                                        fontFamily: 'Plus Jakarta Sans',
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: gColor)),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+
+                      // 品种
+                      if (breed.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(breed,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontFamily: 'Plus Jakarta Sans',
+                                fontSize: 12,
+                                color: Colors.white.withOpacity(0.80))),
+                      ],
+
+                      const SizedBox(height: 4),
+
+                      // 年龄 + 生日 chips（白底半透明）
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          if (age.isNotEmpty)
+                            _WhiteChip(
+                                icon: Icons.cake_rounded, label: age),
+                          if (birthday.isNotEmpty)
+                            _WhiteChip(
+                                icon: Icons.calendar_today_rounded,
+                                label: birthday.length >= 10
+                                    ? birthday.substring(0, 10)
+                                    : birthday),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -272,6 +563,35 @@ class _PetCard extends StatelessWidget {
     );
   }
 }
+
+// 白色半透明小 chip（用于渐变卡片上）
+class _WhiteChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _WhiteChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+    decoration: BoxDecoration(
+      color: Colors.white.withOpacity(0.25),
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 11, color: Colors.white),
+      const SizedBox(width: 4),
+      Text(label,
+          style: const TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Colors.white)),
+    ]),
+  );
+}
+
+
+
 
 class _MenuGroup extends StatelessWidget {
   final List<_MenuItemData> items;

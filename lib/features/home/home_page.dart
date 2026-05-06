@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../app.dart' show AppL10nX;
 import 'widgets/device_card.dart';
 import 'widgets/ai_translate_panel.dart';
 import 'widgets/ai_image_panel.dart';
 import 'widgets/no_device_banner.dart';
+import 'widgets/pet_mood_section.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -23,13 +26,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.surface,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: AppColors.secondaryContainer,
-        foregroundColor: AppColors.onSecondaryContainer,
-        elevation: 0,
-        child: const Icon(Icons.add_rounded, size: 28),
-      ),
       body: CustomScrollView(
         slivers: [
           // ── AppBar 固定顶部 ──────────────────────────
@@ -40,7 +36,12 @@ class _HomePageState extends ConsumerState<HomePage> {
             surfaceTintColor: Colors.transparent,
             elevation: 0,
             shadowColor: Colors.transparent,
+            automaticallyImplyLeading: false,
             title: const SizedBox.shrink(), // 隐藏标题
+            leading: Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: _ScanButton(),
+            ),
             actions: [
               Padding(
                 padding: const EdgeInsets.only(right: 16),
@@ -91,6 +92,11 @@ class _HomePageState extends ConsumerState<HomePage> {
 
                 // ── AI 图像情绪识别面板 ─────────────────
                 const AiImagePanel(),
+
+                const SizedBox(height: 28),
+
+                // ── 宠物情绪卡片 ────────────────────────
+                const PetMoodSection(),
 
                 const SizedBox(height: 28),
 
@@ -145,6 +151,22 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── 左上角扫描按钮 ────────────────────────────────────────
+class _ScanButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.qr_code_scanner_rounded),
+      color: AppColors.primary,
+      iconSize: 26,
+      onPressed: () {
+        HapticFeedback.mediumImpact();
+        context.push('/bind-device');
+      },
     );
   }
 }

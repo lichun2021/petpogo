@@ -15,6 +15,9 @@
 ///    ApiClient ← Repository ← Controller ← View
 /// ════════════════════════════════════════════════════════════
 
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,6 +27,10 @@ import 'api_exception.dart';
 class ApiClient {
   /// 底层 Dio 实例（私有，外部不可直接使用）
   late final Dio _dio;
+
+  /// JWT 过期(401)时的回调，由上层（AuthController）注入
+  /// 用于触发 forceLogout() 而不造成循环依赖
+  void Function()? onUnauthorized;
 
   /// 构造时可传入初始 Token（从 SecureStorage 读取的持久化 Token）
   ApiClient({String? token}) {
@@ -52,8 +59,8 @@ class ApiClient {
       _AuthInterceptor(token: token),
 
       // 2. 错误拦截器：把 DioException → ApiException
-      //    这是架构核心：上层代码不再需要了解 Dio 的异常类型
-      _ErrorInterceptor(),
+      //    401 时通过 onUnauthorized 回调通知 AuthController
+      _ErrorInterceptor(this),
 
       // 3. 日志拦截器：仅 Debug 模式开启，完整打印 进/出 参数
       if (AppConfig.isDebug) _DevLogInterceptor(),
@@ -155,6 +162,16 @@ class _AuthInterceptor extends Interceptor {
     if (token != null && token!.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
     }
+
+    // 如果是 /sdkapi/ 请求，添加签名
+    if (options.path.contains('/sdkapi/')) {
+      final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+      const appApiSecret = '1q21ee182efd1gf1g@#\$';
+      final signature = md5.convert(utf8.encode('$timestamp$appApiSecret')).toString();
+      options.headers['x-timestamp'] = timestamp;
+      options.headers['x-signature'] = signature;
+    }
+
     // 继续传递请求（必须调用，否则请求会被阻断）
     handler.next(options);
   }
@@ -231,7 +248,8 @@ class _DevLogInterceptor extends Interceptor {
 ///   badResponse 5xx                                  → ApiErrorType.server
 ///   其他                                             → ApiErrorType.unknown
 class _ErrorInterceptor extends Interceptor {
-  @override
+  final ApiClient _client;
+  _ErrorInterceptor(this._client);
   void onError(DioException err, ErrorInterceptorHandler handler) {
     ApiException apiEx;
 
@@ -261,12 +279,14 @@ class _ErrorInterceptor extends Interceptor {
         final serverMsg = _extractServerMessage(err.response?.data) ?? err.message ?? '';
 
         if (statusCode == 401) {
-          // 未授权：Token 过期或无效
+          // 未授权：Token 过期或无效 → 触发强制登出回调
           apiEx = ApiException(
             message: serverMsg,
             statusCode: statusCode,
             type: ApiErrorType.unauthorized,
           );
+          // 通知上层清除会话（避免直接引用 Riverpod）
+          Future.microtask(() => _client.onUnauthorized?.call());
         } else if (statusCode == 404) {
           // 资源不存在
           apiEx = ApiException(
@@ -329,15 +349,6 @@ class _ErrorInterceptor extends Interceptor {
 
 // ── Riverpod Provider ─────────────────────────────────────
 /// 全局唯一的 ApiClient Provider
-///
-/// 整个 App 共享同一个 Dio 实例（节省资源、保持 Token 一致）。
-/// Repository 通过 ref.read(apiClientProvider) 获取。
-///
-/// 生产环境接入：
-///   可以在这里从 FlutterSecureStorage 读取持久化 Token：
-///   final token = await ref.read(secureStorageProvider).read(key: 'token');
-///   return ApiClient(token: token);
 final apiClientProvider = Provider<ApiClient>((ref) {
-  // TODO: 接入真实 Token 时，从 SecureStorage 读取
   return ApiClient();
 });

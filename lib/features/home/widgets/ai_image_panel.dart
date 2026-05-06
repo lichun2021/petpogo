@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../data/models/ai_image_model.dart';
+import '../data/ai_image_result_provider.dart';
 import '../data/repository/ai_image_repository.dart';
 
 /// AI 宠物图像情绪识别面板
@@ -98,7 +99,11 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel>
     final result = await repo.analyze(_imageFile!);
 
     result.when(
-      success: (r) => setState(() { _result = r; _phase = _Phase.result; }),
+      success: (r) {
+        setState(() { _result = r; _phase = _Phase.result; });
+        // 写入全局 provider，PetMoodSection 可直接读取
+        ref.read(aiImageResultProvider.notifier).setResult(r);
+      },
       failure: (e) => setState(() { _errorMessage = e.message; _phase = _Phase.error; }),
     );
   }

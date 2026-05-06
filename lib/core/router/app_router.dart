@@ -18,6 +18,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'app_routes.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../features/auth/controller/auth_controller.dart';
 
 // ── 页面导入 ──────────────────────────────────────────────
 // 所有页面集中在这里导入，app.dart 不再需要导入各页面
@@ -36,7 +38,15 @@ import '../../features/auth/login_page.dart';
 import '../../features/message/chat_page.dart';
 import '../../features/shell/main_shell.dart';
 
-import 'package:flutter/foundation.dart';
+// ── 路由实例和内部 ProviderContainer 用于守卫读取状态 ──────
+// 为什么用 ProviderContainer：GoRouter 是顶层变量（非 Widget），
+// 无法直接从建构函数访问 Riverpod。
+// ProviderContainer 兑掰对应的容器即可读取最新状态。
+late ProviderContainer _container;
+
+void initAppRouter(ProviderContainer container) {
+  _container = container;
+}
 
 /// 全局唯一的路由实例
 ///
@@ -52,19 +62,24 @@ final appRouter = GoRouter(
   // 页面跳转日志（开发阶段）
   observers: [_NavLogger()],
 
-  // ── 路由守卫（预留，接入登录功能时取消注释）────────────────
-  // redirect: (context, state) {
-  //   final isLoggedIn = ref.read(authProvider).isLoggedIn;
-  //   // 未登录且不是在登录页 → 跳到登录页
-  //   if (!isLoggedIn && state.matchedLocation != AppRoutes.login) {
-  //     return AppRoutes.login;
-  //   }
-  //   // 已登录且在登录页 → 跳到首页
-  //   if (isLoggedIn && state.matchedLocation == AppRoutes.login) {
-  //     return AppRoutes.home;
-  //   }
-  //   return null; // 不拦截
-  // },
+  // ── 路由守卫：强制登录 ────────────────────────────────────
+  redirect: (context, state) {
+    final auth = _container.read(authControllerProvider);
+    final location = state.matchedLocation;
+
+    // 冷启动会话恢复中 → 保持当前位置，等状态确定后守卫会再次触发
+    if (auth.isRestoring) return null;
+
+    final isOnLogin = location == AppRoutes.login;
+
+    // 未登录 且 不在登录页 → 强制跳到登录页
+    if (auth.isGuest && !isOnLogin) return AppRoutes.login;
+
+    // 已登录 且 在登录页 → 跳回首页
+    if (auth.isLoggedIn && isOnLogin) return AppRoutes.home;
+
+    return null; // 不拦截
+  },
 
   routes: [
     // ══════════════════════════════════════════════════════

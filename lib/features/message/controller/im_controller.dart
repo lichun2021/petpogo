@@ -16,8 +16,10 @@ import 'package:tencent_cloud_chat_sdk/models/v2_tim_conversation.dart';
 import 'package:tencent_cloud_chat_sdk/models/v2_tim_friend_application.dart';
 import 'package:tencent_cloud_chat_sdk/enum/V2TimConversationListener.dart';
 import 'package:tencent_cloud_chat_sdk/enum/V2TimFriendshipListener.dart';
+import 'package:tencent_cloud_chat_sdk/enum/V2TimSDKListener.dart';
 import '../data/repository/im_repository.dart';
 import '../data/debug_user_sig.dart';
+import '../../auth/controller/auth_controller.dart';
 
 // ── 状态类 ────────────────────────────────────────────────
 class ImState {
@@ -70,6 +72,7 @@ class ImState {
 // ── Controller ────────────────────────────────────────────
 class ImController extends StateNotifier<ImState> {
   final ImRepository _repo;
+  final Ref _ref;
 
   /// 会话列表变化监听器（会话页进入时注册，离开时注销）
   V2TimConversationListener? _conversationListener;
@@ -77,7 +80,7 @@ class ImController extends StateNotifier<ImState> {
   /// 好友申请变化监听器
   V2TimFriendshipListener? _friendListener;
 
-  ImController(this._repo) : super(const ImState());
+  ImController(this._repo, this._ref) : super(const ImState());
 
   // ── IM 登录 ──────────────────────────────────────────────
   /// 在用户 PetPogo 登录成功后调用
@@ -114,6 +117,29 @@ class ImController extends StateNotifier<ImState> {
         state = state.copyWith(errorMessage: err.userMessage);
       },
     );
+
+    // 注册 UserSig 过期回调（SDK 级联）
+    TencentImSDKPlugin.v2TIMManager.addIMSDKListener(V2TimSDKListener(
+      onUserSigExpired: () async {
+        debugPrint('[ImCtrl] IM UserSig 已过期，开始静默刷新...');
+        final newSig = await _ref
+            .read(authControllerProvider.notifier)
+            .refreshImUserSig();
+        if (newSig != null && newSig.isNotEmpty) {
+          debugPrint('[ImCtrl] UserSig 已刷新，重新登录 IM...');
+          await loginIm(userId: userId, userSig: newSig);
+        } else {
+          debugPrint('[ImCtrl] ⚠️ UserSig 刷新失败，需要用户重新登录');
+        }
+      },
+      onKickedOffline: () {
+        debugPrint('[ImCtrl] ⚠️ 账号在其他设备登录，已下线');
+        state = state.copyWith(
+          isLoggedIn: false,
+          errorMessage: '账号在其他设备登录，已被踢下线',
+        );
+      },
+    ));
   }
 
   // ── 会话列表 ─────────────────────────────────────────────
@@ -266,5 +292,5 @@ class ImController extends StateNotifier<ImState> {
 // ── Provider ─────────────────────────────────────────────
 final imControllerProvider =
     StateNotifierProvider<ImController, ImState>((ref) {
-  return ImController(ref.watch(imRepositoryProvider));
+  return ImController(ref.watch(imRepositoryProvider), ref);
 });

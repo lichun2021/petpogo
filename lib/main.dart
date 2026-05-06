@@ -4,6 +4,8 @@ import 'package:tencent_cloud_chat_sdk/tencent_im_sdk_plugin.dart';
 import 'package:tencent_cloud_chat_sdk/enum/V2TimSDKListener.dart';
 import 'package:tencent_cloud_chat_sdk/enum/log_level_enum.dart';
 import 'core/config/app_config.dart';
+import 'core/router/app_router.dart';
+import 'features/auth/controller/auth_controller.dart';
 import 'app.dart';
 
 void main() async {
@@ -24,5 +26,28 @@ void main() async {
   );
   debugPrint('[TIM] SDK 初始化完成 (SDKAppID: ${AppConfig.timSdkAppId})');
 
-  runApp(const ProviderScope(child: PetPogoApp()));
+  // ── 创建全局 ProviderContainer，注入给路由守卫 ─────────────
+  // GoRouter 是顶层变量（非 Widget），需要通过 ProviderContainer 读取 Riverpod 状态
+  final container = ProviderContainer();
+  initAppRouter(container);
+
+  // 监听 AuthState 变化 → 通知 GoRouter 重新执行 redirect（刷新守卫）
+  container.listen<AuthState>(
+    authControllerProvider,
+    (previous, next) {
+      // restoring → guest 或 loggedIn 时刷新路由
+      if (previous?.status != next.status) {
+        debugPrint('[Router] Auth 状态变化: ${previous?.status} → ${next.status}，刷新路由守卫');
+        appRouter.refresh();
+      }
+    },
+  );
+
+  runApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: const PetPogoApp(),
+    ),
+  );
 }
+

@@ -8,7 +8,7 @@ class AppConfig {
   // ──────────────────────────────────────────────
   // 业务后端（uCloudlink）
   // ──────────────────────────────────────────────
-  static const String baseUrl        = 'https://api.ucloudlink.com/';
+  static const String baseUrl        = 'http://115.29.196.61:3000';
   static const String baseUrlCn      = 'https://saas.ucloudlink.cn/';
 
   // ──────────────────────────────────────────────

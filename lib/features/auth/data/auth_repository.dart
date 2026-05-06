@@ -1,16 +1,19 @@
 /// ════════════════════════════════════════════════════════════
 ///  认证 Repository — 纯业务层
 ///
-///  职责：
-///    ✅ 调用登录接口，解析响应
-///    ✅ 把 Token 持久化到 SecureStorage
-///    ✅ 启动时从 SecureStorage 恢复 Token（自动登录）
-///    ✅ 退出登录时清除本地数据
-///    ❌ 不包含 UI 逻辑（由 Controller 负责）
-///    ❌ 不知道路由（路由在 Controller 或 View 里处理）
+///  会话有效期（由服务端驱动，App 侧被动响应）：
 ///
-///  上下游关系：
-///    AuthRepository ← AuthController ← LoginPage / ProfilePage
+///  JWT Token (30天)：
+///    - 本地永久保存，无需本地计时
+///    - 服务端过期返回 401 → _ErrorInterceptor 捕获 → 清 Token
+///      → AuthController 切换到 guest 状态 → UI 引导重新登录
+///
+///  IM UserSig (6天 Redis缓存)：
+///    - 本地永久保存，无需本地计时
+///    - 腾讯 IM SDK 触发 onUserSigExpired 回调
+///      → ImController 调用 refreshImUserSig()
+///      → GET /sdkapi/im/sign 获取新的 UserSig → 重新 IM 登录
+///      → 不需要用户重新输入验证码
 /// ════════════════════════════════════════════════════════════
 
 import 'package:dio/dio.dart';
@@ -20,20 +23,16 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_exception.dart';
 import '../../../../core/api/result.dart';
-import '../../../../core/config/app_config.dart';
 import 'models/auth_model.dart';
 
-// ── Storage 键名常量（统一管理，防止拼写错误）──────────────────
+// ── Storage 键名常量 ─────────────────────────────────────────
 const _kToken      = 'auth_token';
-const _kAccount    = 'auth_account';
-const _kName       = 'auth_name';
+const _kId         = 'auth_id';
+const _kAccount    = 'auth_account';    // phone
+const _kName       = 'auth_name';       // nickname
+const _kAvatar     = 'auth_avatar';
 const _kMerchantId = 'auth_merchant_id';
-
-/// 登录接口完整 URL
-///
-/// 根地址统一从 [AppConfig.authServiceBase] 读取，不在此处硬编码。
-/// 修改服务器地址请前往 [AppConfig]。
-final _loginUrl = '${AppConfig.authServiceBase}/admin/sys/index/login';
+const _kImUserSig  = 'auth_im_user_sig';
 
 class AuthRepository {
   final ApiClient _client;
@@ -41,80 +40,55 @@ class AuthRepository {
 
   AuthRepository(this._client, this._storage);
 
-  // ── 登录 ────────────────────────────────────────────────
-  /// 调用登录接口，返回 Result<UserInfo>
-  ///
-  /// 成功后自动：
-  ///   1. 把 token 注入 ApiClient（后续请求自动携带）
-  ///   2. 持久化 UserInfo 到 SecureStorage（下次启动自动恢复）
+  // ── 发送短信验证码 ────────────────────────────────────────
+  Future<Result<bool>> sendSms(String phone) async {
+    try {
+      await _client.post('/sdkapi/auth/sms', data: {'phone': phone});
+      return const Success(true);
+    } on DioException catch (e) {
+      final ex = e.error is ApiException
+          ? e.error as ApiException
+          : ApiException(message: e.message ?? '网络错误');
+      return Failure(ex);
+    } catch (e) {
+      return Failure(ApiException(message: '发送失败，请重试'));
+    }
+  }
+
+  // ── 短信验证码登录（不存在则自动注册）───────────────────────
+  Future<Result<UserInfo>> loginWithSms({
+    required String phone,
+    required String code,
+  }) async {
+    return _doLogin('/sdkapi/auth/login', {'phone': phone, 'code': code});
+  }
+
+  // ── 密码登录 ─────────────────────────────────────────────
+  Future<Result<UserInfo>> loginWithPwd({
+    required String phone,
+    required String password,
+  }) async {
+    return _doLogin('/sdkapi/auth/login-pwd', {'phone': phone, 'password': password});
+  }
+
+  // legacy compatibility
   Future<Result<UserInfo>> login({
     required String account,
     required String password,
   }) async {
+    return loginWithPwd(phone: account, password: password);
+  }
+
+  Future<Result<UserInfo>> _doLogin(String path, Map<String, dynamic> data) async {
     try {
-      // 登录接口用独立 Dio（BaseURL 不同，且不需要 Auth Token）
-      final dio = Dio(BaseOptions(
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 15),
-      ));
-
-      // 开发阶段：完整打印 进/出 参数
-      if (kDebugMode) {
-        dio.interceptors.add(InterceptorsWrapper(
-          onRequest: (options, handler) {
-            debugPrint('\n┌─── [登录 API 请求] ──────────────────────────');
-            debugPrint('│ ${options.method} ${options.uri}');
-            debugPrint('│ Body: ${options.data}');
-            debugPrint('└─────────────────────────────────────────────');
-            handler.next(options);
-          },
-          onResponse: (response, handler) {
-            debugPrint('\n┌─── [登录 API 响应] ──────────────────────────');
-            debugPrint('│ ${response.statusCode} ${response.requestOptions.uri}');
-            debugPrint('│ Body: ${response.data}');
-            debugPrint('└─────────────────────────────────────────────');
-            handler.next(response);
-          },
-          onError: (err, handler) {
-            debugPrint('\n┌─── [登录 API 错误] ──────────────────────────');
-            debugPrint('│ ${err.requestOptions.method} ${err.requestOptions.uri}');
-            debugPrint('│ Status: ${err.response?.statusCode}');
-            debugPrint('│ Body: ${err.response?.data}');
-            debugPrint('│ Msg: ${err.message}');
-            debugPrint('└─────────────────────────────────────────────');
-            handler.next(err);
-          },
-        ));
-      }
-
-      final res = await dio.post(
-        _loginUrl,
-        data: FormData.fromMap({
-          'account':  account,
-          'password': password,
-        }),
-      );
-
-      final body = res.data as Map<String, dynamic>;
-      debugPrint('[AuthRepo] ← code=${body['code']} msg=${body['msg']}');
-
-      // 服务端 code != 0 表示业务错误（如密码错误）
-      if (body['code'] != 0) {
-        return Failure(ApiException(
-          message: (body['msg'] as String?) ?? '登录失败',
-        ));
-      }
-
-      final loginResp = LoginResponse.fromJson(body);
+      final res = await _client.post<Map<String, dynamic>>(path, data: data);
+      final loginResp = LoginResponse.fromJson(res);
       final user = UserInfo.fromLoginResponse(loginResp);
 
-      // ① 注入 token 到 ApiClient（后续所有请求自动携带）
       _client.setToken(user.token);
-
-      // ② 持久化到安全存储
       await _persist(user);
 
-      debugPrint('[AuthRepo] ✅ 登录成功: ${user.name} (${user.account})');
+      debugPrint('[AuthRepo] ✅ 登录成功: ${user.name} (id=${user.id})');
       return Success(user);
     } on DioException catch (e) {
       final ex = e.error is ApiException
@@ -128,10 +102,38 @@ class AuthRepository {
     }
   }
 
-  // ── 启动恢复（自动登录）───────────────────────────────────
-  /// App 启动时从 SecureStorage 读取已保存的 UserInfo
+  // ── 刷新 IM UserSig（UserSig 过期时调用，无需重新登录）──────
+  /// 调用 GET /sdkapi/im/sign 获取新的 UserSig
+  /// 成功后更新本地存储，返回新的 UserSig 字符串
+  Future<Result<String>> refreshImUserSig() async {
+    try {
+      final res = await _client.get<Map<String, dynamic>>('/sdkapi/im/sign');
+      final newSig = (res['userSig'] as String?) ?? '';
+      if (newSig.isEmpty) {
+        return Failure(ApiException(message: '获取 UserSig 失败'));
+      }
+      // 更新本地存储
+      await _storage.write(key: _kImUserSig, value: newSig);
+      debugPrint('[AuthRepo] ✅ IM UserSig 已刷新');
+      return Success(newSig);
+    } on DioException catch (e) {
+      final ex = e.error is ApiException
+          ? e.error as ApiException
+          : ApiException(message: e.message ?? '网络错误');
+      debugPrint('[AuthRepo] ✗ 刷新 UserSig 失败: ${ex.message}');
+      return Failure(ex);
+    } catch (e) {
+      return Failure(ApiException(message: '刷新 UserSig 失败'));
+    }
+  }
+
+  // ── 启动恢复（App 冷启动自动登录）────────────────────────
+  /// 从 SecureStorage 读取已保存的 UserInfo
+  /// 返回 null → 从未登录过，进入游客模式
   ///
-  /// 返回 null 表示未登录（游客状态）
+  /// 注意：不做本地过期校验
+  ///   - JWT 过期由服务端 401 → _ErrorInterceptor → 清 Token 通知上层
+  ///   - UserSig 过期由 IM SDK 回调 → refreshImUserSig()
   Future<UserInfo?> restoreSession() async {
     final token = await _storage.read(key: _kToken);
     if (token == null || token.isEmpty) {
@@ -141,33 +143,54 @@ class AuthRepository {
 
     final user = UserInfo.fromStorageMap({
       'token':      token,
+      'id':         await _storage.read(key: _kId),
       'account':    await _storage.read(key: _kAccount),
       'name':       await _storage.read(key: _kName),
+      'avatar':     await _storage.read(key: _kAvatar),
       'merchantId': await _storage.read(key: _kMerchantId),
+      'imUserSig':  await _storage.read(key: _kImUserSig),
     });
 
-    // 恢复 token 到 ApiClient
     _client.setToken(user.token);
-    debugPrint('[AuthRepo] ✅ 会话恢复: ${user.name}');
+    debugPrint('[AuthRepo] ✅ 会话恢复: ${user.name} (id=${user.id})');
     return user;
   }
 
   // ── 退出登录 ────────────────────────────────────────────
-  /// 清除本地 Token + ApiClient Token
   Future<void> logout() async {
     await _storage.deleteAll();
     _client.clearToken();
     debugPrint('[AuthRepo] 已退出登录，Token 已清除');
   }
 
+  // ── 获取最新用户资料（改昵称后刷新）──────────────────────
+  Future<UserInfo?> fetchProfile() async {
+    try {
+      final res = await _client.get<Map<String, dynamic>>('/sdkapi/user/profile');
+      final current = await restoreSession();
+      if (current == null) return null;
+      final updated = current.copyWith(
+        name:   (res['nickname'] as String?) ?? current.name,
+        avatar: (res['avatar']   as String?) ?? current.avatar,
+      );
+      await _storage.write(key: _kName,   value: updated.name);
+      await _storage.write(key: _kAvatar, value: updated.avatar);
+      return updated;
+    } catch (_) { return null; }
+  }
+
   // ── 私有：持久化 ─────────────────────────────────────────
   Future<void> _persist(UserInfo user) async {
     await Future.wait([
       _storage.write(key: _kToken,      value: user.token),
+      _storage.write(key: _kId,         value: user.id),
       _storage.write(key: _kAccount,    value: user.account),
       _storage.write(key: _kName,       value: user.name),
+      _storage.write(key: _kAvatar,     value: user.avatar),
       _storage.write(key: _kMerchantId, value: user.merchantId.toString()),
+      _storage.write(key: _kImUserSig,  value: user.imUserSig),
     ]);
+    debugPrint('[AuthRepo] 会话已持久化');
   }
 }
 

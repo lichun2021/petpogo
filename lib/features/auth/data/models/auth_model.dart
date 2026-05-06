@@ -19,29 +19,34 @@
 
 class LoginResponse {
   final String token;
-  final String account;
-  final String name;
-  final int    merchantId;
-  /// 腾讯 IM UserSig — 后端用 SecretKey 生成，客户端直接用于 IM 登录
-  /// 若后端暂未返回此字段则为空字符串，IM 登录将跳过
+  final String phone;
+  final String nickname;
+  final String id;
+  final String avatar;
   final String imUserSig;
+  final String imUserId;
 
   const LoginResponse({
     required this.token,
-    required this.account,
-    required this.name,
-    required this.merchantId,
+    required this.phone,
+    required this.nickname,
+    required this.id,
+    this.avatar = '',
     this.imUserSig = '',
+    this.imUserId = '',
   });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
-    final info = json['info'] as Map<String, dynamic>;
+    final user = json['user'] as Map<String, dynamic>? ?? {};
+    final im = json['im'] as Map<String, dynamic>? ?? {};
     return LoginResponse(
-      token:      (info['token']      as String?) ?? '',
-      account:    (info['account']    as String?) ?? '',
-      name:       (info['name']       as String?) ?? '',
-      merchantId: (info['merchantId'] as num?)?.toInt() ?? 0,
-      imUserSig:  (info['imUserSig']  as String?) ?? '', // 后端暂未返回时为空
+      token:     (json['token'] as String?) ?? '',
+      phone:     (user['phone'] as String?) ?? '',
+      nickname:  (user['nickname'] as String?) ?? '',
+      id:        (user['id'] as String?) ?? '',
+      avatar:    (user['avatar'] as String?) ?? '',
+      imUserSig: (im['userSig'] as String?) ?? '',
+      imUserId:  (im['userId'] as String?) ?? '',
     );
   }
 }
@@ -49,10 +54,11 @@ class LoginResponse {
 /// 用户信息（登录成功后持久化到本地）
 class UserInfo {
   final String token;
-  final String account;
-  final String name;
-  final int    merchantId;
-  /// 腾讯 IM UserSig（随登录响应获取，持久化用于 App 重启后恢复 IM 会话）
+  final String account; // mapped to phone
+  final String name; // mapped to nickname
+  final int    merchantId; // mapped to id parsed as int or just handle string
+  final String id; // string id
+  final String avatar;
   final String imUserSig;
 
   const UserInfo({
@@ -60,14 +66,18 @@ class UserInfo {
     required this.account,
     required this.name,
     required this.merchantId,
+    required this.id,
+    this.avatar = '',
     this.imUserSig = '',
   });
 
   factory UserInfo.fromLoginResponse(LoginResponse res) => UserInfo(
     token:      res.token,
-    account:    res.account,
-    name:       res.name,
-    merchantId: res.merchantId,
+    account:    res.phone,
+    name:       res.nickname,
+    merchantId: int.tryParse(res.id) ?? 0,
+    id:         res.id,
+    avatar:     res.avatar,
     imUserSig:  res.imUserSig,
   );
 
@@ -77,6 +87,8 @@ class UserInfo {
     'account':    account,
     'name':       name,
     'merchantId': merchantId.toString(),
+    'id':         id,
+    'avatar':     avatar,
     'imUserSig':  imUserSig,
   };
 
@@ -86,9 +98,26 @@ class UserInfo {
     account:    map['account']    ?? '',
     name:       map['name']       ?? '',
     merchantId: int.tryParse(map['merchantId'] ?? '0') ?? 0,
+    id:         map['id']         ?? '',
+    avatar:     map['avatar']     ?? '',
     imUserSig:  map['imUserSig']  ?? '',
   );
 
-  /// 用于 IM 的 userID（使用 merchantId 转字符串，全平台唯一）
-  String get imUserId => merchantId.toString();
+  /// 用于 IM 的 userID
+  String get imUserId => id.isNotEmpty ? id : merchantId.toString();
+
+  UserInfo copyWith({
+    String? name,
+    String? avatar,
+    String? token,
+    String? imUserSig,
+  }) => UserInfo(
+    token:      token      ?? this.token,
+    account:    account,
+    name:       name       ?? this.name,
+    merchantId: merchantId,
+    id:         id,
+    avatar:     avatar     ?? this.avatar,
+    imUserSig:  imUserSig  ?? this.imUserSig,
+  );
 }
