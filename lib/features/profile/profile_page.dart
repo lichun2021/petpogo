@@ -1,10 +1,14 @@
+import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../app.dart' show AppL10nX;
 import '../auth/controller/auth_controller.dart';
 import '../auth/data/models/auth_model.dart';
+import '../community/data/post_repository.dart';
 import '../pet/controller/pet_controller.dart';
 import 'data/user_stats_provider.dart';
 import '../../core/router/app_routes.dart';
@@ -139,14 +143,109 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 }
 
-class _UserInfoCard extends StatelessWidget {
+class _UserInfoCard extends ConsumerStatefulWidget {
   final dynamic l10n;
   final UserInfo? user;
-  final dynamic stats; // UserStats?
+  final dynamic stats;
   const _UserInfoCard({required this.l10n, required this.user, this.stats});
 
   @override
+  ConsumerState<_UserInfoCard> createState() => _UserInfoCardState();
+}
+
+class _UserInfoCardState extends ConsumerState<_UserInfoCard> {
+  bool _uploadingAvatar = false;
+
+  Future<void> _pickAndUploadAvatar() async {
+    // 弹出选择来源的底部菜单
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const SizedBox(height: 8),
+          Container(width: 36, height: 4,
+            decoration: BoxDecoration(color: AppColors.onSurfaceVariant.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 16),
+          Text('更换头像', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+          const SizedBox(height: 8),
+          _AvatarSourceTile(
+            icon: Icons.camera_alt_rounded,
+            label: '拍照',
+            onTap: () => Navigator.pop(context, ImageSource.camera),
+          ),
+          _AvatarSourceTile(
+            icon: Icons.photo_library_rounded,
+            label: '从相册选择',
+            onTap: () => Navigator.pop(context, ImageSource.gallery),
+          ),
+          const SizedBox(height: 8),
+          Divider(color: AppColors.onSurfaceVariant.withOpacity(0.1), height: 1),
+          _AvatarSourceTile(
+            icon: Icons.close_rounded,
+            label: '取消',
+            iconColor: AppColors.onSurfaceVariant,
+            textColor: AppColors.onSurfaceVariant,
+            onTap: () => Navigator.pop(context),
+          ),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+
+    if (source == null || !mounted) return;
+
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: source,
+      imageQuality: 85,
+      maxWidth: 512,
+      maxHeight: 512,
+      preferredCameraDevice: CameraDevice.front, // 默认前置（自拍）
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() => _uploadingAvatar = true);
+    try {
+      final file = File(picked.path);
+      final repo = ref.read(postRepositoryProvider);
+      final sign = await repo.getOssSign(fileType: 'image', folder: 'avatars');
+      await repo.uploadToOss(uploadUrl: sign.uploadUrl, file: file, contentType: 'image/jpeg');
+      final ok = await ref.read(authControllerProvider.notifier).updateAvatar(sign.cdnUrl);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(ok ? '头像更新成功 🎉' : '头像更新失败，请重试'),
+          backgroundColor: ok ? AppColors.primary : AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('上传失败：$e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final l10n      = widget.l10n;
+    final user      = widget.user;
+    final stats     = widget.stats;
     final nickname    = user?.name.isNotEmpty == true ? user!.name : '宠友';
     final phone       = user?.account ?? '';
     final maskedPhone = phone.length == 11
@@ -154,7 +253,6 @@ class _UserInfoCard extends StatelessWidget {
         : phone;
     final avatarUrl   = user?.avatar ?? '';
 
-    // 统计数字
     final postStr     = stats != null ? '${stats.postCount}'     : '0';
     final followerStr = stats != null ? '${stats.followerCount}' : '0';
     final likeStr     = stats != null ? '${stats.likeCount}'     : '0';
@@ -168,21 +266,45 @@ class _UserInfoCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // ── 头像 ───────────────────────────────────────────
-          Container(
-            width: 80, height: 80,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.surfaceContainerHigh,
-              border: Border.all(color: Colors.white, width: 3),
-              boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12)],
-            ),
-            child: ClipOval(
-              child: avatarUrl.isNotEmpty
-                  ? Image.network(avatarUrl, fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          const Center(child: Text('🧑', style: TextStyle(fontSize: 38))))
-                  : const Center(child: Text('🧑', style: TextStyle(fontSize: 38))),
+          // ── 头像（可点击上传）───────────────────────────────
+          GestureDetector(
+            onTap: _uploadingAvatar ? null : _pickAndUploadAvatar,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 80, height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.surfaceContainerHigh,
+                    border: Border.all(color: Colors.white, width: 3),
+                    boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12)],
+                  ),
+                  child: ClipOval(
+                    child: _uploadingAvatar
+                        ? const Center(child: CircularProgressIndicator(strokeWidth: 2.5))
+                        : avatarUrl.isNotEmpty
+                            ? CachedNetworkImage(imageUrl: avatarUrl, fit: BoxFit.cover,
+                                errorWidget: (_, __, ___) =>
+                                    const Center(child: Text('🧑', style: TextStyle(fontSize: 38))))
+                            : const Center(child: Text('🧑', style: TextStyle(fontSize: 38))),
+                  ),
+                ),
+                // 相机图标覆盖
+                if (!_uploadingAvatar)
+                  Positioned(
+                    bottom: 2, right: 2,
+                    child: Container(
+                      width: 24, height: 24,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: const Icon(Icons.camera_alt_rounded, size: 12, color: Colors.white),
+                    ),
+                  ),
+              ],
             ),
           ),
 
@@ -658,6 +780,51 @@ class _MenuItemRow extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── 头像来源选项行 ─────────────────────────────────────────────
+class _AvatarSourceTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color? iconColor;
+  final Color? textColor;
+
+  const _AvatarSourceTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.iconColor,
+    this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Row(children: [
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: (iconColor ?? AppColors.primary).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, size: 22, color: iconColor ?? AppColors.primary),
+          ),
+          const SizedBox(width: 16),
+          Text(label, style: TextStyle(
+            fontFamily: 'Plus Jakarta Sans',
+            fontSize: 15, fontWeight: FontWeight.w600,
+            color: textColor ?? AppColors.onSurface,
+          )),
+        ]),
+      ),
+    ),
+  );
 }
 
 class _GuestProfileView extends StatelessWidget {

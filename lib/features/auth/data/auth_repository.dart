@@ -179,6 +179,22 @@ class AuthRepository {
     } catch (_) { return null; }
   }
 
+  // ── 更新头像 ─────────────────────────────────────────────
+  Future<bool> updateAvatar(String avatarUrl) async {
+    try {
+      await _client.put<Map<String, dynamic>>(
+        '/sdkapi/user/profile',
+        data: {'avatar': avatarUrl},
+      );
+      await _storage.write(key: _kAvatar, value: avatarUrl);
+      debugPrint('[AuthRepo] ✅ 头像已更新: $avatarUrl');
+      return true;
+    } catch (e) {
+      debugPrint('[AuthRepo] ✗ 更新头像失败: $e');
+      return false;
+    }
+  }
+
   // ── 私有：持久化 ─────────────────────────────────────────
   Future<void> _persist(UserInfo user) async {
     await Future.wait([

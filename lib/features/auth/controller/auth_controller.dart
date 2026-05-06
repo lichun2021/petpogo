@@ -202,6 +202,16 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  // ── 更新头像（上传 OSS 后调用）────────────────────────
+  Future<bool> updateAvatar(String avatarUrl) async {
+    final ok = await _repo.updateAvatar(avatarUrl);
+    if (ok && state.user != null) {
+      state = state.copyWith(user: state.user!.copyWith(avatar: avatarUrl));
+      debugPrint('[AuthCtrl] 头像 state 已更新: $avatarUrl');
+    }
+    return ok;
+  }
+
   // ── 登录后触发数据加载 ─────────────────────────────────
   /// 登录成功 / 会话恢复后，并行加载用户相关数据
   void _loadUserData() {
