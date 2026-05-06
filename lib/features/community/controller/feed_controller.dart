@@ -11,6 +11,7 @@ class FeedState {
   final bool hasMore;
   final String? error;
   final int page;
+  final int refreshCount;   // 每次刷新加 1，供 UI 重置动画 key
 
   const FeedState({
     this.posts = const [],
@@ -19,6 +20,7 @@ class FeedState {
     this.hasMore = true,
     this.error,
     this.page = 1,
+    this.refreshCount = 0,
   });
 
   FeedState copyWith({
@@ -28,6 +30,7 @@ class FeedState {
     bool? hasMore,
     String? error,
     int? page,
+    int? refreshCount,
   }) => FeedState(
     posts:         posts         ?? this.posts,
     isLoading:     isLoading     ?? this.isLoading,
@@ -35,6 +38,7 @@ class FeedState {
     hasMore:       hasMore       ?? this.hasMore,
     error:         error,
     page:          page          ?? this.page,
+    refreshCount:  refreshCount  ?? this.refreshCount,
   );
 }
 
@@ -82,7 +86,12 @@ class FeedController extends StateNotifier<FeedState> {
     }
   }
 
-  Future<void> refresh() => loadFeed();
+  Future<void> refresh() async {
+    final nextCount = state.refreshCount + 1;
+    await loadFeed();
+    // loadFeed 完成后更新 refreshCount，触发卡片入场动画
+    state = state.copyWith(refreshCount: nextCount);
+  }
 
   // ── 点赞（乐观更新）────────────────────────────────────
   Future<void> toggleLike(String postId) async {

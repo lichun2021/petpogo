@@ -57,16 +57,17 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
     );
   }
 
-  // ── 点击帖子 → 全屏查看 ─────────────────────────────────
+  // ── 点击帖子 → 真正全屏查看（覆盖底部导航栏） ──────────────────
   void _openViewer(int index) {
     final posts = ref.read(feedControllerProvider).posts;
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => PostViewerPage(posts: posts, initialIndex: index),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-        transitionDuration: const Duration(milliseconds: 250),
-      ),
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black,
+      transitionDuration: const Duration(milliseconds: 220),
+      transitionBuilder: (_, anim, __, child) =>
+          FadeTransition(opacity: anim, child: child),
+      pageBuilder: (_, __, ___) => PostViewerPage(posts: posts, initialIndex: index),
     );
   }
 
@@ -95,8 +96,14 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        backgroundColor: Colors.white,
+        strokeWidth: 2.5,
+        displacement: 60,
+        onRefresh: () => ref.read(feedControllerProvider.notifier).refresh(),
+        child: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
             pinned: true,
             floating: false,
@@ -174,6 +181,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
           controller: _tabController,
           children: [_buildFeedGrid(), _buildFeedGrid()],
         ),
+        ),
       ),
     );
   }
@@ -209,15 +217,14 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
       );
     }
 
-    return RefreshIndicator(
-      color: AppColors.primary,
-      onRefresh: () => ref.read(feedControllerProvider.notifier).refresh(),
-      child: CustomScrollView(
-        controller: _scrollCtrl,
-        slivers: [
+    return CustomScrollView(
+      controller: _scrollCtrl,
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
             sliver: SliverMasonryGrid.count(
+              key: ValueKey(feedState.refreshCount),  // 刷新时重建 Grid，重播入场动画
               crossAxisCount: 2,
               mainAxisSpacing: 10,
               crossAxisSpacing: 10,
@@ -246,7 +253,6 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                       ),
           ),
         ],
-      ),
     );
   }
 }

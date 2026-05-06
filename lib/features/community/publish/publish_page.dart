@@ -104,8 +104,11 @@ class _PublishPageState extends ConsumerState<PublishPage>
   Future<void> _publish() async {
     final text = _textCtrl.text.trim();
     final pub = ref.read(publishControllerProvider);
-    if (text.isEmpty && !pub.selectedMediaType.hasMedia) {
-      _showToast('请添加内容或媒体', isError: true);
+    final hasMedia = pub.selectedMediaType.hasMedia;
+
+    // 无媒体 + 无文字 → 拦截
+    if (!hasMedia && text.isEmpty) {
+      _showToast('请输入文字或添加图片/视频', isError: true);
       return;
     }
     FocusScope.of(context).unfocus();

@@ -74,7 +74,7 @@ class _PostViewerPageState extends ConsumerState<PostViewerPage> {
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
+                onTap: () => Navigator.of(context, rootNavigator: true).pop(),
                 child: Container(
                   width: 36, height: 36,
                   decoration: BoxDecoration(
@@ -203,21 +203,23 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
           ),
 
           // ── 底部信息 ──────────────────────────────────
-          AnimatedOpacity(
-            opacity: _showControls ? 1 : 0,
-            duration: const Duration(milliseconds: 200),
-            child: Positioned(
-              left: 16, right: 64, bottom: 40,
+          Positioned(
+            left: 16, right: 64,
+            bottom: MediaQuery.of(context).padding.bottom + 24,
+            child: AnimatedOpacity(
+              opacity: _showControls ? 1 : 0,
+              duration: const Duration(milliseconds: 200),
               child: _buildInfo(post),
             ),
           ),
 
           // ── 右侧操作栏 ────────────────────────────────
-          AnimatedOpacity(
-            opacity: _showControls ? 1 : 0,
-            duration: const Duration(milliseconds: 200),
-            child: Positioned(
-              right: 12, bottom: 40,
+          Positioned(
+            right: 12,
+            bottom: MediaQuery.of(context).padding.bottom + 24,
+            child: AnimatedOpacity(
+              opacity: _showControls ? 1 : 0,
+              duration: const Duration(milliseconds: 200),
               child: _buildActions(post),
             ),
           ),

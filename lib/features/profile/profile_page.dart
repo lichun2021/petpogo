@@ -218,7 +218,7 @@ class _UserInfoCardState extends ConsumerState<_UserInfoCard> {
       final repo = ref.read(postRepositoryProvider);
       final sign = await repo.getOssSign(fileType: 'image', folder: 'avatars');
       await repo.uploadToOss(uploadUrl: sign.uploadUrl, file: file, contentType: 'image/jpeg');
-      final ok = await ref.read(authControllerProvider.notifier).updateAvatar(sign.cdnUrl);
+      final ok = await ref.read(authControllerProvider.notifier).updateAvatar(sign.cdnUrl ?? '');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(ok ? '头像更新成功 🎉' : '头像更新失败，请重试'),

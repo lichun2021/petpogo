@@ -145,17 +145,17 @@ class CommentModel {
 class OssSignResult {
   final String uploadUrl;
   final String key;
-  final String cdnUrl;
+  final String? cdnUrl;   // 图片有值；视频等 MPS 转码完成前为 null
 
   const OssSignResult({
     required this.uploadUrl,
     required this.key,
-    required this.cdnUrl,
+    this.cdnUrl,
   });
 
   factory OssSignResult.fromJson(Map<String, dynamic> json) => OssSignResult(
     uploadUrl: json['uploadUrl'] as String,
     key:       json['key'] as String,
-    cdnUrl:    json['cdnUrl'] as String,
+    cdnUrl:    json['cdnUrl'] as String?,
   );
 }

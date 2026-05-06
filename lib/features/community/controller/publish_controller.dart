@@ -98,7 +98,7 @@ class PublishController extends StateNotifier<PublishState> {
               state = state.copyWith(uploadProgress: (i + p) / total);
             },
           );
-          mediaUrls.add(sign.cdnUrl);
+          if (sign.cdnUrl != null) mediaUrls.add(sign.cdnUrl!);
         }
       }
 
