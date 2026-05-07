@@ -6,8 +6,8 @@ import '../../../shared/theme/app_colors.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../pet/controller/pet_controller.dart';
 import '../../pet/data/models/pet_model.dart';
-import '../data/ai_image_result_provider.dart';
-import '../data/models/ai_image_model.dart';
+import '../controller/ai_controller.dart';
+import '../data/models/ai_result_model.dart';
 
 /// 首页宠物情绪卡片区
 /// - 监听 auth 状态：登录后自动加载宠物，解决首次打开不显示问题
@@ -40,7 +40,8 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
   Widget build(BuildContext context) {
     final isLoggedIn = ref.watch(authControllerProvider).isLoggedIn;
     final petState   = ref.watch(petControllerProvider);
-    final lastResult = ref.watch(aiImageResultProvider);
+    // 从图像分析 Controller 读取最近一次结果
+    final lastResult = ref.watch(aiImageControllerProvider).result;
 
     // 登录后首次加载（auth 就绪时再调，避免 token 未准备报错）
     if (isLoggedIn && !_loaded) {
@@ -74,7 +75,7 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
                     fontSize: 20, fontWeight: FontWeight.w700,
                     letterSpacing: -0.3, color: AppColors.onSurface)),
             if (lastResult != null)
-              _EmotionBadge(emotion: lastResult.primaryEmotion),
+              _EmotionBadge(result: lastResult),
           ],
         ),
         const SizedBox(height: 12),
@@ -126,7 +127,7 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
 // ── 首页宠物卡 ────────────────────────────────────────────
 class _HomePetCard extends StatelessWidget {
   final PetModel pet;
-  final PetImageAnalysisResult? result;
+  final AiAnalysisResult? result;
   const _HomePetCard({required this.pet, this.result});
 
   List<Color> get _gradients => pet.type == 'cat'
@@ -167,15 +168,13 @@ class _HomePetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final age     = _ageText();
     final emotion = result?.primaryEmotion;
-    final isMale  = pet.gender == 'male';
+    final isMale   = pet.gender == 'male';
     final isFemale = pet.gender == 'female';
-    final gLabel  = isMale ? '♂ 公' : isFemale ? '♀ 母' : '';
-    final gBg     = isMale ? const Color(0xFFDCEEFF) : const Color(0xFFFFDCEE);
-    final gColor  = isMale ? const Color(0xFF1A6BB5) : const Color(0xFFB51A6B);
-
-    // 年龄行：情绪 chip 或年龄，右侧加位置按钮
+    final gLabel   = isMale ? '♂ 公' : isFemale ? '♀ 母' : '';
+    final gBg      = isMale ? const Color(0xFFDCEEFF) : const Color(0xFFFFDCEE);
+    final gColor   = isMale ? const Color(0xFF1A6BB5) : const Color(0xFFB51A6B);
     final ageLabel = emotion != null
-        ? '${emotion.emoji} ${emotion.displayName}'
+        ? '${result!.primaryEmoji} ${emotion.labelZh}'
         : age;
 
     return Container(
@@ -232,18 +231,18 @@ class _HomePetCard extends StatelessWidget {
                             style: const TextStyle(fontSize: 28)),
                       ),
                     ),
-                    if (emotion != null)
+                    if (result != null)
                       Positioned(
                         bottom: -2, right: -2,
                         child: Container(
                           width: 24, height: 24,
                           decoration: BoxDecoration(
-                            color: Color(emotion.colorHex),
+                            color: Color(result!.primaryColorHex),
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 2),
                           ),
                           child: Center(
-                            child: Text(emotion.emoji,
+                            child: Text(result!.primaryEmoji,
                                 style: const TextStyle(fontSize: 11)),
                           ),
                         ),
@@ -352,39 +351,42 @@ class _WChip extends StatelessWidget {
   );
 }
 
-// ── 情绪标签（标题右侧）────────────────────────────────────
+// ── 情绪标签（标题右侧）───────────────────────────────────────────────
 class _EmotionBadge extends StatelessWidget {
-  final PetEmotion emotion;
-  const _EmotionBadge({required this.emotion});
+  final AiAnalysisResult result;
+  const _EmotionBadge({required this.result});
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    decoration: BoxDecoration(
-      color: Color(emotion.colorHex).withOpacity(0.12),
-      borderRadius: BorderRadius.circular(999),
-      border: Border.all(color: Color(emotion.colorHex).withOpacity(0.25)),
-    ),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Text(emotion.emoji, style: const TextStyle(fontSize: 12)),
-      const SizedBox(width: 4),
-      Text(emotion.displayName,
-          style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-              fontSize: 11, fontWeight: FontWeight.w700,
-              color: Color(emotion.colorHex))),
-    ]),
-  );
+  Widget build(BuildContext context) {
+    final color = Color(result.primaryColorHex);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(0.25)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Text(result.primaryEmoji, style: const TextStyle(fontSize: 12)),
+        const SizedBox(width: 4),
+        Text(result.primaryEmotion.labelZh,
+            style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                fontSize: 11, fontWeight: FontWeight.w700,
+                color: color)),
+      ]),
+    );
+  }
 }
 
 // ── AI 情绪建议横幅 ───────────────────────────────────────
 class _EmotionAdviceBanner extends StatelessWidget {
-  final PetImageAnalysisResult result;
+  final AiAnalysisResult result;
   const _EmotionAdviceBanner({required this.result});
 
   @override
   Widget build(BuildContext context) {
     final emotion = result.primaryEmotion;
-    final color   = Color(emotion.colorHex);
+    final color   = Color(result.primaryColorHex);
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
@@ -395,13 +397,13 @@ class _EmotionAdviceBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(emotion.emoji, style: const TextStyle(fontSize: 22)),
+          Text(result.primaryEmoji, style: const TextStyle(fontSize: 22)),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('AI 情绪分析 · ${emotion.displayName}',
+                Text('AI 情绪分析 · ${emotion.labelZh}',
                     style: TextStyle(fontFamily: 'Plus Jakarta Sans',
                         fontSize: 12, fontWeight: FontWeight.w800,
                         color: color, letterSpacing: 0.3)),
@@ -411,37 +413,34 @@ class _EmotionAdviceBanner extends StatelessWidget {
                         fontSize: 12, color: AppColors.onSurfaceVariant,
                         height: 1.5)),
                 const SizedBox(height: 8),
-                ...result.top3.take(3).map((p) {
-                  final e = PetEmotion.fromLabel(p.label);
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(children: [
-                      SizedBox(width: 36,
-                          child: Text(p.labelZh,
-                              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                                  fontSize: 10,
-                                  color: AppColors.onSurfaceVariant))),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(999),
-                          child: LinearProgressIndicator(
-                            value: p.confidence, minHeight: 5,
-                            backgroundColor:
-                                AppColors.outlineVariant.withOpacity(0.2),
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                                Color(e.colorHex).withOpacity(0.7)),
-                          ),
+                ...result.top3.take(3).map((p) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(children: [
+                    SizedBox(width: 36,
+                        child: Text(p.labelZh,
+                            style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                                fontSize: 10,
+                                color: AppColors.onSurfaceVariant))),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: LinearProgressIndicator(
+                          value: p.confidence, minHeight: 5,
+                          backgroundColor:
+                              AppColors.outlineVariant.withOpacity(0.2),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(result.primaryColorHex).withOpacity(0.7)),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Text(p.percentText,
-                          style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                              fontSize: 10, fontWeight: FontWeight.w700,
-                              color: color)),
-                    ]),
-                  );
-                }),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(p.percentText,
+                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 10, fontWeight: FontWeight.w700,
+                            color: color)),
+                  ]),
+                )),
               ],
             ),
           ),

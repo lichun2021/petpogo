@@ -1,20 +1,19 @@
-import 'package:flutter/foundation.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:just_audio/just_audio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../../shared/theme/app_colors.dart';
-import '../controller/ai_translate_controller.dart';
-import '../data/models/ai_analysis_model.dart';
+import '../controller/ai_controller.dart';
+import '../data/models/ai_result_model.dart';
 
 /// AI 宠物语音识别面板
 ///
-/// 接入真实 API：POST http://49.234.39.11:8002/analyze
-/// 支持：猫 / 狗 两种物种，6 种情绪识别
-///
-/// 状态流程：
-///   idle → recording（按住录音）→ analyzing（上传 AI）→ result（显示结果）
+/// 新版流程：
+///   录音 → 上传 OSS → 调 /sdkapi/ai/voice-analyze → 显示结果
+///   配额由后端控制，超限时显示 VIP 提示
 class AiTranslatePanel extends ConsumerStatefulWidget {
   const AiTranslatePanel({super.key});
 
@@ -25,10 +24,12 @@ class AiTranslatePanel extends ConsumerStatefulWidget {
 class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseCtrl;
+  final AudioRecorder _recorder = AudioRecorder();
 
-  /// just_audio 播放器（用于回放录音）
-  final AudioPlayer _player = AudioPlayer();
-  bool _isPlaying = false;
+  bool _isRecording = false;
+  String? _recordPath;
+  int _recordSecs = 0;
+  late final _timer = Stream.periodic(const Duration(seconds: 1));
 
   @override
   void initState() {
@@ -36,628 +37,442 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
-    );
-    // 监听播放状态变化，同步按钮图标
-    _player.playerStateStream.listen((s) {
-      if (mounted) setState(() => _isPlaying = s.playing);
-    });
+    )..repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _pulseCtrl.dispose();
-    _player.dispose();
+    _recorder.dispose();
     super.dispose();
   }
 
-  // ── 开始录音 ────────────────────────────────────────────
-  void _startRecording() {
-    final phase = ref.read(aiTranslateControllerProvider).phase;
-    debugPrint('[AI] _startRecording called, current phase=$phase');
-    if (phase != AiTranslatePhase.idle) return;
+  // ── 开始录音 ─────────────────────────────────────────────
+  Future<void> _startRecording() async {
+    final ctrl = ref.read(aiVoiceControllerProvider);
+    if (ctrl.phase != AiPhase.idle && ctrl.phase != AiPhase.error) return;
+
+    final hasPermission = await _recorder.hasPermission();
+    if (!hasPermission) {
+      _showSnack('请授权麦克风权限');
+      return;
+    }
 
     HapticFeedback.mediumImpact();
-    ref.read(aiTranslateControllerProvider.notifier).startRecording();
-    _pulseCtrl.repeat(reverse: true);
-    // Timer 已由 Controller 内部管理，此处无需处理
+    final dir  = await getTemporaryDirectory();
+    _recordPath = '${dir.path}/pet_voice_${DateTime.now().millisecondsSinceEpoch}.wav';
+
+    await _recorder.start(
+      const RecordConfig(encoder: AudioEncoder.wav),
+      path: _recordPath!,
+    );
+
+    setState(() {
+      _isRecording = true;
+      _recordSecs  = 0;
+    });
+
+    // 计时（简单自增）
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 1));
+      if (!_isRecording || !mounted) return false;
+      setState(() => _recordSecs++);
+      return true;
+    });
   }
 
-  // ── 停止录音 ────────────────────────────────────────────
-  void _stopRecording() {
-    final phase = ref.read(aiTranslateControllerProvider).phase;
-    debugPrint('[AI] _stopRecording called, current phase=$phase');
-    if (phase != AiTranslatePhase.recording) return;
-
+  // ── 停止录音 → 分析 ──────────────────────────────────────
+  Future<void> _stopAndAnalyze() async {
+    if (!_isRecording) return;
     HapticFeedback.lightImpact();
-    _pulseCtrl.stop();
-    ref.read(aiTranslateControllerProvider.notifier).stopAndAnalyze();
+
+    final path = await _recorder.stop();
+    setState(() => _isRecording = false);
+
+    if (path == null) return;
+    if (_recordSecs < 1) {
+      _showSnack('录音时间太短，请至少录制 1 秒');
+      return;
+    }
+
+    // 触发分析
+    await ref.read(aiVoiceControllerProvider.notifier).analyzeVoice(
+      File(path),
+    );
   }
 
-  // ── 重置 ────────────────────────────────────────────────
-  void _reset() {
-    _pulseCtrl.stop();
-    ref.read(aiTranslateControllerProvider.notifier).reset();
+  void _reset() => ref.read(aiVoiceControllerProvider.notifier).reset();
+
+  void _showSnack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: AppColors.error),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(aiTranslateControllerProvider);
+    final state = ref.watch(aiVoiceControllerProvider);
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
+        color: AppColors.surfaceContainerLow,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(color: AppColors.cardShadow, blurRadius: 24, spreadRadius: -6),
+        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 20, spreadRadius: -4)],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 标题
+          Row(children: [
+            const Text('🎙️', style: TextStyle(fontSize: 22)),
+            const SizedBox(width: 8),
+            const Text('听懂宠物语言', style: TextStyle(
+              fontFamily: 'Plus Jakarta Sans', fontSize: 16,
+              fontWeight: FontWeight.w800, color: AppColors.onSurface,
+            )),
+            const Spacer(),
+            if (state.result != null)
+              TextButton(
+                onPressed: _reset,
+                child: const Text('再试一次', style: TextStyle(
+                  fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                  color: AppColors.primary,
+                )),
+              ),
+          ]),
+          const SizedBox(height: 20),
+
+          // 内容区
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: switch (state.phase) {
+              AiPhase.idle   => _IdleView(
+                  key: const ValueKey('idle'),
+                  isRecording: _isRecording,
+                  recordSecs: _recordSecs,
+                  onStart: _startRecording,
+                  onStop:  _stopAndAnalyze,
+                  pulseCtrl: _pulseCtrl,
+                ),
+              AiPhase.uploading  => _ProgressView(
+                  key: const ValueKey('upload'),
+                  label: '上传音频中…',
+                  progress: state.uploadProgress,
+                  icon: '☁️',
+                ),
+              AiPhase.analyzing  => const _SpinnerView(
+                  key: ValueKey('analyze'),
+                  label: 'AI 正在聆听中…',
+                  icon: '🧠',
+                ),
+              AiPhase.result   => _ResultView(
+                  key: const ValueKey('result'),
+                  result: state.result!,
+                ),
+              AiPhase.error    => _ErrorView(
+                  key: const ValueKey('error'),
+                  message: state.errorMessage ?? '分析失败',
+                  onRetry: _reset,
+                ),
+            },
+          ),
         ],
       ),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 350),
-        child: _buildContent(state),
-      ),
     );
   }
+}
 
-  Widget _buildContent(AiTranslateState state) {
-    switch (state.phase) {
-      case AiTranslatePhase.idle:
-        return _buildIdle(state);
-      case AiTranslatePhase.recording:
-        return _buildRecording(state);
-      case AiTranslatePhase.tooShort:
-        return _buildTooShort();
-      case AiTranslatePhase.analyzing:
-        return _buildAnalyzing();
-      case AiTranslatePhase.result:
-        return _buildResult(state.result!);
-      case AiTranslatePhase.error:
-        return _buildError(state.errorMessage ?? '分析失败');
-    }
-  }
+// ── 待机：录音按钮 ────────────────────────────────────────
+class _IdleView extends StatelessWidget {
+  final bool isRecording;
+  final int recordSecs;
+  final VoidCallback onStart;
+  final VoidCallback onStop;
+  final AnimationController pulseCtrl;
 
-  // ── Phase 1: 待机 ────────────────────────────────────────
-  Widget _buildIdle(AiTranslateState state) {
+  const _IdleView({
+    super.key,
+    required this.isRecording,
+    required this.recordSecs,
+    required this.onStart,
+    required this.onStop,
+    required this.pulseCtrl,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
-      key: const ValueKey('idle'),
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Row(children: [
-          Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(color: AppColors.primaryContainer.withOpacity(0.25), shape: BoxShape.circle),
-            child: const Center(child: Text('🤖', style: TextStyle(fontSize: 18))),
-          ),
-          const SizedBox(width: 10),
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('AI 宠物语音识别',
-                style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15,
-                    fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-            Text('支持猫咪 🐱 和狗狗 🐶',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11, color: AppColors.onSurfaceVariant)),
-          ]),
-        ]),
-        const SizedBox(height: 20),
-
-        // 录音按钮
-        // 用 Listener（原始指针事件）替代 GestureDetector.onLongPress
-        // 原因：onLongPress 需要等待 500ms 识别期，在 AnimatedBuilder 下
-        // 手势竞技场可能拦截事件导致按钮失效。
-        // Listener.onPointerDown/Up 是最底层事件，100% 可靠触发。
-        Listener(
-          onPointerDown: (_) {
-            debugPrint('[AI] 按钮 onPointerDown → 开始录音');
-            _startRecording();
-          },
-          onPointerUp: (_) {
-            debugPrint('[AI] 按钮 onPointerUp → 停止录音');
-            _stopRecording();
-          },
-          onPointerCancel: (_) {
-            debugPrint('[AI] 按钮 onPointerCancel → 停止录音');
-            _stopRecording();
-          },
-          child: AnimatedBuilder(
-            animation: _pulseCtrl,
-            builder: (_, child) {
-              // 录音时按钮轻微缩小（给用户"按下"的触觉反馈）
-              return Transform.scale(
-                scale: 1.0,
-                child: child,
-              );
-            },
-            child: Container(
+        if (isRecording) ...[
+          AnimatedBuilder(
+            animation: pulseCtrl,
+            builder: (_, __) => Container(
               width: 80, height: 80,
               decoration: BoxDecoration(
-                gradient: AppColors.primaryGradient,
                 shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: AppColors.primaryGlow, blurRadius: 20, spreadRadius: -4)],
+                color: AppColors.primary.withOpacity(0.15 + pulseCtrl.value * 0.15),
               ),
-              child: const Center(child: Icon(Icons.mic_rounded, color: Colors.white, size: 36)),
+              child: const Icon(Icons.mic_rounded, color: AppColors.primary, size: 36),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        Text('按住麦克风开始录音',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
-                color: AppColors.onSurfaceVariant)),
-        const SizedBox(height: 4),
-        Text('建议录制 2~10 秒',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11, color: AppColors.onSurfaceVariant.withOpacity(0.6))),
-      ],
-    );
-  }
-
-  // ── Phase 2: 录音中 ──────────────────────────────────────
-  Widget _buildRecording(AiTranslateState state) {
-    return Column(
-      key: const ValueKey('recording'),
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text('录音中...', style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-            fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.error)),
-        const SizedBox(height: 4),
-        Text('${state.recordingSeconds}s / 10s',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12, color: AppColors.onSurfaceVariant)),
-        const SizedBox(height: 16),
-
-        // 波形动画
-        _WaveformWidget(controller: _pulseCtrl),
-
-        const SizedBox(height: 16),
-
-        // 录音进度条
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: state.recordingSeconds / 10,
-            backgroundColor: AppColors.surfaceContainerLow,
-            color: AppColors.error,
-            minHeight: 4,
+          const SizedBox(height: 12),
+          Text(
+            '录音中  ${recordSecs}s',
+            style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                fontSize: 14, color: AppColors.primary, fontWeight: FontWeight.w700),
           ),
-        ),
-        const SizedBox(height: 16),
-
-        // 松开停止
-        GestureDetector(
-          onTap: _stopRecording,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.errorContainer.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(999),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: onStop,
+            icon: const Icon(Icons.stop_rounded),
+            label: const Text('停止并分析'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             ),
-            child: const Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.stop_rounded, color: AppColors.error, size: 18),
-              SizedBox(width: 6),
-              Text('停止录音', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.error)),
-            ]),
           ),
-        ),
-      ],
-    );
-  }
-
-  // ── Phase 3: 分析中 ─────────────────────────────────────
-  Widget _buildAnalyzing() {
-    return Column(
-      key: const ValueKey('analyzing'),
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const SizedBox(height: 8),
-        SizedBox(
-          width: 60, height: 60,
-          child: CircularProgressIndicator(
-            strokeWidth: 3,
-            color: AppColors.primary,
-            backgroundColor: AppColors.primaryContainer.withOpacity(0.2),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text('AI 分析中...', style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-            fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-        const SizedBox(height: 4),
-        Text('正在识别物种和情绪，请稍候',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12, color: AppColors.onSurfaceVariant)),
-        const SizedBox(height: 8),
-      ],
-    );
-  }
-
-  // ── Phase 4: 分析结果 ────────────────────────────────────
-  Widget _buildResult(AiAnalysisResult result) {
-    // 物种未识别时：不显示情绪，只提示重录
-    if (result.species == PetSpecies.unknown) {
-      return _buildUnknownSpecies(result);
-    }
-
-    final state = ref.read(aiTranslateControllerProvider);
-    final emotion = result.primaryEmotion;
-    final emotionColor = Color(emotion.colorHex);
-
-    return Column(
-      key: const ValueKey('result'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // ── 顶部：物种 + 主情绪 ─────────────────────────
-        Row(children: [
-          // 物种头像
-          Container(
-            width: 56, height: 56,
-            decoration: BoxDecoration(
-              color: AppColors.primaryContainer.withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Center(child: Text(result.species.emoji, style: const TextStyle(fontSize: 30))),
-          ),
-          const SizedBox(width: 14),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Text(result.species.displayName, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.onSurface)),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryContainer.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text('${(result.speciesPrediction.confidence * 100).toStringAsFixed(0)}% 置信',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 9,
-                        fontWeight: FontWeight.w700, color: AppColors.primary)),
-              ),
-            ]),
-            const SizedBox(height: 4),
-            // 主情绪 badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        ] else ...[
+          const Text('按下按钮，对宠物录音', style: TextStyle(
+            fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+            color: AppColors.onSurfaceVariant,
+          )),
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: onStart,
+            child: Container(
+              width: 72, height: 72,
               decoration: BoxDecoration(
-                color: emotionColor.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: emotionColor.withOpacity(0.3)),
+                shape: BoxShape.circle,
+                gradient: AppColors.primaryGradient,
+                boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.35), blurRadius: 16, spreadRadius: -2)],
               ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(emotion.emoji, style: const TextStyle(fontSize: 14)),
-                const SizedBox(width: 5),
-                Text('${emotion.displayName} ${result.primaryEmotionPrediction.percentText}',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                        fontWeight: FontWeight.w700, color: emotionColor)),
-              ]),
+              child: const Icon(Icons.mic_rounded, color: Colors.white, size: 32),
             ),
-          ])),
-          // 重新录音按钮
-          IconButton(
-            onPressed: _reset,
-            icon: Icon(Icons.refresh_rounded, color: AppColors.onSurfaceVariant),
-            tooltip: '重新录音',
           ),
-        ]),
-
-        const SizedBox(height: 16),
-
-        // ── 快速建议提示条 ──────────────────────────────
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: emotionColor.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: emotionColor.withOpacity(0.2)),
-          ),
-          child: Row(children: [
-            Icon(Icons.lightbulb_rounded, size: 16, color: emotionColor),
-            const SizedBox(width: 8),
-            Expanded(child: Text(emotion.quickTip,
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                    fontWeight: FontWeight.w600, color: AppColors.onSurface))),
-          ]),
-        ),
-
-        const SizedBox(height: 16),
-
-        // ── Top-3 情绪柱状图 ────────────────────────────
-        Text('情绪分析', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
-            fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant)),
-        const SizedBox(height: 8),
-        ...result.emotions.asMap().entries.map((e) {
-          final idx   = e.key;
-          final pred  = e.value;
-          final emo   = PetEmotion.fromLabel(pred.label);
-          final color = Color(emo.colorHex);
-          return _EmotionBar(
-            emoji: emo.emoji,
-            label: emo.displayName,
-            confidence: pred.confidence,
-            color: color,
-            isTop: idx == 0,
-          ).animate().fadeIn(delay: (idx * 80).ms).slideX(begin: 0.1);
-        }),
-
-        const SizedBox(height: 16),
-
-        // ── AI 照顾建议 ─────────────────────────────────
-        Text('AI 建议', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
-            fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant)),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Text(result.advice,
-              style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
-                  color: AppColors.onSurface, height: 1.6)),
-        ),
-
-        const SizedBox(height: 12),
-
-        // ── 时长标注 ────────────────────────────────────
-        Row(children: [
-          Icon(Icons.timer_outlined, size: 13, color: AppColors.onSurfaceVariant),
-          const SizedBox(width: 4),
-          Text('音频 ${result.durationSeconds.toStringAsFixed(1)}s · 处理 ${result.processingTimeMs.toStringAsFixed(0)}ms',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11, color: AppColors.onSurfaceVariant)),
-        ]),
+        ],
       ],
     );
   }
+}
 
-  // ── Phase: 录音太短（< 2秒）提示 ────────────────────────────
-  Widget _buildTooShort() {
+// ── 上传进度 ──────────────────────────────────────────────
+class _ProgressView extends StatelessWidget {
+  final String label;
+  final double progress;
+  final String icon;
+  const _ProgressView({super.key, required this.label, required this.progress, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
-      key: const ValueKey('tooShort'),
-      mainAxisSize: MainAxisSize.min,
       children: [
+        Text(icon, style: const TextStyle(fontSize: 40)),
         const SizedBox(height: 12),
+        Text(label, style: const TextStyle(
+          fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+          color: AppColors.onSurfaceVariant,
+        )),
+        const SizedBox(height: 12),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progress,
+            backgroundColor: AppColors.surfaceContainerHighest,
+            color: AppColors.primary,
+            minHeight: 6,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text('${(progress * 100).toInt()}%', style: const TextStyle(
+          fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+          color: AppColors.onSurfaceVariant,
+        )),
+      ],
+    );
+  }
+}
+
+// ── AI 分析中（spinner）─────────────────────────────────
+class _SpinnerView extends StatelessWidget {
+  final String label;
+  final String icon;
+  const _SpinnerView({super.key, required this.label, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 40))
+            .animate(onPlay: (c) => c.repeat())
+            .rotate(duration: 3.seconds),
+        const SizedBox(height: 12),
+        Text(label, style: const TextStyle(
+          fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+          color: AppColors.onSurfaceVariant,
+        )),
+        const SizedBox(height: 12),
+        const CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5),
+      ],
+    );
+  }
+}
+
+// ── 结果展示 ──────────────────────────────────────────────
+class _ResultView extends StatelessWidget {
+  final AiAnalysisResult result;
+  const _ResultView({super.key, required this.result});
+
+  @override
+  Widget build(BuildContext context) {
+    final emotion = result.primaryEmotion;
+    final color   = Color(result.primaryColorHex);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 主情绪
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.primaryContainer.withOpacity(0.15),
+            color: color.withOpacity(0.1),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.primary.withOpacity(0.3)),
           ),
           child: Row(children: [
-            Icon(Icons.mic_rounded, color: AppColors.primary, size: 32),
+            Text(result.primaryEmoji, style: const TextStyle(fontSize: 36)),
             const SizedBox(width: 14),
             Expanded(child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('请按長一点👌',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15,
-                        fontWeight: FontWeight.w800, color: AppColors.primary)),
-                const SizedBox(height: 3),
-                Text('至少需要 2 秒麦克风输入，AI 才能准确识别宠物声音',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                        color: AppColors.onSurfaceVariant)),
+                Text(emotion.labelZh, style: TextStyle(
+                  fontFamily: 'Plus Jakarta Sans', fontSize: 18,
+                  fontWeight: FontWeight.w800, color: color,
+                )),
+                Text('置信度 ${emotion.percentText}', style: TextStyle(
+                  fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                  color: color.withOpacity(0.7),
+                )),
               ],
             )),
           ]),
-        ),
-        const SizedBox(height: 12),
-      ],
-    );
-  }
+        ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2),
 
-  // ── 物种未识别结果卡片 ───────────────────────────────────
-  /// 录音上传成功但模型无法识别物种时显示（不显示情绪）
-  Widget _buildUnknownSpecies(AiAnalysisResult result) {
-    final state = ref.read(aiTranslateControllerProvider);
-    return Column(
-      key: const ValueKey('unknownSpecies'),
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // 图标 + 标题
-        Row(children: [
+        const SizedBox(height: 12),
+
+        // Top-3
+        if (result.top3.length > 1) ...[
+          const Text('情绪分布', style: TextStyle(
+            fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+            fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant,
+          )),
+          const SizedBox(height: 8),
+          ...result.top3.take(3).map((e) => Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(children: [
+              SizedBox(
+                width: 60,
+                child: Text(e.labelZh, style: const TextStyle(
+                  fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                  color: AppColors.onSurface,
+                )),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: LinearProgressIndicator(
+                  value: e.confidence,
+                  backgroundColor: AppColors.surfaceContainerHighest,
+                  color: color,
+                  minHeight: 6,
+                ),
+              )),
+              const SizedBox(width: 8),
+              Text(e.percentText, style: const TextStyle(
+                fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+                color: AppColors.onSurfaceVariant,
+              )),
+            ]),
+          )),
+          const SizedBox(height: 8),
+        ],
+
+        // 建议
+        if (result.advice.isNotEmpty) ...[
           Container(
-            width: 52, height: 52,
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppColors.primaryContainer.withOpacity(0.15),
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: const Center(child: Text('🐾', style: TextStyle(fontSize: 26))),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('💡', style: TextStyle(fontSize: 16)),
+                const SizedBox(width: 8),
+                Expanded(child: Text(result.advice, style: const TextStyle(
+                  fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                  color: AppColors.onSurface, height: 1.5,
+                ))),
+              ],
+            ),
           ),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('未能识别物种', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.onSurface)),
-            const SizedBox(height: 3),
-            Text('建议录制 3~5 秒清晰的叫声效果更好',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                    color: AppColors.onSurfaceVariant)),
-          ])),
-          IconButton(onPressed: _reset, icon: Icon(Icons.refresh_rounded,
-              color: AppColors.onSurfaceVariant), tooltip: '重新录音'),
-        ]),
-
-        // 如有录音文件可回放
-        if (state.recordingPath != null) ...[
-          const SizedBox(height: 12),
-          _PlaybackBar(audioPath: state.recordingPath!, player: _player,
-              isPlaying: _isPlaying, duration: result.durationSeconds),
+          const SizedBox(height: 8),
         ],
-        const SizedBox(height: 4),
+
+        // 配额剩余
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Icon(
+              result.quota.isUnlimited ? Icons.all_inclusive_rounded : Icons.bolt_rounded,
+              size: 14, color: AppColors.onSurfaceVariant,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              result.quota.isUnlimited
+                  ? 'VIP 无限次'
+                  : '今日剩余 ${result.quota.remaining} 次',
+              style: const TextStyle(
+                fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
+}
 
-  // ── Phase 5: 出错 ────────────────────────────────────────
-  Widget _buildError(String message) {
+// ── 错误 ──────────────────────────────────────────────────
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorView({super.key, required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
-      key: const ValueKey('error'),
-      mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(height: 8),
-        const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 40),
+        const Text('😓', style: TextStyle(fontSize: 40)),
         const SizedBox(height: 12),
-        Text(message, textAlign: TextAlign.center,
-            style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
-                color: AppColors.error)),
+        Text(message, textAlign: TextAlign.center, style: const TextStyle(
+          fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+          color: AppColors.onSurfaceVariant,
+        )),
         const SizedBox(height: 16),
-        TextButton.icon(
-          onPressed: _reset,
-          icon: const Icon(Icons.refresh_rounded),
-          label: const Text('重试'),
+        ElevatedButton(
+          onPressed: onRetry,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('重试'),
         ),
-        const SizedBox(height: 8),
       ],
-    );
-  }
-}
-
-// ── 情绪进度条组件 ────────────────────────────────────────
-class _EmotionBar extends StatelessWidget {
-  final String emoji, label;
-  final double confidence;
-  final Color color;
-  final bool isTop;
-
-  const _EmotionBar({
-    required this.emoji, required this.label,
-    required this.confidence, required this.color, required this.isTop,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(children: [
-        Text(emoji, style: const TextStyle(fontSize: 16)),
-        const SizedBox(width: 8),
-        SizedBox(width: 44, child: Text(label,
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                fontWeight: isTop ? FontWeight.w700 : FontWeight.w500,
-                color: isTop ? AppColors.onSurface : AppColors.onSurfaceVariant))),
-        const SizedBox(width: 8),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: confidence,
-              backgroundColor: color.withOpacity(0.12),
-              valueColor: AlwaysStoppedAnimation(isTop ? color : color.withOpacity(0.5)),
-              minHeight: isTop ? 8 : 5,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        SizedBox(width: 36, child: Text('${(confidence * 100).toStringAsFixed(0)}%',
-            textAlign: TextAlign.right,
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11,
-                fontWeight: isTop ? FontWeight.w700 : FontWeight.w500,
-                color: isTop ? color : AppColors.onSurfaceVariant))),
-      ]),
-    );
-  }
-}
-
-// ── 波形动画组件 ──────────────────────────────────────────
-class _WaveformWidget extends StatelessWidget {
-  final AnimationController controller;
-  const _WaveformWidget({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (_, __) {
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(9, (i) {
-            final phase = (i / 9 * 3.14) + controller.value * 3.14;
-            final height = 12 + (16 * (0.5 + 0.5 * _sin(phase)));
-            return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2.5),
-              width: 4,
-              height: height,
-              decoration: BoxDecoration(
-                color: AppColors.error.withOpacity(0.4 + 0.6 * controller.value),
-                borderRadius: BorderRadius.circular(999),
-              ),
-            );
-          }),
-        );
-      },
-    );
-  }
-
-  double _sin(double x) => x < 3.14 ? (x / 3.14) : ((6.28 - x) / 3.14);
-}
-
-// ── 回放录音条 ──────────────────────────────────────────────
-/// 显示在结果页顶部，让用户回听录音验证 AI 识别是否准确
-class _PlaybackBar extends StatelessWidget {
-  final String audioPath;
-  final AudioPlayer player;
-  final bool isPlaying;
-  final double duration;
-
-  const _PlaybackBar({
-    required this.audioPath,
-    required this.player,
-    required this.isPlaying,
-    required this.duration,
-  });
-
-  Future<void> _toggle() async {
-    if (isPlaying) {
-      await player.pause();
-    } else {
-      // 每次重新加载（防止播放完后再按无效）
-      await player.setFilePath(audioPath);
-      await player.play();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.primaryContainer.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-      ),
-      child: Row(children: [
-        // 播放 / 暂停按钮
-        GestureDetector(
-          onTap: _toggle,
-          child: Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-              color: Colors.white, size: 20,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('回放录音', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-              fontWeight: FontWeight.w700, color: AppColors.primary)),
-          const SizedBox(height: 2),
-          Text('时长 ${duration.toStringAsFixed(1)}s · 验证识别准确性',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 10,
-                  color: AppColors.onSurfaceVariant)),
-        ])),
-        // 播放中显示小波形
-        if (isPlaying)
-          Row(children: List.generate(4, (i) =>
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1.5),
-              width: 3,
-              height: 6.0 + (i % 2 == 0 ? 6.0 : 2.0),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-          )),
-      ]),
     );
   }
 }
