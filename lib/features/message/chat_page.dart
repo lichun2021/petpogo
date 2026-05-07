@@ -10,6 +10,7 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_avatar.dart';
 import 'controller/im_controller.dart';
 import 'data/repository/im_repository.dart';
+import '../auth/controller/auth_controller.dart';
 
 /// 单聊页面
 ///
@@ -31,6 +32,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   List<V2TimMessage> _messages = [];
   bool _isLoading = true;
   bool _isSending = false;
+  String _peerName    = ''; // 对方昵称（异步拉取）
+  String? _myAvatarUrl;     // 自己头像（从腾讯 IM 取）
 
   /// 实时消息监听器（进入页面注册，离开时注销）
   V2TimAdvancedMsgListener? _msgListener;
@@ -40,6 +43,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     super.initState();
     _loadMessages();
     _registerMessageListener();
+    _fetchPeerName();
+    _fetchSelfAvatar();
     // 标记会话已读
     ref.read(imControllerProvider.notifier).markRead(widget.userId);
   }
@@ -53,6 +58,41 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       ref.read(imRepositoryProvider).removeMessageListener(_msgListener!);
     }
     super.dispose();
+  }
+
+  // ── 拉取自己头像（从腾讯 IM 个人资料）──────────────────────
+  Future<void> _fetchSelfAvatar() async {
+    try {
+      // 先获取自己的 userID，再查询头像
+      final loginResult = await TencentImSDKPlugin.v2TIMManager.getLoginUser();
+      final selfId = loginResult.data ?? '';
+      if (selfId.isEmpty) return;
+
+      final infoResult = await TencentImSDKPlugin.v2TIMManager
+          .getUsersInfo(userIDList: [selfId]);
+      final url = infoResult.data?.firstOrNull?.faceUrl ?? '';
+      if (mounted && url.isNotEmpty) {
+        setState(() => _myAvatarUrl = url);
+      }
+    } catch (e) {
+      debugPrint('[ChatPage] 获取自己头像失败: $e');
+    }
+  }
+
+  // ── 拉取对方昵称（腾讯 IM 用户资料）────────────────────────
+  Future<void> _fetchPeerName() async {
+    try {
+      final result = await TencentImSDKPlugin.v2TIMManager.getUsersInfo(
+        userIDList: [widget.userId],
+      );
+      final info = result.data?.firstOrNull;
+      final nick = info?.nickName ?? info?.userID ?? widget.userId;
+      if (mounted && nick.isNotEmpty) {
+        setState(() => _peerName = nick);
+      }
+    } catch (e) {
+      debugPrint('[ChatPage] 获取昵称失败: $e');
+    }
   }
 
   // ── 拉取历史消息 ─────────────────────────────────────────
@@ -93,6 +133,14 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final text = _textCtrl.text.trim();
     if (text.isEmpty) return;
 
+    // IM 登录状态检查
+    final imState = ref.read(imControllerProvider);
+    if (!imState.isLoggedIn) {
+      _showError('IM 连接中，请稍候重试');
+      debugPrint('[Chat] IM 未登录，取消发送');
+      return;
+    }
+
     HapticFeedback.lightImpact();
     _textCtrl.clear();
     setState(() => _isSending = true);
@@ -104,7 +152,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
     setState(() => _isSending = false);
     result.when(
-      success: (_) => _loadMessages(), // 重新拉取以显示自己发的消息
+      success: (_) => _loadMessages(),
       failure: (err) => _showError(err.userMessage),
     );
   }
@@ -163,11 +211,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             PetAvatar(imageUrl: null, size: 36, fallbackEmoji: '🐾'),
             const SizedBox(width: 10),
             Text(
-              widget.userId,
+              _peerName.isNotEmpty ? _peerName : widget.userId,
               style: const TextStyle(
                 fontFamily: 'Plus Jakarta Sans', fontSize: 16,
                 fontWeight: FontWeight.w700, color: AppColors.onSurface,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -191,7 +240,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                         controller: _scrollCtrl,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         itemCount: _messages.length,
-                        itemBuilder: (_, i) => _MessageBubble(message: _messages[i]),
+                        itemBuilder: (_, i) => _MessageBubble(
+                          message: _messages[i],
+                          myAvatarUrl: _myAvatarUrl,
+                        ),
                       ),
           ),
 
@@ -229,7 +281,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 // ── 消息气泡 ──────────────────────────────────────────────
 class _MessageBubble extends StatelessWidget {
   final V2TimMessage message;
-  const _MessageBubble({required this.message});
+  final String? myAvatarUrl;
+  const _MessageBubble({required this.message, this.myAvatarUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -297,8 +350,7 @@ class _MessageBubble extends StatelessWidget {
 
           if (isSelf) ...[
             const SizedBox(width: 8),
-            // 自己头像（用本地存储的 userInfo 里的信息）
-            PetAvatar(imageUrl: null, size: 32, fallbackEmoji: '😊'),
+            PetAvatar(imageUrl: myAvatarUrl, size: 32, fallbackEmoji: '😊'),
           ],
         ],
       ),

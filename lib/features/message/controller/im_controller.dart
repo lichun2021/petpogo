@@ -9,6 +9,7 @@
 ///    ❌ 不管路由（由 View 层通过 errorMessage 决定跳转）
 /// ════════════════════════════════════════════════════════════
 
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tencent_cloud_chat_sdk/tencent_im_sdk_plugin.dart';
@@ -17,9 +18,30 @@ import 'package:tencent_cloud_chat_sdk/models/v2_tim_friend_application.dart';
 import 'package:tencent_cloud_chat_sdk/enum/V2TimConversationListener.dart';
 import 'package:tencent_cloud_chat_sdk/enum/V2TimFriendshipListener.dart';
 import 'package:tencent_cloud_chat_sdk/enum/V2TimSDKListener.dart';
+import 'package:tencent_cloud_chat_sdk/enum/V2TimAdvancedMsgListener.dart';
 import '../data/repository/im_repository.dart';
 import '../data/debug_user_sig.dart';
 import '../../auth/controller/auth_controller.dart';
+
+// ── 系统通知模型（点赞 / 评论 / 好友申请）────────────────────
+class ImSystemNotice {
+  final String type;     // 'post_like' | 'post_comment' | 'friend_request'
+  final String fromName; // 发送人昵称
+  final String content;  // 通知文案
+  final DateTime time;
+
+  const ImSystemNotice({
+    required this.type,
+    required this.fromName,
+    required this.content,
+    required this.time,
+  });
+
+  /// 是否为点赞类通知
+  bool get isLike    => type == 'post_like';
+  bool get isComment => type == 'post_comment';
+  bool get isFriend  => type == 'friend_request';
+}
 
 // ── 状态类 ────────────────────────────────────────────────
 class ImState {
@@ -28,6 +50,9 @@ class ImState {
 
   /// 好友申请列表（待处理）
   final List<V2TimFriendApplication> friendApplications;
+
+  /// 系统通知（点赞 / 评论 / 好友申请等，最新在前，最多保留 50 条）
+  final List<ImSystemNotice> systemNotices;
 
   /// 是否正在加载会话
   final bool isLoading;
@@ -39,25 +64,28 @@ class ImState {
   final String? errorMessage;
 
   const ImState({
-    this.conversations     = const [],
+    this.conversations      = const [],
     this.friendApplications = const [],
-    this.isLoading         = false,
-    this.isLoggedIn        = false,
+    this.systemNotices      = const [],
+    this.isLoading          = false,
+    this.isLoggedIn         = false,
     this.errorMessage,
   });
 
   ImState copyWith({
     List<V2TimConversation>? conversations,
     List<V2TimFriendApplication>? friendApplications,
+    List<ImSystemNotice>? systemNotices,
     bool? isLoading,
     bool? isLoggedIn,
     String? errorMessage,
   }) => ImState(
     conversations:      conversations      ?? this.conversations,
     friendApplications: friendApplications ?? this.friendApplications,
+    systemNotices:      systemNotices      ?? this.systemNotices,
     isLoading:          isLoading          ?? this.isLoading,
     isLoggedIn:         isLoggedIn         ?? this.isLoggedIn,
-    errorMessage:       errorMessage,       // null 时清除
+    errorMessage:       errorMessage,
   );
 
   /// 未处理的好友申请数量（用于消息 Tab 角标）
@@ -67,6 +95,17 @@ class ImState {
   int get totalUnread => conversations.fold(
     0, (sum, c) => sum + (c.unreadCount ?? 0),
   );
+
+  /// 最新点赞通知
+  ImSystemNotice? get latestLike =>
+      systemNotices.where((n) => n.isLike).firstOrNull;
+
+  /// 最新评论通知
+  ImSystemNotice? get latestComment =>
+      systemNotices.where((n) => n.isComment).firstOrNull;
+
+  /// 未读系统通知数（用于角标）
+  int get unreadNoticeCount => systemNotices.length;
 }
 
 // ── Controller ────────────────────────────────────────────
@@ -74,11 +113,14 @@ class ImController extends StateNotifier<ImState> {
   final ImRepository _repo;
   final Ref _ref;
 
-  /// 会话列表变化监听器（会话页进入时注册，离开时注销）
+  /// 会话列表变化监听器
   V2TimConversationListener? _conversationListener;
 
   /// 好友申请变化监听器
   V2TimFriendshipListener? _friendListener;
+
+  /// 系统消息监听器（点赞/评论）
+  V2TimAdvancedMsgListener? _systemMsgListener;
 
   ImController(this._repo, this._ref) : super(const ImState());
 
@@ -237,7 +279,7 @@ class ImController extends StateNotifier<ImState> {
       },
       onNewConversation: (list) {
         if (!mounted) return;
-        loadConversations(); // 新会话直接重新拉取
+        loadConversations();
       },
       onTotalUnreadMessageCountChanged: (count) {
         debugPrint('[ImCtrl] 总未读数变更: $count');
@@ -262,6 +304,47 @@ class ImController extends StateNotifier<ImState> {
       },
     );
     _repo.addFriendListener(_friendListener!);
+
+    // ── 系统消息（点赞 / 评论通知，后端用 TIMCustomElem 发送）──
+    _systemMsgListener = V2TimAdvancedMsgListener(
+      onRecvNewMessage: (msg) {
+        if (!mounted) return;
+        // 只处理自定义消息（后端系统通知）
+        final customData = msg.customElem?.data;
+        if (customData == null || customData.isEmpty) return;
+        try {
+          final json = jsonDecode(customData) as Map<String, dynamic>;
+          final type = json['type'] as String? ?? '';
+          if (type != 'post_like' && type != 'post_comment') return;
+
+          final fromName = json['fromName'] as String?
+              ?? json['nickname'] as String?
+              ?? '有人';
+          final String content;
+          if (type == 'post_like') {
+            content = '$fromName 点赞了你的帖子';
+          } else {
+            final text = json['content'] as String? ?? '';
+            content = '$fromName 评论了你：$text';
+          }
+
+          final notice = ImSystemNotice(
+            type:     type,
+            fromName: fromName,
+            content:  content,
+            time:     DateTime.now(),
+          );
+
+          // 最新通知插到最前，最多保留 50 条
+          final updated = [notice, ...state.systemNotices].take(50).toList();
+          state = state.copyWith(systemNotices: updated);
+          debugPrint('[ImCtrl] 系统通知: $content');
+        } catch (e) {
+          debugPrint('[ImCtrl] 解析系统消息失败: $e');
+        }
+      },
+    );
+    _repo.addMessageListener(_systemMsgListener!);
   }
 
   // ── 登出 ─────────────────────────────────────────────────
@@ -279,6 +362,10 @@ class ImController extends StateNotifier<ImState> {
     if (_friendListener != null) {
       _repo.removeFriendListener(_friendListener!);
       _friendListener = null;
+    }
+    if (_systemMsgListener != null) {
+      _repo.removeMessageListener(_systemMsgListener!);
+      _systemMsgListener = null;
     }
   }
 

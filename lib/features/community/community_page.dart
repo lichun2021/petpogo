@@ -96,54 +96,49 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        backgroundColor: Colors.white,
-        strokeWidth: 2.5,
-        displacement: 60,
-        onRefresh: () => ref.read(feedControllerProvider.notifier).refresh(),
-        child: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverAppBar(
-            pinned: true,
-            floating: false,
-            snap: false,
-            backgroundColor: AppColors.surface.withOpacity(0.95),
-            surfaceTintColor: Colors.transparent,
+      body: Column(
+        children: [
+          // ── 固定 Header：AppBar + Tab + 分类 Chip ────────────
+          Material(
+            color: AppColors.surface,
             elevation: 0,
-            shadowColor: Colors.transparent,
-            title: Row(children: [
-              Icon(Icons.pets_rounded, color: AppColors.primary, size: 22),
-            ]),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.search_rounded, color: AppColors.onSurfaceVariant),
-                onPressed: () {},
-              ),
-              // ── 发布按钮 ─────────────────────────────
-              IconButton(
-                icon: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SafeArea(
+                  bottom: false,
+                  child: SizedBox(
+                    height: 56,
+                    child: Row(children: [
+                      const SizedBox(width: 16),
+                      Icon(Icons.pets_rounded, color: AppColors.primary, size: 22),
+                      const Spacer(),
+                      IconButton(
+                        icon: Icon(Icons.search_rounded, color: AppColors.onSurfaceVariant),
+                        onPressed: () {},
+                      ),
+                      IconButton(
+                        icon: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                        ),
+                        onPressed: _openPublish,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: CircleAvatar(
+                          radius: 16,
+                          backgroundColor: AppColors.surfaceContainerHighest,
+                          child: Icon(Icons.person_rounded, size: 18, color: AppColors.onSurfaceVariant),
+                        ),
+                      ),
+                    ]),
                   ),
-                  child: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
                 ),
-                onPressed: _openPublish,
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: CircleAvatar(
-                  radius: 16,
-                  backgroundColor: AppColors.surfaceContainerHighest,
-                  child: Icon(Icons.person_rounded, size: 18, color: AppColors.onSurfaceVariant),
-                ),
-              ),
-            ],
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(92),
-              child: Column(children: [
                 TabBar(
                   controller: _tabController,
                   labelColor: AppColors.primary,
@@ -173,18 +168,23 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                     ),
                   ),
                 ),
-              ]),
+                const Divider(height: 1, thickness: 0.5, color: Color(0x18000000)),
+              ],
+            ),
+          ),
+
+          // ── 瀑布流内容：各 Tab 自带 RefreshIndicator ─────────
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [_buildFeedGrid(), _buildFeedGrid()],
             ),
           ),
         ],
-        body: TabBarView(
-          controller: _tabController,
-          children: [_buildFeedGrid(), _buildFeedGrid()],
-        ),
-        ),
       ),
     );
   }
+
 
   Widget _buildFeedGrid() {
     final feedState = ref.watch(feedControllerProvider);
@@ -217,10 +217,16 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
       );
     }
 
-    return CustomScrollView(
-      controller: _scrollCtrl,
-      physics: const AlwaysScrollableScrollPhysics(),
-      slivers: [
+    return RefreshIndicator(
+      color: AppColors.primary,
+      backgroundColor: Colors.white,
+      strokeWidth: 2.5,
+      displacement: 20,
+      onRefresh: () => ref.read(feedControllerProvider.notifier).refresh(),
+      child: CustomScrollView(
+        controller: _scrollCtrl,
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
             sliver: SliverMasonryGrid.count(
@@ -253,6 +259,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                       ),
           ),
         ],
+      ),
     );
   }
 }
@@ -353,32 +360,54 @@ class _Thumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(children: [
-      AspectRatio(
-        aspectRatio: 3 / 4,
-        child: CachedNetworkImage(
-          imageUrl: url,
-          fit: BoxFit.cover,
-          width: double.infinity,
-          placeholder: (_, __) => Container(color: AppColors.surfaceContainerHigh),
-          errorWidget: (_, __, ___) => Container(
-            color: AppColors.surfaceContainerHigh,
-            child: const Center(
-              child: Icon(Icons.broken_image_outlined, color: AppColors.onSurfaceVariant, size: 32),
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        AspectRatio(
+          aspectRatio: 3 / 4,
+          child: CachedNetworkImage(
+            imageUrl: url,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            placeholder: (_, __) => Container(color: AppColors.surfaceContainerHigh),
+            errorWidget: (_, __, ___) => Container(
+              color: AppColors.surfaceContainerHigh,
+              child: const Center(
+                child: Icon(Icons.broken_image_outlined, color: AppColors.onSurfaceVariant, size: 32),
+              ),
             ),
           ),
         ),
-      ),
-      if (isVideo)
-        Positioned(
-          top: 8, right: 8,
-          child: Container(
-            padding: const EdgeInsets.all(5),
-            decoration: BoxDecoration(color: Colors.black.withOpacity(0.55), shape: BoxShape.circle),
-            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 14),
+        // ── 视频播放图标（居中大按钮）────────────────
+        if (isVideo)
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.45),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withOpacity(0.7), width: 2),
+            ),
+            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
           ),
-        ),
-    ]);
+        // ── 视频标签（右上角小标）────────────────────
+        if (isVideo)
+          Positioned(
+            top: 7, right: 7,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.videocam_rounded, color: Colors.white, size: 11),
+                SizedBox(width: 2),
+                Text('视频', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600)),
+              ]),
+            ),
+          ),
+      ],
+    );
   }
 }
 

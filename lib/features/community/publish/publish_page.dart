@@ -117,7 +117,8 @@ class _PublishPageState extends ConsumerState<PublishPage>
     if (!mounted) return;
     final state = ref.read(publishControllerProvider);
     if (state.isDone && newPost != null) {
-      ref.read(feedControllerProvider.notifier).prependPost(newPost);
+      // 刷新列表（而非 prependPost）防止本地插入 + API 返回导致重复
+      ref.read(feedControllerProvider.notifier).refresh();
       Navigator.of(context).pop(true);
       _showToast('发布成功 🎉');
     } else if (state.isError) {

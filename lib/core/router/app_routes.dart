@@ -9,6 +9,9 @@ abstract class AppRoutes {
   static const mall      = '/mall';
   static const profile   = '/profile';
 
+  // ── 启动页 ────────────────────────────────────────────
+  static const splash      = '/splash';  // 启动 Logo 页（认证状态恢复期间显示）
+
   // ── 子页面 ────────────────────────────────────────────
   static const settings    = '/settings';
   static const addPet      = '/add-pet';

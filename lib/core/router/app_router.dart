@@ -37,6 +37,7 @@ import '../../features/bind_device/bind_success_page.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/message/chat_page.dart';
 import '../../features/shell/main_shell.dart';
+import '../../features/splash/splash_page.dart';
 
 // ── 路由实例和内部 ProviderContainer 用于守卫读取状态 ──────
 // 为什么用 ProviderContainer：GoRouter 是顶层变量（非 Widget），
@@ -53,8 +54,8 @@ void initAppRouter(ProviderContainer container) {
 /// 在 MaterialApp.router 里使用：routerConfig: appRouter
 /// 由于 GoRouter 本身是单例设计，定义为顶层变量即可
 final appRouter = GoRouter(
-  // 初始页面（App 启动时显示的第一个页面）
-  initialLocation: AppRoutes.home,
+  // 初始页面 → 启动 Logo 页，认证状态恢复后由守卫自动跳转
+  initialLocation: AppRoutes.splash,
 
   // 调试模式下打印路由日志（生产环境建议关闭）
   debugLogDiagnostics: false,
@@ -67,21 +68,36 @@ final appRouter = GoRouter(
     final auth = _container.read(authControllerProvider);
     final location = state.matchedLocation;
 
-    // 冷启动会话恢复中 → 保持当前位置，等状态确定后守卫会再次触发
-    if (auth.isRestoring) return null;
+    // ① 认证状态恢复中 → 强制停在启动页，等状态确定后守卫再次触发
+    //   （这是修复低端机闪屏的关键：拦截一切跳转，只允许待在 /splash）
+    if (auth.isRestoring) {
+      if (location == AppRoutes.splash) return null; // 已在启动页，不动
+      return AppRoutes.splash;                        // 其余页面全部拦截到启动页
+    }
 
-    final isOnLogin = location == AppRoutes.login;
+    final isOnSplash = location == AppRoutes.splash;
+    final isOnLogin  = location == AppRoutes.login;
 
-    // 未登录 且 不在登录页 → 强制跳到登录页
+    // ② 在启动页时：SplashPage 自己负责跳转（保证最短展示时间），守卫不干预
+    //   SplashPage 会调用 _navigate() → appRouter.go() 跳转到正确页面
+    if (isOnSplash) return null;
+
+    // ③ 未登录 且 不在登录页 → 强制跳到登录页
     if (auth.isGuest && !isOnLogin) return AppRoutes.login;
 
-    // 已登录 且 在登录页 → 跳回首页
+    // ④ 已登录 且 在登录页 → 跳回首页
     if (auth.isLoggedIn && isOnLogin) return AppRoutes.home;
 
     return null; // 不拦截
   },
 
   routes: [
+    // ══════════════════════════════════════════════════════
+    //  启动页 — 认证状态恢复期间全屏展示
+    //  不属于 ShellRoute，不含底部导航
+    // ══════════════════════════════════════════════════════
+    _fade(AppRoutes.splash, const SplashPage()),
+
     // ══════════════════════════════════════════════════════
     //  底部导航 Shell — 包含 5 个 Tab
     //  ShellRoute 的作用：让 5 个 Tab 共享同一个 MainShell（底部导航栏）

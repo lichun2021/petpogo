@@ -33,6 +33,8 @@ const _kName       = 'auth_name';       // nickname
 const _kAvatar     = 'auth_avatar';
 const _kMerchantId = 'auth_merchant_id';
 const _kImUserSig  = 'auth_im_user_sig';
+const _kIsVip      = 'auth_is_vip';
+const _kVipExpireAt = 'auth_vip_expire_at';
 
 class AuthRepository {
   final ApiClient _client;
@@ -142,13 +144,15 @@ class AuthRepository {
     }
 
     final user = UserInfo.fromStorageMap({
-      'token':      token,
-      'id':         await _storage.read(key: _kId),
-      'account':    await _storage.read(key: _kAccount),
-      'name':       await _storage.read(key: _kName),
-      'avatar':     await _storage.read(key: _kAvatar),
-      'merchantId': await _storage.read(key: _kMerchantId),
-      'imUserSig':  await _storage.read(key: _kImUserSig),
+      'token':        token,
+      'id':           await _storage.read(key: _kId),
+      'account':      await _storage.read(key: _kAccount),
+      'name':         await _storage.read(key: _kName),
+      'avatar':       await _storage.read(key: _kAvatar),
+      'merchantId':   await _storage.read(key: _kMerchantId),
+      'imUserSig':    await _storage.read(key: _kImUserSig),
+      'isVip':        await _storage.read(key: _kIsVip),
+      'vipExpireAt':  await _storage.read(key: _kVipExpireAt),
     });
 
     _client.setToken(user.token);
@@ -169,12 +173,12 @@ class AuthRepository {
       final res = await _client.get<Map<String, dynamic>>('/sdkapi/user/profile');
       final current = await restoreSession();
       if (current == null) return null;
-      final updated = current.copyWith(
-        name:   (res['nickname'] as String?) ?? current.name,
-        avatar: (res['avatar']   as String?) ?? current.avatar,
-      );
-      await _storage.write(key: _kName,   value: updated.name);
-      await _storage.write(key: _kAvatar, value: updated.avatar);
+      // 用新工厂方法，同时同步 VIP 状态
+      final updated = UserInfo.fromProfileJson(current, res);
+      await _storage.write(key: _kName,        value: updated.name);
+      await _storage.write(key: _kAvatar,      value: updated.avatar);
+      await _storage.write(key: _kIsVip,       value: updated.isVip ? '1' : '0');
+      await _storage.write(key: _kVipExpireAt, value: updated.vipExpireAt ?? '');
       return updated;
     } catch (_) { return null; }
   }
@@ -198,15 +202,17 @@ class AuthRepository {
   // ── 私有：持久化 ─────────────────────────────────────────
   Future<void> _persist(UserInfo user) async {
     await Future.wait([
-      _storage.write(key: _kToken,      value: user.token),
-      _storage.write(key: _kId,         value: user.id),
-      _storage.write(key: _kAccount,    value: user.account),
-      _storage.write(key: _kName,       value: user.name),
-      _storage.write(key: _kAvatar,     value: user.avatar),
-      _storage.write(key: _kMerchantId, value: user.merchantId.toString()),
-      _storage.write(key: _kImUserSig,  value: user.imUserSig),
+      _storage.write(key: _kToken,       value: user.token),
+      _storage.write(key: _kId,          value: user.id),
+      _storage.write(key: _kAccount,     value: user.account),
+      _storage.write(key: _kName,        value: user.name),
+      _storage.write(key: _kAvatar,      value: user.avatar),
+      _storage.write(key: _kMerchantId,  value: user.merchantId.toString()),
+      _storage.write(key: _kImUserSig,   value: user.imUserSig),
+      _storage.write(key: _kIsVip,       value: user.isVip ? '1' : '0'),
+      _storage.write(key: _kVipExpireAt, value: user.vipExpireAt ?? ''),
     ]);
-    debugPrint('[AuthRepo] 会话已持久化');
+    debugPrint('[AuthRepo] 会话已持久化 (VIP=${user.isVip})');
   }
 }
 

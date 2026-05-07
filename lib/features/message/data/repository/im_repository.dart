@@ -100,43 +100,71 @@ class ImRepository {
   });
 
   // ── 发送消息 ─────────────────────────────────────────────
-  /// 发送文本消息
+  /// 发送文本消息（两步法：create → send）
   Future<Result<void>> sendText({
     required String toUserId,
     required String text,
   }) => guardResult(() async {
+    // Step 1: 创建消息对象
+    final createRes = await TencentImSDKPlugin.v2TIMManager
+        .getMessageManager()
+        .createTextMessage(text: text);
+    if (createRes.code != 0 || createRes.data == null) {
+      debugPrint('[IM] createTextMessage 失败 code=${createRes.code} desc=${createRes.desc}');
+      throw ApiException(message: createRes.desc ?? '创建消息失败', statusCode: createRes.code);
+    }
+    final msgId = createRes.data!.id!;
+
+    // Step 2: 发送
     final res = await TencentImSDKPlugin.v2TIMManager
         .getMessageManager()
-        .sendTextMessage(
-          text: text,
-          receiver: toUserId,   // v8.x: receiver (not userID)
+        .sendMessage(
+          id: msgId,
+          receiver: toUserId,
           groupID: '',
           priority: MessagePriorityEnum.V2TIM_PRIORITY_NORMAL,
           onlineUserOnly: false,
           offlinePushInfo: null,
+          cloudCustomData: '',
+          localCustomData: '',
         );
+    debugPrint('[IM] sendMessage code=${res.code} desc=${res.desc}');
     if (res.code != 0) {
-      throw ApiException(message: res.desc ?? '发送失败');
+      throw ApiException(message: '发送失败 (${res.code}): ${res.desc}', statusCode: res.code);
     }
   });
 
-  /// 发送图片消息
+  /// 发送图片消息（两步法：create → send）
   Future<Result<void>> sendImage({
     required String toUserId,
     required String imagePath,
   }) => guardResult(() async {
+    // Step 1: 创建图片消息
+    final createRes = await TencentImSDKPlugin.v2TIMManager
+        .getMessageManager()
+        .createImageMessage(imagePath: imagePath);
+    if (createRes.code != 0 || createRes.data == null) {
+      debugPrint('[IM] createImageMessage 失败 code=${createRes.code} desc=${createRes.desc}');
+      throw ApiException(message: createRes.desc ?? '创建图片消息失败', statusCode: createRes.code);
+    }
+    final msgId = createRes.data!.id!;
+
+    // Step 2: 发送
     final res = await TencentImSDKPlugin.v2TIMManager
         .getMessageManager()
-        .sendImageMessage(
-          imagePath: imagePath,
-          receiver: toUserId,   // v8.x: receiver (not userID)
+        .sendMessage(
+          id: msgId,
+          receiver: toUserId,
           groupID: '',
           priority: MessagePriorityEnum.V2TIM_PRIORITY_NORMAL,
           onlineUserOnly: false,
           offlinePushInfo: null,
+          cloudCustomData: '',
+          localCustomData: '',
         );
+    debugPrint('[IM] sendImage code=${res.code} desc=${res.desc}');
     if (res.code != 0) {
-      throw ApiException(message: res.desc ?? '图片发送失败');
+      throw ApiException(message: '图片发送失败 (${res.code}): ${res.desc}', statusCode: res.code);
     }
   });
 
