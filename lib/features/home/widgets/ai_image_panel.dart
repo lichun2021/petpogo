@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../auth/controller/auth_controller.dart';
 import '../controller/ai_controller.dart';
 import '../data/models/ai_result_model.dart';
 
@@ -74,7 +75,10 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
               fontWeight: FontWeight.w800, color: AppColors.onSurface,
             )),
             const Spacer(),
-            if (state.phase == AiPhase.result || state.phase == AiPhase.error)
+            // 配额 badge
+            _QuotaBadge(quota: ref.watch(authControllerProvider).user?.aiQuota),
+            if (state.phase == AiPhase.result || state.phase == AiPhase.error) ...[
+              const SizedBox(width: 4),
               TextButton(
                 onPressed: _reset,
                 child: const Text('再拍一张', style: TextStyle(
@@ -82,6 +86,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
                   color: AppColors.primary,
                 )),
               ),
+            ],
           ]),
           const SizedBox(height: 20),
 
@@ -122,44 +127,77 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
     return Column(
       key: const ValueKey('idle'),
       children: [
-        // 预览图
+        // 预览图（缩小 + 边框）
         if (_previewFile != null) ...[
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Image.file(
-              _previewFile!,
-              height: 180,
-              width: double.infinity,
-              fit: BoxFit.cover,
+          Center(
+            child: Container(
+              height: 220,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.outlineVariant.withOpacity(0.5),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 10,
+                    spreadRadius: -2,
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(13),
+                child: Image.file(
+                  _previewFile!,
+                  height: 220,
+                  fit: BoxFit.fitHeight, // 高度固定，宽度按照片比例
+                ),
+              ),
             ),
           ).animate().fadeIn(duration: 300.ms),
-          const SizedBox(height: 12),
-          Row(children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _pickImage(ImageSource.gallery),
-                icon: const Icon(Icons.photo_library_outlined, size: 18),
-                label: const Text('换张图'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.onSurfaceVariant,
-                  side: BorderSide(color: AppColors.outlineVariant),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 44,
+            child: Row(children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _pickImage(ImageSource.gallery),
+                  icon: const Icon(Icons.photo_library_outlined, size: 16),
+                  label: const Text('换张图',
+                    style: TextStyle(fontSize: 13),
+                    overflow: TextOverflow.clip,
+                    maxLines: 1,
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.onSurfaceVariant,
+                    side: BorderSide(color: AppColors.outlineVariant),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: _startAnalysis,
-                icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-                label: const Text('开始分析'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _startAnalysis,
+                  icon: const Icon(Icons.auto_awesome_rounded, size: 16),
+                  label: const Text('开始分析',
+                    style: TextStyle(fontSize: 13),
+                    overflow: TextOverflow.clip,
+                    maxLines: 1,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ]),
+            ]),
+          ),
         ] else ...[
           // 选图按钮
           const Text('选择宠物照片，AI 读懂它的心情', style: TextStyle(
@@ -431,5 +469,43 @@ class _ErrorView extends StatelessWidget {
         child: const Text('重试'),
       ),
     ]);
+  }
+}
+
+// ── 配额徽章 ──────────────────────────────────────────────
+class _QuotaBadge extends StatelessWidget {
+  final dynamic quota; // AiQuota?
+  const _QuotaBadge({this.quota});
+
+  @override
+  Widget build(BuildContext context) {
+    if (quota == null) return const SizedBox.shrink();
+    final isUnlimited = quota.isUnlimited as bool;
+    final remaining   = quota.remaining  as int;
+    final color = isUnlimited
+        ? AppColors.primary
+        : (remaining <= 2 ? AppColors.error : AppColors.onSurfaceVariant);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(
+          isUnlimited ? Icons.all_inclusive_rounded : Icons.bolt_rounded,
+          size: 12, color: color,
+        ),
+        const SizedBox(width: 3),
+        Text(
+          isUnlimited ? 'VIP 无限' : '剩余 $remaining 次',
+          style: TextStyle(
+            fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+            fontWeight: FontWeight.w700, color: color,
+          ),
+        ),
+      ]),
+    );
   }
 }

@@ -12,6 +12,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/api/api_exception.dart';
 import '../data/models/ai_result_model.dart';
 import '../data/repository/ai_repository.dart';
 
@@ -121,11 +122,15 @@ class AiAnalyzeController extends StateNotifier<AiAnalyzeState> {
   void reset() => state = const AiAnalyzeState();
 
   String _parseError(Object e) {
-    final msg = e.toString();
-    if (msg.contains('429')) return '今日 AI 次数已用完，升级 VIP 享无限次数';
-    if (msg.contains('502')) return 'AI 服务暂时不可用，请稍后重试';
-    if (msg.contains('quota')) return '配额不足，请明天再试或升级 VIP';
-    if (msg.contains('SocketException') || msg.contains('network')) return '网络连接失败，请检查网络';
+    // 优先使用 ApiException 的真实 message（后端返回的中文原因）
+    if (e is ApiException) {
+      if (e.statusCode == 429) return '今日 AI 次数已用完，升级 VIP 享无限次数';
+      if (e.statusCode == 502) return 'AI 服务暂时不可用，请稍后重试';
+      if (e.type == ApiErrorType.network)  return '网络连接失败，请检查网络';
+      if (e.type == ApiErrorType.timeout)  return '请求超时，请稍后重试';
+      // 其他（包括 422 非宠物）：直接显示后端 message
+      if (e.message.isNotEmpty) return e.message;
+    }
     return '分析失败，请重试';
   }
 }

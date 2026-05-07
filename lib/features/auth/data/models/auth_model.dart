@@ -27,6 +27,7 @@ class LoginResponse {
   final String imUserId;
   final bool   isVip;
   final String? vipExpireAt;
+  final AiQuota aiQuota;
 
   const LoginResponse({
     required this.token,
@@ -38,23 +39,59 @@ class LoginResponse {
     this.imUserId = '',
     this.isVip = false,
     this.vipExpireAt,
+    this.aiQuota = const AiQuota(),
   });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
     final user = json['user'] as Map<String, dynamic>? ?? {};
-    final im = json['im'] as Map<String, dynamic>? ?? {};
+    final im   = json['im']   as Map<String, dynamic>? ?? {};
+    final q    = user['aiQuota'] as Map<String, dynamic>? ?? {};
     return LoginResponse(
-      token:       (json['token'] as String?) ?? '',
-      phone:       (user['phone'] as String?) ?? '',
-      nickname:    (user['nickname'] as String?) ?? '',
-      id:          (user['id'] as String?) ?? '',
-      avatar:      (user['avatar'] as String?) ?? '',
-      imUserSig:   (im['userSig'] as String?) ?? '',
-      imUserId:    (im['userId'] as String?) ?? '',
-      isVip:       (user['isVip'] as bool?) ?? false,
-      vipExpireAt: user['vipExpireAt'] as String?,
+      token:       (json['token']        as String?) ?? '',
+      phone:       (user['phone']        as String?) ?? '',
+      nickname:    (user['nickname']     as String?) ?? '',
+      id:          (user['id']           as String?) ?? '',
+      avatar:      (user['avatar']       as String?) ?? '',
+      imUserSig:   (im['userSig']        as String?) ?? '',
+      imUserId:    (im['userId']         as String?) ?? '',
+      isVip:       (user['isVip']        as bool?)   ?? false,
+      vipExpireAt: user['vipExpireAt']   as String?,
+      aiQuota:     AiQuota.fromJson(q),
     );
   }
+}
+
+// ── AI 配额 ──────────────────────────────────────────────
+class AiQuota {
+  final int used;
+  final int limit;      // -1 = VIP 无限
+  final int remaining;  // -1 = VIP 无限
+
+  const AiQuota({
+    this.used      = 0,
+    this.limit     = 10,
+    this.remaining = 10,
+  });
+
+  bool get isUnlimited => limit == -1;
+
+  factory AiQuota.fromJson(Map<String, dynamic> json) => AiQuota(
+    used:      (json['used']      as int?) ?? 0,
+    limit:     (json['limit']     as int?) ?? 10,
+    remaining: (json['remaining'] as int?) ?? 10,
+  );
+
+  Map<String, String> toStorageMap() => {
+    'aiQuota_used':      used.toString(),
+    'aiQuota_limit':     limit.toString(),
+    'aiQuota_remaining': remaining.toString(),
+  };
+
+  factory AiQuota.fromStorageMap(Map<String, String?> map) => AiQuota(
+    used:      int.tryParse(map['aiQuota_used']      ?? '') ?? 0,
+    limit:     int.tryParse(map['aiQuota_limit']     ?? '') ?? 10,
+    remaining: int.tryParse(map['aiQuota_remaining'] ?? '') ?? 10,
+  );
 }
 
 /// 用户信息（登录成功后持久化到本地）
@@ -68,6 +105,7 @@ class UserInfo {
   final String imUserSig;
   final bool   isVip;
   final String? vipExpireAt;
+  final AiQuota aiQuota;
 
   const UserInfo({
     required this.token,
@@ -79,6 +117,7 @@ class UserInfo {
     this.imUserSig = '',
     this.isVip = false,
     this.vipExpireAt,
+    this.aiQuota = const AiQuota(),
   });
 
   factory UserInfo.fromLoginResponse(LoginResponse res) => UserInfo(
@@ -91,6 +130,7 @@ class UserInfo {
     imUserSig:    res.imUserSig,
     isVip:        res.isVip,
     vipExpireAt:  res.vipExpireAt,
+    aiQuota:      res.aiQuota,
   );
 
   /// 序列化到 Map（用于 SecureStorage 持久化）
@@ -104,6 +144,7 @@ class UserInfo {
     'imUserSig':    imUserSig,
     'isVip':        isVip ? '1' : '0',
     'vipExpireAt':  vipExpireAt ?? '',
+    ...aiQuota.toStorageMap(),
   };
 
   /// 从 SecureStorage 读出后还原
@@ -117,11 +158,13 @@ class UserInfo {
     imUserSig:    map['imUserSig']  ?? '',
     isVip:        (map['isVip'] ?? '0') == '1',
     vipExpireAt:  (map['vipExpireAt']?.isNotEmpty ?? false) ? map['vipExpireAt'] : null,
+    aiQuota:      AiQuota.fromStorageMap(map),
   );
 
   /// 从 profile 接口返回的 JSON 更新（不改 token / imUserSig）
   factory UserInfo.fromProfileJson(UserInfo current, Map<String, dynamic> json) {
     final isVip = (json['isVip'] as bool?) ?? current.isVip;
+    final qJson = json['aiQuota'] as Map<String, dynamic>? ?? {};
     return UserInfo(
       token:       current.token,
       account:     current.account,
@@ -132,6 +175,7 @@ class UserInfo {
       avatar:      (json['avatar']   as String?) ?? current.avatar,
       isVip:       isVip,
       vipExpireAt: json['vipExpireAt'] as String? ?? current.vipExpireAt,
+      aiQuota:     qJson.isNotEmpty ? AiQuota.fromJson(qJson) : current.aiQuota,
     );
   }
 
@@ -139,12 +183,13 @@ class UserInfo {
   String get imUserId => id.isNotEmpty ? id : merchantId.toString();
 
   UserInfo copyWith({
-    String? name,
-    String? avatar,
-    String? token,
-    String? imUserSig,
-    bool?   isVip,
-    String? vipExpireAt,
+    String?   name,
+    String?   avatar,
+    String?   token,
+    String?   imUserSig,
+    bool?     isVip,
+    String?   vipExpireAt,
+    AiQuota?  aiQuota,
   }) => UserInfo(
     token:        token       ?? this.token,
     account:      account,
@@ -155,5 +200,6 @@ class UserInfo {
     imUserSig:    imUserSig   ?? this.imUserSig,
     isVip:        isVip       ?? this.isVip,
     vipExpireAt:  vipExpireAt ?? this.vipExpireAt,
+    aiQuota:      aiQuota     ?? this.aiQuota,
   );
 }

@@ -20,16 +20,16 @@ class AiRepository {
   final ApiClient _client;
   AiRepository(this._client);
 
-  // ── 步骤1：获取 OSS 预签名上传地址 ────────────────────────
-  /// fileType: 'wav' | 'mp3' | 'jpg' | 'png' 等
-  /// folder:   'ai-voice' | 'ai-image'（在 OSS 中的目录）
+  // ── 步骤1：获取 OSS 预签名上传地址 ────────────────────────────────
+  /// [mimeType] : 'audio/wav' | 'image/jpeg' | 'image/png' 等
+  /// [folder]   : 'ai-voice' | 'ai-image'（在 OSS 中的目录）
   Future<OssUploadToken> getUploadToken({
-    required String fileType,
+    required String mimeType,
     required String folder,
   }) async {
     final res = await _client.post<Map<String, dynamic>>(
       '/sdkapi/upload/sign',
-      data: {'fileType': fileType, 'folder': folder},
+      data: {'mimeType': mimeType, 'folder': folder},
     );
     return OssUploadToken.fromJson(res);
   }
@@ -111,7 +111,7 @@ class AiRepository {
     // 1. 获取上传凭证
     onProgress?.call('upload', 0);
     final token = await getUploadToken(
-      fileType: file.path.split('.').last.toLowerCase(),
+      mimeType: 'audio/wav',  // 录音格式为 WAV
       folder: 'ai-voice',
     );
 
@@ -141,8 +141,13 @@ class AiRepository {
     // 1. 获取上传凭证
     onProgress?.call('upload', 0);
     final ext = file.path.split('.').last.toLowerCase();
+    // 根据扩展名推断 MIME
+    final mimeType = {
+      'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+      'png': 'image/png', 'webp': 'image/webp',
+    }[ext] ?? 'image/jpeg';
     final token = await getUploadToken(
-      fileType: ext,
+      mimeType: mimeType,
       folder: 'ai-image',
     );
 
@@ -166,17 +171,20 @@ class AiRepository {
 
 // ── OSS 上传凭证 ──────────────────────────────────────────
 class OssUploadToken {
-  final String uploadUrl;  // PUT 上传地址（预签名）
-  final String publicUrl;  // 上传完成后的公开访问 URL
+  final String uploadUrl;  // PUT 上传地址（预签名，15 分钟有效）
+  final String publicUrl;  // 上传完成后的公开 CDN URL（传给 AI 接口的地址）
 
   const OssUploadToken({
     required this.uploadUrl,
     required this.publicUrl,
   });
 
+  /// 后端 /sdkapi/upload/sign 返回字段：
+  ///   uploadUrl → OSS PUT 预签名地址
+  ///   cdnUrl    → 公开访问 CDN 地址（= publicUrl）
   factory OssUploadToken.fromJson(Map<String, dynamic> json) => OssUploadToken(
-    uploadUrl: (json['uploadUrl'] ?? json['url'] ?? '') as String,
-    publicUrl: (json['publicUrl'] ?? json['fileUrl'] ?? '') as String,
+    uploadUrl: (json['uploadUrl'] as String?) ?? '',
+    publicUrl: (json['cdnUrl']   as String?) ?? '',  // 后端返回字段是 cdnUrl
   );
 }
 

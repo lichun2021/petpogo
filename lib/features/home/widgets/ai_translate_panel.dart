@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../auth/controller/auth_controller.dart';
 import '../controller/ai_controller.dart';
 import '../data/models/ai_result_model.dart';
 
@@ -127,14 +128,17 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
         children: [
           // 标题
           Row(children: [
-            const Text('🎙️', style: TextStyle(fontSize: 22)),
+            const Text('🎤️', style: TextStyle(fontSize: 22)),
             const SizedBox(width: 8),
             const Text('听懂宠物语言', style: TextStyle(
               fontFamily: 'Plus Jakarta Sans', fontSize: 16,
               fontWeight: FontWeight.w800, color: AppColors.onSurface,
             )),
             const Spacer(),
-            if (state.result != null)
+            // 配额 badge
+            _QuotaBadge(quota: ref.watch(authControllerProvider).user?.aiQuota),
+            if (state.result != null) ...[
+              const SizedBox(width: 4),
               TextButton(
                 onPressed: _reset,
                 child: const Text('再试一次', style: TextStyle(
@@ -142,6 +146,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
                   color: AppColors.primary,
                 )),
               ),
+            ],
           ]),
           const SizedBox(height: 20),
 
@@ -473,6 +478,40 @@ class _ErrorView extends StatelessWidget {
           child: const Text('重试'),
         ),
       ],
+    );
+  }
+}// ── 配额徽章 ──────────────────────────────────────────────
+class _QuotaBadge extends StatelessWidget {
+  final dynamic quota; // AiQuota?
+  const _QuotaBadge({this.quota});
+
+  @override
+  Widget build(BuildContext context) {
+    if (quota == null) return const SizedBox.shrink();
+    final isUnlimited = quota.isUnlimited as bool;
+    final remaining   = quota.remaining  as int;
+    final color = isUnlimited ? AppColors.primary : (remaining <= 2 ? AppColors.error : AppColors.onSurfaceVariant);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(
+          isUnlimited ? Icons.all_inclusive_rounded : Icons.bolt_rounded,
+          size: 12, color: color,
+        ),
+        const SizedBox(width: 3),
+        Text(
+          isUnlimited ? 'VIP 无限' : '剩余 $remaining 次',
+          style: TextStyle(
+            fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+            fontWeight: FontWeight.w700, color: color,
+          ),
+        ),
+      ]),
     );
   }
 }
