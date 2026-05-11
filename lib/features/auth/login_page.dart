@@ -12,7 +12,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/widgets/pet_toast.dart';
 import 'controller/auth_controller.dart';
+
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -58,52 +60,38 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _sendSms() async {
     final phone = _phoneCtrl.text.trim();
     if (phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入手机号')),
-      );
+      PetToast.warning(context, '请先输入手机号');
       return;
     }
     setState(() => _isSendingSms = true);
     final error = await ref.read(authControllerProvider.notifier).sendSms(phone);
     if (!mounted) return;
     setState(() => _isSendingSms = false);
-
     if (error == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('验证码已发送，请注意查收')),
-      );
+      PetToast.success(context, '验证码已发送，请注意查收 📱');
       _startCountdown();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: AppColors.error),
-      );
+      PetToast.error(context, error);
     }
   }
 
   void _submit() {
     final phone = _phoneCtrl.text.trim();
     if (phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入手机号')),
-      );
+      PetToast.warning(context, '请先输入手机号');
       return;
     }
-
     if (_isSmsLogin) {
       final code = _codeCtrl.text.trim();
       if (code.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('请输入验证码')),
-        );
+        PetToast.warning(context, '请输入验证码');
         return;
       }
       ref.read(authControllerProvider.notifier).loginWithSms(phone: phone, code: code);
     } else {
       final password = _passwordCtrl.text.trim();
       if (password.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('请输入密码')),
-        );
+        PetToast.warning(context, '请输入密码');
         return;
       }
       ref.read(authControllerProvider.notifier).loginWithPwd(phone: phone, password: password);
@@ -116,16 +104,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     ref.listen<AuthState>(authControllerProvider, (_, next) {
       if (next.status == AuthStatus.loggedIn) {
-        // 路由守卫检测到 loggedIn 后会自动跳回首页，无需手动 pop
         debugPrint('[LoginPage] 登录成功，等待路由守卫跳转');
       } else if (next.status == AuthStatus.error && next.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next.errorMessage!),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        PetToast.error(context, next.errorMessage!);
       }
     });
 

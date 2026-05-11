@@ -9,9 +9,13 @@ import 'package:tencent_cloud_chat_sdk/models/v2_tim_friend_info.dart';
 import 'package:tencent_cloud_chat_sdk/enum/message_elem_type.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_avatar.dart';
+import '../../shared/widgets/pet_toast.dart';
 import '../../app.dart' show AppL10nX;
 import '../../core/router/app_routes.dart';
 import 'controller/im_controller.dart';
+import 'data/repository/im_repository.dart';
+import 'qr/my_qr_page.dart';
+import 'qr/scan_add_friend_page.dart';
 
 class MessagePage extends ConsumerStatefulWidget {
   const MessagePage({super.key});
@@ -21,14 +25,24 @@ class MessagePage extends ConsumerStatefulWidget {
 }
 
 class _MessagePageState extends ConsumerState<MessagePage> {
+  final _searchCtrl = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
+    _searchCtrl.addListener(() => setState(() => _searchQuery = _searchCtrl.text.trim().toLowerCase()));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final ctrl = ref.read(imControllerProvider.notifier);
       ctrl.loadConversations();
       ctrl.loadFriendApplications();
     });
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   // ── 右上角 "..." 底部菜单 ─────────────────────────────────
@@ -39,6 +53,14 @@ class _MessagePageState extends ConsumerState<MessagePage> {
       isScrollControlled: true,
       builder: (_) => _MorePanel(
         onChatTap: () => Navigator.pop(context),
+        onMyQrTap: () {
+          Navigator.pop(context);
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const MyQrCodePage()));
+        },
+        onScanQrTap: () {
+          Navigator.pop(context);
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const ScanAddFriendPage()));
+        },
       ),
     );
   }
@@ -124,6 +146,35 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                 ),
                 const SizedBox(height: 24),
 
+                const SizedBox(height: 16),
+
+                // 搜索栏
+                Container(
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14),
+                    decoration: InputDecoration(
+                      border: InputBorder.none, isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      hintText: '搜索私信…',
+                      hintStyle: TextStyle(fontSize: 13, color: AppColors.onSurfaceVariant.withOpacity(0.6)),
+                      prefixIcon: Icon(Icons.search_rounded, size: 18, color: AppColors.onSurfaceVariant.withOpacity(0.5)),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? GestureDetector(
+                              onTap: () { _searchCtrl.clear(); FocusScope.of(context).unfocus(); },
+                              child: Icon(Icons.clear_rounded, size: 16, color: AppColors.onSurfaceVariant),
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
                 // 私信列表标题
                 Text(
                   l10n.messageDirectMessages,
@@ -163,11 +214,33 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                   )
 
                 else ...[
-                  // 过滤掉 administrator 系统账号（点赞/评论通知不进私信列表）
+                  // 过滤规则：
+                  // 1. administrator 系统账号
+                  // 2. 会话最新消息是自定义消息且内容为点赞/评论通知
                   Builder(builder: (context) {
-                    final chats = state.conversations
-                        .where((c) => c.userID != 'administrator')
-                        .toList();
+                    final chats = state.conversations.where((c) {
+                      if (c.userID == 'administrator') return false;
+                      final lastMsg = c.lastMessage;
+                      if (lastMsg != null &&
+                          lastMsg.elemType == MessageElemType.V2TIM_ELEM_TYPE_CUSTOM) {
+                        final data = lastMsg.customElem?.data ?? '';
+                        if (data.contains('"post_like"') || data.contains('"post_comment"')) return false;
+                      }
+                      // 搜索过滤
+                      if (_searchQuery.isNotEmpty) {
+                        final name = (c.showName ?? c.userID ?? '').toLowerCase();
+                        final last = _parseLastMsgText(c).toLowerCase();
+                        if (!name.contains(_searchQuery) && !last.contains(_searchQuery)) return false;
+                      }
+                      return true;
+                    }).toList();
+                    // 置顶会话排在前面
+                    chats.sort((a, b) {
+                      final aPin = a.isPinned == true ? 1 : 0;
+                      final bPin = b.isPinned == true ? 1 : 0;
+                      if (aPin != bPin) return bPin.compareTo(aPin);
+                      return (b.orderkey ?? 0).compareTo(a.orderkey ?? 0);
+                    });
                     if (chats.isEmpty) {
                       return const Padding(
                         padding: EdgeInsets.symmetric(vertical: 48),
@@ -199,6 +272,21 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                             ref.read(imControllerProvider.notifier).markRead(conv.userID ?? '');
                             context.push(AppRoutes.chat(conv.userID ?? ''));
                           },
+                          onPin: () async {
+                            await ref.read(imRepositoryProvider)
+                                .pinConversation(conv.userID ?? '', pin: !(conv.isPinned == true));
+                            ref.read(imControllerProvider.notifier).loadConversations();
+                          },
+                          onClear: () async {
+                            await ref.read(imRepositoryProvider).clearC2CHistory(conv.userID ?? '');
+                            if (context.mounted) {
+                              PetToast.success(context, '聊天记录已清空 ✨');
+                            }
+                          },
+                          onDelete: () async {
+                            await ref.read(imRepositoryProvider).deleteConversation(conv.userID ?? '');
+                            ref.read(imControllerProvider.notifier).loadConversations();
+                          },
                         ),
                       )).toList(),
                     );
@@ -211,6 +299,14 @@ class _MessagePageState extends ConsumerState<MessagePage> {
       ),
     );
   }
+
+  // 业务使用的最后一条消息文字（搜索过滤用）
+  String _parseLastMsgText(V2TimConversation c) {
+    final last = c.lastMessage;
+    if (last == null) return '';
+    return last.textElem?.text ?? (last.soundElem != null ? '[语音]' : '[消息]');
+  }
+
 
   Widget _buildNotLoggedIn(dynamic l10n) {
     return Scaffold(
@@ -243,7 +339,13 @@ class _MessagePageState extends ConsumerState<MessagePage> {
 // ══════════════════════════════════════════════════════════════
 class _MorePanel extends ConsumerStatefulWidget {
   final VoidCallback onChatTap;
-  const _MorePanel({required this.onChatTap});
+  final VoidCallback? onMyQrTap;    // 我的二维码
+  final VoidCallback? onScanQrTap;  // 扫码加好友
+  const _MorePanel({
+    required this.onChatTap,
+    this.onMyQrTap,
+    this.onScanQrTap,
+  });
 
   @override
   ConsumerState<_MorePanel> createState() => _MorePanelState();
@@ -316,6 +418,25 @@ class _MorePanelState extends ConsumerState<_MorePanel>
               ),
             ),
           ),
+
+          // QR 快捷操作行
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+            child: Row(children: [
+              _QrActionBtn(
+                icon: Icons.qr_code_rounded,
+                label: '我的二维码',
+                onTap: widget.onMyQrTap,
+              ),
+              const SizedBox(width: 12),
+              _QrActionBtn(
+                icon: Icons.qr_code_scanner_rounded,
+                label: '扫码加好友',
+                onTap: widget.onScanQrTap,
+              ),
+            ]),
+          ),
+          const Divider(height: 1, thickness: 0.5, color: Color(0x12000000)),
 
           // 标题
           Padding(
@@ -547,15 +668,7 @@ class _NotificationSection extends ConsumerWidget {
             time: hasFriendReq ? '刚刚' : '',
             hasUnread: hasFriendReq,
             onTap: hasFriendReq
-                ? () {
-                    // 向上找 Scaffold，用 Messenger 告知用户滚动到 Banner
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('${friendApplications.length} 条好友申请待处理'),
-                      backgroundColor: AppColors.primary,
-                      behavior: SnackBarBehavior.floating,
-                      duration: const Duration(seconds: 2),
-                    ));
-                  }
+                ? () => PetToast.show(context, '${friendApplications.length} 条好友申请待处理')
                 : null,
           ),
           Divider(color: AppColors.outlineVariant.withOpacity(0.1), height: 0, indent: 72),
@@ -890,96 +1003,202 @@ class _FriendRequestBanner extends StatelessWidget {
   }
 }
 
-// ── 会话卡片 ─────────────────────────────────────────────────
-class _ConversationCard extends StatelessWidget {
+// ── 会话卡片（左滑露出操作按鈕）─────────────────────
+class _ConversationCard extends StatefulWidget {
   final V2TimConversation conversation;
   final VoidCallback onTap;
+  final Future<void> Function() onPin;
+  final Future<void> Function() onClear;
+  final Future<void> Function() onDelete;
 
-  const _ConversationCard({required this.conversation, required this.onTap});
+  const _ConversationCard({
+    required this.conversation,
+    required this.onTap,
+    required this.onPin,
+    required this.onClear,
+    required this.onDelete,
+  });
+
+  @override
+  State<_ConversationCard> createState() => _ConversationCardState();
+}
+
+class _ConversationCardState extends State<_ConversationCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  static const double _kPanelW = 180.0; // 3 × 60
+  static const double _kSnapThreshold = 0.35;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 280));
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  void _open()  => _ctrl.animateTo(1.0,
+      duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+  void _close() => _ctrl.animateTo(0.0,
+      duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+
+  void _onDragUpdate(DragUpdateDetails d) {
+    final v = _ctrl.value + (-d.delta.dx / _kPanelW);
+    _ctrl.value = v.clamp(0.0, 1.0);
+  }
+
+  void _onDragEnd(DragEndDetails d) {
+    final vel = d.velocity.pixelsPerSecond.dx;
+    if (_ctrl.value > _kSnapThreshold || vel < -500) {
+      _open();
+    } else {
+      _close();
+    }
+  }
+
+  Future<void> _runAction(Future<void> Function() fn) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    _close();
+    await fn();
+    if (mounted) setState(() => _busy = false);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final unread    = conversation.unreadCount ?? 0;
+    final unread    = widget.conversation.unreadCount ?? 0;
     final hasUnread = unread > 0;
-    final name      = conversation.showName ?? conversation.userID ?? '用户';
-    final lastMsg   = _parseLastMsg(conversation);
-    final time      = _formatTime(conversation.lastMessage?.timestamp);
+    final isPinned  = widget.conversation.isPinned == true;
+    final name      = widget.conversation.showName ??
+        widget.conversation.userID ?? '用户';
+    final lastMsg   = _parseLastMsg(widget.conversation);
+    final time      = _formatTime(widget.conversation.lastMessage?.timestamp);
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 16, spreadRadius: -4)],
-        ),
-        child: Row(
-          children: [
-            Stack(
-              children: [
-                PetAvatar(
-                  imageUrl: conversation.faceUrl,
-                  size: 48,
-                  fallbackEmoji: '🐾',
+    final card = Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isPinned
+            ? AppColors.primaryContainer.withOpacity(0.08)
+            : AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [BoxShadow(
+            color: AppColors.cardShadow, blurRadius: 16, spreadRadius: -4)],
+        border: isPinned
+            ? Border.all(color: AppColors.primary.withOpacity(0.12))
+            : null,
+      ),
+      child: Row(children: [
+        Stack(children: [
+          PetAvatar(imageUrl: widget.conversation.faceUrl,
+              size: 48, fallbackEmoji: '🐾'),
+          if (hasUnread)
+            Positioned(
+              right: -2, top: -2,
+              child: Container(
+                width: 20, height: 20,
+                decoration: BoxDecoration(
+                  color: AppColors.primary, shape: BoxShape.circle,
+                  border: Border.all(
+                      color: AppColors.surfaceContainerLowest, width: 2),
                 ),
-                if (hasUnread)
-                  Positioned(
-                    right: -2, top: -2,
-                    child: Container(
-                      width: 20, height: 20,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary, shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.surfaceContainerLowest, width: 2),
-                      ),
-                      child: Center(child: Text(
-                        '$unread',
-                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800),
-                      )),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name,
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans', fontSize: 14,
-                        fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w600,
-                        color: AppColors.onSurface,
-                      )),
-                  const SizedBox(height: 3),
-                  Text(lastMsg,
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                        color: hasUnread ? AppColors.onSurface : AppColors.onSurfaceVariant,
-                        fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
-                      )),
-                ],
+                child: Center(child: Text('$unread',
+                    style: const TextStyle(color: Colors.white,
+                        fontSize: 9, fontWeight: FontWeight.w800))),
               ),
             ),
-            Text(time, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 10,
-                color: AppColors.onSurfaceVariant)),
+        ]),
+        const SizedBox(width: 14),
+        Expanded(child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Expanded(child: Text(name, style: TextStyle(
+                fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w600,
+                color: AppColors.onSurface))),
+              if (isPinned)
+                Icon(Icons.push_pin_rounded, size: 12,
+                    color: AppColors.primary.withOpacity(0.6)),
+            ]),
+            const SizedBox(height: 3),
+            Text(lastMsg, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                color: hasUnread
+                    ? AppColors.onSurface : AppColors.onSurfaceVariant,
+                fontWeight:
+                    hasUnread ? FontWeight.w600 : FontWeight.w400)),
           ],
+        )),
+        Text(time, style: const TextStyle(
+            fontFamily: 'Plus Jakarta Sans', fontSize: 10,
+            color: AppColors.onSurfaceVariant)),
+      ]),
+    );
+
+    return GestureDetector(
+      onHorizontalDragUpdate: _onDragUpdate,
+      onHorizontalDragEnd:    _onDragEnd,
+      onTap: () {
+        if (_ctrl.value > 0.02) { _close(); return; }
+        widget.onTap();
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: AnimatedBuilder(
+          animation: _ctrl,
+          builder: (_, child) => Stack(children: [
+            // ── 操作按钮区（右对齐）────────────────────────────
+            Positioned.fill(child: Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(width: _kPanelW, child: Row(children: [
+                // 置顶
+                _SwipeActionBtn(
+                  icon: isPinned
+                      ? Icons.push_pin_outlined : Icons.push_pin_rounded,
+                  label: isPinned ? '取消置顶' : '置顶',
+                  color: AppColors.primary,
+                  onTap: () => _runAction(widget.onPin),
+                ),
+                // 清空
+                _SwipeActionBtn(
+                  icon: Icons.delete_sweep_outlined,
+                  label: '清空',
+                  color: const Color(0xFFFF9500),
+                  onTap: () => _runAction(widget.onClear),
+                ),
+                // 删除
+                _SwipeActionBtn(
+                  icon: Icons.delete_outline_rounded,
+                  label: '删除',
+                  color: AppColors.error,
+                  onTap: () => _runAction(widget.onDelete),
+                ),
+              ])),
+            )),
+            // ── 卡片（向左滑动）──────────────────────────────
+            Transform.translate(
+              offset: Offset(-_kPanelW * _ctrl.value, 0),
+              child: child,
+            ),
+          ]),
+          child: card,
         ),
       ),
     );
   }
 
-  /// 解析会话最后一条消息的显示文案
   String _parseLastMsg(V2TimConversation conv) {
     final msg = conv.lastMessage;
     if (msg == null) return '';
-    // 普通文字消息
     final text = msg.textElem?.text;
     if (text != null && text.isNotEmpty) return text;
-    // 图片消息
+    if (msg.soundElem != null) return '[语音]';
     if (msg.elemType == MessageElemType.V2TIM_ELEM_TYPE_IMAGE) return '[图片]';
-    // 自定义消息（系统通知：点赞 / 评论）→ 解析 JSON 展示有意义文案
     if (msg.elemType == MessageElemType.V2TIM_ELEM_TYPE_CUSTOM) {
       final raw = msg.customElem?.data;
       if (raw != null && raw.isNotEmpty) {
@@ -992,12 +1211,11 @@ class _ConversationCard extends StatelessWidget {
             final t = json['content'] as String? ?? '';
             return '$from 评论了你：$t';
           }
-          if (type == 'fence_alert')  return '⚠️ 宠物越界提醒';
+          if (type == 'fence_alert') return '⚠️ 宠物越界提醒';
         } catch (_) {}
       }
       return '[互动消息]';
     }
-    // 其他类型
     return '[消息]';
   }
 
@@ -1012,4 +1230,91 @@ class _ConversationCard extends StatelessWidget {
     if (diff.inDays    < 7)  return '${diff.inDays}天前';
     return '${dt.month}/${dt.day}';
   }
+}
+
+// ── 滑动操作按钮 ─────────────────────────────────────────────
+class _SwipeActionBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _SwipeActionBtn({
+    required this.icon, required this.label,
+    required this.color, required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        color: color,
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon, color: Colors.white, size: 22),
+          const SizedBox(height: 5),
+          Text(label, style: const TextStyle(
+            color: Colors.white, fontSize: 11,
+            fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700)),
+        ]),
+      ),
+    ),
+  );
+}
+
+class _QrActionBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  const _QrActionBtn({required this.icon, required this.label, this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.primaryContainer.withOpacity(0.18),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: AppColors.primary, size: 26),
+          const SizedBox(height: 6),
+          Text(label, style: const TextStyle(
+            fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+            fontWeight: FontWeight.w600, color: AppColors.primary,
+          )),
+        ]),
+      ),
+    ),
+  );
+}
+
+// ── 会话管理菜单按钮 ──────────────────────────────────────────
+class _ConvMenuBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _ConvMenuBtn({required this.icon, required this.label, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 12),
+        Text(label, style: TextStyle(
+          fontFamily: 'Plus Jakarta Sans', fontSize: 15,
+          fontWeight: FontWeight.w600, color: color)),
+      ]),
+    ),
+  );
 }

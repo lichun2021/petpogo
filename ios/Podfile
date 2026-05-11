@@ -40,6 +40,16 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
+      # ── permission_handler 必须的编译宏 ──────────────────────────────────
+      # 不加这些宏，iOS 运行时不会弹出任何权限请求对话框
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
+        '$(inherited)',
+        'PERMISSION_MICROPHONE=1',   # 麦克风（语音消息/AI分析）
+        'PERMISSION_CAMERA=1',        # 摄像头（扫码/视频通话/发帖）
+        'PERMISSION_PHOTOS=1',        # 相册（发帖/头像）
+        'PERMISSION_LOCATION_WHENINUSE=1',  # 位置（门店地图）
+        'PERMISSION_BLUETOOTH=1',     # 蓝牙（KeyTracker）
+      ]
       # 模拟器排除 arm64（本地调试用）
       config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
       # Release/Profile 强制只保留真机架构，防止 x86_64 打包进 IPA
@@ -64,6 +74,12 @@ post_install do |installer|
         config.build_settings['VALID_ARCHS'] = 'arm64'
         config.build_settings['ONLY_ACTIVE_ARCH'] = 'NO'
       end
+      # 修复 Pods_Runner.framework 找不到的问题：
+      # xcconfig 只含各 pod 子目录，缺少存放 Pods_Runner.framework 的根目录
+      existing = Array(config.build_settings['FRAMEWORK_SEARCH_PATHS'] || ['$(inherited)'])
+      unless existing.include?('$(PODS_CONFIGURATION_BUILD_DIR)')
+        config.build_settings['FRAMEWORK_SEARCH_PATHS'] = existing + ['$(PODS_CONFIGURATION_BUILD_DIR)']
+      end
     end
 
     # 避免重复添加
@@ -81,6 +97,25 @@ post_install do |installer|
           fi
         done
       SCRIPT
+    end
+
+    # 修复 Xcode 增量构建时 [CP] Copy XCFrameworks 被跳过的问题：
+    # Xcode 新版构建系统对无输出声明的脚本阶段在增量构建时会直接跳过，
+    # 导致 XCFramework 切片未解压到 PODS_XCFRAMEWORKS_BUILD_DIR，
+    # 继而在 [CP] Embed Pods Frameworks 里出现 "source: unbound variable"。
+    # 解法：直接在 [CP] Embed Pods Frameworks 脚本开头前置提取步骤。
+    embed_phase = runner_target.shell_script_build_phases.find { |p| p.name == '[CP] Embed Pods Frameworks' }
+    if embed_phase && !embed_phase.shell_script.include?('[Fix] Extract XCFrameworks')
+      prefix = <<~'SCRIPT'
+        # [Fix] Extract XCFrameworks before embedding (prevents 'source: unbound variable')
+        if [ -f "${PODS_ROOT}/Target Support Files/TXIMSDK_Plus_iOS_XCFramework/TXIMSDK_Plus_iOS_XCFramework-xcframeworks.sh" ]; then
+          "${PODS_ROOT}/Target Support Files/TXIMSDK_Plus_iOS_XCFramework/TXIMSDK_Plus_iOS_XCFramework-xcframeworks.sh"
+        fi
+        if [ -f "${PODS_ROOT}/Target Support Files/tencent_cloud_chat_sdk/tencent_cloud_chat_sdk-xcframeworks.sh" ]; then
+          "${PODS_ROOT}/Target Support Files/tencent_cloud_chat_sdk/tencent_cloud_chat_sdk-xcframeworks.sh"
+        fi
+      SCRIPT
+      embed_phase.shell_script = prefix + embed_phase.shell_script
     end
 
     runner_project.save

@@ -51,7 +51,7 @@ class PostModel {
   factory PostModel.fromJson(Map<String, dynamic> json) {
     final mt = (json['media_type'] as int?) ?? 0;
     return PostModel(
-      id:           json['id'] as String,
+      id:           json['id']?.toString() ?? '',
       content:      (json['content'] as String?) ?? '',
       mediaType:    mt == 1 ? MediaType.image : mt == 2 ? MediaType.video : MediaType.none,
       mediaUrls:    _parseUrls(json['media_urls']),
@@ -63,7 +63,7 @@ class PostModel {
       commentCount: (json['comment_count'] as int?) ?? 0,
       viewCount:    (json['view_count'] as int?) ?? 0,
       createdAt:    DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
-      userId:       json['user_id'] as String,
+      userId:       json['user_id']?.toString() ?? '',
       nickname:     (json['nickname'] as String?) ?? '用户',
       userAvatar:   json['user_avatar'] as String?,
       isLiked:      (json['is_liked'] as bool?) ?? false,

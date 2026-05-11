@@ -24,6 +24,8 @@ abstract class AppRoutes {
   static String petDetail(String petId)         => '/pet-detail/$petId';
   static String postDetail(String postId)       => '/post-detail/$postId';
   static String chat(String userId)             => '/chat/$userId';  // IM 聊天页
+  static const  myQrCode                        = '/my-qr-code';    // 我的二维码名片
+  static String addFriendByQr(String userId)    => '/add-friend-qr/$userId'; // 扫码后加好友
 
   // ── 路由模板（GoRoute path 用） ─────────────────────
   static const scanQrTemplate      = '/scan-qr/:deviceType';
@@ -31,4 +33,5 @@ abstract class AppRoutes {
   static const petDetailTemplate   = '/pet-detail/:petId';
   static const postDetailTemplate  = '/post-detail/:postId';
   static const chatTemplate        = '/chat/:userId';     // IM 聊天页
+  static const addFriendByQrTemplate = '/add-friend-qr/:userId'; // 扫码加好友
 }

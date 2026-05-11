@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:video_player/video_player.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/widgets/pet_toast.dart';
 import '../controller/feed_controller.dart';
 import '../controller/publish_controller.dart';
 import '../data/models/post_model.dart';
+
 
 class PublishPage extends ConsumerStatefulWidget {
   const PublishPage({super.key});
@@ -66,10 +69,62 @@ class _PublishPageState extends ConsumerState<PublishPage>
     );
   }
 
-  // ── 拍照 ────────────────────────────────────────────────
+  // ── 拍照（检查摄像头权限）────────────────────────────────
   Future<void> _pickCamera() async {
     Navigator.of(context).pop();
     HapticFeedback.mediumImpact();
+    // 检查摄像头权限
+    var status = await Permission.camera.status;
+    if (!status.isGranted) {
+      if (status.isDenied || status.isRestricted) {
+        status = await Permission.camera.request();
+      }
+      if (!status.isGranted) {
+        if (!mounted) return;
+        await showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20)),
+            title: const Row(children: [
+              Icon(Icons.no_photography_rounded, color: Color(0xFFFF6B6B)),
+              SizedBox(width: 8),
+              Flexible(child: Text('需要相机权限',
+                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 17, fontWeight: FontWeight.w700))),
+            ]),
+            content: const Text(
+              '拍照或视频通话需要使用相机。\n请在「设置 → PetPogo」中开启相机权限。',
+              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 14, height: 1.6),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('取消',
+                  style: TextStyle(color: AppColors.onSurfaceVariant)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  openAppSettings();
+                },
+                child: const Text('去设置',
+                  style: TextStyle(color: Colors.white,
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+    }
     final picked = await _picker.pickImage(
       source: ImageSource.camera,
       imageQuality: 90,
@@ -127,16 +182,11 @@ class _PublishPageState extends ConsumerState<PublishPage>
   }
 
   void _showToast(String msg, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg,
-            style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600)),
-        backgroundColor: isError ? AppColors.error : AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
+    if (isError) {
+      PetToast.error(context, msg);
+    } else {
+      PetToast.success(context, msg);
+    }
   }
 
   @override
@@ -150,7 +200,11 @@ class _PublishPageState extends ConsumerState<PublishPage>
           // ── 渐变顶栏 ────────────────────────────────────
           _GradientHeader(
             isBusy: pub.isBusy,
-            onClose: () => Navigator.of(context).pop(),
+            onClose: () {
+              // 关闭前先收起键盘并清除焦点，避免 TextField counter overlay 残留在社区页
+              FocusScope.of(context).unfocus();
+              Navigator.of(context).pop();
+            },
             onPublish: _publish,
           ),
 
@@ -351,7 +405,7 @@ class _TextCard extends StatelessWidget {
                 borderSide: const BorderSide(color: AppColors.primaryContainer, width: 1.5),
               ),
               contentPadding: const EdgeInsets.all(18),
-              counterStyle: TextStyle(color: AppColors.onSurfaceVariant.withOpacity(0.5), fontSize: 11),
+              counterText: '',  // 隐藏默认计数器，避免 iOS overlay 残影
             ),
           ),
         ],

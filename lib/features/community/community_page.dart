@@ -27,24 +27,28 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _selectedCategory = 0;
-  final _scrollCtrl = ScrollController();
+  // 每个 Tab 独立 ScrollController，避免共用时重复触发 loadMore
+  final _scrollCtrl0 = ScrollController();
+  final _scrollCtrl1 = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _scrollCtrl.addListener(_onScroll);
+    _scrollCtrl0.addListener(() => _onScroll(_scrollCtrl0));
+    _scrollCtrl1.addListener(() => _onScroll(_scrollCtrl1));
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    _scrollCtrl.dispose();
+    _scrollCtrl0.dispose();
+    _scrollCtrl1.dispose();
     super.dispose();
   }
 
-  void _onScroll() {
-    if (_scrollCtrl.position.pixels >= _scrollCtrl.position.maxScrollExtent - 300) {
+  void _onScroll(ScrollController ctrl) {
+    if (ctrl.position.pixels >= ctrl.position.maxScrollExtent - 300) {
       ref.read(feedControllerProvider.notifier).loadMore();
     }
   }
@@ -177,7 +181,10 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: [_buildFeedGrid(), _buildFeedGrid()],
+              children: [
+                _buildFeedGrid(_scrollCtrl0),
+                _buildFeedGrid(_scrollCtrl1),
+              ],
             ),
           ),
         ],
@@ -186,7 +193,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
   }
 
 
-  Widget _buildFeedGrid() {
+  Widget _buildFeedGrid(ScrollController scrollCtrl) {
     final feedState = ref.watch(feedControllerProvider);
 
     if (feedState.isLoading) {
@@ -224,7 +231,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
       displacement: 20,
       onRefresh: () => ref.read(feedControllerProvider.notifier).refresh(),
       child: CustomScrollView(
-        controller: _scrollCtrl,
+        controller: scrollCtrl,
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverPadding(
@@ -240,7 +247,10 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                 index: i,
                 onTap: () => _openViewer(i),
                 onAvatarTap: () => _showUserPanel(context, posts[i]),
-                onLike: () => ref.read(feedControllerProvider.notifier).toggleLike(posts[i].id),
+                // 自己的帖子不能点赞
+                onLike: posts[i].userId == _myUserId
+                    ? null
+                    : () => ref.read(feedControllerProvider.notifier).toggleLike(posts[i].id),
               ).animate().fadeIn(delay: Duration(milliseconds: (i * 40).clamp(0, 400))).slideY(begin: 0.08),
             ),
           ),
@@ -270,7 +280,7 @@ class _PostCard extends StatelessWidget {
   final int index;
   final VoidCallback onTap;
   final VoidCallback onAvatarTap;
-  final VoidCallback onLike;
+  final VoidCallback? onLike; // null = 自己的帖子，禁止点赞
 
   const _PostCard({
     required this.post,
@@ -294,12 +304,9 @@ class _PostCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── 封面图 ────────────────────────────────
+            // ── 封面图（不用 Hero，避免新帖刷新时 iOS 出现白色占位框）──
             if (post.thumbnailUrl != null)
-              Hero(
-                tag: 'post_thumb_${post.id}',
-                child: _Thumbnail(url: post.thumbnailUrl!, isVideo: post.mediaType == MediaType.video),
-              ),
+              _Thumbnail(url: post.thumbnailUrl!, isVideo: post.mediaType == MediaType.video),
 
             // ── 底部信息 ──────────────────────────────
             Padding(
@@ -322,16 +329,26 @@ class _PostCard extends StatelessWidget {
                     ),
                   ),
                   GestureDetector(
-                    onTap: onLike,
+                    onTap: onLike, // null 时 GestureDetector 不响应
                     child: Row(children: [
                       Icon(
                         post.isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                        color: post.isLiked ? AppColors.error : AppColors.onSurfaceVariant.withOpacity(0.5),
+                        // 自己帖子(onLike==null)：置灰；已点赞：红色；未点赞：浅灰
+                        color: onLike == null
+                            ? AppColors.onSurfaceVariant.withOpacity(0.25)
+                            : post.isLiked
+                                ? AppColors.error
+                                : AppColors.onSurfaceVariant.withOpacity(0.5),
                         size: 16,
                       ),
                       const SizedBox(width: 2),
                       Text('${post.likeCount}',
-                        style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariant)),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: onLike == null
+                              ? AppColors.onSurfaceVariant.withOpacity(0.3)
+                              : AppColors.onSurfaceVariant,
+                        )),
                     ]),
                   ),
                 ]),

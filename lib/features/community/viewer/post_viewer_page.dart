@@ -4,9 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/widgets/pet_toast.dart';
+import '../../auth/controller/auth_controller.dart';
 import '../data/models/post_model.dart';
 import '../data/post_repository.dart';
 import '../controller/feed_controller.dart';
+
 
 class PostViewerPage extends ConsumerStatefulWidget {
   final List<PostModel> posts;
@@ -168,10 +171,24 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
     super.dispose();
   }
 
-  void _toggleLike() {
+  /// 是否是自己的帖子（不能给自己点赞）
+  bool get _isOwnPost {
+    final myId = ref.read(authControllerProvider).user?.id ?? '';
+    return myId.isNotEmpty && widget.post.userId == myId;
+  }
+
+  /// 统一处理点赞操作
+  void _onLikeTap() {
+    if (_isOwnPost) {
+      PetToast.warning(context, '不能给自己的帖子点赞 🙈');
+      return;
+    }
     ref.read(feedControllerProvider.notifier).toggleLike(widget.post.id);
     HapticFeedback.lightImpact();
   }
+
+  void _toggleLike() => _onLikeTap();
+
 
   @override
   Widget build(BuildContext context) {
@@ -180,7 +197,7 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
 
     return GestureDetector(
       onTap: () => setState(() => _showControls = !_showControls),
-      onDoubleTap: _toggleLike,
+      onDoubleTap: _onLikeTap, // 自己的帖子也响应（给提示）
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -341,12 +358,16 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
   }
 
   Widget _buildActions(PostModel post) {
+    final isOwn = _isOwnPost;
     return Column(children: [
       _ActionBtn(
         icon: post.isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
         label: '${post.likeCount}',
-        color: post.isLiked ? Colors.red : Colors.white,
-        onTap: _toggleLike,
+        // 自己的帖子：图标置灰 + 点击给提示；已点赞：红色；未点赞：白色
+        color: isOwn
+            ? Colors.white.withOpacity(0.3)
+            : post.isLiked ? Colors.red : Colors.white,
+        onTap: _onLikeTap,
       ),
       const SizedBox(height: 20),
       _ActionBtn(
@@ -380,7 +401,7 @@ class _ActionBtn extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  final VoidCallback onTap;
+  final VoidCallback? onTap; // null = 禁用（自己的帖子不可点赞）
   const _ActionBtn({required this.icon, required this.label, required this.color, required this.onTap});
 
   @override

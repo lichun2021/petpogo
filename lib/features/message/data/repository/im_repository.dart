@@ -29,6 +29,7 @@ import 'package:tencent_cloud_chat_sdk/enum/message_priority_enum.dart';
 import 'package:tencent_cloud_chat_sdk/enum/friend_type_enum.dart';
 import 'package:tencent_cloud_chat_sdk/enum/friend_application_type_enum.dart';
 import 'package:tencent_cloud_chat_sdk/enum/friend_response_type_enum.dart';
+import 'package:tencent_cloud_chat_sdk/models/v2_tim_message_search_param.dart';
 import '../../../../core/api/api_exception.dart';
 import '../../../../core/api/result.dart';
 
@@ -168,6 +169,35 @@ class ImRepository {
     }
   });
 
+  /// 发送语音消息（两步法：create → send）
+  Future<Result<void>> sendSound({
+    required String toUserId,
+    required String soundPath,
+    required int duration,
+  }) => guardResult(() async {
+    final createRes = await TencentImSDKPlugin.v2TIMManager
+        .getMessageManager()
+        .createSoundMessage(soundPath: soundPath, duration: duration);
+    if (createRes.code != 0 || createRes.data == null) {
+      throw ApiException(message: createRes.desc ?? '创建语音消息失败', statusCode: createRes.code);
+    }
+    final res = await TencentImSDKPlugin.v2TIMManager
+        .getMessageManager()
+        .sendMessage(
+          id: createRes.data!.id!,
+          receiver: toUserId,
+          groupID: '',
+          priority: MessagePriorityEnum.V2TIM_PRIORITY_NORMAL,
+          onlineUserOnly: false,
+          offlinePushInfo: null,
+          cloudCustomData: '',
+          localCustomData: '',
+        );
+    if (res.code != 0) {
+      throw ApiException(message: '语音发送失败 (${res.code}): ${res.desc}', statusCode: res.code);
+    }
+  });
+
   // ── 好友管理 ─────────────────────────────────────────────
   /// 获取好友列表
   Future<Result<List<V2TimFriendInfo>>> fetchFriendList() =>
@@ -269,7 +299,48 @@ class ImRepository {
         .markC2CMessageAsRead(userID: userId);
   }
 
+  // ── 会话管理 ─────────────────────────────────────────────
+  /// 删除会话
+  Future<Result<void>> deleteConversation(String userId) => guardResult(() async {
+    final res = await TencentImSDKPlugin.v2TIMManager
+        .getConversationManager()
+        .deleteConversation(conversationID: 'c2c_$userId');
+    if (res.code != 0) throw ApiException(message: res.desc ?? '删除会话失败');
+  });
+
+  /// 置顶 / 取消置顶
+  Future<Result<void>> pinConversation(String userId, {required bool pin}) => guardResult(() async {
+    final res = await TencentImSDKPlugin.v2TIMManager
+        .getConversationManager()
+        .pinConversation(conversationID: 'c2c_$userId', isPinned: pin);
+    if (res.code != 0) throw ApiException(message: res.desc ?? '置顶操作失败');
+  });
+
+  /// 清空聊天记录（云端 + 本地）
+  Future<Result<void>> clearC2CHistory(String userId) => guardResult(() async {
+    final res = await TencentImSDKPlugin.v2TIMManager
+        .getMessageManager()
+        .clearC2CHistoryMessage(userID: userId);
+    if (res.code != 0) throw ApiException(message: res.desc ?? '清空记录失败');
+  });
+
+  /// 搜索本地消息
+  Future<Result<List<V2TimMessage>>> searchMessages(String keyword) => guardResult(() async {
+    final res = await TencentImSDKPlugin.v2TIMManager
+        .getMessageManager()
+        .searchLocalMessages(searchParam: V2TimMessageSearchParam(
+          type: 0,           // 0 = OR 匹配
+          keywordList: [keyword],
+        ));
+    if (res.code != 0) throw ApiException(message: res.desc ?? '搜索失败');
+    final items = res.data?.messageSearchResultItems ?? [];
+    return items
+        .expand((item) => item?.messageList?.map((m) => m!).toList() ?? <V2TimMessage>[])
+        .toList();
+  });
+
   // ── 注册监听器 ───────────────────────────────────────────
+
   /// 注册新消息监听（进入聊天页时调用）
   void addMessageListener(V2TimAdvancedMsgListener listener) {
     TencentImSDKPlugin.v2TIMManager

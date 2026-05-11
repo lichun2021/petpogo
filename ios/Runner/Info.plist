@@ -68,9 +68,9 @@
 	</array>
 	<!-- ── 隐私权限说明（App Store 必须）────────────────────── -->
 	<key>NSCameraUsageDescription</key>
-	<string>PetPogo 需要使用相机扫描设备二维码，以便绑定您的 KeyTracker 或 PetPhone 设备。</string>
+	<string>PetPogo 需要使用相机拍照、录制视频或进行视频通话。</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>PetPogo 需要使用麦克风录制宠物声音，通过 AI 识别功能分析宠物情绪。</string>
+	<string>PetPogo 需要使用麦克风来发送语音消息、录制宠物声音以及视频通话。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>PetPogo 需要访问相册，以便您上传宠物照片到社区或个人资料。</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
