@@ -480,7 +480,7 @@ class _MorePanelState extends ConsumerState<_MorePanel>
                 : TabBarView(
                     controller: _tab,
                     children: [
-                      _FriendListTab(friends: _friends),
+                      _FriendListTab(friends: _friends, onRefresh: _loadData),
                       _GroupListTab(groups: _groups),
                     ],
                   ),
@@ -492,13 +492,104 @@ class _MorePanelState extends ConsumerState<_MorePanel>
 }
 
 // ── 好友列表 Tab ──────────────────────────────────────────────
-class _FriendListTab extends ConsumerWidget {
+class _FriendListTab extends ConsumerStatefulWidget {
   final List<V2TimFriendInfo> friends;
-  const _FriendListTab({required this.friends});
+  final VoidCallback onRefresh; // 删除/拉黑后通知父级重新加载
+  const _FriendListTab({required this.friends, required this.onRefresh});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (friends.isEmpty) {
+  ConsumerState<_FriendListTab> createState() => _FriendListTabState();
+}
+
+class _FriendListTabState extends ConsumerState<_FriendListTab> {
+  late List<V2TimFriendInfo> _items;
+
+  @override
+  void initState() {
+    super.initState();
+    _items = List.from(widget.friends);
+  }
+
+  @override
+  void didUpdateWidget(_FriendListTab old) {
+    super.didUpdateWidget(old);
+    if (old.friends != widget.friends) {
+      _items = List.from(widget.friends);
+    }
+  }
+
+  void _showFriendActions(BuildContext ctx, V2TimFriendInfo f) {
+    final uid  = f.userID ?? '';
+    final name = f.friendRemark ?? f.userProfile?.nickName ?? uid;
+    showModalBottomSheet(
+      context: ctx,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        margin: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: SafeArea(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            // 标题
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+              child: Text(name,
+                style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+            ),
+            const Divider(height: 1, thickness: 0.5),
+            // 删除好友
+            ListTile(
+              leading: const Icon(Icons.person_remove_rounded, color: AppColors.error),
+              title: const Text('删除好友', style: TextStyle(color: AppColors.error, fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600)),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final ok = await ref.read(imControllerProvider.notifier).deleteFriend(uid);
+                if (!mounted) return;
+                if (ok) {
+                  setState(() => _items.removeWhere((x) => x.userID == uid));
+                  widget.onRefresh();
+                  PetToast.success(ctx, '已删除好友');
+                } else {
+                  PetToast.error(ctx, '删除失败，请重试');
+                }
+              },
+            ),
+            // 拉黑
+            ListTile(
+              leading: const Icon(Icons.block_rounded, color: AppColors.onSurfaceVariant),
+              title: const Text('拉黑该用户', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600, color: AppColors.onSurface)),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final ok = await ref.read(imControllerProvider.notifier).addToBlackList(uid);
+                if (!mounted) return;
+                if (ok) {
+                  setState(() => _items.removeWhere((x) => x.userID == uid));
+                  widget.onRefresh();
+                  PetToast.success(ctx, '已拉黑 $name');
+                } else {
+                  PetToast.error(ctx, '拉黑失败，请重试');
+                }
+              },
+            ),
+            // 取消
+            ListTile(
+              leading: const Icon(Icons.close_rounded, color: AppColors.onSurfaceVariant),
+              title: const Text('取消', style: TextStyle(fontFamily: 'Plus Jakarta Sans', color: AppColors.onSurfaceVariant)),
+              onTap: () => Navigator.pop(ctx),
+            ),
+            const SizedBox(height: 8),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_items.isEmpty) {
       return const Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Text('🐾', style: TextStyle(fontSize: 40)),
@@ -518,10 +609,10 @@ class _FriendListTab extends ConsumerWidget {
 
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      itemCount: friends.length,
+      itemCount: _items.length,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (ctx, i) {
-        final f    = friends[i];
+        final f    = _items[i];
         final uid  = f.userID ?? '';
         final name = f.friendRemark ?? f.userProfile?.nickName ?? uid;
         final face = f.userProfile?.faceUrl;
@@ -531,6 +622,7 @@ class _FriendListTab extends ConsumerWidget {
             Navigator.pop(ctx);
             ctx.push(AppRoutes.chat(uid));
           },
+          onLongPress: () => _showFriendActions(context, f),
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -552,6 +644,7 @@ class _FriendListTab extends ConsumerWidget {
     );
   }
 }
+
 
 // ── 族群列表 Tab ──────────────────────────────────────────────
 class _GroupListTab extends StatelessWidget {

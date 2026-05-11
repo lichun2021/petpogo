@@ -158,6 +158,14 @@ class ImController extends StateNotifier<ImState> {
       success: (_) {
         state = state.copyWith(isLoggedIn: true);
         _registerListeners();
+        // ✅ 登录后同步昵称&头像到 IM，好友列表 userProfile.nickName 才有值
+        final user = _ref.read(authControllerProvider).user;
+        if (user != null && user.name.isNotEmpty) {
+          _repo.updateSelfProfile(
+            nickname: user.name,
+            faceUrl: user.avatar.isNotEmpty ? user.avatar : null,
+          );
+        }
       },
       failure: (err) {
         debugPrint('[ImCtrl] IM 登录失败: ${err.message}');
@@ -249,6 +257,21 @@ class ImController extends StateNotifier<ImState> {
     final result = await _repo.addFriend(toUserId: toUserId, addWording: wording);
     return result.when(success: (_) => true, failure: (_) => false);
   }
+
+  /// 删除好友
+  Future<bool> deleteFriend(String userId) async {
+    final result = await _repo.deleteFriend(userId);
+    return result.when(success: (_) => true, failure: (_) => false);
+  }
+
+  /// 拉黑用户
+  Future<bool> addToBlackList(String userId) async {
+    final result = await _repo.addToBlackList(userId);
+    return result.when(success: (_) => true, failure: (_) => false);
+  }
+
+  /// 检查是否已是好友
+  Future<bool> checkIsFriend(String userId) => _repo.checkIsFriend(userId);
 
   // ―― 清除互动通知未读（点击互动通知区域后调用） ――――――――――――――――――――
   void clearInteractNotices() {

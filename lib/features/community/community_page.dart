@@ -510,8 +510,27 @@ class _UserActionDialog extends ConsumerStatefulWidget {
 }
 
 class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
-  bool _adding = false;
-  bool _added  = false;
+  bool _adding          = false;
+  bool _added           = false;
+  bool _isFriend        = false;
+  bool _checkingFriend  = true; // 检查中，先显示加载占位
+
+  @override
+  void initState() {
+    super.initState();
+    _checkFriendship();
+  }
+
+  Future<void> _checkFriendship() async {
+    final isFriend = await ref
+        .read(imControllerProvider.notifier)
+        .checkIsFriend(widget.post.userId);
+    if (!mounted) return;
+    setState(() {
+      _isFriend       = isFriend;
+      _checkingFriend = false;
+    });
+  }
 
   Future<void> _addFriend() async {
     setState(() => _adding = true);
@@ -537,6 +556,41 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
   @override
   Widget build(BuildContext context) {
     final post = widget.post;
+
+    // 右侧按钮：检查中 → 已是好友 → 发送中 → 申请已发 → 加好友
+    Widget rightBtn;
+    if (_checkingFriend) {
+      rightBtn = _DialogBtn(
+        icon: Icons.hourglass_top_rounded, label: '检查中…',
+        color: AppColors.surfaceContainerHigh,
+        textColor: AppColors.onSurfaceVariant, onTap: null,
+      );
+    } else if (_isFriend) {
+      rightBtn = _DialogBtn(
+        icon: Icons.people_rounded, label: '已是好友',
+        color: AppColors.surfaceContainerHigh,
+        textColor: AppColors.primary, onTap: null,
+      );
+    } else if (_adding) {
+      rightBtn = _DialogBtn(
+        icon: Icons.hourglass_top_rounded, label: '发送中…',
+        color: AppColors.surfaceContainerHigh,
+        textColor: AppColors.onSurfaceVariant, onTap: null,
+      );
+    } else if (_added) {
+      rightBtn = _DialogBtn(
+        icon: Icons.check_circle_rounded, label: '申请已发',
+        color: AppColors.surfaceContainerHigh,
+        textColor: AppColors.primary, onTap: null,
+      );
+    } else {
+      rightBtn = _DialogBtn(
+        icon: Icons.person_add_rounded, label: '加好友',
+        color: AppColors.primary, textColor: AppColors.onPrimary,
+        onTap: _addFriend,
+      );
+    }
+
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32),
@@ -568,14 +622,7 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
               onTap: () { Navigator.pop(context); context.push(AppRoutes.chat(post.userId)); },
             )),
             const SizedBox(width: 12),
-            Expanded(child: _adding
-              ? _DialogBtn(icon: Icons.hourglass_top_rounded, label: '发送中…',
-                  color: AppColors.surfaceContainerHigh, textColor: AppColors.onSurfaceVariant, onTap: null)
-              : _added
-                ? _DialogBtn(icon: Icons.check_circle_rounded, label: '申请已发',
-                    color: AppColors.surfaceContainerHigh, textColor: AppColors.primary, onTap: null)
-                : _DialogBtn(icon: Icons.person_add_rounded, label: '加好友',
-                    color: AppColors.primary, textColor: AppColors.onPrimary, onTap: _addFriend)),
+            Expanded(child: rightBtn),
           ]),
         ]),
       ),

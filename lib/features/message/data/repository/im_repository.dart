@@ -21,6 +21,7 @@ import 'package:tencent_cloud_chat_sdk/models/v2_tim_conversation.dart';
 import 'package:tencent_cloud_chat_sdk/models/v2_tim_message.dart';
 import 'package:tencent_cloud_chat_sdk/models/v2_tim_friend_info.dart';
 import 'package:tencent_cloud_chat_sdk/models/v2_tim_friend_application.dart';
+import 'package:tencent_cloud_chat_sdk/models/v2_tim_user_full_info.dart';
 import 'package:tencent_cloud_chat_sdk/enum/V2TimConversationListener.dart';
 import 'package:tencent_cloud_chat_sdk/enum/V2TimAdvancedMsgListener.dart';
 import 'package:tencent_cloud_chat_sdk/enum/V2TimFriendshipListener.dart';
@@ -288,6 +289,53 @@ class ImRepository {
             );
         if (res.code != 0) {
           throw ApiException(message: res.desc ?? '删除好友失败');
+        }
+      });
+
+  /// 登录后同步昵称 & 头像到 IM（确保好友列表能显示真实名字）
+  Future<void> updateSelfProfile({
+    required String nickname,
+    String? faceUrl,
+  }) async {
+    try {
+      await TencentImSDKPlugin.v2TIMManager.setSelfInfo(
+        userFullInfo: V2TimUserFullInfo(
+          nickName: nickname,
+          faceUrl: faceUrl,
+        ),
+      );
+      debugPrint('[IM] 已同步 IM 资料 nickname=$nickname');
+    } catch (e) {
+      debugPrint('[IM] 同步 IM 资料失败: $e');
+    }
+  }
+
+  /// 检查是否已是好友（true = 是好友）
+  Future<bool> checkIsFriend(String userId) async {
+    try {
+      final res = await TencentImSDKPlugin.v2TIMManager
+          .getFriendshipManager()
+          .checkFriend(
+            userIDList: [userId],
+            checkType: FriendTypeEnum.V2TIM_FRIEND_TYPE_BOTH,
+          );
+      if (res.code != 0 || res.data == null) return false;
+      final result = res.data!.firstOrNull;
+      // resultType: 0=无关系, 1=A->B, 2=B->A, 3=双向好友
+      return (result?.resultType ?? 0) >= 1;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// 拉黑用户
+  Future<Result<void>> addToBlackList(String userId) =>
+      guardResult(() async {
+        final res = await TencentImSDKPlugin.v2TIMManager
+            .getFriendshipManager()
+            .addToBlackList(userIDList: [userId]);
+        if (res.code != 0) {
+          throw ApiException(message: res.desc ?? '拉黑失败');
         }
       });
 
