@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -161,39 +162,48 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                     ),
                   )
 
-                else if (state.conversations.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 48),
-                    child: Center(
-                      child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        Text('💬', style: TextStyle(fontSize: 48)),
-                        SizedBox(height: 12),
-                        Text('暂无私信', style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans', fontSize: 16,
-                          fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant,
-                        )),
-                        SizedBox(height: 4),
-                        Text('在社区认识新朋友后，可以发起私信聊天',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                              color: AppColors.onSurfaceVariant,
+                else ...[
+                  // 过滤掉 administrator 系统账号（点赞/评论通知不进私信列表）
+                  Builder(builder: (context) {
+                    final chats = state.conversations
+                        .where((c) => c.userID != 'administrator')
+                        .toList();
+                    if (chats.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 48),
+                        child: Center(
+                          child: Column(mainAxisSize: MainAxisSize.min, children: [
+                            Text('💬', style: TextStyle(fontSize: 48)),
+                            SizedBox(height: 12),
+                            Text('暂无私信', style: TextStyle(
+                              fontFamily: 'Plus Jakarta Sans', fontSize: 16,
+                              fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant,
                             )),
-                      ]),
-                    ),
-                  )
-
-                else
-                  ...state.conversations.map((conv) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _ConversationCard(
-                      conversation: conv,
-                      onTap: () {
-                        ref.read(imControllerProvider.notifier).markRead(conv.userID ?? '');
-                        context.push(AppRoutes.chat(conv.userID ?? ''));
-                      },
-                    ),
-                  )),
+                            SizedBox(height: 4),
+                            Text('在社区认识新朋友后，可以发起私信聊天',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                                  color: AppColors.onSurfaceVariant,
+                                )),
+                          ]),
+                        ),
+                      );
+                    }
+                    return Column(
+                      children: chats.map((conv) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _ConversationCard(
+                          conversation: conv,
+                          onTap: () {
+                            ref.read(imControllerProvider.notifier).markRead(conv.userID ?? '');
+                            context.push(AppRoutes.chat(conv.userID ?? ''));
+                          },
+                        ),
+                      )).toList(),
+                    );
+                  }),
+                ]
               ]),
             ),
           ),
@@ -525,7 +535,7 @@ class _NotificationSection extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          // 好友申请
+          // 好友申请（可点击弹出申请面板）
           _NotificationItem(
             icon: Icons.person_add_rounded,
             iconBg: AppColors.primaryContainer.withOpacity(0.3),
@@ -536,9 +546,20 @@ class _NotificationSection extends ConsumerWidget {
                 : '暂无新好友申请',
             time: hasFriendReq ? '刚刚' : '',
             hasUnread: hasFriendReq,
+            onTap: hasFriendReq
+                ? () {
+                    // 向上找 Scaffold，用 Messenger 告知用户滚动到 Banner
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text('${friendApplications.length} 条好友申请待处理'),
+                      backgroundColor: AppColors.primary,
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 2),
+                    ));
+                  }
+                : null,
           ),
           Divider(color: AppColors.outlineVariant.withOpacity(0.1), height: 0, indent: 72),
-          // 点赞 / 评论
+          // 点赞 / 评论（点击弹出通知历史列表）
           _NotificationItem(
             icon: Icons.favorite_rounded,
             iconBg: AppColors.errorContainer.withOpacity(0.2),
@@ -547,6 +568,7 @@ class _NotificationSection extends ConsumerWidget {
             subtitle: interactSubtitle,
             time: interactTime,
             hasUnread: hasInteract,
+            onTap: () => _showInteractSheet(context, ref),
           ),
         ],
       ),
@@ -561,6 +583,169 @@ class _NotificationSection extends ConsumerWidget {
     if (diff.inDays    < 1)  return '${diff.inHours}小时前';
     return '${diff.inDays}天前';
   }
+
+  void _showInteractSheet(BuildContext context, WidgetRef ref) {
+    final notices = ref.read(imControllerProvider).systemNotices;
+    // 标记已读
+    ref.read(imControllerProvider.notifier).clearInteractNotices();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _InteractSheet(notices: notices),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  互动通知历史面板
+// ══════════════════════════════════════════════════════════════
+class _InteractSheet extends StatelessWidget {
+  final List<ImSystemNotice> notices;
+  const _InteractSheet({required this.notices});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.75,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 拖动条
+          Container(
+            margin: const EdgeInsets.only(top: 12, bottom: 4),
+            width: 40, height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.outlineVariant,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // 标题栏
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 12, 16, 8),
+            child: Row(children: [
+              const Text('互动通知', style: TextStyle(
+                fontFamily: 'Plus Jakarta Sans', fontSize: 20,
+                fontWeight: FontWeight.w800, color: AppColors.onSurface,
+              )),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.close_rounded),
+                color: AppColors.onSurfaceVariant,
+                onPressed: () => Navigator.pop(context),
+              ),
+            ]),
+          ),
+          const Divider(height: 1, thickness: 0.5, color: Color(0x18000000)),
+
+          // 通知列表
+          if (notices.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 48),
+              child: Center(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Text('❤️', style: TextStyle(fontSize: 40)),
+                  SizedBox(height: 12),
+                  Text('暂无互动通知', style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans', fontSize: 15,
+                    fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant,
+                  )),
+                  SizedBox(height: 4),
+                  Text('当有人点赞或评论你的帖子时，通知会在这里显示', style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                    color: AppColors.onSurfaceVariant,
+                  )),
+                ]),
+              ),
+            )
+          else
+            Flexible(
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                itemCount: notices.length,
+                separatorBuilder: (_, __) => const Divider(
+                  height: 1, thickness: 0.5, indent: 60,
+                  color: Color(0x10000000),
+                ),
+                itemBuilder: (ctx, i) => _InteractNoticeItem(notice: notices[i]),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InteractNoticeItem extends StatelessWidget {
+  final ImSystemNotice notice;
+  const _InteractNoticeItem({required this.notice});
+
+  @override
+  Widget build(BuildContext context) {
+    final isLike    = notice.isLike && !notice.isUnlike;
+    final isUnlike  = notice.isUnlike;
+    final isComment = notice.isComment;
+
+    final IconData icon;
+    final Color iconColor, iconBg;
+    if (isUnlike) {
+      icon = Icons.heart_broken_rounded;
+      iconColor = AppColors.onSurfaceVariant;
+      iconBg    = AppColors.surfaceContainerHigh;
+    } else if (isLike) {
+      icon = Icons.favorite_rounded;
+      iconColor = AppColors.error;
+      iconBg    = AppColors.errorContainer.withOpacity(0.25);
+    } else {
+      icon = Icons.chat_bubble_rounded;
+      iconColor = AppColors.primary;
+      iconBg    = AppColors.primaryContainer.withOpacity(0.3);
+    }
+
+    // 相对时间
+    final diff = DateTime.now().difference(notice.time);
+    final timeStr = diff.inMinutes < 1  ? '刚刚'
+        : diff.inHours   < 1  ? '${diff.inMinutes}分钟前'
+        : diff.inDays    < 1  ? '${diff.inHours}小时前'
+        : '${diff.inDays}天前';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // 图标
+        Container(
+          width: 40, height: 40,
+          decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+          child: Icon(icon, color: iconColor, size: 20),
+        ),
+        const SizedBox(width: 12),
+        // 文案
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(
+              notice.content,
+              style: const TextStyle(
+                fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+                fontWeight: FontWeight.w600, color: AppColors.onSurface,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(timeStr, style: const TextStyle(
+              fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+              color: AppColors.onSurfaceVariant,
+            )),
+          ]),
+        ),
+      ]),
+    );
+  }
 }
 
 class _NotificationItem extends StatelessWidget {
@@ -568,51 +753,61 @@ class _NotificationItem extends StatelessWidget {
   final Color iconBg, iconColor;
   final String title, subtitle, time;
   final bool hasUnread;
+  final VoidCallback? onTap;  // ← 新增：点击回调（null = 不可点击）
 
   const _NotificationItem({
     required this.icon, required this.iconBg, required this.iconColor,
     required this.title, required this.subtitle, required this.time,
     required this.hasUnread,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
-            child: Icon(icon, color: iconColor, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
-                    fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-                Text(subtitle, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                    color: AppColors.onSurfaceVariant)),
-              ],
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+              child: Icon(icon, color: iconColor, size: 22),
             ),
-          ),
-          if (time.isNotEmpty || hasUnread)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (time.isNotEmpty)
-                  Text(time, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 10,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                      fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+                  Text(subtitle, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
                       color: AppColors.onSurfaceVariant)),
-                if (hasUnread) ...[
-                  const SizedBox(height: 4),
-                  Container(width: 8, height: 8,
-                      decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle)),
                 ],
-              ],
+              ),
             ),
-        ],
+            if (time.isNotEmpty || hasUnread)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (time.isNotEmpty)
+                    Text(time, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 10,
+                        color: AppColors.onSurfaceVariant)),
+                  if (hasUnread) ...[
+                    const SizedBox(height: 4),
+                    Container(width: 8, height: 8,
+                        decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle)),
+                  ],
+                ],
+              ),
+            if (onTap != null) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.onSurfaceVariant),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -707,8 +902,7 @@ class _ConversationCard extends StatelessWidget {
     final unread    = conversation.unreadCount ?? 0;
     final hasUnread = unread > 0;
     final name      = conversation.showName ?? conversation.userID ?? '用户';
-    final lastMsg   = conversation.lastMessage?.textElem?.text
-        ?? (conversation.lastMessage?.elemType == MessageElemType.V2TIM_ELEM_TYPE_IMAGE ? '[图片]' : '[消息]');
+    final lastMsg   = _parseLastMsg(conversation);
     final time      = _formatTime(conversation.lastMessage?.timestamp);
 
     return GestureDetector(
@@ -774,6 +968,37 @@ class _ConversationCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// 解析会话最后一条消息的显示文案
+  String _parseLastMsg(V2TimConversation conv) {
+    final msg = conv.lastMessage;
+    if (msg == null) return '';
+    // 普通文字消息
+    final text = msg.textElem?.text;
+    if (text != null && text.isNotEmpty) return text;
+    // 图片消息
+    if (msg.elemType == MessageElemType.V2TIM_ELEM_TYPE_IMAGE) return '[图片]';
+    // 自定义消息（系统通知：点赞 / 评论）→ 解析 JSON 展示有意义文案
+    if (msg.elemType == MessageElemType.V2TIM_ELEM_TYPE_CUSTOM) {
+      final raw = msg.customElem?.data;
+      if (raw != null && raw.isNotEmpty) {
+        try {
+          final json = jsonDecode(raw) as Map<String, dynamic>;
+          final type = json['type'] as String? ?? '';
+          final from = json['fromName'] as String? ?? '有人';
+          if (type == 'post_like')    return '$from 赞了你的帖子 ❤️';
+          if (type == 'post_comment') {
+            final t = json['content'] as String? ?? '';
+            return '$from 评论了你：$t';
+          }
+          if (type == 'fence_alert')  return '⚠️ 宠物越界提醒';
+        } catch (_) {}
+      }
+      return '[互动消息]';
+    }
+    // 其他类型
+    return '[消息]';
   }
 
   String _formatTime(int? timestamp) {

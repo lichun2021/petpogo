@@ -203,7 +203,7 @@ class ImRepository {
     }
   });
 
-  /// 获取好友申请列表（别人申请加我）
+  /// 获取好友申请列表（别人申请加我，不含我发出的申请）
   Future<Result<List<V2TimFriendApplication>>> fetchFriendApplications() =>
       guardResult(() async {
         final res = await TencentImSDKPlugin.v2TIMManager
@@ -212,7 +212,10 @@ class ImRepository {
         if (res.code != 0) {
           throw ApiException(message: res.desc ?? '获取申请列表失败');
         }
-        return res.data?.friendApplicationList?.map((e) => e!).toList() ?? [];
+        final all = res.data?.friendApplicationList?.map((e) => e!).toList() ?? [];
+        // type: 1 = COME_IN（别人申请加我），2 = SEND_OUT（我发出的）
+        // 只保留 COME_IN，避免我发出的申请显示在消息页角标上
+        return all.where((a) => a.type == 1).toList();
       });
 
   /// 同意好友申请

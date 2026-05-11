@@ -212,6 +212,15 @@ class AuthController extends StateNotifier<AuthState> {
     return ok;
   }
 
+  // ── 同步 AI 配额（分析完成后调用）──────────────────────
+  void updateAiQuota(AiQuota quota) {
+    if (state.user == null) return;
+    final updated = state.user!.copyWith(aiQuota: quota);
+    state = state.copyWith(user: updated);
+    _repo.saveAiQuota(quota); // 持久化到 SecureStorage
+    debugPrint('[AuthCtrl] AI 配额已更新: used=${quota.used} remaining=${quota.remaining}');
+  }
+
   // ── 登录后触发数据加载 ─────────────────────────────────
   /// 登录成功 / 会话恢复后，并行加载用户相关数据
   void _loadUserData() {

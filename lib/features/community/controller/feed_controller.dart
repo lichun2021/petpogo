@@ -93,10 +93,17 @@ class FeedController extends StateNotifier<FeedState> {
     state = state.copyWith(refreshCount: nextCount);
   }
 
-  // ── 点赞（乐观更新）────────────────────────────────────
+  // ── 点赞（乐观更新 + 防重复锁）────────────────────────────
+  /// 正在进行点赞请求的 postId 集合，防止重复点击
+  final Set<String> _likingInProgress = {};
+
   Future<void> toggleLike(String postId) async {
+    // 防重复：如果该帖子已有请求在进行中，忽略本次点击
+    if (_likingInProgress.contains(postId)) return;
     final idx = state.posts.indexWhere((p) => p.id == postId);
     if (idx == -1) return;
+
+    _likingInProgress.add(postId);
     final post = state.posts[idx];
     final optimistic = post.copyWith(
       isLiked:   !post.isLiked,
@@ -105,10 +112,17 @@ class FeedController extends StateNotifier<FeedState> {
     updatePost(idx, optimistic);
     try {
       final liked = await _repo.toggleLike(postId);
-      updatePost(idx, optimistic.copyWith(isLiked: liked));
+      // 以服务端真实结果更新（防止前后不一致）
+      final currentIdx = state.posts.indexWhere((p) => p.id == postId);
+      if (currentIdx != -1) {
+        updatePost(currentIdx, optimistic.copyWith(isLiked: liked));
+      }
     } catch (_) {
       // 回滚
-      updatePost(idx, post);
+      final currentIdx = state.posts.indexWhere((p) => p.id == postId);
+      if (currentIdx != -1) updatePost(currentIdx, post);
+    } finally {
+      _likingInProgress.remove(postId);
     }
   }
 

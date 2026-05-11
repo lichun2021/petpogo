@@ -5,7 +5,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../shared/theme/app_colors.dart';
-import '../../auth/controller/auth_controller.dart';
 import '../controller/ai_controller.dart';
 import '../data/models/ai_result_model.dart';
 
@@ -38,6 +37,67 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
     setState(() => _previewFile = File(xFile.path));
   }
 
+  // ── 弹出选图来源菜单 ──────────────────────────────────────────────────────────
+  Future<void> _showPickSheet() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const SizedBox(height: 8),
+          Container(
+            width: 36, height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.onSurfaceVariant.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text('选择照片来源', style: TextStyle(
+            fontFamily: 'Plus Jakarta Sans', fontSize: 15,
+            fontWeight: FontWeight.w700, color: AppColors.onSurface,
+          )),
+          const SizedBox(height: 4),
+          ListTile(
+            leading: Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
+            ),
+            title: const Text('拍照', style: TextStyle(
+              fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600,
+            )),
+            onTap: () => Navigator.pop(context, ImageSource.camera),
+          ),
+          ListTile(
+            leading: Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
+            ),
+            title: const Text('从相册选择', style: TextStyle(
+              fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600,
+            )),
+            onTap: () => Navigator.pop(context, ImageSource.gallery),
+          ),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+    if (source != null) _pickImage(source);
+  }
+
   // ── 开始分析 ──────────────────────────────────────────────
   Future<void> _startAnalysis() async {
     if (_previewFile == null) return;
@@ -55,6 +115,26 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
   Widget build(BuildContext context) {
     final state = ref.watch(aiImageControllerProvider);
 
+    // 分析完成后弹 SnackBar
+    ref.listen(aiImageControllerProvider, (prev, next) {
+      if (prev?.phase == AiPhase.analyzing &&
+          (next.phase == AiPhase.result || next.phase == AiPhase.notPet)) {
+        final quota = next.result?.quota;
+        if (quota != null && mounted) {
+          final msg = quota.isUnlimited
+              ? '分析完成 • VIP 无限次数✨'
+              : '分析完成 • 今日剩余 ${quota.remaining} 次';
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(msg),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            duration: const Duration(seconds: 3),
+          ));
+        }
+      }
+    });
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(24),
@@ -75,10 +155,9 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
               fontWeight: FontWeight.w800, color: AppColors.onSurface,
             )),
             const Spacer(),
-            // 配额 badge
-            _QuotaBadge(quota: ref.watch(authControllerProvider).user?.aiQuota),
-            if (state.phase == AiPhase.result || state.phase == AiPhase.error) ...[
-              const SizedBox(width: 4),
+            if (state.phase == AiPhase.result ||
+                state.phase == AiPhase.notPet ||
+                state.phase == AiPhase.error)
               TextButton(
                 onPressed: _reset,
                 child: const Text('再拍一张', style: TextStyle(
@@ -86,37 +165,47 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
                   color: AppColors.primary,
                 )),
               ),
-            ],
           ]),
           const SizedBox(height: 20),
 
-          // 内容区
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: switch (state.phase) {
-              AiPhase.idle => _buildIdleView(),
-              AiPhase.uploading => _ProgressView(
-                  key: const ValueKey('upload'),
-                  label: '上传图片中…',
-                  progress: state.uploadProgress,
-                  icon: '☁️',
-                ),
-              AiPhase.analyzing => const _SpinnerView(
-                  key: ValueKey('analyze'),
-                  label: 'AI 正在分析表情…',
-                  icon: '🔍',
-                ),
-              AiPhase.result => _ResultView(
-                  key: const ValueKey('result'),
-                  result: state.result!,
-                  previewFile: _previewFile,
-                ),
-              AiPhase.error => _ErrorView(
-                  key: const ValueKey('error'),
-                  message: state.errorMessage ?? '分析失败',
-                  onRetry: _reset,
-                ),
-            },
+          // 内容区（固定最小高度，防止切换阶段时外框跳动）
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 220),
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: switch (state.phase) {
+                  AiPhase.idle      => _buildIdleView(),
+                  AiPhase.uploading => _ProgressView(
+                      key: const ValueKey('upload'),
+                      label: '上传图片中…',
+                      progress: state.uploadProgress,
+                      icon: '☁️',
+                    ),
+                  AiPhase.analyzing => const _SpinnerView(
+                      key: ValueKey('analyze'),
+                      label: 'AI 正在分析表情…',
+                      icon: '🔍',
+                    ),
+                  AiPhase.result    => _ResultView(
+                      key: const ValueKey('result'),
+                      result: state.result!,
+                      previewFile: _previewFile,
+                    ),
+                  AiPhase.notPet    => _NotPetView(
+                      key: const ValueKey('notPet'),
+                      reason: state.notPetReason ?? '未检测到宠物',
+                      quota: state.result?.quota,
+                      onRetry: _reset,
+                    ),
+                  AiPhase.error     => _ErrorView(
+                      key: const ValueKey('error'),
+                      message: state.errorMessage ?? '分析失败',
+                      onRetry: _reset,
+                    ),
+                },
+              ),
+            ),
           ),
         ],
       ),
@@ -160,20 +249,18 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
           SizedBox(
             height: 44,
             child: Row(children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _pickImage(ImageSource.gallery),
-                  icon: const Icon(Icons.photo_library_outlined, size: 16),
-                  label: const Text('换张图',
-                    style: TextStyle(fontSize: 13),
-                    overflow: TextOverflow.clip,
-                    maxLines: 1,
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.onSurfaceVariant,
-                    side: BorderSide(color: AppColors.outlineVariant),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                  ),
+              OutlinedButton.icon(
+                onPressed: _showPickSheet,
+                icon: const Icon(Icons.camera_alt_rounded, size: 16),
+                label: const Text('换张图',
+                  style: TextStyle(fontSize: 13),
+                  overflow: TextOverflow.clip,
+                  maxLines: 1,
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.onSurfaceVariant,
+                  side: BorderSide(color: AppColors.outlineVariant),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                 ),
               ),
               const SizedBox(width: 10),
@@ -199,25 +286,34 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
             ]),
           ),
         ] else ...[
-          // 选图按钮
+          // 单个相机按钮，点击弹出来源菜单
           const Text('选择宠物照片，AI 读懂它的心情', style: TextStyle(
             fontFamily: 'Plus Jakarta Sans', fontSize: 13,
             color: AppColors.onSurfaceVariant,
           )),
-          const SizedBox(height: 16),
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            _PickButton(
-              icon: Icons.photo_library_rounded,
-              label: '相册',
-              onTap: () => _pickImage(ImageSource.gallery),
+          const SizedBox(height: 20),
+          GestureDetector(
+            onTap: _showPickSheet,
+            child: Container(
+              width: 72, height: 72,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppColors.primaryGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.35),
+                    blurRadius: 16, spreadRadius: -2,
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 32),
             ),
-            const SizedBox(width: 24),
-            _PickButton(
-              icon: Icons.camera_alt_rounded,
-              label: '拍照',
-              onTap: () => _pickImage(ImageSource.camera),
-            ),
-          ]),
+          ),
+          const SizedBox(height: 10),
+          const Text('点击拍照或从相册选择', style: TextStyle(
+            fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+            color: AppColors.onSurfaceVariant,
+          )),
         ],
       ],
     );
@@ -472,7 +568,47 @@ class _ErrorView extends StatelessWidget {
   }
 }
 
-// ── 配额徽章 ──────────────────────────────────────────────
+// ── 非宠物提示 ────────────────────────────────────────────────
+class _NotPetView extends StatelessWidget {
+  final String reason;
+  final dynamic quota; // AiQuotaInfo?
+  final VoidCallback onRetry;
+  const _NotPetView({super.key, required this.reason, this.quota, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const Text('🤔', style: TextStyle(fontSize: 40)),
+        const SizedBox(height: 12),
+        Text(reason, textAlign: TextAlign.center, style: const TextStyle(
+          fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+          color: AppColors.onSurface,
+          fontWeight: FontWeight.w600,
+        )),
+        const SizedBox(height: 6),
+        Text('请换一张宠物的清晰照片再试试',
+          style: const TextStyle(
+            fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+            color: AppColors.onSurfaceVariant,
+          )
+        ),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: onRetry,
+          icon: const Icon(Icons.refresh_rounded, size: 16),
+          label: const Text('重新选图'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            side: BorderSide(color: AppColors.primary),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── 配额徽章 ────────────────────────────────────────────────
 class _QuotaBadge extends StatelessWidget {
   final dynamic quota; // AiQuota?
   const _QuotaBadge({this.quota});

@@ -199,8 +199,9 @@ class AuthRepository {
     }
   }
 
-  // ── 私有：持久化 ─────────────────────────────────────────
+  // ── 私有：持久化 ──────────────────────────────────────────────────────────
   Future<void> _persist(UserInfo user) async {
+    final q = user.aiQuota;
     await Future.wait([
       _storage.write(key: _kToken,       value: user.token),
       _storage.write(key: _kId,          value: user.id),
@@ -211,9 +212,19 @@ class AuthRepository {
       _storage.write(key: _kImUserSig,   value: user.imUserSig),
       _storage.write(key: _kIsVip,       value: user.isVip ? '1' : '0'),
       _storage.write(key: _kVipExpireAt, value: user.vipExpireAt ?? ''),
+      _storage.write(key: 'aiQuota_used',      value: q.used.toString()),
+      _storage.write(key: 'aiQuota_limit',     value: q.limit.toString()),
+      _storage.write(key: 'aiQuota_remaining', value: q.remaining.toString()),
     ]);
-    debugPrint('[AuthRepo] 会话已持久化 (VIP=${user.isVip})');
+    debugPrint('[AuthRepo] 会话已持久化 (VIP=${user.isVip}, AI剩余=${q.remaining})');
   }
+
+  // ── 仅更新 AI 配额（分析完成后快速写入）──────────────────────────────────
+  Future<void> saveAiQuota(AiQuota quota) => Future.wait([
+    _storage.write(key: 'aiQuota_used',      value: quota.used.toString()),
+    _storage.write(key: 'aiQuota_limit',     value: quota.limit.toString()),
+    _storage.write(key: 'aiQuota_remaining', value: quota.remaining.toString()),
+  ]);
 }
 
 // ── Riverpod Provider ─────────────────────────────────────

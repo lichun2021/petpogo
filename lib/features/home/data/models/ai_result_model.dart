@@ -53,11 +53,20 @@ class AiQuotaInfo {
 
 // ── 统一 AI 分析结果 ──────────────────────────────────────
 /// 语音和图像接口共用的结果结构
+///
+/// success=true  → 有情绪分析结果，显示 primaryEmotion / top3 / advice
+/// success=false → 非宠物/识别失败，显示 reason，配额仍会更新
 class AiAnalysisResult {
-  /// 分析记录 ID（服务端生成，用于查询历史）
+  /// 是否成功识别（false = 非宠物或识别失败，但仍返回配额）
+  final bool success;
+
+  /// 非宠物时的提示原因（success=false 时有值）
+  final String? reason;
+
+  /// 分析记录 ID（服务端生成）
   final String id;
 
-  /// 主情绪
+  /// 主情绪（success=true 时有效）
   final AiEmotionItem primaryEmotion;
 
   /// Top-3 情绪列表
@@ -66,7 +75,7 @@ class AiAnalysisResult {
   /// AI 照顾建议
   final String advice;
 
-  /// 集成模型数量（图像用，语音为 0）
+  /// 集成模型数量
   final int ensembleSize;
 
   /// AI 服务处理耗时（毫秒）
@@ -76,38 +85,50 @@ class AiAnalysisResult {
   final AiQuotaInfo quota;
 
   const AiAnalysisResult({
-    required this.id,
+    this.success        = true,
+    this.reason,
+    this.id             = '',
     required this.primaryEmotion,
-    required this.top3,
-    required this.advice,
-    required this.ensembleSize,
-    required this.processingMs,
+    this.top3           = const [],
+    this.advice         = '',
+    this.ensembleSize   = 0,
+    this.processingMs   = 0,
     required this.quota,
   });
 
   factory AiAnalysisResult.fromJson(Map<String, dynamic> json) {
-    // 主情绪
-    final emotionRaw = json['emotion'] as Map<String, dynamic>? ?? {};
-    final primary = AiEmotionItem.fromJson(emotionRaw);
+    final successVal = (json['success'] as bool?) ?? true;
+    final quotaRaw   = json['_quota'] as Map<String, dynamic>? ?? {};
+    final quota      = AiQuotaInfo.fromJson(quotaRaw);
 
-    // Top-3
-    final top3Raw = json['top3'] as List? ?? [];
-    final top3 = top3Raw
+    // success=false：非宠物，只有 reason + quota
+    if (!successVal) {
+      return AiAnalysisResult(
+        success:       false,
+        reason:        (json['reason'] as String?) ?? '无法识别该图片',
+        quota:         quota,
+        primaryEmotion: const AiEmotionItem(label: '', labelZh: '', confidence: 0),
+      );
+    }
+
+    // success=true：正常情绪分析结果
+    final emotionRaw = json['emotion'] as Map<String, dynamic>? ?? {};
+    final primary    = AiEmotionItem.fromJson(emotionRaw);
+    final top3Raw    = json['top3'] as List? ?? [];
+    final top3       = top3Raw
         .whereType<Map<String, dynamic>>()
         .map(AiEmotionItem.fromJson)
         .toList();
 
-    // 配额
-    final quotaRaw = json['_quota'] as Map<String, dynamic>? ?? {};
-
     return AiAnalysisResult(
-      id:             (json['id']          as String?) ?? '',
+      success:       true,
+      id:            (json['id']           as String?) ?? '',
       primaryEmotion: primary,
-      top3:           top3,
-      advice:         (json['advice']      as String?) ?? '',
-      ensembleSize:   (json['ensembleSize'] as int?)   ?? 0,
-      processingMs:   (json['processingMs'] as int?)   ?? 0,
-      quota:          AiQuotaInfo.fromJson(quotaRaw),
+      top3:          top3,
+      advice:        (json['advice']       as String?) ?? '',
+      ensembleSize:  (json['ensembleSize'] as int?)    ?? 0,
+      processingMs:  (json['processingMs'] as int?)    ?? 0,
+      quota:         quota,
     );
   }
 

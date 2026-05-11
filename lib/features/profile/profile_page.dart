@@ -36,6 +36,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref.read(userStatsProvider.notifier).loadMyStats();
         ref.read(petControllerProvider.notifier).loadPets();
+        // 拉取最新配额（包含 aiQuota）
+        ref.read(authControllerProvider.notifier).refreshUser();
       });
     }
 
@@ -337,6 +339,9 @@ class _UserInfoCardState extends ConsumerState<_UserInfoCard> {
                     _StatCol(value: likeStr,     label: '获赞'),
                   ],
                 ),
+                // ── AI 次数 ──────────────────────
+                const SizedBox(height: 10),
+                _AiQuotaChip(quota: user?.aiQuota),
               ],
             ),
           ),
@@ -345,6 +350,82 @@ class _UserInfoCardState extends ConsumerState<_UserInfoCard> {
     );
   }
 }
+
+// ── AI 配额 chip ──────────────────────────────────────────
+class _AiQuotaChip extends StatelessWidget {
+  final dynamic quota; // AiQuota?
+  const _AiQuotaChip({this.quota});
+
+  @override
+  Widget build(BuildContext context) {
+    if (quota == null) return const SizedBox.shrink();
+    final isUnlimited = quota.isUnlimited as bool;
+    final used        = quota.used       as int;
+    final limit       = quota.limit      as int;
+    final remaining   = quota.remaining  as int;
+
+    final bool isWarning = !isUnlimited && remaining <= 2;
+    final Color accent = isWarning ? AppColors.error : AppColors.primary;
+    final double fraction = (isUnlimited || limit <= 0) ? 1.0 : (used / limit).clamp(0.0, 1.0);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: accent.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accent.withOpacity(0.2)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(
+          isUnlimited ? Icons.all_inclusive_rounded : Icons.auto_awesome_rounded,
+          size: 14, color: accent,
+        ),
+        const SizedBox(width: 6),
+        Text('AI 分析', style: TextStyle(
+          fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+          fontWeight: FontWeight.w700, color: accent,
+        )),
+        const SizedBox(width: 8),
+        if (isUnlimited)
+          Text('VIP 无限 ✨', style: TextStyle(
+            fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+            fontWeight: FontWeight.w600, color: accent,
+          ))
+        else ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: SizedBox(
+              width: 56, height: 5,
+              child: LinearProgressIndicator(
+                value: fraction,
+                backgroundColor: accent.withOpacity(0.15),
+                valueColor: AlwaysStoppedAnimation(accent),
+              ),
+            ),
+          ),
+          const SizedBox(width: 7),
+          RichText(text: TextSpan(
+            style: TextStyle(
+              fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+              fontWeight: FontWeight.w800, color: accent,
+            ),
+            children: [
+              TextSpan(text: '$used'),
+              TextSpan(
+                text: ' / $limit',
+                style: TextStyle(
+                  fontWeight: FontWeight.w500, fontSize: 11,
+                  color: accent.withOpacity(0.6),
+                ),
+              ),
+            ],
+          )),
+        ],
+      ]),
+    );
+  }
+}
+
 
 // ── 工具函数 ───────────────────────────────────────────
 String _speciesLabel(String type) {

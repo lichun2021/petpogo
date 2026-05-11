@@ -25,14 +25,18 @@ import '../../auth/controller/auth_controller.dart';
 
 // ── 系统通知模型（点赞 / 评论 / 好友申请）────────────────────
 class ImSystemNotice {
-  final String type;     // 'post_like' | 'post_comment' | 'friend_request'
-  final String fromName; // 发送人昵称
-  final String content;  // 通知文案
+  final String type;        // 'post_like' | 'post_comment' | 'friend_request'
+  final String action;      // 'like' | 'unlike' | 'comment'（默认 'like'/'comment'）
+  final String fromName;    // 发送人昵称
+  final String postContent; // 帖子内容摘要（最多20字，可能为空）
+  final String content;     // 最终展示文案
   final DateTime time;
 
   const ImSystemNotice({
     required this.type,
+    this.action = '',
     required this.fromName,
+    this.postContent = '',
     required this.content,
     required this.time,
   });
@@ -41,6 +45,7 @@ class ImSystemNotice {
   bool get isLike    => type == 'post_like';
   bool get isComment => type == 'post_comment';
   bool get isFriend  => type == 'friend_request';
+  bool get isUnlike  => type == 'post_like' && action == 'unlike';
 }
 
 // ── 状态类 ────────────────────────────────────────────────
@@ -245,6 +250,11 @@ class ImController extends StateNotifier<ImState> {
     return result.when(success: (_) => true, failure: (_) => false);
   }
 
+  // ―― 清除互动通知未读（点击互动通知区域后调用） ――――――――――――――――――――
+  void clearInteractNotices() {
+    state = state.copyWith(systemNotices: []);
+  }
+
   // ── 标记已读 ─────────────────────────────────────────────
   Future<void> markRead(String userId) async {
     await _repo.markConversationRead(userId);
@@ -291,7 +301,16 @@ class ImController extends StateNotifier<ImState> {
     _friendListener = V2TimFriendshipListener(
       onFriendApplicationListAdded: (applications) {
         if (!mounted) return;
-        final newApps = applications.where((a) => a != null).map((a) => a!).toList();
+        // 只处理别人发给我的申请（type == 1 COME_IN）
+        final incoming = applications
+            .where((a) => a != null && a.type == 1)
+            .map((a) => a!)
+            .toList();
+        if (incoming.isEmpty) return;
+        // 去重：避免同一 userID 重复添加
+        final existingIds = state.friendApplications.map((a) => a.userID).toSet();
+        final newApps = incoming.where((a) => !existingIds.contains(a.userID)).toList();
+        if (newApps.isEmpty) return;
         final merged = [...state.friendApplications, ...newApps];
         state = state.copyWith(friendApplications: merged);
       },
@@ -317,22 +336,38 @@ class ImController extends StateNotifier<ImState> {
           final type = json['type'] as String? ?? '';
           if (type != 'post_like' && type != 'post_comment') return;
 
-          final fromName = json['fromName'] as String?
+          final fromName    = json['fromName'] as String?
               ?? json['nickname'] as String?
               ?? '有人';
+          final action      = json['action'] as String? ?? (type == 'post_like' ? 'like' : 'comment');
+          final postContent = json['postContent'] as String? ?? '';
+          final commentText = json['commentText'] as String?
+              ?? json['content'] as String?
+              ?? '';
+
+          // ── 生成展示文案 ──────────────────────────────────────
+          // 帖子摘要引用（有内容则加引号展示）
+          final postRef = postContent.isNotEmpty
+              ? '"${postContent.length >= 20 ? '${postContent}…' : postContent}"'
+              : '你的帖子';
           final String content;
           if (type == 'post_like') {
-            content = '$fromName 点赞了你的帖子';
+            content = action == 'unlike'
+                ? '$fromName 取消了 $postRef 的点赞'
+                : '$fromName 赞了你发布的 $postRef ❤️';
           } else {
-            final text = json['content'] as String? ?? '';
-            content = '$fromName 评论了你：$text';
+            content = commentText.isNotEmpty
+                ? '$fromName 评论了 $postRef：$commentText'
+                : '$fromName 评论了 $postRef';
           }
 
           final notice = ImSystemNotice(
-            type:     type,
-            fromName: fromName,
-            content:  content,
-            time:     DateTime.now(),
+            type:        type,
+            action:      action,
+            fromName:    fromName,
+            postContent: postContent,
+            content:     content,
+            time:        DateTime.now(),
           );
 
           // 最新通知插到最前，最多保留 50 条
