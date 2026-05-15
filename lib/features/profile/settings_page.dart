@@ -39,20 +39,12 @@ class SettingsPage extends ConsumerWidget {
           // ── 账户（语言 + 昵称 + 密码）────────────────────
           _buildSectionHeader('账户'),
           _buildGroup([
-            _LanguageTile(isChinese: isChinese, ref: ref),
-            if (user != null) ...[
-              _SettingsTile(
-                icon: Icons.person_rounded,
-                label: '修改昵称',
-                trailing: user.name.isNotEmpty ? user.name : '未设置',
-                onTap: () => _showNicknameSheet(context, ref, user.name),
-              ),
+            if (user != null)
               _SettingsTile(
                 icon: Icons.lock_rounded,
                 label: '修改密码',
                 onTap: () => _showPasswordSheet(context, ref),
               ),
-            ],
           ]),
           const SizedBox(height: 20),
 

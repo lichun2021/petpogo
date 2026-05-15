@@ -14,6 +14,7 @@ import '../pet/controller/pet_controller.dart';
 import '../pet/pet_list_page.dart';
 import 'data/user_stats_provider.dart';
 import '../../core/router/app_routes.dart';
+import '../../core/api/api_client.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -128,7 +129,22 @@ class _UserInfoCard extends ConsumerStatefulWidget {
 class _UserInfoCardState extends ConsumerState<_UserInfoCard> {
   bool _uploadingAvatar = false;
 
-  Future<void> _pickAndUploadAvatar() async {
+  void _showNicknameSheet(BuildContext context, String current) {
+    final ctrl = TextEditingController(text: current);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surfaceContainerLowest,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => _NicknameInlineSheet(ctrl: ctrl, ref: ref, onSaved: () {
+        // 刷新用户信息
+        ref.read(authControllerProvider.notifier).refreshUser();
+      }),
+    );
+  }
+
+    Future<void> _pickAndUploadAvatar() async {
     // 弹出选择来源的底部菜单
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
@@ -287,11 +303,21 @@ class _UserInfoCardState extends ConsumerState<_UserInfoCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(nickname,
-                    style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans', fontSize: 20,
-                        fontWeight: FontWeight.w800, letterSpacing: -0.4,
-                        color: AppColors.onSurface)),
+                GestureDetector(
+                  onTap: () => _showNicknameSheet(context, nickname),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(nickname,
+                          style: const TextStyle(
+                              fontFamily: 'Plus Jakarta Sans', fontSize: 20,
+                              fontWeight: FontWeight.w800, letterSpacing: -0.4,
+                              color: AppColors.onSurface)),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.edit_rounded, size: 14, color: AppColors.onSurfaceVariant),
+                    ],
+                  ),
+                ),
                 if (maskedPhone.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(maskedPhone,
@@ -906,6 +932,98 @@ class _GuestProfileView extends StatelessWidget {
                 child: Text(l10n.profileLoginRegister)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── 昵称编辑 Sheet（内联在 profile_page 中）───────────────
+class _NicknameInlineSheet extends ConsumerStatefulWidget {
+  final TextEditingController ctrl;
+  final WidgetRef ref;
+  final VoidCallback onSaved;
+  const _NicknameInlineSheet({required this.ctrl, required this.ref, required this.onSaved});
+
+  @override
+  ConsumerState<_NicknameInlineSheet> createState() => _NicknameInlineSheetState();
+}
+
+class _NicknameInlineSheetState extends ConsumerState<_NicknameInlineSheet> {
+  bool _loading = false;
+  String? _error;
+
+  Future<void> _submit() async {
+    final name = widget.ctrl.text.trim();
+    if (name.isEmpty) { setState(() => _error = '昵称不能为空'); return; }
+    setState(() { _loading = true; _error = null; });
+    try {
+      final client = ref.read(apiClientProvider);
+      await client.put<Map<String, dynamic>>(
+        '/sdkapi/user/profile',
+        data: {'nickname': name},
+      );
+      await ref.read(authControllerProvider.notifier).refreshUser();
+      if (!mounted) return;
+      Navigator.pop(context);
+      widget.onSaved();
+    } catch (e) {
+      setState(() { _loading = false; _error = e.toString(); });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('修改昵称', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              fontSize: 18, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 20),
+          Container(
+            decoration: BoxDecoration(color: AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(14)),
+            child: TextField(
+              controller: widget.ctrl,
+              autofocus: true,
+              style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15),
+              decoration: InputDecoration(
+                hintText: '输入新昵称',
+                hintStyle: TextStyle(color: AppColors.onSurfaceVariant,
+                    fontFamily: 'Plus Jakarta Sans', fontSize: 14),
+                prefixIcon: const Icon(Icons.person_rounded, color: AppColors.primary, size: 20),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              ),
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(_error!, style: TextStyle(color: AppColors.error, fontSize: 13)),
+          ],
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity, height: 52,
+            child: ElevatedButton(
+              onPressed: _loading ? null : _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                elevation: 0,
+              ),
+              child: _loading
+                  ? const SizedBox(width: 20, height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('保存', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 16, fontWeight: FontWeight.w700)),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }

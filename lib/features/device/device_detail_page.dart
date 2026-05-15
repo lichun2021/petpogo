@@ -8,6 +8,7 @@ import '../device/data/models/device_model.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
 import '../pet/pet_location_page.dart';
+import '../pet/pet_track_page.dart';
 import '../pet/bind_pet_sheet.dart';
 
 // ── 设备详情页 ────────────────────────────────────────────
@@ -74,19 +75,14 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                       const SizedBox(height: 20),
                       _buildStatusHero(),
                       const SizedBox(height: 20),
-                      _buildInfoGrid(),
-                      const SizedBox(height: 20),
                       // 宠物区块（始终显示：有宠物显示详情，无宠物显示绑定入口）
                       _buildPetSection(context),
                       const SizedBox(height: 20),
                       if (_otaInfo != null && _otaInfo!.isUpgrade) _buildOtaBanner(),
                       if (_otaInfo != null && _otaInfo!.isUpgrade) const SizedBox(height: 20),
+                      // 设备功能（始终显示）
+                      _buildControls(context),
                       const SizedBox(height: 20),
-                      // 设备控制（在线时显示）
-                      if (_detail?.onlineStatus == true) ...[
-                        _buildControls(context),
-                        const SizedBox(height: 20),
-                      ],
                       _buildActions(context),
                     ])),
                   ),
@@ -116,7 +112,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         color: AppColors.onSurface,
         onPressed: () => Navigator.pop(context),
       ),
-      title: Text(widget.name, overflow: TextOverflow.ellipsis,
+      title: Text(_detail?.name ?? widget.name, overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15, fontWeight: FontWeight.w700)),
       centerTitle: true,
       actions: [
@@ -126,57 +122,96 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   }
 
   Widget _buildStatusHero() {
-    final online = _detail?.onlineStatus ?? false;
-    return Container(
-      width: double.infinity, padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF7a1f02), Color(0xFFa83206), Color(0xFFff784e)],
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+    final online      = _detail?.onlineStatus ?? false;
+    final deviceName  = _detail?.name ?? widget.name;
+    return GestureDetector(
+      onTap: () => _showRemarkDialog(context),  // 点击卡片任意区域也可编辑
+      child: Container(
+        width: double.infinity, padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF6b1a01), Color(0xFF9e2f04), Color(0xFFe85d26)],
+            begin: Alignment.topLeft, end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.30),
+              blurRadius: 28, spreadRadius: -6, offset: const Offset(0, 10))],
         ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.35),
-            blurRadius: 24, spreadRadius: -4, offset: const Offset(0, 8))],
-      ),
-      child: Column(children: [
-        Container(width: 72, height: 72,
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(20)),
-            child: const Icon(Icons.router_rounded, color: Colors.white, size: 38)),
-        const SizedBox(height: 14),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Container(width: 8, height: 8, decoration: BoxDecoration(
-              color: online ? const Color(0xFF4ADE80) : Colors.white38, shape: BoxShape.circle)),
-          const SizedBox(width: 6),
-          Text(online ? '设备在线' : '设备离线',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15, fontWeight: FontWeight.w700,
-                  color: online ? const Color(0xFF4ADE80) : Colors.white60)),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          // 左侧图标
+          Container(width: 64, height: 64,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+              ),
+              child: const Icon(Icons.router_rounded, color: Colors.white, size: 32)),
+          const SizedBox(width: 16),
+          // 中间信息
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // 设备名称 + 编辑图标
+            Row(children: [
+              Flexible(
+                child: Text(deviceName,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 18, fontWeight: FontWeight.w800,
+                        color: Colors.white, letterSpacing: -0.3)),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(Icons.edit_rounded, size: 12, color: Colors.white),
+              ),
+            ]),
+            const SizedBox(height: 5),
+            // 在线状态徽章
+            Row(children: [
+              Container(width: 7, height: 7, decoration: BoxDecoration(
+                  color: online ? const Color(0xFF4ADE80) : Colors.white38,
+                  shape: BoxShape.circle)),
+              const SizedBox(width: 5),
+              Text(online ? '在线' : '离线',
+                  style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: online ? const Color(0xFF4ADE80) : Colors.white60)),
+            ]),
+            const SizedBox(height: 8),
+            // MAC 地址 chip
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withOpacity(0.15)),
+              ),
+              child: Text(widget.mac,
+                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 10, fontWeight: FontWeight.w600,
+                      color: Colors.white70, letterSpacing: 0.5)),
+            ),
+          ])),
+          // 右侧最后在线时间
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(20)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.access_time_rounded, size: 10, color: Colors.white60),
+                  const SizedBox(width: 4),
+                  Text(
+                    _detail?.lastOnlineDisplay ?? '-',
+                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 10, color: Colors.white70),
+                  ),
+                ])),
+          ]),
         ]),
-        const SizedBox(height: 6),
-        Text('最后在线: ${_detail?.lastOnlineDisplay ?? "未知"}',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                color: Colors.white.withOpacity(0.65))),
-        const SizedBox(height: 16),
-        Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12)),
-            child: Text(widget.mac, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white, letterSpacing: 0.5))),
-      ]),
-    );
-  }
-
-  Widget _buildInfoGrid() {
-    final items = [
-      ('设备型号',  _detail?.productKey    ?? '-'),
-      ('产品名称',  _detail?.productName   ?? '-'),
-      ('固件版本',  _otaInfo?.currentVersion ?? '-'),
-      ('商户',      _detail?.merchantName  ?? '-'),
-    ];
-    return GridView.count(
-      crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 2.2,
-      children: items.map((e) => _InfoCell(label: e.$1, value: e.$2)).toList(),
+      ),
     );
   }
 
@@ -332,22 +367,59 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     );
   }
 
-  // ── 设备控制：响铃 + LED ───────────────────────────────────
+  // ── 设备功能：查看位置 + 查看轨迹 + 响铃 + LED ──────────────
   Widget _buildControls(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 16, spreadRadius: -4)],
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('设备控制',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-        const SizedBox(height: 14),
+    final hasPet = _petInfo != null && _petInfo!.petName.isNotEmpty;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('设备功能',
+          style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+      const SizedBox(height: 14),
+      // 第一行：查看位置 + 查看轨迹
         Row(children: [
-          // 响铃按鈕
+          Expanded(
+            child: _ControlChip(
+              icon: Icons.location_on_rounded,
+              label: '查看位置',
+              active: false,
+              activeColor: AppColors.secondary,
+              loading: false,
+              onTap: () {
+                if (hasPet) {
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => PetLocationPage(
+                        petName: _petInfo!.petName, deviceMac: widget.mac),
+                  ));
+                } else {
+                  PetToast.warning(context, '请先绑定宠物再查看位置');
+                }
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _ControlChip(
+              icon: Icons.route_rounded,
+              label: '查看轨迹',
+              active: false,
+              activeColor: AppColors.tertiary,
+              loading: false,
+              onTap: () {
+                if (hasPet) {
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => PetTrackPage(
+                        petName: _petInfo!.petName, deviceMac: widget.mac),
+                  ));
+                } else {
+                  PetToast.warning(context, '请先绑定宠物再查看轨迹');
+                }
+              },
+            ),
+          ),
+        ]),
+        const SizedBox(height: 10),
+        // 第二行：响铃 + LED（仅在线显示）
+        if (_detail?.onlineStatus == true) Row(children: [
           Expanded(
             child: _ControlChip(
               icon: _ringing ? Icons.volume_off_rounded : Icons.notifications_active_rounded,
@@ -355,11 +427,10 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
               active: _ringing,
               activeColor: const Color(0xFFFF6B35),
               loading: false,
-              onTap: () => _toggleRing(),
+              onTap: _toggleRing,
             ),
           ),
           const SizedBox(width: 10),
-          // LED 开关
           Expanded(
             child: _ControlChip(
               icon: _ledOn ? Icons.lightbulb_rounded : Icons.lightbulb_outline_rounded,
@@ -367,12 +438,11 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
               active: _ledOn,
               activeColor: const Color(0xFFFFD60A),
               loading: false,
-              onTap: () => _toggleLed(),
+              onTap: _toggleLed,
             ),
           ),
         ]),
-      ]),
-    );
+      ]);
   }
 
   Future<void> _toggleRing() async {
@@ -395,7 +465,6 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     final next = !_ledOn;
     setState(() => _ledOn = next);
     try {
-      // 三色同时点亮（全亮 = 白光），全关时三色同时关
       await ref.read(deviceRepositoryProvider).shadowUpdate(
         mac: widget.mac,
         data: {
@@ -415,26 +484,6 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   Widget _buildActions(BuildContext context) {
     final hasPet = _petInfo != null && _petInfo!.petName.isNotEmpty;
     return Column(children: [
-      Row(children: [
-        Expanded(child: _ActionButton(icon: Icons.edit_rounded, label: '重命名',
-            onTap: () => _showRenameDialog(context))),
-        const SizedBox(width: 12),
-        Expanded(child: _ActionButton(
-          icon: Icons.location_on_rounded, label: '查看位置',
-          onTap: () {
-            final pet = _petInfo;
-            if (pet != null && pet.petName.isNotEmpty) {
-              Navigator.push(context, MaterialPageRoute(
-                builder: (_) => PetLocationPage(petName: pet.petName, deviceMac: widget.mac),
-              ));
-            } else {
-              PetToast.warning(context, '请先绑定宠物再查看位置');
-            }
-          },
-        )),
-      ]),
-      const SizedBox(height: 12),
-      // 无宠物时额外显示「绑定宠物」按钮
       if (!hasPet) ...[
         _ActionButton(
           icon: Icons.pets_rounded, label: '绑定宠物',
@@ -451,49 +500,50 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     ]);
   }
 
-  void _showRenameDialog(BuildContext context) {
+  void _showRemarkDialog(BuildContext context) {
     final ctrl = TextEditingController(text: widget.name);
-    showDialog(context: context, builder: (_) => AlertDialog(
+    showDialog(context: context, builder: (ctx) => AlertDialog(
       backgroundColor: AppColors.surfaceContainerLow,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('重命名设备', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700)),
+      title: const Text('设备备注', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700)),
       content: TextField(controller: ctrl, decoration: InputDecoration(
-          hintText: '设备名称', filled: true, fillColor: AppColors.surfaceContainer,
+          hintText: '输入备注内容', filled: true, fillColor: AppColors.surfaceContainer,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
         FilledButton(
           onPressed: () async {
-            Navigator.pop(context);
+            Navigator.pop(ctx);
             try {
               await ref.read(deviceRepositoryProvider).updateDeviceName(widget.mac, ctrl.text);
               await ref.read(deviceListProvider.notifier).load();
-            } catch (e) { debugPrint('[DeviceDetail] 重命名失败: $e'); }
+              await _loadAll();
+            } catch (e) { debugPrint('[DeviceDetail] 备注失败: $e'); }
           },
           style: FilledButton.styleFrom(backgroundColor: AppColors.primary,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-          child: const Text('确认'),
+          child: const Text('保存'),
         ),
       ],
     ));
   }
 
   void _showUnbindDialog(BuildContext context) {
-    showDialog(context: context, builder: (_) => AlertDialog(
+    showDialog(context: context, builder: (ctx) => AlertDialog(
       backgroundColor: AppColors.surfaceContainerLow,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('解绑设备', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700)),
       content: Text('确定要解绑「${widget.name}」吗？解绑后宠物数据将停止同步。',
           style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
         FilledButton(
           onPressed: () async {
-            Navigator.pop(context);
+            Navigator.pop(ctx);   // 关 dialog（用 dialog 自己的 ctx）
             try {
               await ref.read(deviceRepositoryProvider).unbindDevice(widget.mac);
               ref.read(deviceListProvider.notifier).removeDevice(widget.mac);
-              if (mounted) Navigator.pop(context);
+              if (mounted) Navigator.pop(context);  // 退出设备详情页（用页面 context）
             } catch (e) { debugPrint('[DeviceDetail] 解绑失败: $e'); }
           },
           style: FilledButton.styleFrom(backgroundColor: AppColors.error,

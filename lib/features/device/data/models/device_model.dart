@@ -3,7 +3,8 @@ class DeviceModel {
   final String deviceId;
   final String mac;
   final String productKey;
-  final String deviceNickname;   // 用户自定义昵称
+  final String name;             // 设备名（用户改过的）
+  final String deviceNickname;   // 用户自定义昵称（旧字段，兼容）
   final bool   connect;          // true=在线
   final String uType;            // '1'=主人 '2'=共享
   final String sharer;
@@ -14,6 +15,7 @@ class DeviceModel {
     required this.deviceId,
     this.mac             = '',
     this.productKey      = '',
+    this.name            = '',
     this.deviceNickname  = '',
     this.connect         = false,
     this.uType           = '1',
@@ -22,8 +24,13 @@ class DeviceModel {
     this.updateTime      = 0,
   });
 
-  String get displayName =>
-      deviceNickname.isNotEmpty ? deviceNickname : (mac.isNotEmpty ? mac : deviceId);
+  /// 优先 name → deviceNickname → mac → deviceId
+  String get displayName {
+    if (name.isNotEmpty)           return name;
+    if (deviceNickname.isNotEmpty) return deviceNickname;
+    if (mac.isNotEmpty)            return mac;
+    return deviceId;
+  }
 
   bool get isOnline => connect;
   bool get isOwner  => uType == '1';
@@ -32,6 +39,7 @@ class DeviceModel {
     deviceId:       (json['deviceId']       as String?) ?? '',
     mac:            (json['mac']            as String?) ?? '',
     productKey:     (json['productKey']     as String?) ?? '',
+    name:           (json['name']           as String?) ?? '',
     deviceNickname: (json['deviceNickname'] as String?) ?? '',
     connect:        (json['connect']        as bool?)   ?? false,
     uType:          (json['uType']          as String?) ?? '1',

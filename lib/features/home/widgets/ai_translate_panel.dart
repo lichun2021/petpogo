@@ -139,7 +139,6 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
       }
     });
     return Container(
-      margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLow,
