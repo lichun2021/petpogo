@@ -9,6 +9,7 @@ import '../../app.dart' show AppL10nX;
 import '../auth/controller/auth_controller.dart';
 import '../auth/data/models/auth_model.dart';
 import '../community/data/post_repository.dart';
+import '../device/device_list_page.dart';
 import '../pet/controller/pet_controller.dart';
 import 'data/user_stats_provider.dart';
 import '../../core/router/app_routes.dart';
@@ -117,7 +118,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
                 // ── 菜单 ─────────────────────────────
                 _MenuGroup(items: [
-                  _MenuItemData(icon: Icons.devices_rounded,      label: l10n.profileBoundDevices,  onTap: () {}),
+                  _MenuItemData(icon: Icons.devices_rounded,      label: l10n.profileBoundDevices,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeviceListPage()))),
                   _MenuItemData(icon: Icons.receipt_long_rounded,  label: l10n.profileOrderHistory,  onTap: () {}),
                   _MenuItemData(icon: Icons.grid_view_rounded,     label: l10n.profileMyPosts,       onTap: () {}),
                   _MenuItemData(icon: Icons.settings_rounded,      label: l10n.profileSettings,      onTap: () => context.push('/settings')),
