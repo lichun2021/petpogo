@@ -28,6 +28,7 @@ class LoginResponse {
   final bool   isVip;
   final String? vipExpireAt;
   final AiQuota aiQuota;
+  final String peerGatewayUrl; // iPet 硬件网关公网地址
 
   const LoginResponse({
     required this.token,
@@ -40,23 +41,26 @@ class LoginResponse {
     this.isVip = false,
     this.vipExpireAt,
     this.aiQuota = const AiQuota(),
+    this.peerGatewayUrl = '',
   });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
     final user = json['user'] as Map<String, dynamic>? ?? {};
     final im   = json['im']   as Map<String, dynamic>? ?? {};
+    final peer = json['peer'] as Map<String, dynamic>? ?? {};
     final q    = user['aiQuota'] as Map<String, dynamic>? ?? {};
     return LoginResponse(
-      token:       (json['token']        as String?) ?? '',
-      phone:       (user['phone']        as String?) ?? '',
-      nickname:    (user['nickname']     as String?) ?? '',
-      id:          (user['id']           as String?) ?? '',
-      avatar:      (user['avatar']       as String?) ?? '',
-      imUserSig:   (im['userSig']        as String?) ?? '',
-      imUserId:    (im['userId']         as String?) ?? '',
-      isVip:       (user['isVip']        as bool?)   ?? false,
-      vipExpireAt: user['vipExpireAt']   as String?,
-      aiQuota:     AiQuota.fromJson(q),
+      token:          (json['token']          as String?) ?? '',
+      phone:          (user['phone']          as String?) ?? '',
+      nickname:       (user['nickname']       as String?) ?? '',
+      id:             (user['id']             as String?) ?? '',
+      avatar:         (user['avatar']         as String?) ?? '',
+      imUserSig:      (im['userSig']          as String?) ?? '',
+      imUserId:       (im['userId']           as String?) ?? '',
+      isVip:          (user['isVip']          as bool?)   ?? false,
+      vipExpireAt:    user['vipExpireAt']     as String?,
+      aiQuota:        AiQuota.fromJson(q),
+      peerGatewayUrl: (peer['gatewayUrl']     as String?) ?? '',
     );
   }
 }
@@ -97,15 +101,16 @@ class AiQuota {
 /// 用户信息（登录成功后持久化到本地）
 class UserInfo {
   final String token;
-  final String account;     // mapped to phone
-  final String name;        // mapped to nickname
-  final int    merchantId;  // mapped to id parsed as int
-  final String id;          // string id
+  final String account;        // mapped to phone
+  final String name;           // mapped to nickname
+  final int    merchantId;     // mapped to id parsed as int
+  final String id;             // string id
   final String avatar;
   final String imUserSig;
   final bool   isVip;
   final String? vipExpireAt;
   final AiQuota aiQuota;
+  final String peerGatewayUrl; // iPet 硬件网关地址
 
   const UserInfo({
     required this.token,
@@ -118,47 +123,51 @@ class UserInfo {
     this.isVip = false,
     this.vipExpireAt,
     this.aiQuota = const AiQuota(),
+    this.peerGatewayUrl = '',
   });
 
   factory UserInfo.fromLoginResponse(LoginResponse res) => UserInfo(
-    token:        res.token,
-    account:      res.phone,
-    name:         res.nickname,
-    merchantId:   int.tryParse(res.id) ?? 0,
-    id:           res.id,
-    avatar:       res.avatar,
-    imUserSig:    res.imUserSig,
-    isVip:        res.isVip,
-    vipExpireAt:  res.vipExpireAt,
-    aiQuota:      res.aiQuota,
+    token:          res.token,
+    account:        res.phone,
+    name:           res.nickname,
+    merchantId:     int.tryParse(res.id) ?? 0,
+    id:             res.id,
+    avatar:         res.avatar,
+    imUserSig:      res.imUserSig,
+    isVip:          res.isVip,
+    vipExpireAt:    res.vipExpireAt,
+    aiQuota:        res.aiQuota,
+    peerGatewayUrl: res.peerGatewayUrl,
   );
 
   /// 序列化到 Map（用于 SecureStorage 持久化）
   Map<String, String> toStorageMap() => {
-    'token':        token,
-    'account':      account,
-    'name':         name,
-    'merchantId':   merchantId.toString(),
-    'id':           id,
-    'avatar':       avatar,
-    'imUserSig':    imUserSig,
-    'isVip':        isVip ? '1' : '0',
-    'vipExpireAt':  vipExpireAt ?? '',
+    'token':           token,
+    'account':         account,
+    'name':            name,
+    'merchantId':      merchantId.toString(),
+    'id':              id,
+    'avatar':          avatar,
+    'imUserSig':       imUserSig,
+    'isVip':           isVip ? '1' : '0',
+    'vipExpireAt':     vipExpireAt ?? '',
+    'peerGatewayUrl':  peerGatewayUrl,
     ...aiQuota.toStorageMap(),
   };
 
   /// 从 SecureStorage 读出后还原
   factory UserInfo.fromStorageMap(Map<String, String?> map) => UserInfo(
-    token:        map['token']      ?? '',
-    account:      map['account']    ?? '',
-    name:         map['name']       ?? '',
-    merchantId:   int.tryParse(map['merchantId'] ?? '0') ?? 0,
-    id:           map['id']         ?? '',
-    avatar:       map['avatar']     ?? '',
-    imUserSig:    map['imUserSig']  ?? '',
-    isVip:        (map['isVip'] ?? '0') == '1',
-    vipExpireAt:  (map['vipExpireAt']?.isNotEmpty ?? false) ? map['vipExpireAt'] : null,
-    aiQuota:      AiQuota.fromStorageMap(map),
+    token:          map['token']           ?? '',
+    account:        map['account']         ?? '',
+    name:           map['name']            ?? '',
+    merchantId:     int.tryParse(map['merchantId'] ?? '0') ?? 0,
+    id:             map['id']              ?? '',
+    avatar:         map['avatar']          ?? '',
+    imUserSig:      map['imUserSig']       ?? '',
+    isVip:          (map['isVip'] ?? '0') == '1',
+    vipExpireAt:    (map['vipExpireAt']?.isNotEmpty ?? false) ? map['vipExpireAt'] : null,
+    aiQuota:        AiQuota.fromStorageMap(map),
+    peerGatewayUrl: map['peerGatewayUrl']  ?? '',
   );
 
   /// 从 profile 接口返回的 JSON 更新（不改 token / imUserSig）
@@ -190,16 +199,18 @@ class UserInfo {
     bool?     isVip,
     String?   vipExpireAt,
     AiQuota?  aiQuota,
+    String?   peerGatewayUrl,
   }) => UserInfo(
-    token:        token       ?? this.token,
-    account:      account,
-    name:         name        ?? this.name,
-    merchantId:   merchantId,
-    id:           id,
-    avatar:       avatar      ?? this.avatar,
-    imUserSig:    imUserSig   ?? this.imUserSig,
-    isVip:        isVip       ?? this.isVip,
-    vipExpireAt:  vipExpireAt ?? this.vipExpireAt,
-    aiQuota:      aiQuota     ?? this.aiQuota,
+    token:          token          ?? this.token,
+    account:        account,
+    name:           name           ?? this.name,
+    merchantId:     merchantId,
+    id:             id,
+    avatar:         avatar         ?? this.avatar,
+    imUserSig:      imUserSig      ?? this.imUserSig,
+    isVip:          isVip          ?? this.isVip,
+    vipExpireAt:    vipExpireAt    ?? this.vipExpireAt,
+    aiQuota:        aiQuota        ?? this.aiQuota,
+    peerGatewayUrl: peerGatewayUrl ?? this.peerGatewayUrl,
   );
 }
