@@ -70,6 +70,15 @@ class DeviceRepository {
     );
     return res.info!;
   }
+
+  /// POST /device/shadow/update — 设备影子控制
+  /// [mac]  设备 MAC
+  /// [data] 键值对，如 {'led_r': 'true'} 或 {'ring_tone': '1'}
+  /// data 字段会序列化成 JSON 字符串传给网关
+  Future<void> shadowUpdate({required String mac, required Map<String, String> data}) async {
+    final jsonData = '{${data.entries.map((e) => '"${e.key}":"${e.value}"').join(",")}}';
+    await _peer.post('/device/shadow/update', params: {'mac': mac, 'data': jsonData});
+  }
 }
 
 // ── Providers ────────────────────────────────────────────

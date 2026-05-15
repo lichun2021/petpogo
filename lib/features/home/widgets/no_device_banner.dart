@@ -72,18 +72,18 @@ class NoDeviceBanner extends StatelessWidget {
             children: [
               Expanded(
                 child: _DeviceTypeCard(
-                  icon: Icons.key_rounded,
-                  name: 'KeyTracker',
-                  desc: '智能追踪器',
+                  icon: Icons.pets_rounded,
+                  name: '智能项圈',
+                  desc: 'GPS 定位 + 健康监测',
                   onTap: () => context.push('/bind-device'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _DeviceTypeCard(
-                  icon: Icons.smartphone_rounded,
-                  name: 'PetPhone',
-                  desc: '宠物智能手机',
+                  icon: Icons.smart_toy_rounded,
+                  name: '智能机器人',
+                  desc: '互动陪伴 + 远程监控',
                   onTap: () => context.push('/bind-device'),
                 ),
               ),

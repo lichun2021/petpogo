@@ -26,6 +26,8 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   OtaInfoModel?      _otaInfo;
   bool _loading = true;
   String? _error;
+  bool _ringing = false;   // 响铃进行中
+  bool _ledOn   = false;   // LED 当前状态（本地 toggle，无法从设备读回）
 
   @override
   void initState() {
@@ -79,6 +81,12 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                       const SizedBox(height: 20),
                       if (_otaInfo != null && _otaInfo!.isUpgrade) _buildOtaBanner(),
                       if (_otaInfo != null && _otaInfo!.isUpgrade) const SizedBox(height: 20),
+                      const SizedBox(height: 20),
+                      // 设备控制（在线时显示）
+                      if (_detail?.onlineStatus == true) ...[
+                        _buildControls(context),
+                        const SizedBox(height: 20),
+                      ],
                       _buildActions(context),
                     ])),
                   ),
@@ -215,9 +223,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         Row(children: [
           _SmallAction(icon: Icons.edit_rounded, label: '编辑', onTap: () async {
             final ok = await PetBindHelper.showEdit(
-              context, mac: widget.mac, petId: pet.petId,
-              petName: pet.petName, breed: pet.breed,
-              age: pet.age, weight: pet.weight, sex: pet.sex,
+              context, mac: widget.mac, pet: pet,
             );
             if (ok) _loadAll();
           }),
@@ -274,21 +280,21 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   }
 
   void _confirmDeletePet(BuildContext context, PetInfoModel pet) {
-    showDialog(context: context, builder: (_) => AlertDialog(
+    showDialog(context: context, builder: (ctx) => AlertDialog(
       backgroundColor: AppColors.surfaceContainerLow,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('删除宠物', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700)),
       content: Text('确定要删除「${pet.petName}」吗？删除后数据不可恢复。',
           style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
         FilledButton(
           onPressed: () async {
-            Navigator.pop(context);
+            Navigator.pop(ctx);   // 用 dialog 自己的 ctx，避免 null state 崩溃
             try {
               await ref.read(petPeerRepositoryProvider).deletePet(
-                petId:    pet.petId.isNotEmpty    ? pet.petId    : null,
-                deviceId: pet.deviceId.isNotEmpty ? pet.deviceId : null,
+                petId: pet.petId.isNotEmpty ? pet.petId : null,
+                // 不传 deviceId：避免后端把设备关联一并删除
               );
               await _loadAll();
               if (mounted) PetToast.success(context, '宠物已删除');
@@ -324,6 +330,86 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         TextButton(onPressed: () {}, child: const Text('升级', style: TextStyle(color: AppColors.tertiary))),
       ]),
     );
+  }
+
+  // ── 设备控制：响铃 + LED ───────────────────────────────────
+  Widget _buildControls(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 16, spreadRadius: -4)],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('设备控制',
+            style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+        const SizedBox(height: 14),
+        Row(children: [
+          // 响铃按鈕
+          Expanded(
+            child: _ControlChip(
+              icon: _ringing ? Icons.volume_off_rounded : Icons.notifications_active_rounded,
+              label: _ringing ? '停止响铃' : '响铃寻找',
+              active: _ringing,
+              activeColor: const Color(0xFFFF6B35),
+              loading: false,
+              onTap: () => _toggleRing(),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // LED 开关
+          Expanded(
+            child: _ControlChip(
+              icon: _ledOn ? Icons.lightbulb_rounded : Icons.lightbulb_outline_rounded,
+              label: _ledOn ? 'LED 已开' : '开启 LED',
+              active: _ledOn,
+              activeColor: const Color(0xFFFFD60A),
+              loading: false,
+              onTap: () => _toggleLed(),
+            ),
+          ),
+        ]),
+      ]),
+    );
+  }
+
+  Future<void> _toggleRing() async {
+    final next = !_ringing;
+    setState(() => _ringing = next);
+    try {
+      await ref.read(deviceRepositoryProvider).shadowUpdate(
+        mac: widget.mac,
+        data: {'ring_tone': next ? '1' : '0'},
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _ringing = !next);
+        PetToast.error(context, '响铃失败：${e.toString().replaceAll("Exception: ", "")}');
+      }
+    }
+  }
+
+  Future<void> _toggleLed() async {
+    final next = !_ledOn;
+    setState(() => _ledOn = next);
+    try {
+      // 三色同时点亮（全亮 = 白光），全关时三色同时关
+      await ref.read(deviceRepositoryProvider).shadowUpdate(
+        mac: widget.mac,
+        data: {
+          'led_r': next ? 'true' : 'false',
+          'led_g': next ? 'true' : 'false',
+          'led_b': next ? 'true' : 'false',
+        },
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _ledOn = !next);
+        PetToast.error(context, 'LED 控制失败：${e.toString().replaceAll("Exception: ", "")}');
+      }
+    }
   }
 
   Widget _buildActions(BuildContext context) {
@@ -483,6 +569,60 @@ class _ActionButton extends StatelessWidget {
           const SizedBox(width: 8),
           Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
               fontWeight: FontWeight.w700, color: c)),
+        ]),
+      ),
+    );
+  }
+}
+
+// ── 控制芯片按钮 ──────────────────────────────────────────
+class _ControlChip extends StatelessWidget {
+  final IconData icon;
+  final String   label;
+  final bool     active;
+  final bool     loading;
+  final Color    activeColor;
+  final VoidCallback onTap;
+
+  const _ControlChip({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.loading,
+    required this.activeColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = active
+        ? activeColor.withOpacity(0.15)
+        : AppColors.surfaceContainerLow;
+    final fg = active ? activeColor : AppColors.onSurfaceVariant;
+
+    return GestureDetector(
+      onTap: loading ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: active ? activeColor.withOpacity(0.5) : AppColors.surfaceContainerHigh,
+            width: 1.5,
+          ),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          loading
+              ? SizedBox(width: 20, height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: fg))
+              : Icon(icon, color: fg, size: 24),
+          const SizedBox(height: 6),
+          Text(label, style: TextStyle(
+            fontFamily: 'Plus Jakarta Sans',
+            fontSize: 12, fontWeight: FontWeight.w700, color: fg,
+          )),
         ]),
       ),
     );

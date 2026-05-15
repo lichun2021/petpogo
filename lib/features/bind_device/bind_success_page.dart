@@ -19,7 +19,7 @@ class _BindSuccessPageState extends State<BindSuccessPage>
   late Animation<double> _scale;
   late Animation<double> _fade;
 
-  bool get _isKeyTracker => widget.deviceType == 'KeyTracker';
+  bool get _isCollar => widget.deviceType == '智能项圈';
 
   @override
   void initState() {
@@ -68,7 +68,7 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(_isKeyTracker ? '🗝️' : '📱',
+                      Text(_isCollar ? '🐾' : '🤖',
                           style: const TextStyle(fontSize: 52)),
                       const Icon(Icons.check_circle_rounded, color: Colors.white, size: 28),
                     ],
@@ -108,21 +108,21 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 20, spreadRadius: -6)],
                   ),
-                  child: Column(
-                    children: _isKeyTracker
+                   child: Column(
+                    children: _isCollar
                         ? [
                             _FeatureRow(icon: Icons.location_on_rounded, label: '实时 GPS 定位', color: AppColors.primary),
                             const SizedBox(height: 14),
                             _FeatureRow(icon: Icons.notifications_active_rounded, label: '走失预警通知', color: AppColors.secondary),
                             const SizedBox(height: 14),
-                            _FeatureRow(icon: Icons.battery_charging_full_rounded, label: '电量低提醒', color: AppColors.tertiary),
+                            _FeatureRow(icon: Icons.battery_charging_full_rounded, label: '健康监测报告', color: AppColors.tertiary),
                           ]
                         : [
-                            _FeatureRow(icon: Icons.call_rounded, label: '远程与宠物通话', color: AppColors.primary),
+                            _FeatureRow(icon: Icons.smart_toy_rounded, label: 'AI 馬伴互动', color: AppColors.primary),
                             const SizedBox(height: 14),
-                            _FeatureRow(icon: Icons.music_note_rounded, label: '播放舒缓音乐', color: AppColors.secondary),
+                            _FeatureRow(icon: Icons.videocam_rounded, label: '远程视频监控', color: AppColors.secondary),
                             const SizedBox(height: 14),
-                            _FeatureRow(icon: Icons.graphic_eq_rounded, label: 'AI 宠物语音识别', color: AppColors.tertiary),
+                            _FeatureRow(icon: Icons.music_note_rounded, label: '播放舒缓音乐', color: AppColors.tertiary),
                           ],
                   ),
                 ),

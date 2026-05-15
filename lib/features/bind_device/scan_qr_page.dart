@@ -308,7 +308,10 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
           const SizedBox(height: 24),
           SizedBox(width: double.infinity,
             child: FilledButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                // 弹出所有绑定流程页，直接回到底部导航根页面
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              },
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF22C55E),
                 minimumSize: const Size(double.infinity, 52),

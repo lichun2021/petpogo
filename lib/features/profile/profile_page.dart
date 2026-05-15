@@ -11,6 +11,7 @@ import '../auth/data/models/auth_model.dart';
 import '../community/data/post_repository.dart';
 import '../device/device_list_page.dart';
 import '../pet/controller/pet_controller.dart';
+import '../pet/pet_list_page.dart';
 import 'data/user_stats_provider.dart';
 import '../../core/router/app_routes.dart';
 
@@ -81,48 +82,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 _UserInfoCard(l10n: l10n, user: auth.user, stats: stats),
                 const SizedBox(height: 28),
 
-                // ── My Pets ─────────────────────────
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(l10n.profileMyPets,
-                        style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 20,
-                            fontWeight: FontWeight.w700, color: AppColors.onSurface, letterSpacing: -0.3)),
-                    TextButton.icon(
-                      onPressed: () => context.push('/add-pet'),
-                      icon: Icon(Icons.add_circle_rounded, size: 16, color: AppColors.primary),
-                      label: Text(l10n.profileAddNew,
-                          style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
-                              fontWeight: FontWeight.w700, color: AppColors.primary)),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // 真实宠物列表 — 横向 PageView
-                if (petState.isLoading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (petState.pets.isEmpty)
-                  _EmptyPets(l10n: l10n)
-                else
-                  _PetPageView(
-                    pets: petState.pets,
-                    speciesLabel: _speciesLabel,
-                  ),
-
-                const SizedBox(height: 10),
-
                 // ── 菜单 ─────────────────────────────
                 _MenuGroup(items: [
-                  _MenuItemData(icon: Icons.devices_rounded,      label: l10n.profileBoundDevices,
+                  _MenuItemData(icon: Icons.pets_rounded,           label: l10n.profileMyPets,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PetListPage()))),
+                  _MenuItemData(icon: Icons.devices_rounded,        label: l10n.profileBoundDevices,
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeviceListPage()))),
-                  _MenuItemData(icon: Icons.receipt_long_rounded,  label: l10n.profileOrderHistory,  onTap: () {}),
-                  _MenuItemData(icon: Icons.grid_view_rounded,     label: l10n.profileMyPosts,       onTap: () {}),
-                  _MenuItemData(icon: Icons.settings_rounded,      label: l10n.profileSettings,      onTap: () => context.push('/settings')),
+                  _MenuItemData(icon: Icons.receipt_long_rounded,   label: l10n.profileOrderHistory,  onTap: () {}),
+                  _MenuItemData(icon: Icons.grid_view_rounded,      label: l10n.profileMyPosts,       onTap: () {}),
+                  _MenuItemData(icon: Icons.settings_rounded,       label: l10n.profileSettings,      onTap: () => context.push('/settings')),
                 ]),
 
                 const SizedBox(height: 32),

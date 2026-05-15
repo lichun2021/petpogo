@@ -1,11 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../core/api/api_client.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../app.dart' show AppL10nX;
+import '../community/data/post_repository.dart';
 import '../pet/controller/pet_controller.dart';
 
 
@@ -37,6 +40,12 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
   String _gender = '公';
   bool _isLoading = false;
 
+  // 头像
+  File?   _avatarFile;   // 本地选中的图片文件
+  String? _avatarUrl;    // 上传后的 CDN URL
+  bool    _avatarUploading = false;
+  bool    _avatarRequired  = false; // 提交时未选头像高亮提示
+
   late AnimationController _successCtrl;
   late Animation<double> _successScale;
 
@@ -63,8 +72,94 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
       setState(() => _step = 1);
     } else if (_step == 1) {
       if (_nameCtrl.text.trim().isEmpty) return;
+      if (_avatarUrl == null) {
+        // 没有选头像时震动+高亮提示
+        HapticFeedback.vibrate();
+        setState(() => _avatarRequired = true);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('请先选择宠物头像 🐾',
+              style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+        return;
+      }
       _submit();
     }
+  }
+
+  // ── 选头像（照相机 / 相册）并上传 OSS ──
+  Future<void> _pickAvatar(ImageSource source) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: source,
+      imageQuality: 85,
+      maxWidth: 512,
+      maxHeight: 512,
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() { _avatarUploading = true; _avatarRequired = false; });
+    try {
+      final file = File(picked.path);
+      final repo = ref.read(postRepositoryProvider);
+      final sign = await repo.getOssSign(fileType: 'image', folder: 'pet_avatars');
+      await repo.uploadToOss(uploadUrl: sign.uploadUrl, file: file, contentType: 'image/jpeg');
+      if (mounted) setState(() {
+        _avatarFile = file;
+        _avatarUrl  = sign.cdnUrl;
+        _avatarUploading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _avatarUploading = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('上传失败：$e', style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
+          backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating,
+        ));
+      }
+    }
+  }
+
+  // ── 选图来源 弹出 ──
+  Future<void> _showAvatarSourceSheet() async {
+    HapticFeedback.mediumImpact();
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 36, height: 4,
+              decoration: BoxDecoration(color: AppColors.onSurfaceVariant.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 16),
+          const Text('选择头像来源',
+              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+          const SizedBox(height: 20),
+          Row(children: [
+            Expanded(child: _SourceOption(
+              icon: Icons.camera_alt_rounded,
+              label: '拍照',
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            )),
+            const SizedBox(width: 12),
+            Expanded(child: _SourceOption(
+              icon: Icons.photo_library_rounded,
+              label: '从相册选择',
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            )),
+          ]),
+        ]),
+      ),
+    );
+    if (source != null) _pickAvatar(source);
   }
 
   Future<void> _submit() async {
@@ -84,7 +179,8 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
           'species':  species,
           'breed':    _breedCtrl.text.trim(),
           'gender':   genderInt,
-          if (_birthday != null) 'birthday': _birthday,
+          if (_birthday  != null) 'birthday': _birthday,
+          if (_avatarUrl != null) 'avatar':   _avatarUrl,
         },
       );
 
@@ -302,31 +398,61 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
         children: [
           const SizedBox(height: 8),
 
-          // 宠物头像（emoji 大图）
-          Center(
-            child: Stack(
-              children: [
-                Container(
-                  width: 100, height: 100,
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceContainerLow,
-                    shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 20, spreadRadius: -4)],
+          // 头像选择（必选）
+          GestureDetector(
+            onTap: _avatarUploading ? null : _showAvatarSourceSheet,
+            child: Center(
+              child: Stack(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 100, height: 100,
+                    decoration: BoxDecoration(
+                      color: _avatarRequired
+                          ? AppColors.error.withOpacity(0.1)
+                          : AppColors.surfaceContainerLow,
+                      shape: BoxShape.circle,
+                      border: _avatarRequired
+                          ? Border.all(color: AppColors.error, width: 2)
+                          : null,
+                      boxShadow: [BoxShadow(color: AppColors.cardShadow,
+                          blurRadius: 20, spreadRadius: -4)],
+                    ),
+                    child: ClipOval(
+                      child: _avatarUploading
+                          ? const Center(child: CircularProgressIndicator(
+                              strokeWidth: 2.5, color: AppColors.primary))
+                          : _avatarFile != null
+                              ? Image.file(_avatarFile!, fit: BoxFit.cover)
+                              : Center(child: Text(selected['emoji']!,
+                                  style: const TextStyle(fontSize: 52))),
+                    ),
                   ),
-                  child: Center(child: Text(selected['emoji']!, style: const TextStyle(fontSize: 52))),
-                ),
-                Positioned(
-                  bottom: 0, right: 0,
-                  child: Container(
-                    width: 32, height: 32,
-                    decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.surface, width: 2)),
-                    child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 14),
+                  Positioned(
+                    bottom: 0, right: 0,
+                    child: Container(
+                      width: 32, height: 32,
+                      decoration: BoxDecoration(
+                          color: _avatarUrl != null ? const Color(0xFF4ADE80) : AppColors.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.surface, width: 2)),
+                      child: Icon(
+                        _avatarUrl != null ? Icons.check_rounded : Icons.camera_alt_rounded,
+                        color: Colors.white, size: 14),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
+          if (_avatarRequired)
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text('头像是必选项',
+                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 11, color: AppColors.error),
+                  textAlign: TextAlign.center),
+            ),
           const SizedBox(height: 28),
 
           // 名字
@@ -551,5 +677,32 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(text, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
         fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant));
+  }
+}
+
+class _SourceOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _SourceOption({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainer,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: AppColors.primary, size: 28),
+          const SizedBox(height: 8),
+          Text(label, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+              fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+        ]),
+      ),
+    );
   }
 }

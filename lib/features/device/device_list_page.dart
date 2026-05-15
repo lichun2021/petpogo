@@ -8,7 +8,7 @@ import '../device/device_detail_page.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
 import '../pet/bind_pet_sheet.dart';
-import '../bind_device/device_type_sheet.dart';
+import '../bind_device/select_device_page.dart';
 
 // ── 设备列表页 ────────────────────────────────────────────
 class DeviceListPage extends ConsumerWidget {
@@ -49,8 +49,10 @@ class DeviceListPage extends ConsumerWidget {
             color: AppColors.primary,
             onPressed: () async {
               HapticFeedback.mediumImpact();
-              final ok = await DeviceTypeSheet.show(context);
-              if (ok) ref.read(deviceListProvider.notifier).load();
+              await Navigator.push(context, MaterialPageRoute(
+                builder: (_) => const SelectDevicePage(),
+              ));
+              ref.read(deviceListProvider.notifier).load();
             },
           ),
         ],
@@ -88,15 +90,16 @@ class DeviceListPage extends ConsumerWidget {
       const Text('还没有绑定设备', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
           fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
       const SizedBox(height: 8),
-      Text('选择设备类型，扫码绑定智能项圈或宠物机器人',
+      Text('选择类型，扫码绑定智能项圈或宠物机器人',
           style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
               color: AppColors.onSurfaceVariant), textAlign: TextAlign.center),
       const SizedBox(height: 32),
       FilledButton.icon(
         onPressed: () async {
           HapticFeedback.mediumImpact();
-          final ok = await DeviceTypeSheet.show(context);
-          if (ok) ref.read(deviceListProvider.notifier).load();
+          await Navigator.push(context, MaterialPageRoute(
+              builder: (_) => const SelectDevicePage()));
+          ref.read(deviceListProvider.notifier).load();
         },
         icon: const Icon(Icons.add_rounded),
         label: const Text('添加设备', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700)),
