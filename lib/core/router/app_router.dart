@@ -38,6 +38,7 @@ import '../../features/auth/login_page.dart';
 import '../../features/message/chat_page.dart';
 import '../../features/shell/main_shell.dart';
 import '../../features/splash/splash_page.dart';
+import '../../app.dart' show globalNavigatorKey;
 
 // ── 路由实例和内部 ProviderContainer 用于守卫读取状态 ──────
 // 为什么用 ProviderContainer：GoRouter 是顶层变量（非 Widget），
@@ -54,6 +55,9 @@ void initAppRouter(ProviderContainer container) {
 /// 在 MaterialApp.router 里使用：routerConfig: appRouter
 /// 由于 GoRouter 本身是单例设计，定义为顶层变量即可
 final appRouter = GoRouter(
+  // 全局 NavigatorKey：供 IM SDK 无 context 场景弹窗
+  navigatorKey: globalNavigatorKey,
+
   // 初始页面 → 启动 Logo 页，认证状态恢复后由守卫自动跳转
   initialLocation: AppRoutes.splash,
 

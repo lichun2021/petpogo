@@ -1,11 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:tencent_cloud_chat_sdk/tencent_im_sdk_plugin.dart';
 import 'package:tencent_cloud_chat_sdk/models/v2_tim_conversation.dart';
 import 'package:tencent_cloud_chat_sdk/models/v2_tim_friend_application.dart';
-import 'package:tencent_cloud_chat_sdk/models/v2_tim_friend_info.dart';
 import 'package:tencent_cloud_chat_sdk/enum/message_elem_type.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_avatar.dart';
@@ -14,8 +14,7 @@ import '../../app.dart' show AppL10nX;
 import '../../core/router/app_routes.dart';
 import 'controller/im_controller.dart';
 import 'data/repository/im_repository.dart';
-import 'qr/my_qr_page.dart';
-import 'qr/scan_add_friend_page.dart';
+import 'contacts_page.dart';
 
 class MessagePage extends ConsumerStatefulWidget {
   const MessagePage({super.key});
@@ -34,8 +33,11 @@ class _MessagePageState extends ConsumerState<MessagePage> {
     _searchCtrl.addListener(() => setState(() => _searchQuery = _searchCtrl.text.trim().toLowerCase()));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final ctrl = ref.read(imControllerProvider.notifier);
-      ctrl.loadConversations();
-      ctrl.loadFriendApplications();
+      // IM 已登录才主动拉取（新设备登录时 loginIm 回调会处理）
+      if (ref.read(imControllerProvider).isLoggedIn) {
+        ctrl.loadConversations();
+        ctrl.loadFriendApplications();
+      }
     });
   }
 
@@ -45,23 +47,11 @@ class _MessagePageState extends ConsumerState<MessagePage> {
     super.dispose();
   }
 
-  // ── 右上角 "..." 底部菜单 ─────────────────────────────────
-  void _showMorePanel() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => _MorePanel(
-        onChatTap: () => Navigator.pop(context),
-        onMyQrTap: () {
-          Navigator.pop(context);
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const MyQrCodePage()));
-        },
-        onScanQrTap: () {
-          Navigator.pop(context);
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const ScanAddFriendPage()));
-        },
-      ),
+  // ── 右上角 "..." → 跳转联系人全屏页 ──────────────────────────
+  void _openContacts() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ContactsPage()),
     );
   }
 
@@ -93,32 +83,11 @@ class _MessagePageState extends ConsumerState<MessagePage> {
               ),
             ),
             actions: [
-              // "..." 按钮（带好友申请角标）
-              Stack(
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.more_horiz_rounded, color: AppColors.onSurface, size: 26),
-                    onPressed: _showMorePanel,
-                    tooltip: '更多',
+              IconButton(
+                    icon: Icon(Icons.people_outline_rounded, color: AppColors.onSurface, size: 26),
+                    onPressed: _openContacts,
+                    tooltip: '联系人',
                   ),
-                  if (state.pendingFriendCount > 0)
-                    Positioned(
-                      right: 8, top: 8,
-                      child: Container(
-                        width: 16, height: 16,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primary, shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${state.pendingFriendCount}',
-                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
               const SizedBox(width: 4),
             ],
           ),
@@ -128,17 +97,7 @@ class _MessagePageState extends ConsumerState<MessagePage> {
             sliver: SliverList(
               delegate: SliverChildListDelegate([
 
-                // 好友申请 Banner（实时数据）
-                if (state.friendApplications.isNotEmpty) ...[
-                  _FriendRequestBanner(
-                    applications: state.friendApplications,
-                    onAccept: (userId) =>
-                        ref.read(imControllerProvider.notifier).acceptFriend(userId),
-                    onRefuse: (userId) =>
-                        ref.read(imControllerProvider.notifier).refuseFriend(userId),
-                  ),
-                  const SizedBox(height: 16),
-                ],
+
 
                 // 系统通知区（真实通知）
                 _NotificationSection(
@@ -334,385 +293,6 @@ class _MessagePageState extends ConsumerState<MessagePage> {
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-//  "..." 底部面板 — 好友列表 + 族群
-// ══════════════════════════════════════════════════════════════
-class _MorePanel extends ConsumerStatefulWidget {
-  final VoidCallback onChatTap;
-  final VoidCallback? onMyQrTap;    // 我的二维码
-  final VoidCallback? onScanQrTap;  // 扫码加好友
-  const _MorePanel({
-    required this.onChatTap,
-    this.onMyQrTap,
-    this.onScanQrTap,
-  });
-
-  @override
-  ConsumerState<_MorePanel> createState() => _MorePanelState();
-}
-
-class _MorePanelState extends ConsumerState<_MorePanel>
-    with SingleTickerProviderStateMixin {
-  late TabController _tab;
-  List<V2TimFriendInfo> _friends = [];
-  List<Map<String, dynamic>> _groups = [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _tab = TabController(length: 2, vsync: this);
-    _loadData();
-  }
-
-  @override
-  void dispose() {
-    _tab.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadData() async {
-    // 好友列表
-    final friendResult = await TencentImSDKPlugin.v2TIMManager
-        .getFriendshipManager()
-        .getFriendList();
-    // 群列表
-    final groupResult = await TencentImSDKPlugin.v2TIMManager
-        .getGroupManager()
-        .getJoinedGroupList();
-
-    if (!mounted) return;
-    setState(() {
-      _friends = friendResult.data?.map((f) => f!).toList() ?? [];
-      _groups  = (groupResult.data ?? [])
-          .where((g) => g != null)
-          .map((g) => {
-                'id':   g!.groupID ?? '',
-                'name': g.groupName ?? g.groupID ?? '群聊',
-                'face': g.faceUrl ?? '',
-                'count': g.memberCount ?? 0,
-              })
-          .toList();
-      _loading = false;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.72,
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Column(
-        children: [
-          // 拖动条
-          Center(
-            child: Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-
-          // QR 快捷操作行
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
-            child: Row(children: [
-              _QrActionBtn(
-                icon: Icons.qr_code_rounded,
-                label: '我的二维码',
-                onTap: widget.onMyQrTap,
-              ),
-              const SizedBox(width: 12),
-              _QrActionBtn(
-                icon: Icons.qr_code_scanner_rounded,
-                label: '扫码加好友',
-                onTap: widget.onScanQrTap,
-              ),
-            ]),
-          ),
-          const Divider(height: 1, thickness: 0.5, color: Color(0x12000000)),
-
-          // 标题
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-            child: Row(children: [
-              const Text('联系人', style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 20,
-                fontWeight: FontWeight.w800, color: AppColors.onSurface,
-              )),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.close_rounded),
-                color: AppColors.onSurfaceVariant,
-                onPressed: () => Navigator.pop(context),
-              ),
-            ]),
-          ),
-
-          // Tab
-          TabBar(
-            controller: _tab,
-            labelColor: AppColors.primary,
-            unselectedLabelColor: AppColors.onSurfaceVariant,
-            indicatorColor: AppColors.primary,
-            indicatorSize: TabBarIndicatorSize.label,
-            indicatorWeight: 3,
-            dividerColor: Colors.transparent,
-            labelStyle: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14, fontWeight: FontWeight.w700),
-            tabs: [
-              Tab(text: '好友 ${_friends.isEmpty ? '' : '(${_friends.length})'}'),
-              Tab(text: '族群 ${_groups.isEmpty ? '' : '(${_groups.length})'}'),
-            ],
-          ),
-
-          const Divider(height: 1, thickness: 0.5, color: Color(0x18000000)),
-
-          // 内容
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5))
-                : TabBarView(
-                    controller: _tab,
-                    children: [
-                      _FriendListTab(friends: _friends, onRefresh: _loadData),
-                      _GroupListTab(groups: _groups),
-                    ],
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── 好友列表 Tab ──────────────────────────────────────────────
-class _FriendListTab extends ConsumerStatefulWidget {
-  final List<V2TimFriendInfo> friends;
-  final VoidCallback onRefresh; // 删除/拉黑后通知父级重新加载
-  const _FriendListTab({required this.friends, required this.onRefresh});
-
-  @override
-  ConsumerState<_FriendListTab> createState() => _FriendListTabState();
-}
-
-class _FriendListTabState extends ConsumerState<_FriendListTab> {
-  late List<V2TimFriendInfo> _items;
-
-  @override
-  void initState() {
-    super.initState();
-    _items = List.from(widget.friends);
-  }
-
-  @override
-  void didUpdateWidget(_FriendListTab old) {
-    super.didUpdateWidget(old);
-    if (old.friends != widget.friends) {
-      _items = List.from(widget.friends);
-    }
-  }
-
-  void _showFriendActions(BuildContext ctx, V2TimFriendInfo f) {
-    final uid  = f.userID ?? '';
-    final name = f.friendRemark ?? f.userProfile?.nickName ?? uid;
-    showModalBottomSheet(
-      context: ctx,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        margin: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: SafeArea(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            // 标题
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-              child: Text(name,
-                style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-            ),
-            const Divider(height: 1, thickness: 0.5),
-            // 删除好友
-            ListTile(
-              leading: const Icon(Icons.person_remove_rounded, color: AppColors.error),
-              title: const Text('删除好友', style: TextStyle(color: AppColors.error, fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600)),
-              onTap: () async {
-                Navigator.pop(ctx);
-                final ok = await ref.read(imControllerProvider.notifier).deleteFriend(uid);
-                if (!mounted) return;
-                if (ok) {
-                  setState(() => _items.removeWhere((x) => x.userID == uid));
-                  widget.onRefresh();
-                  PetToast.success(ctx, '已删除好友');
-                } else {
-                  PetToast.error(ctx, '删除失败，请重试');
-                }
-              },
-            ),
-            // 拉黑
-            ListTile(
-              leading: const Icon(Icons.block_rounded, color: AppColors.onSurfaceVariant),
-              title: const Text('拉黑该用户', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600, color: AppColors.onSurface)),
-              onTap: () async {
-                Navigator.pop(ctx);
-                final ok = await ref.read(imControllerProvider.notifier).addToBlackList(uid);
-                if (!mounted) return;
-                if (ok) {
-                  setState(() => _items.removeWhere((x) => x.userID == uid));
-                  widget.onRefresh();
-                  PetToast.success(ctx, '已拉黑 $name');
-                } else {
-                  PetToast.error(ctx, '拉黑失败，请重试');
-                }
-              },
-            ),
-            // 取消
-            ListTile(
-              leading: const Icon(Icons.close_rounded, color: AppColors.onSurfaceVariant),
-              title: const Text('取消', style: TextStyle(fontFamily: 'Plus Jakarta Sans', color: AppColors.onSurfaceVariant)),
-              onTap: () => Navigator.pop(ctx),
-            ),
-            const SizedBox(height: 8),
-          ]),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_items.isEmpty) {
-      return const Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('🐾', style: TextStyle(fontSize: 40)),
-          SizedBox(height: 12),
-          Text('还没有好友', style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 15,
-            fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant,
-          )),
-          SizedBox(height: 4),
-          Text('在社区认识新朋友，加他们为好友吧～', style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-            color: AppColors.onSurfaceVariant,
-          )),
-        ]),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      itemCount: _items.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (ctx, i) {
-        final f    = _items[i];
-        final uid  = f.userID ?? '';
-        final name = f.friendRemark ?? f.userProfile?.nickName ?? uid;
-        final face = f.userProfile?.faceUrl;
-
-        return GestureDetector(
-          onTap: () {
-            Navigator.pop(ctx);
-            ctx.push(AppRoutes.chat(uid));
-          },
-          onLongPress: () => _showFriendActions(context, f),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, spreadRadius: -4)],
-            ),
-            child: Row(children: [
-              PetAvatar(imageUrl: face, size: 44, fallbackEmoji: '🐾'),
-              const SizedBox(width: 12),
-              Expanded(child: Text(name,
-                style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.onSurface))),
-              Icon(Icons.chat_bubble_outline_rounded, color: AppColors.primary, size: 18),
-            ]),
-          ),
-        );
-      },
-    );
-  }
-}
-
-
-// ── 族群列表 Tab ──────────────────────────────────────────────
-class _GroupListTab extends StatelessWidget {
-  final List<Map<String, dynamic>> groups;
-  const _GroupListTab({required this.groups});
-
-  @override
-  Widget build(BuildContext context) {
-    if (groups.isEmpty) {
-      return const Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('🏡', style: TextStyle(fontSize: 40)),
-          SizedBox(height: 12),
-          Text('还没有加入任何族群', style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 15,
-            fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant,
-          )),
-          SizedBox(height: 4),
-          Text('加入族群，结识更多爱宠伙伴～', style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-            color: AppColors.onSurfaceVariant,
-          )),
-        ]),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      itemCount: groups.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (ctx, i) {
-        final g     = groups[i];
-        final name  = g['name'] as String;
-        final face  = g['face'] as String;
-        final count = g['count'] as int;
-
-        return GestureDetector(
-          onTap: () {
-            Navigator.pop(ctx);
-            // TODO: 跳转群聊页面
-          },
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, spreadRadius: -4)],
-            ),
-            child: Row(children: [
-              PetAvatar(imageUrl: face.isNotEmpty ? face : null, size: 44, fallbackEmoji: '🏡'),
-              const SizedBox(width: 12),
-              Expanded(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-                  Text('$count 名成员', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 12, color: AppColors.onSurfaceVariant)),
-                ],
-              )),
-              Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant, size: 20),
-            ]),
-          ),
-        );
-      },
-    );
-  }
-}
 
 // ══════════════════════════════════════════════════════════════
 //  系统通知区（真实好友申请 + 点赞 / 评论通知）
@@ -755,14 +335,23 @@ class _NotificationSection extends ConsumerWidget {
             iconBg: AppColors.primaryContainer.withOpacity(0.3),
             iconColor: AppColors.primary,
             title: '好友申请',
-            subtitle: hasFriendReq
-                ? '$firstName 想和你成为好友${friendApplications.length > 1 ? '，共 ${friendApplications.length} 条待处理' : ''}'
-                : '暂无新好友申请',
-            time: hasFriendReq ? '刚刚' : '',
-            hasUnread: hasFriendReq,
-            onTap: hasFriendReq
-                ? () => PetToast.show(context, '${friendApplications.length} 条好友申请待处理')
-                : null,
+            subtitle: () {
+              final results = state.systemNotices
+                  .where((n) => n.type == 'friend_result').toList();
+              if (results.isNotEmpty) return results.first.content;
+              if (hasFriendReq) return '$firstName 想和你成为好友${friendApplications.length > 1 ? '，共 ${friendApplications.length} 条待处理' : ''}';
+              return '暂无新好友申请';
+            }(),
+            time: () {
+              final results = state.systemNotices
+                  .where((n) => n.type == 'friend_result').toList();
+              if (results.isNotEmpty) return _relTime(results.first.time);
+              return hasFriendReq ? '刚刚' : '';
+            }(),
+            hasUnread: hasFriendReq ||
+                state.systemNotices.any((n) => n.type == 'friend_result'),
+            onTap: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => FriendRequestsPage(applications: friendApplications))),
           ),
           Divider(color: AppColors.outlineVariant.withOpacity(0.1), height: 0, indent: 72),
           // 点赞 / 评论（点击弹出通知历史列表）
@@ -894,13 +483,20 @@ class _InteractNoticeItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isFriendResult = notice.type == 'friend_result';
     final isLike    = notice.isLike && !notice.isUnlike;
     final isUnlike  = notice.isUnlike;
-    final isComment = notice.isComment;
 
     final IconData icon;
     final Color iconColor, iconBg;
-    if (isUnlike) {
+    if (isFriendResult) {
+      final accepted = notice.action == 'accepted';
+      icon      = accepted ? Icons.handshake_rounded : Icons.person_off_rounded;
+      iconColor = accepted ? AppColors.primary : AppColors.onSurfaceVariant;
+      iconBg    = accepted
+          ? AppColors.primaryContainer.withOpacity(0.3)
+          : AppColors.surfaceContainerHigh;
+    } else if (isUnlike) {
       icon = Icons.heart_broken_rounded;
       iconColor = AppColors.onSurfaceVariant;
       iconBg    = AppColors.surfaceContainerHigh;
@@ -1019,82 +615,296 @@ class _NotificationItem extends StatelessWidget {
   }
 }
 
-// ── 好友申请 Banner ─────────────────────────────────────────
-class _FriendRequestBanner extends StatelessWidget {
+// ── 好友申请全屏列表页 ─────────────────────────────────────
+class FriendRequestsPage extends ConsumerStatefulWidget {
   final List<V2TimFriendApplication> applications;
-  final void Function(String userId) onAccept;
-  final void Function(String userId) onRefuse;
+  const FriendRequestsPage({super.key, required this.applications});
+  @override
+  ConsumerState<FriendRequestsPage> createState() => _FriendRequestsPageState();
+}
 
-  const _FriendRequestBanner({
-    required this.applications,
-    required this.onAccept,
-    required this.onRefuse,
-  });
+class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
+  final Set<String> _removedIds = {};
+  List<V2TimFriendApplication> _sent = [];
+  bool _loadingSent = true;
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(imControllerProvider.notifier).loadFriendApplications();
+      _loadSent();
+      // 定时轮询，小调修写开题时即时显示
+      _refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+        if (mounted) {
+          ref.read(imControllerProvider.notifier).loadFriendApplications();
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadSent() async {
+    final res = await ref.read(imRepositoryProvider).fetchSentApplications();
+    if (!mounted) return;
+    setState(() {
+      _sent = res.when(success: (l) => l, failure: (_) => []);
+      _loadingSent = false;
+    });
+  }
+
+  Future<void> _accept(V2TimFriendApplication app) async {
+    await ref.read(imControllerProvider.notifier).acceptFriend(app.userID ?? '');
+    if (!mounted) return;
+    setState(() => _removedIds.add(app.userID ?? ''));
+  }
+
+  Future<void> _refuse(V2TimFriendApplication app) async {
+    await ref.read(imControllerProvider.notifier).refuseFriend(app.userID ?? '');
+    if (!mounted) return;
+    setState(() => _removedIds.add(app.userID ?? ''));
+  }
 
   @override
   Widget build(BuildContext context) {
-    final first = applications.first;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 16, spreadRadius: -4)],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.primaryContainer.withOpacity(0.3),
-              shape: BoxShape.circle,
-            ),
-            child: const Center(child: Text('🐾', style: TextStyle(fontSize: 22))),
+    // 当 friendApplications 变化时强制 setState 触发重建
+    ref.listen(
+      imControllerProvider.select((s) => s.friendApplications),
+      (_, __) { if (mounted) setState(() {}); },
+    );
+    final received = ref.watch(imControllerProvider)
+        .friendApplications
+        .where((a) => a.type == 1 && !_removedIds.contains(a.userID))
+        .toList();
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: AppColors.surface,
+        appBar: AppBar(
+          backgroundColor: AppColors.surface,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_rounded, size: 20),
+            color: AppColors.onSurface,
+            onPressed: () => Navigator.pop(context),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${applications.length} 条好友申请',
-                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
-                      fontWeight: FontWeight.w700, color: AppColors.onSurface),
-                ),
-                Text(
-                  '${first.nickname ?? first.userID} 想和你成为好友',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                      color: AppColors.onSurfaceVariant),
-                ),
-              ],
-            ),
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextButton(
-                onPressed: () => onRefuse(first.userID ?? ''),
-                child: const Text('拒绝', style: TextStyle(color: AppColors.onSurfaceVariant)),
-              ),
-              const SizedBox(width: 4),
-              ElevatedButton(
-                onPressed: () => onAccept(first.userID ?? ''),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                ),
-                child: const Text('同意', style: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                  fontWeight: FontWeight.w700, color: Colors.white,
-                )),
-              ),
+          title: const Text('好友申请',
+              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 17, fontWeight: FontWeight.w700)),
+          centerTitle: true,
+          bottom: TabBar(
+            labelStyle: const TextStyle(
+                fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700,
+                fontSize: 13),
+            unselectedLabelStyle: const TextStyle(
+                fontFamily: 'Plus Jakarta Sans', fontSize: 13),
+            labelColor: AppColors.primary,
+            unselectedLabelColor: AppColors.onSurfaceVariant,
+            indicatorColor: AppColors.primary,
+            indicatorSize: TabBarIndicatorSize.label,
+            tabs: [
+              Tab(text: '收到的${received.isNotEmpty ? "  (${received.length})" : ""}'),
+              const Tab(text: '发出的'),
             ],
           ),
-        ],
+        ),
+        body: TabBarView(children: [
+          // ─────── 收到的申请 ──────────────────────────────────────
+          received.isEmpty
+              ? _buildEmpty('暂无待处理的好友申请')
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                  itemCount: received.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (_, i) {
+                    final app     = received[i];
+                    final uid     = app.userID ?? '';
+                    final name    = app.nickname ?? uid;
+                    final wording = (app.addWording?.isNotEmpty == true)
+                        ? app.addWording! : '想和你成为好友';
+                    return _RequestCard(
+                      name: name,
+                      wording: wording,
+                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                        TextButton(
+                          onPressed: () => _refuse(app),
+                          style: TextButton.styleFrom(
+                              foregroundColor: AppColors.onSurfaceVariant,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6)),
+                          child: const Text('拒绝', style: TextStyle(
+                              fontFamily: 'Plus Jakarta Sans',
+                              fontWeight: FontWeight.w600)),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => _accept(app),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                          child: const Text('同意', style: TextStyle(
+                              fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+                              fontWeight: FontWeight.w700, color: Colors.white)),
+                        ),
+                      ]),
+                    );
+                  },
+                ),
+          // ─────── 发出的申请 ───────────────────────────────
+          Consumer(builder: (context, ref, _) {
+            final resultNotices = ref.watch(imControllerProvider)
+                .systemNotices
+                .where((n) => n.type == 'friend_result')
+                .toList();
+            final isLoading = _loadingSent && resultNotices.isEmpty;
+            if (isLoading) {
+              return const Center(child: CircularProgressIndicator(
+                  color: AppColors.primary, strokeWidth: 2.5));
+            }
+            final items = <Widget>[];
+            // 先显示结果通知（已同意 / 已拒绝）——支持右滑删除
+            for (int idx = 0; idx < resultNotices.length; idx++) {
+              final n = resultNotices[idx];
+              final isRejected = n.action == 'rejected';
+              items.add(Dismissible(
+                key: ObjectKey(n),   // 对象引用键，唯一且不随删除后下标漂移
+                direction: DismissDirection.startToEnd,
+                background: Container(
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.only(left: 20),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerHigh.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.delete_sweep_rounded,
+                      color: AppColors.onSurfaceVariant, size: 28),
+                ),
+                onDismissed: (_) {
+                  // 动态查找当前索引，避免删除后 idx 过时
+                  final currentIdx = ref.read(imControllerProvider)
+                      .systemNotices.indexOf(n);
+                  if (currentIdx >= 0) {
+                    ref.read(imControllerProvider.notifier)
+                        .removeSystemNotice(currentIdx);
+                  }
+                },
+                child: _RequestCard(
+                  name: n.fromName,
+                  wording: isRejected ? '拒绝了你的好友申请' : '已同意你的好友申请',
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: isRejected
+                          ? AppColors.errorContainer.withOpacity(0.25)
+                          : AppColors.primaryContainer.withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      isRejected ? '已拒绝 ❌' : '已同意 ✅',
+                      style: TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 12, fontWeight: FontWeight.w600,
+                        color: isRejected ? AppColors.error : AppColors.primary,
+                      )),
+                  ),
+                ),
+              ));
+            }
+            // 再显示待处理的发出申请
+            for (final app in _sent) {
+              final name = app.nickname ?? app.userID ?? '未知用户';
+              final wording = (app.addWording?.isNotEmpty == true)
+                  ? app.addWording!
+                  : '我发送了好友申请';
+              items.add(_RequestCard(
+                name: name,
+                wording: wording,
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text('待确认 ⏳',
+                      style: TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 12, fontWeight: FontWeight.w600,
+                          color: AppColors.onSurfaceVariant)),
+                ),
+              ));
+            }
+            if (items.isEmpty) return _buildEmpty('暂无发出的好友申请');
+            return ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (_, i) => items[i],
+            );
+          }),
+        ]),
       ),
     );
   }
+
+  Widget _buildEmpty(String msg) => Center(
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      const Text('🐾', style: TextStyle(fontSize: 52)),
+      const SizedBox(height: 12),
+      Text(msg, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+          fontSize: 14, color: AppColors.onSurfaceVariant)),
+    ]),
+  );
 }
+
+class _RequestCard extends StatelessWidget {
+  final String name, wording;
+  final Widget trailing;
+  const _RequestCard({required this.name, required this.wording,
+      required this.trailing});
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: AppColors.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(18),
+      boxShadow: [BoxShadow(
+          color: AppColors.cardShadow, blurRadius: 12, spreadRadius: -2)],
+    ),
+    child: Row(children: [
+      CircleAvatar(
+        radius: 24,
+        backgroundColor: AppColors.primaryContainer,
+        child: Text(name.isNotEmpty ? name[0] : '?',
+            style: const TextStyle(fontSize: 18,
+                fontWeight: FontWeight.w800, color: AppColors.primary)),
+      ),
+      const SizedBox(width: 12),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(name, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+            fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+        const SizedBox(height: 2),
+        Text(wording, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            fontSize: 12, color: AppColors.onSurfaceVariant,
+            fontStyle: FontStyle.italic)),
+      ])),
+      const SizedBox(width: 8),
+      trailing,
+    ]),
+  );
+}
+
 
 // ── 会话卡片（左滑露出操作按鈕）─────────────────────
 class _ConversationCard extends StatefulWidget {
@@ -1117,34 +927,63 @@ class _ConversationCard extends StatefulWidget {
 }
 
 class _ConversationCardState extends State<_ConversationCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  static const double _kPanelW = 180.0; // 3 × 60
-  static const double _kSnapThreshold = 0.35;
-  bool _busy = false;
+    with TickerProviderStateMixin {
+  late final AnimationController _ctrl;   // 左滑面板 (0−1)
+  late final AnimationController _rCtrl; // 右滑位移，unbounded，单位像素
+  static const double _kPanelW         = 180.0;
+  static const double _kSnapThreshold  = 0.35;
+  static const double _kDeleteThreshold = 80.0;
+  bool _busy            = false;
+  bool _allowRightSwipe = false;
+  bool _deleting        = false;
+  double _screenWidth    = 400.0; // 在 build 里更新
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 280));
+    _ctrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 280));
+    _rCtrl = AnimationController.unbounded(vsync: this); // value = px offset
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    _rCtrl.dispose();
+    super.dispose();
+  }
 
   void _open()  => _ctrl.animateTo(1.0,
       duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
   void _close() => _ctrl.animateTo(0.0,
       duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
 
+  void _onDragStart(DragStartDetails _) {
+    _allowRightSwipe = _ctrl.value < 0.02 && !_deleting;
+    _rCtrl.stop();
+  }
+
   void _onDragUpdate(DragUpdateDetails d) {
-    final v = _ctrl.value + (-d.delta.dx / _kPanelW);
-    _ctrl.value = v.clamp(0.0, 1.0);
+    final dx = d.delta.dx;
+    if (dx < 0 || _ctrl.value > 0) {
+      final v = _ctrl.value + (-dx / _kPanelW);
+      _ctrl.value = v.clamp(0.0, 1.0);
+      if (_rCtrl.value != 0) _rCtrl.value = 0;
+    } else if (dx > 0 && _allowRightSwipe) {
+      // 全程跟手，稍微阅力感
+      _rCtrl.value = (_rCtrl.value + dx * 0.92).clamp(0, _kDeleteThreshold * 1.8);
+    }
   }
 
   void _onDragEnd(DragEndDetails d) {
     final vel = d.velocity.pixelsPerSecond.dx;
+    if (_rCtrl.value > 0) {
+      if (_rCtrl.value >= _kDeleteThreshold || vel > 400) {
+        _flyOut(vel);
+      } else {
+        _springBack(vel);
+      }
+      return;
+    }
     if (_ctrl.value > _kSnapThreshold || vel < -500) {
       _open();
     } else {
@@ -1152,11 +991,38 @@ class _ConversationCardState extends State<_ConversationCard>
     }
   }
 
+  // 弹回——easeOutCubic
+  void _springBack(double velocity) {
+    _rCtrl.animateTo(
+      0,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  // 飞出屏幕——easeIn，.then() 必定触发
+  void _flyOut(double velocity) {
+    if (_deleting) return;
+    _deleting = true;
+    final target = _screenWidth > 0 ? _screenWidth + 50 : 500.0;
+    _rCtrl.animateTo(
+      target,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeIn,
+    ).then((_) {
+      if (mounted) _runAction(widget.onDelete);
+    });
+  }
+
+  /// 执行操作：先关闭面板，等动画完成再执行业务，完成后确保 busy 重置
   Future<void> _runAction(Future<void> Function() fn) async {
     if (_busy) return;
     setState(() => _busy = true);
-    _close();
+    // 先关闭面板动画，等动画完成
+    await _ctrl.animateTo(0.0,
+        duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic);
     await fn();
+    // 业务完成后重置（setState 驱动 rebuild，确保按钮区消失）
     if (mounted) setState(() => _busy = false);
   }
 
@@ -1170,118 +1036,157 @@ class _ConversationCardState extends State<_ConversationCard>
     final lastMsg   = _parseLastMsg(widget.conversation);
     final time      = _formatTime(widget.conversation.lastMessage?.timestamp);
 
-    final card = Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isPinned
-            ? AppColors.primaryContainer.withOpacity(0.08)
-            : AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [BoxShadow(
-            color: AppColors.cardShadow, blurRadius: 16, spreadRadius: -4)],
-        border: isPinned
-            ? Border.all(color: AppColors.primary.withOpacity(0.12))
-            : null,
-      ),
-      child: Row(children: [
-        Stack(children: [
-          PetAvatar(imageUrl: widget.conversation.faceUrl,
-              size: 48, fallbackEmoji: '🐾'),
-          if (hasUnread)
-            Positioned(
-              right: -2, top: -2,
-              child: Container(
-                width: 20, height: 20,
-                decoration: BoxDecoration(
-                  color: AppColors.primary, shape: BoxShape.circle,
-                  border: Border.all(
-                      color: AppColors.surfaceContainerLowest, width: 2),
-                ),
-                child: Center(child: Text('$unread',
-                    style: const TextStyle(color: Colors.white,
-                        fontSize: 9, fontWeight: FontWeight.w800))),
-              ),
-            ),
-        ]),
-        const SizedBox(width: 14),
-        Expanded(child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              Expanded(child: Text(name, style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 14,
-                fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w600,
-                color: AppColors.onSurface))),
-              if (isPinned)
-                Icon(Icons.push_pin_rounded, size: 12,
-                    color: AppColors.primary.withOpacity(0.6)),
-            ]),
-            const SizedBox(height: 3),
-            Text(lastMsg, maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                color: hasUnread
-                    ? AppColors.onSurface : AppColors.onSurfaceVariant,
-                fontWeight:
-                    hasUnread ? FontWeight.w600 : FontWeight.w400)),
-          ],
-        )),
-        Text(time, style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 10,
-            color: AppColors.onSurfaceVariant)),
-      ]),
-    );
+    // 卡片圆角：左滑时左侧变直角；右滑时右侧变直角
+    return AnimatedBuilder(
+      animation: Listenable.merge([_ctrl, _rCtrl]),
+      builder: (context, child) {
+        _screenWidth = MediaQuery.of(context).size.width;
+        final rPx         = _rCtrl.value.clamp(0.0, double.infinity);
+        final leftRadius  = Radius.circular(18 * (1.0 - _ctrl.value));
+        final rightRadius = Radius.circular(rPx > 0 ? 0.0 : 18.0);
+        final delProgress = (rPx / _kDeleteThreshold).clamp(0.0, 1.0);
 
-    return GestureDetector(
-      onHorizontalDragUpdate: _onDragUpdate,
-      onHorizontalDragEnd:    _onDragEnd,
-      onTap: () {
-        if (_ctrl.value > 0.02) { _close(); return; }
-        widget.onTap();
-      },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: AnimatedBuilder(
-          animation: _ctrl,
-          builder: (_, child) => Stack(children: [
-            // ── 操作按钮区（右对齐）────────────────────────────
-            Positioned.fill(child: Align(
-              alignment: Alignment.centerRight,
-              child: SizedBox(width: _kPanelW, child: Row(children: [
-                // 置顶
-                _SwipeActionBtn(
-                  icon: isPinned
-                      ? Icons.push_pin_outlined : Icons.push_pin_rounded,
-                  label: isPinned ? '取消置顶' : '置顶',
-                  color: AppColors.primary,
-                  onTap: () => _runAction(widget.onPin),
+        final card = Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: isPinned
+                ? AppColors.primaryContainer.withOpacity(0.08)
+                : AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.only(
+              topLeft:     leftRadius,
+              bottomLeft:  leftRadius,
+              topRight:    rightRadius,
+              bottomRight: rightRadius,
+            ),
+            boxShadow: [BoxShadow(
+                color: AppColors.cardShadow, blurRadius: 16, spreadRadius: -4)],
+            border: isPinned
+                ? Border.all(color: AppColors.primary.withOpacity(0.12))
+                : null,
+          ),
+          child: Row(children: [
+            Stack(children: [
+              PetAvatar(imageUrl: widget.conversation.faceUrl,
+                  size: 48, fallbackEmoji: '🐾'),
+              if (hasUnread)
+                Positioned(
+                  right: -2, top: -2,
+                  child: Container(
+                    width: 20, height: 20,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary, shape: BoxShape.circle,
+                      border: Border.all(
+                          color: AppColors.surfaceContainerLowest, width: 2),
+                    ),
+                    child: Center(child: Text('$unread',
+                        style: const TextStyle(color: Colors.white,
+                            fontSize: 9, fontWeight: FontWeight.w800))),
+                  ),
                 ),
-                // 清空
-                _SwipeActionBtn(
-                  icon: Icons.delete_sweep_outlined,
-                  label: '清空',
-                  color: const Color(0xFFFF9500),
-                  onTap: () => _runAction(widget.onClear),
-                ),
-                // 删除
-                _SwipeActionBtn(
-                  icon: Icons.delete_outline_rounded,
-                  label: '删除',
-                  color: AppColors.error,
-                  onTap: () => _runAction(widget.onDelete),
-                ),
-              ])),
+            ]),
+            const SizedBox(width: 14),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Expanded(child: Text(name, style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                    fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w600,
+                    color: AppColors.onSurface))),
+                  if (isPinned)
+                    Icon(Icons.push_pin_rounded, size: 12,
+                        color: AppColors.primary.withOpacity(0.6)),
+                ]),
+                const SizedBox(height: 3),
+                Text(lastMsg, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                    color: hasUnread
+                        ? AppColors.onSurface : AppColors.onSurfaceVariant,
+                    fontWeight:
+                        hasUnread ? FontWeight.w600 : FontWeight.w400)),
+              ],
             )),
-            // ── 卡片（向左滑动）──────────────────────────────
+            Text(time, style: const TextStyle(
+                fontFamily: 'Plus Jakarta Sans', fontSize: 10,
+                color: AppColors.onSurfaceVariant)),
+          ]),
+        );
+
+        return GestureDetector(
+          onHorizontalDragStart:  _onDragStart,
+          onHorizontalDragUpdate: _onDragUpdate,
+          onHorizontalDragEnd:    _onDragEnd,
+          onTap: () {
+            if (_ctrl.value > 0.02) { _close(); return; }
+            if (rPx > 0) { _springBack(0); return; }
+            widget.onTap();
+          },
+          child: Stack(children: [
+            // ── 右滑删除背景（左对齐）─────────────────────────────
+            if (rPx > 0)
+              Positioned.fill(child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Container(
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.only(left: 22),
+                  decoration: BoxDecoration(
+                    color: Color.lerp(
+                        AppColors.errorContainer.withOpacity(0.6),
+                        AppColors.error,
+                        delProgress),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.delete_rounded, color: Colors.white,
+                        size: 20 + 6 * delProgress),
+                    const SizedBox(width: 6),
+                    if (delProgress > 0.6)
+                      const Text('删除', style: TextStyle(
+                          color: Colors.white, fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Plus Jakarta Sans')),
+                  ]),
+                ),
+              )),
+            // ── 操作按钮区（右对齐，仅在左滑展开时可见）─────────────
+            if (_ctrl.value > 0)
+              Positioned.fill(child: Align(
+                alignment: Alignment.centerRight,
+                child: SizedBox(width: _kPanelW, child: Row(children: [
+                  _SwipeActionBtn(
+                    icon: isPinned
+                        ? Icons.push_pin_outlined : Icons.push_pin_rounded,
+                    label: isPinned ? '取消置顶' : '置顶',
+                    color: AppColors.primary,
+                    isFirst: true,
+                    onTap: () => _runAction(widget.onPin),
+                  ),
+                  _SwipeActionBtn(
+                    icon: Icons.delete_sweep_outlined,
+                    label: '清空',
+                    color: const Color(0xFFFF9500),
+                    onTap: () => _runAction(widget.onClear),
+                  ),
+                  _SwipeActionBtn(
+                    icon: Icons.delete_outline_rounded,
+                    label: '删除',
+                    color: AppColors.error,
+                    onTap: () => _runAction(widget.onDelete),
+                  ),
+                ])),
+              )),
+            // 卡片：左滑向左，右滑向右
             Transform.translate(
-              offset: Offset(-_kPanelW * _ctrl.value, 0),
-              child: child,
+              offset: Offset(
+                rPx > 0 ? rPx : -_kPanelW * _ctrl.value,
+                0,
+              ),
+              child: card,
             ),
           ]),
-          child: card,
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -1304,6 +1209,8 @@ class _ConversationCardState extends State<_ConversationCard>
             final t = json['content'] as String? ?? '';
             return '$from 评论了你：$t';
           }
+          if (type == 'friend_accepted') return '✅ $from 已同意你的好友申请';
+          if (type == 'friend_rejected') return '❌ $from 暂时拒绝了你的好友申请';
           if (type == 'fence_alert') return '⚠️ 宠物越界提醒';
         } catch (_) {}
       }
@@ -1325,15 +1232,18 @@ class _ConversationCardState extends State<_ConversationCard>
   }
 }
 
-// ── 滑动操作按钮 ─────────────────────────────────────────────
+// ── 滑动操作按钮（最左侧无圆角，与卡片无缝衔接）────────────────
 class _SwipeActionBtn extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
   final VoidCallback onTap;
+  /// 是否为最左侧按钮（置顶），紧邻卡片右边缘，不加左圆角
+  final bool isFirst;
   const _SwipeActionBtn({
     required this.icon, required this.label,
     required this.color, required this.onTap,
+    this.isFirst = false,
   });
 
   @override
@@ -1341,7 +1251,8 @@ class _SwipeActionBtn extends StatelessWidget {
     child: GestureDetector(
       onTap: onTap,
       child: Container(
-        color: color,
+        // 最左侧按钮左边直角（与卡片无缝衔接），其余保持矩形
+        decoration: BoxDecoration(color: color),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(icon, color: Colors.white, size: 22),
           const SizedBox(height: 5),
@@ -1354,60 +1265,3 @@ class _SwipeActionBtn extends StatelessWidget {
   );
 }
 
-class _QrActionBtn extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-  const _QrActionBtn({required this.icon, required this.label, this.onTap});
-
-  @override
-  Widget build(BuildContext context) => Expanded(
-    child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.primaryContainer.withOpacity(0.18),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, color: AppColors.primary, size: 26),
-          const SizedBox(height: 6),
-          Text(label, style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-            fontWeight: FontWeight.w600, color: AppColors.primary,
-          )),
-        ]),
-      ),
-    ),
-  );
-}
-
-// ── 会话管理菜单按钮 ──────────────────────────────────────────
-class _ConvMenuBtn extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-  const _ConvMenuBtn({required this.icon, required this.label, required this.color, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(width: 12),
-        Text(label, style: TextStyle(
-          fontFamily: 'Plus Jakarta Sans', fontSize: 15,
-          fontWeight: FontWeight.w600, color: color)),
-      ]),
-    ),
-  );
-}

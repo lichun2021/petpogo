@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -40,6 +41,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   String? _myAvatarUrl;
   V2TimAdvancedMsgListener? _msgListener;
 
+  // 好友状态
+  bool _isFriend       = false;
+  bool _checkingFriend = true;
+  bool _addingFriend   = false;
+  bool _requestSent    = false;
+
   @override
   void initState() {
     super.initState();
@@ -47,7 +54,35 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     _registerListener();
     _fetchPeerName();
     _fetchSelfAvatar();
+    _checkFriendship();
     ref.read(imControllerProvider.notifier).markRead(widget.userId);
+  }
+
+  Future<void> _checkFriendship() async {
+    final ok = await ref
+        .read(imControllerProvider.notifier)
+        .checkIsFriend(widget.userId);
+    if (!mounted) return;
+    setState(() {
+      _isFriend       = ok;
+      _checkingFriend = false;
+    });
+  }
+
+  Future<void> _sendFriendRequest() async {
+    if (_addingFriend || _requestSent) return;
+    setState(() => _addingFriend = true);
+    final ok = await ref.read(imControllerProvider.notifier).addFriend(
+      toUserId: widget.userId,
+      wording: '我在 PetPogo 遇见了你，想加个好友～',
+    );
+    if (!mounted) return;
+    setState(() { _addingFriend = false; _requestSent = ok; });
+    if (ok) {
+      PetToast.success(context, '好友申请已发送，等对方同意后可私信 🐾');
+    } else {
+      PetToast.error(context, '发送失败，请稍后重试');
+    }
   }
 
   @override
@@ -200,20 +235,32 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       controller: _scrollCtrl,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 12),
-                      itemCount: _messages.length,
-                      itemBuilder: (_, i) => _MessageBubble(
-                        message: _messages[i],
-                        myAvatarUrl: _myAvatarUrl,
-                      ),
+                      // 非好友且有历史消息时，顶部额外插入一条提示
+                      itemCount: _messages.length + (!_isFriend && !_checkingFriend && _messages.isNotEmpty ? 1 : 0),
+                      itemBuilder: (_, i) {
+                        // 第 0 项 = 提示条（非好友时）
+                        if (!_isFriend && !_checkingFriend && _messages.isNotEmpty && i == 0) {
+                          return _buildRemovedTip();
+                        }
+                        final msgIdx = (!_isFriend && !_checkingFriend && _messages.isNotEmpty) ? i - 1 : i;
+                        return _MessageBubble(
+                          message: _messages[msgIdx],
+                           myAvatarUrl: _myAvatarUrl,
+                        );
+                      },
                     ),
         ),
-        _ChatInputSection(
-          controller: _textCtrl,
-          isSending: _isSending,
-          onSend: _sendText,
-          onPickImage: _sendImage,
-          onSendVoice: _sendVoice,
-        ),
+        // 好友才能发送消息
+        if (_checkingFriend || _isFriend)
+          _ChatInputSection(
+            controller: _textCtrl,
+            isSending: _isSending || _checkingFriend,
+            onSend: _isFriend ? _sendText : () {},
+            onPickImage: _isFriend ? _sendImage : () {},
+            onSendVoice: _isFriend ? _sendVoice : (_, __) async {},
+          )
+        else
+          _buildNotFriendBanner(),
       ]),
     );
   }
@@ -227,6 +274,99 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             color: AppColors.onSurfaceVariant)),
     ]),
   );
+
+  // 有历史消息但非好友时顶部提示
+  Widget _buildRemovedTip() => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.errorContainer.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Text(
+          '⚠️ 对方已将你移除或拉黑，消息将无法送达',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+              color: AppColors.onSurfaceVariant),
+        ),
+      ),
+    ),
+  );
+
+  // ── 非好友拦截横幅 ───────────────────────────────────
+  Widget _buildNotFriendBanner() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLow,
+        border: Border(
+            top: BorderSide(color: AppColors.outlineVariant, width: 0.5)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(children: [
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('还不是好友',
+                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 13, fontWeight: FontWeight.w700,
+                      color: AppColors.onSurfaceVariant)),
+              Text('成为好友后才能发送私信',
+                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 11, color: AppColors.onSurfaceVariant)),
+            ],
+          )),
+          const SizedBox(width: 12),
+          _checkingFriend
+              ? const SizedBox(width: 20, height: 20,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: AppColors.primary))
+              : _requestSent
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text('申请已发送',
+                          style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                              fontSize: 13, fontWeight: FontWeight.w700,
+                              color: AppColors.primary)),
+                    )
+                  : GestureDetector(
+                      onTap: _addingFriend ? null : _sendFriendRequest,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _addingFriend
+                              ? AppColors.surfaceContainerHigh
+                              : AppColors.primary,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: _addingFriend ? null : [
+                            BoxShadow(color: AppColors.primaryGlow,
+                                blurRadius: 8, offset: const Offset(0, 3)),
+                          ],
+                        ),
+                        child: _addingFriend
+                            ? const SizedBox(width: 14, height: 14,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: AppColors.primary))
+                            : const Text('加好友',
+                                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                                    fontSize: 13, fontWeight: FontWeight.w700,
+                                    color: Colors.white)),
+                      ),
+                    ),
+        ]),
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -243,6 +383,58 @@ class _MessageBubble extends StatelessWidget {
     final imgUrl  = message.imageElem?.imageList?.firstOrNull?.url;
     final sound   = message.soundElem;
     final text    = message.textElem?.text;
+    final custom  = message.customElem?.data;
+
+    // ── 自定义系统通知（居中展示，无气泡）──────────────────────
+    if (custom != null && custom.isNotEmpty) {
+      try {
+        final json = jsonDecode(custom) as Map<String, dynamic>;
+        final type = json['type'] as String? ?? '';
+        final content = json['content'] as String? ?? '';
+        final fromName = json['fromName'] as String? ?? '';
+        if (type == 'friend_accepted') {
+          final label = '$fromName $content';
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryContainer.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                        color: AppColors.primary, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          );
+        }
+        if (type == 'friend_rejected') {
+          final label = '$fromName $content';
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.errorContainer.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(label,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                        color: AppColors.onSurfaceVariant,
+                        fontWeight: FontWeight.w500)),
+              ),
+            ),
+          );
+        }
+      } catch (_) {}
+    }
 
     Widget content;
     if (sound != null) {

@@ -14,6 +14,8 @@
 ///    result.when(success: (list) => ..., failure: (err) => ...);
 /// ════════════════════════════════════════════════════════════
 
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tencent_cloud_chat_sdk/tencent_im_sdk_plugin.dart';
@@ -30,6 +32,7 @@ import 'package:tencent_cloud_chat_sdk/enum/message_priority_enum.dart';
 import 'package:tencent_cloud_chat_sdk/enum/friend_type_enum.dart';
 import 'package:tencent_cloud_chat_sdk/enum/friend_application_type_enum.dart';
 import 'package:tencent_cloud_chat_sdk/enum/friend_response_type_enum.dart';
+import 'package:tencent_cloud_chat_sdk/enum/user_info_allow_type.dart';
 import 'package:tencent_cloud_chat_sdk/models/v2_tim_message_search_param.dart';
 import '../../../../core/api/api_exception.dart';
 import '../../../../core/api/result.dart';
@@ -199,6 +202,36 @@ class ImRepository {
     }
   });
 
+  /// 发送自定义系统消息（仅在线时送达，不产生持久会话记录）
+  /// 用于：拒绝好友申请通知、系统提醒等
+  Future<void> sendCustomMessage({
+    required String toUserId,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      final payload = jsonEncode(data);
+      final createRes = await TencentImSDKPlugin.v2TIMManager
+          .getMessageManager()
+          .createCustomMessage(data: payload);
+      if (createRes.code != 0 || createRes.data == null) return;
+      await TencentImSDKPlugin.v2TIMManager
+          .getMessageManager()
+          .sendMessage(
+            id: createRes.data!.id!,
+            receiver: toUserId,
+            groupID: '',
+            priority: MessagePriorityEnum.V2TIM_PRIORITY_NORMAL,
+            onlineUserOnly: false,  // false = 离线也能收到（否则对方不在线就丢失）
+            offlinePushInfo: null,
+            cloudCustomData: '',
+            localCustomData: '',
+          );
+      debugPrint('[ImRepo] sendCustomMessage to=$toUserId type=${data["type"]}');
+    } catch (e) {
+      debugPrint('[ImRepo] sendCustomMessage error: $e');
+    }
+  }
+
   // ── 好友管理 ─────────────────────────────────────────────
   /// 获取好友列表
   Future<Result<List<V2TimFriendInfo>>> fetchFriendList() =>
@@ -220,6 +253,7 @@ class ImRepository {
     required String toUserId,
     String addWording = '',
   }) => guardResult(() async {
+    debugPrint('[ImRepo] 📤 发送好友申请 → toUserId=$toUserId wording=$addWording');
     final res = await TencentImSDKPlugin.v2TIMManager
         .getFriendshipManager()
         .addFriend(
@@ -229,6 +263,7 @@ class ImRepository {
           remark: '',
           friendGroup: '',
         );
+    debugPrint('[ImRepo] addFriend result code=${res.code} desc=${res.desc}');
     if (res.code != 0 && res.code != 30001) {
       throw ApiException(message: res.desc ?? '添加好友失败');
     }
@@ -241,15 +276,36 @@ class ImRepository {
             .getFriendshipManager()
             .getFriendApplicationList();
         if (res.code != 0) {
+          debugPrint('[ImRepo] getFriendApplicationList error: code=${res.code} ${res.desc}');
           throw ApiException(message: res.desc ?? '获取申请列表失败');
         }
         final all = res.data?.friendApplicationList?.map((e) => e!).toList() ?? [];
+        // 打印全部 raw 数据，排查过滤问题
+        debugPrint('[ImRepo] getFriendApplicationList unreadCount=${res.data?.unreadCount} total=${all.length}');
+        for (final a in all) {
+          debugPrint('[ImRepo]   → uid=${a.userID} type=${a.type} nick=${a.nickname} wording=${a.addWording}');
+        }
         // type: 1 = COME_IN（别人申请加我），2 = SEND_OUT（我发出的）
-        // 只保留 COME_IN，避免我发出的申请显示在消息页角标上
-        return all.where((a) => a.type == 1).toList();
+        final incoming = all.where((a) => a.type == 1).toList();
+        debugPrint('[ImRepo] 过滤后 COME_IN=${incoming.length} 条');
+        return incoming;
       });
 
-  /// 同意好友申请
+  /// 获取我发出的好友申请列表（含状态：0=待处理 1=已同意 2=已拒绝）
+  Future<Result<List<V2TimFriendApplication>>> fetchSentApplications() =>
+      guardResult(() async {
+        final res = await TencentImSDKPlugin.v2TIMManager
+            .getFriendshipManager()
+            .getFriendApplicationList();
+        if (res.code != 0) {
+          throw ApiException(message: res.desc ?? '获取发出申请失败');
+        }
+        final all = res.data?.friendApplicationList?.map((e) => e!).toList() ?? [];
+        // type == 2 = SEND_OUT（我发出的申请）
+        return all.where((a) => a.type == 2).toList();
+      });
+
+  /// 同意好友申请（并向对方发通知消息）
   Future<Result<void>> acceptFriend(String fromUserId) =>
       guardResult(() async {
         final res = await TencentImSDKPlugin.v2TIMManager
@@ -261,6 +317,35 @@ class ImRepository {
             );
         if (res.code != 0) {
           throw ApiException(message: res.desc ?? '同意申请失败');
+        }
+        // 接受后向对方发一条自定义通知，让对方会话列表显示"已同意你的好友申请"
+        try {
+          final selfInfo = await TencentImSDKPlugin.v2TIMManager.getLoginUser();
+          final selfId = selfInfo.data ?? '';
+          // 查我的昵称
+          String selfName = selfId;
+          if (selfId.isNotEmpty) {
+            final infoRes = await TencentImSDKPlugin.v2TIMManager
+                .getUsersInfo(userIDList: [selfId]);
+            selfName = infoRes.data?.firstOrNull?.nickName ?? selfId;
+          }
+          final payload = jsonEncode({
+            'type':     'friend_accepted',
+            'fromName': selfName,
+            'content':  '已同意你的好友申请，现在可以发消息了 🐾',
+          });
+          await TencentImSDKPlugin.v2TIMManager
+              .getMessageManager()
+              .sendCustomMessage(
+                data: payload,
+                desc: '已同意你的好友申请',
+                extension: '',
+                receiver: fromUserId,
+                groupID: '',
+              );
+        } catch (e) {
+          debugPrint('[IM] 发送好友接受通知失败: $e');
+          // 不影响主流程
         }
       });
 
@@ -292,7 +377,7 @@ class ImRepository {
         }
       });
 
-  /// 登录后同步昵称 & 头像到 IM（确保好友列表能显示真实名字）
+  /// 登录后同步昵称 & 头像到 IM，并设置好友申请必须验证（防止直接通过）
   Future<void> updateSelfProfile({
     required String nickname,
     String? faceUrl,
@@ -302,9 +387,11 @@ class ImRepository {
         userFullInfo: V2TimUserFullInfo(
           nickName: nickname,
           faceUrl: faceUrl,
+          // 必须验证：所有好友申请都需要手动同意才能成为好友
+          allowType: AllowType.V2TIM_FRIEND_NEED_CONFIRM,
         ),
       );
-      debugPrint('[IM] 已同步 IM 资料 nickname=$nickname');
+      debugPrint('[IM] 已同步 IM 资料 nickname=$nickname，好友模式=需验证');
     } catch (e) {
       debugPrint('[IM] 同步 IM 资料失败: $e');
     }
@@ -338,6 +425,47 @@ class ImRepository {
           throw ApiException(message: res.desc ?? '拉黑失败');
         }
       });
+
+  /// 获取黑名单列表
+  Future<Result<List<V2TimFriendInfo>>> getBlackList() =>
+      guardResult(() async {
+        final res = await TencentImSDKPlugin.v2TIMManager
+            .getFriendshipManager()
+            .getBlackList();
+        if (res.code != 0) {
+          throw ApiException(message: res.desc ?? '获取黑名单失败');
+        }
+        return res.data?.map((e) => e!).toList() ?? [];
+      });
+
+  /// 从黑名单移除
+  Future<Result<void>> removeFromBlackList(String userId) =>
+      guardResult(() async {
+        final res = await TencentImSDKPlugin.v2TIMManager
+            .getFriendshipManager()
+            .deleteFromBlackList(userIDList: [userId]);
+        if (res.code != 0) {
+          throw ApiException(message: res.desc ?? '移出黑名单失败');
+        }
+      });
+
+  /// 获取好友详细资料（含 nickName / faceUrl）
+  Future<List<V2TimFriendInfo>> getFriendsInfo(List<String> userIDs) async {
+    try {
+      final res = await TencentImSDKPlugin.v2TIMManager
+          .getFriendshipManager()
+          .getFriendsInfo(userIDList: userIDs);
+      if (res.code != 0 || res.data == null) return [];
+      // friendInfo 可能为 null，过滤安全
+      return res.data!
+          .where((e) => e != null && e.friendInfo != null)
+          .map((e) => e!.friendInfo!)
+          .toList();
+    } catch (e) {
+      debugPrint('[IM] getFriendsInfo error: $e');
+      return [];
+    }
+  }
 
   // ── 消息已读 ─────────────────────────────────────────────
   /// 标记会话消息全部已读

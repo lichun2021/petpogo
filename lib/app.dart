@@ -9,6 +9,10 @@ import 'l10n/app_localizations.dart';
 
 export 'l10n/app_localizations.dart';
 
+/// 全局 NavigatorKey，用于在无 BuildContext 时（如 IM SDK 回调）弹出系统级对话框
+/// 传入 GoRouter 的 navigatorKey，使 GoRouter 内部使用这个 Navigator
+final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
+
 /// 便捷扩展：任意 Widget 内用 context.l10n 获取当前语言的识别
 extension AppL10nX on BuildContext {
   AppL10n get l10n => AppL10n.of(this)!;

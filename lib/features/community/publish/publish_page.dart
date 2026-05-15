@@ -34,6 +34,8 @@ class _PublishPageState extends ConsumerState<PublishPage>
       duration: const Duration(milliseconds: 600),
     );
     _fabAnim.forward();
+    // 监听文字变化，实时更新发布按钮激活状态
+    _textCtrl.addListener(() => setState(() {}));
   }
 
   @override
@@ -161,9 +163,13 @@ class _PublishPageState extends ConsumerState<PublishPage>
     final pub = ref.read(publishControllerProvider);
     final hasMedia = pub.selectedMediaType.hasMedia;
 
-    // 无媒体 + 无文字 → 拦截
-    if (!hasMedia && text.isEmpty) {
-      _showToast('请输入文字或添加图片/视频', isError: true);
+    // 媒体和文字都必填
+    if (!hasMedia) {
+      _showToast('请添加图片或视频', isError: true);
+      return;
+    }
+    if (text.isEmpty) {
+      _showToast('请输入文字内容', isError: true);
       return;
     }
     FocusScope.of(context).unfocus();
@@ -206,6 +212,7 @@ class _PublishPageState extends ConsumerState<PublishPage>
               Navigator.of(context).pop();
             },
             onPublish: _publish,
+            canPublish: pub.selectedMediaType.hasMedia && _textCtrl.text.trim().isNotEmpty,
           ),
 
           // ── 上传进度条 ───────────────────────────────────
@@ -306,9 +313,15 @@ extension on MediaType {
 // ── 渐变顶栏 ───────────────────────────────────────────────────
 class _GradientHeader extends StatelessWidget {
   final bool isBusy;
+  final bool canPublish;
   final VoidCallback onClose;
   final VoidCallback onPublish;
-  const _GradientHeader({required this.isBusy, required this.onClose, required this.onPublish});
+  const _GradientHeader({
+    required this.isBusy,
+    required this.canPublish,
+    required this.onClose,
+    required this.onPublish,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -344,18 +357,22 @@ class _GradientHeader extends StatelessWidget {
                     width: 24, height: 24,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : GestureDetector(
-                    onTap: onPublish,
-                    child: Container(
+                    onTap: canPublish ? onPublish : null,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: canPublish ? Colors.white : Colors.white.withOpacity(0.35),
                         borderRadius: BorderRadius.circular(20),
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8)],
+                        boxShadow: canPublish
+                            ? [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8)]
+                            : null,
                       ),
-                      child: const Text('发 布',
+                      child: Text('发 布',
                         style: TextStyle(
                           fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w800,
-                          fontSize: 14, color: Color(0xFFa83206),
+                          fontSize: 14,
+                          color: canPublish ? const Color(0xFFa83206) : Colors.white.withOpacity(0.5),
                         )),
                     ),
                   ),
@@ -445,11 +462,27 @@ class _AddMediaCard extends StatelessWidget {
               child: const Icon(Icons.add_photo_alternate_rounded, color: Colors.white, size: 28),
             ),
             const SizedBox(height: 12),
-            const Text('添加图片 / 视频',
-              style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700,
-                fontSize: 15, color: AppColors.primary,
-              )),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('添加图片 / 视频',
+                  style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700,
+                    fontSize: 15, color: AppColors.primary,
+                  )),
+                const SizedBox(width: 5),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text('必选',
+                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 10,
+                        fontWeight: FontWeight.w700, color: AppColors.primary)),
+                ),
+              ],
+            ),
             const SizedBox(height: 4),
             Text('支持拍照、相册、视频',
               style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant.withOpacity(0.7))),
