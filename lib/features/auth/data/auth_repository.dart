@@ -26,15 +26,16 @@ import '../../../../core/api/result.dart';
 import 'models/auth_model.dart';
 
 // ── Storage 键名常量 ─────────────────────────────────────────
-const _kToken      = 'auth_token';
-const _kId         = 'auth_id';
-const _kAccount    = 'auth_account';    // phone
-const _kName       = 'auth_name';       // nickname
-const _kAvatar     = 'auth_avatar';
-const _kMerchantId = 'auth_merchant_id';
-const _kImUserSig  = 'auth_im_user_sig';
-const _kIsVip      = 'auth_is_vip';
-const _kVipExpireAt = 'auth_vip_expire_at';
+const _kToken         = 'auth_token';
+const _kId            = 'auth_id';
+const _kAccount       = 'auth_account';      // phone
+const _kName          = 'auth_name';         // nickname
+const _kAvatar        = 'auth_avatar';
+const _kMerchantId    = 'auth_merchant_id';
+const _kImUserSig     = 'auth_im_user_sig';
+const _kIsVip         = 'auth_is_vip';
+const _kVipExpireAt   = 'auth_vip_expire_at';
+const _kPeerGatewayUrl = 'auth_peer_gateway_url'; // iPet 硬件网关地址（登录来，持久化）
 
 class AuthRepository {
   final ApiClient _client;
@@ -144,15 +145,16 @@ class AuthRepository {
     }
 
     final user = UserInfo.fromStorageMap({
-      'token':        token,
-      'id':           await _storage.read(key: _kId),
-      'account':      await _storage.read(key: _kAccount),
-      'name':         await _storage.read(key: _kName),
-      'avatar':       await _storage.read(key: _kAvatar),
-      'merchantId':   await _storage.read(key: _kMerchantId),
-      'imUserSig':    await _storage.read(key: _kImUserSig),
-      'isVip':        await _storage.read(key: _kIsVip),
-      'vipExpireAt':  await _storage.read(key: _kVipExpireAt),
+      'token':          token,
+      'id':             await _storage.read(key: _kId),
+      'account':        await _storage.read(key: _kAccount),
+      'name':           await _storage.read(key: _kName),
+      'avatar':         await _storage.read(key: _kAvatar),
+      'merchantId':     await _storage.read(key: _kMerchantId),
+      'imUserSig':      await _storage.read(key: _kImUserSig),
+      'isVip':          await _storage.read(key: _kIsVip),
+      'vipExpireAt':    await _storage.read(key: _kVipExpireAt),
+      'peerGatewayUrl': await _storage.read(key: _kPeerGatewayUrl),
     });
 
     _client.setToken(user.token);
@@ -203,20 +205,23 @@ class AuthRepository {
   Future<void> _persist(UserInfo user) async {
     final q = user.aiQuota;
     await Future.wait([
-      _storage.write(key: _kToken,       value: user.token),
-      _storage.write(key: _kId,          value: user.id),
-      _storage.write(key: _kAccount,     value: user.account),
-      _storage.write(key: _kName,        value: user.name),
-      _storage.write(key: _kAvatar,      value: user.avatar),
-      _storage.write(key: _kMerchantId,  value: user.merchantId.toString()),
-      _storage.write(key: _kImUserSig,   value: user.imUserSig),
-      _storage.write(key: _kIsVip,       value: user.isVip ? '1' : '0'),
-      _storage.write(key: _kVipExpireAt, value: user.vipExpireAt ?? ''),
+      _storage.write(key: _kToken,          value: user.token),
+      _storage.write(key: _kId,             value: user.id),
+      _storage.write(key: _kAccount,        value: user.account),
+      _storage.write(key: _kName,           value: user.name),
+      _storage.write(key: _kAvatar,         value: user.avatar),
+      _storage.write(key: _kMerchantId,     value: user.merchantId.toString()),
+      _storage.write(key: _kImUserSig,      value: user.imUserSig),
+      _storage.write(key: _kIsVip,          value: user.isVip ? '1' : '0'),
+      _storage.write(key: _kVipExpireAt,    value: user.vipExpireAt ?? ''),
       _storage.write(key: 'aiQuota_used',      value: q.used.toString()),
       _storage.write(key: 'aiQuota_limit',     value: q.limit.toString()),
       _storage.write(key: 'aiQuota_remaining', value: q.remaining.toString()),
+      // peerGatewayUrl: 登录时下发，非空时才覆写（不用旧地址覆盖新地址）
+      if (user.peerGatewayUrl.isNotEmpty)
+        _storage.write(key: _kPeerGatewayUrl, value: user.peerGatewayUrl),
     ]);
-    debugPrint('[AuthRepo] 会话已持久化 (VIP=${user.isVip}, AI剩余=${q.remaining})');
+    debugPrint('[AuthRepo] 会话已持久化 (VIP=${user.isVip}, AI剩余=${q.remaining}, peer=${user.peerGatewayUrl})');
   }
 
   // ── 仅更新 AI 配额（分析完成后快速写入）──────────────────────────────────
