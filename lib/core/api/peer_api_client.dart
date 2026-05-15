@@ -78,7 +78,7 @@ class PeerApiClient {
     T Function(dynamic)? fromInfo,
   }) async {
     if (!isReady) {
-      throw Exception('[PeerApi] 未初始化，请先登录');
+      throw Exception('[PeerApi] 设备接口未就绪，请检查网络或重新登录');
     }
     final body = params != null
         ? params.map((k, v) => MapEntry(k, v?.toString() ?? ''))
@@ -130,21 +130,37 @@ class _PeerLogInterceptor extends Interceptor {
 }
 
 // ── Riverpod Provider ────────────────────────────────────
+/// iPet 硬件网关 BaseUrl 兜底（环境变量未配置时使用）
+const _kFallbackPeerUrl = 'http://49.234.39.11:8006';
+
 final peerApiClientProvider = Provider<PeerApiClient>((ref) {
   final client = PeerApiClient();
-  // 监听登录状态，自动初始化/更新 token 和 baseUrl
-  ref.listen(authControllerProvider, (_, next) {
-    if (next.isLoggedIn && next.user != null) {
-      final user = next.user!;
-      if (user.peerGatewayUrl.isNotEmpty && user.token.isNotEmpty) {
-        if (!client.isReady) {
-          client.init(baseUrl: user.peerGatewayUrl, token: user.token);
-          debugPrint('[PeerApi] 初始化完成 url=${user.peerGatewayUrl}');
-        } else {
-          client.updateToken(user.token);
-        }
-      }
+
+  void _tryInit() {
+    final authState = ref.read(authControllerProvider);
+    if (!authState.isLoggedIn || authState.user == null) return;
+    final user = authState.user!;
+    if (user.token.isEmpty) return;
+
+    // peerGatewayUrl 可能为空（后端环境变量未配）→ 用兜底地址
+    final url = user.peerGatewayUrl.isNotEmpty ? user.peerGatewayUrl : _kFallbackPeerUrl;
+
+    if (!client.isReady) {
+      client.init(baseUrl: url, token: user.token);
+      debugPrint('[PeerApi] 初始化完成 url=$url');
+    } else {
+      client.updateToken(user.token);
+      debugPrint('[PeerApi] Token 已更新');
     }
+  }
+
+  // 监听登录状态变化（包含启动恢复 restoring → loggedIn 的场景）
+  ref.listen(authControllerProvider, (prev, next) {
+    if (next.isLoggedIn) _tryInit();
   }, fireImmediately: true);
+
+  // 首次创建时主动检查（防止 fireImmediately 在 restoring 状态错过）
+  _tryInit();
+
   return client;
 });
