@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../shared/theme/app_colors.dart';
 import '../device/data/repository/device_repository.dart';
 import '../device/data/models/device_model.dart';
 import '../device/device_list_page.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
 import '../pet/data/models/pet_peer_models.dart';
+import '../pet/data/models/pet_model.dart';
+import '../pet/pet_edit_sheet.dart';
 
 // ════════════════════════════════════════════════════════════
 //  宠物列表页 — 宠物依附于设备（PeerApi）
@@ -134,7 +137,7 @@ class _PetListPageState extends ConsumerState<PetListPage> {
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
         itemCount: _pets.length,
         separatorBuilder: (_, __) => const SizedBox(height: 14),
-        itemBuilder: (_, i) => _PetCard(data: _pets[i]),
+        itemBuilder: (_, i) => _PetCard(data: _pets[i], onRefresh: _refresh),
       ),
     );
   }
@@ -184,12 +187,35 @@ class _PetListPageState extends ConsumerState<PetListPage> {
 }
 
 // ── 宠物卡片 ──────────────────────────────────────────────
-class _PetCard extends StatelessWidget {
+class _PetCard extends ConsumerWidget {
   final _PetWithDevice data;
-  const _PetCard({required this.data});
+  final VoidCallback onRefresh;
+  const _PetCard({required this.data, required this.onRefresh});
+
+  void _openEdit(BuildContext context) {
+    final pet = data.pet;
+    // 用 PetInfoModel 的字段构造临时 PetModel 传给编辑 Sheet
+    final petModel = PetModel(
+      id:     pet.petId,
+      name:   pet.petName,
+      type:   'other',
+      breed:  pet.breed,
+      avatar: pet.avatar,
+      gender: pet.sex.startsWith('GG') ? 'male'
+             : pet.sex.startsWith('MM') ? 'female' : 'unknown',
+    );
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surfaceContainerLowest,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (_) => PetEditSheet(pet: petModel),
+    ).then((saved) { if (saved == true) onRefresh(); });
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final pet    = data.pet;
     final device = data.device;
 
@@ -199,7 +225,6 @@ class _PetCard extends StatelessWidget {
     final gColor   = isMale ? const Color(0xFF1565C0) : const Color(0xFFC2185B);
     final gBg      = isMale ? const Color(0xFFDCEEFF)  : const Color(0xFFFFDCEE);
 
-    // 设备类型渐变
     final isCat = pet.breed.contains('猫') || pet.breed.toLowerCase().contains('cat');
     final gradient = isCat
         ? [const Color(0xFF6EC6F5), const Color(0xFF4A90D9)]
@@ -223,19 +248,32 @@ class _PetCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              // 头像
-              Container(
-                width: 60, height: 60,
-                decoration: BoxDecoration(shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.2),
-                    border: Border.all(color: Colors.white.withOpacity(0.5), width: 2)),
-                child: ClipOval(
-                  child: pet.avatar.isNotEmpty
-                      ? Image.network(pet.avatar, fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Center(
-                              child: Text('🐾', style: TextStyle(fontSize: 26))))
-                      : const Center(child: Text('🐾', style: TextStyle(fontSize: 26))),
-                ),
+              // 头像（可点击编辑）
+              GestureDetector(
+                onTap: () => _openEdit(context),
+                child: Stack(alignment: Alignment.bottomRight, children: [
+                  Container(
+                    width: 60, height: 60,
+                    decoration: BoxDecoration(shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.2),
+                        border: Border.all(color: Colors.white.withOpacity(0.5), width: 2)),
+                    child: ClipOval(
+                      child: pet.avatar.isNotEmpty
+                          ? CachedNetworkImage(imageUrl: pet.avatar, fit: BoxFit.cover,
+                              errorWidget: (_, __, ___) => const Center(
+                                  child: Text('🐾', style: TextStyle(fontSize: 26))))
+                          : const Center(child: Text('🐾', style: TextStyle(fontSize: 26))),
+                    ),
+                  ),
+                  Container(
+                    width: 20, height: 20,
+                    decoration: BoxDecoration(
+                      color: Colors.white, shape: BoxShape.circle,
+                      border: Border.all(color: gradient.first, width: 1.5),
+                    ),
+                    child: Icon(Icons.edit_rounded, size: 11, color: gradient.first),
+                  ),
+                ]),
               ),
               const SizedBox(width: 14),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -251,6 +289,19 @@ class _PetCard extends StatelessWidget {
                       child: Text(gLabel, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
                           fontSize: 11, fontWeight: FontWeight.w800, color: gColor)),
                     ),
+                  // 编辑按钮（右上角）
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => _openEdit(context),
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.edit_rounded, size: 14, color: Colors.white),
+                    ),
+                  ),
                 ]),
                 if (pet.breed.isNotEmpty) ...[
                   const SizedBox(height: 3),
@@ -261,7 +312,6 @@ class _PetCard extends StatelessWidget {
             ]),
             const SizedBox(height: 12),
 
-            // 标签行
             Wrap(spacing: 8, runSpacing: 4, children: [
               if (pet.age > 0)    _Chip(Icons.cake_rounded, '${pet.age}岁'),
               if (pet.weight.isNotEmpty) _Chip(Icons.monitor_weight_outlined, '${pet.weight}kg'),
@@ -270,7 +320,6 @@ class _PetCard extends StatelessWidget {
             ]),
 
             const SizedBox(height: 10),
-            // 所属设备
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
@@ -279,7 +328,7 @@ class _PetCard extends StatelessWidget {
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 const Icon(Icons.router_rounded, size: 12, color: Colors.white70),
                 const SizedBox(width: 5),
-                Text(device.deviceNickname.isNotEmpty ? device.deviceNickname : device.mac,
+                Text(device.displayName,
                     style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
                         fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w600)),
               ]),

@@ -112,6 +112,7 @@ class PetModel {
     'emoji':          emoji,
     'vaccinated':     vaccinated,
     'linkedDeviceId': linkedDeviceId,
+    if (avatar.isNotEmpty) 'avatar': avatar,
   };
 
   /// 不可变更新：生成新的 PetModel（只改需要改的字段）
@@ -124,6 +125,7 @@ class PetModel {
     String? gender,
     String? emoji,
     bool? vaccinated,
+    String? avatar,
     String? linkedDeviceId,
   }) =>
       PetModel(
@@ -135,19 +137,9 @@ class PetModel {
         gender:         gender ?? this.gender,
         emoji:          emoji ?? this.emoji,
         vaccinated:     vaccinated ?? this.vaccinated,
+        avatar:         avatar ?? this.avatar,
+        weight:         this.weight,
+        bio:            this.bio,
         linkedDeviceId: linkedDeviceId ?? this.linkedDeviceId,
       );
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is PetModel &&
-          runtimeType == other.runtimeType &&
-          id == other.id;
-
-  @override
-  int get hashCode => id.hashCode;
-
-  @override
-  String toString() => 'PetModel(id: $id, name: $name, type: $type)';
 }

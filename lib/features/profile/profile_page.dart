@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../shared/utils/image_pick_helper.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../app.dart' show AppL10nX;
 import '../auth/controller/auth_controller.dart';
@@ -144,65 +145,12 @@ class _UserInfoCardState extends ConsumerState<_UserInfoCard> {
     );
   }
 
-    Future<void> _pickAndUploadAvatar() async {
-    // 弹出选择来源的底部菜单
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const SizedBox(height: 8),
-          Container(width: 36, height: 4,
-            decoration: BoxDecoration(color: AppColors.onSurfaceVariant.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 16),
-          Text('更换头像', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-            fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-          const SizedBox(height: 8),
-          _AvatarSourceTile(
-            icon: Icons.camera_alt_rounded,
-            label: '拍照',
-            onTap: () => Navigator.pop(context, ImageSource.camera),
-          ),
-          _AvatarSourceTile(
-            icon: Icons.photo_library_rounded,
-            label: '从相册选择',
-            onTap: () => Navigator.pop(context, ImageSource.gallery),
-          ),
-          const SizedBox(height: 8),
-          Divider(color: AppColors.onSurfaceVariant.withOpacity(0.1), height: 1),
-          _AvatarSourceTile(
-            icon: Icons.close_rounded,
-            label: '取消',
-            iconColor: AppColors.onSurfaceVariant,
-            textColor: AppColors.onSurfaceVariant,
-            onTap: () => Navigator.pop(context),
-          ),
-          const SizedBox(height: 8),
-        ]),
-      ),
-    );
-
-    if (source == null || !mounted) return;
-
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: source,
-      imageQuality: 85,
-      maxWidth: 512,
-      maxHeight: 512,
-      preferredCameraDevice: CameraDevice.front, // 默认前置（自拍）
-    );
-    if (picked == null || !mounted) return;
+  Future<void> _pickAndUploadAvatar() async {
+    final file = await ImagePickHelper.pickAndCropAvatar(context);
+    if (file == null || !mounted) return;
 
     setState(() => _uploadingAvatar = true);
     try {
-      final file = File(picked.path);
       final repo = ref.read(postRepositoryProvider);
       final sign = await repo.getOssSign(fileType: 'image', folder: 'avatars');
       await repo.uploadToOss(uploadUrl: sign.uploadUrl, file: file, contentType: 'image/jpeg');
