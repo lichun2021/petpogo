@@ -5,6 +5,7 @@ import '../../shared/theme/app_colors.dart';
 import '../device/data/repository/device_repository.dart';
 import '../device/data/models/device_model.dart';
 import '../device/device_detail_page.dart';
+import '../bind_device/scan_qr_page.dart';
 
 // ── 设备列表页 ────────────────────────────────────────────
 class DeviceListPage extends ConsumerWidget {
@@ -45,7 +46,14 @@ class DeviceListPage extends ConsumerWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
           child: FilledButton.icon(
-            onPressed: () { HapticFeedback.mediumImpact(); _showBindSheet(context, ref); },
+            onPressed: () async {
+              HapticFeedback.mediumImpact();
+              await Navigator.push(context, MaterialPageRoute(
+                builder: (_) => const ScanQrPage(deviceType: '智能宠物设备'),
+              ));
+              // 绑定成功后刷新列表
+              ref.read(deviceListProvider.notifier).load();
+            },
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.secondary,
               minimumSize: const Size(double.infinity, 52),
@@ -215,7 +223,14 @@ class _BindOptionsSheet extends StatelessWidget {
         const SizedBox(height: 20),
         _OptionTile(
           icon: Icons.qr_code_scanner_rounded, title: '扫描二维码', subtitle: '扫描设备底部的二维码',
-          color: AppColors.secondary, onTap: () => Navigator.pop(context),
+          color: AppColors.secondary,
+          onTap: () async {
+            Navigator.pop(context);
+            await Navigator.push(context, MaterialPageRoute(
+              builder: (_) => const ScanQrPage(deviceType: '智能宠物设备'),
+            ));
+            ref.read(deviceListProvider.notifier).load();
+          },
         ),
         const SizedBox(height: 12),
         _OptionTile(
