@@ -346,14 +346,13 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
   _DeviceType _detectType(DeviceModel d) {
     final key  = d.productKey.toLowerCase();
     final name = d.displayName.toLowerCase();
-    if (key.contains('collar') || name.contains('项圈') || name.contains('collar')) {
-      return _DeviceType.collar;
-    }
-    if (key.contains('robot') || name.contains('机器人') || name.contains('robot')) {
+    // 机器人判断（名称/productKey 含 robot/机器人）
+    if (key.contains('robot') || name.contains('机器人') || name.contains('robot') ||
+        key.contains('bot') || name.contains('bot')) {
       return _DeviceType.robot;
     }
-    // 根据 productKey 前缀做基本判断
-    return _DeviceType.collar; // 默认项圈
+    // 其余默认为智能项圈
+    return _DeviceType.collar;
   }
 }
 
@@ -364,7 +363,24 @@ extension _DeviceTypeX on _DeviceType {
   String get label {
     switch (this) {
       case _DeviceType.collar: return '智能项圈';
-      case _DeviceType.robot:  return '智能机器人';
+      case _DeviceType.robot:  return '智能宠物机器人';
+    }
+  }
+
+  /// 在线状态下的渐变色：项圈=橙色系，机器人=青色系
+  List<Color> get onlineGradient {
+    switch (this) {
+      case _DeviceType.collar:
+        return [const Color(0xFFff784e), const Color(0xFFa83206)];
+      case _DeviceType.robot:
+        return [const Color(0xFF00897B), const Color(0xFF006760)];
+    }
+  }
+
+  Color get glowColor {
+    switch (this) {
+      case _DeviceType.collar: return const Color(0xFFff784e);
+      case _DeviceType.robot:  return const Color(0xFF7fe6db);
     }
   }
 }
@@ -377,32 +393,55 @@ class _DeviceTypeIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = isOnline
-        ? AppColors.primary.withOpacity(0.2)
-        : Colors.white.withOpacity(0.08);
-    final fg = isOnline ? AppColors.primaryContainer : Colors.white38;
+    final gradient = isOnline
+        ? type.onlineGradient
+        : [const Color(0xFF2c2c3e), const Color(0xFF1e1e2a)];
+    final iconColor = isOnline ? Colors.white : Colors.white24;
 
     return Container(
-      width: 56, height: 56,
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16)),
+      width: 58, height: 58,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: gradient,
+            begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: isOnline ? [
+          BoxShadow(color: type.glowColor.withOpacity(0.45),
+              blurRadius: 14, spreadRadius: -2, offset: const Offset(0, 5)),
+        ] : [],
+      ),
       child: Center(
         child: type == _DeviceType.collar
-            ? _CollarIcon(color: fg)
-            : Icon(Icons.smart_toy_rounded, color: fg, size: 30),
+            ? _CollarIcon(color: iconColor)
+            : _RobotIcon(color: iconColor),
       ),
     );
   }
 }
 
-// 项圈自定义图标（用 Stack 模拟）
+// 项圈图标：环形 + 爪印
 class _CollarIcon extends StatelessWidget {
   final Color color;
   const _CollarIcon({required this.color});
   @override
   Widget build(BuildContext context) {
     return Stack(alignment: Alignment.center, children: [
-      Icon(Icons.radio_button_unchecked, color: color, size: 30),
-      Icon(Icons.pets_rounded, color: color, size: 14),
+      Icon(Icons.circle_outlined, color: color.withOpacity(0.5), size: 38),
+      Icon(Icons.pets_rounded, color: color, size: 20),
+      // 项圈扣具小装饰
+      Positioned(bottom: 7,
+        child: Container(width: 12, height: 3,
+          decoration: BoxDecoration(color: color.withOpacity(0.6),
+              borderRadius: BorderRadius.circular(2)))),
     ]);
+  }
+}
+
+// 机器人图标
+class _RobotIcon extends StatelessWidget {
+  final Color color;
+  const _RobotIcon({required this.color});
+  @override
+  Widget build(BuildContext context) {
+    return Icon(Icons.smart_toy_rounded, color: color, size: 32);
   }
 }
