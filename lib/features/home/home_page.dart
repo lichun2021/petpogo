@@ -7,7 +7,7 @@ import '../../app.dart' show AppL10nX;
 import '../device/data/repository/device_repository.dart';
 import '../device/device_list_page.dart';
 import '../device/device_detail_page.dart';
-import '../bind_device/scan_qr_page.dart';
+import '../bind_device/device_type_sheet.dart';
 import 'widgets/ai_translate_panel.dart';
 import 'widgets/ai_image_panel.dart';
 import 'widgets/no_device_banner.dart';
@@ -215,7 +215,7 @@ class _HomeDeviceCard extends StatelessWidget {
   }
 }
 
-// ── 左上角扫描按钮 ────────────────────────────────────────
+// ── 左上角扫描按钮（先选类型再扫码） ────────────────────────
 class _ScanButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -225,11 +225,8 @@ class _ScanButton extends ConsumerWidget {
       iconSize: 26,
       onPressed: () async {
         HapticFeedback.mediumImpact();
-        await Navigator.push(context, MaterialPageRoute(
-          builder: (_) => const ScanQrPage(deviceType: '智能宠物设备'),
-        ));
-        // 扫码绑定完成后刷新设备列表
-        ref.read(deviceListProvider.notifier).load();
+        final ok = await DeviceTypeSheet.show(context);
+        if (ok) ref.read(deviceListProvider.notifier).load();
       },
     );
   }
