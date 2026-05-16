@@ -120,89 +120,128 @@ class _SceneContent extends StatelessWidget {
                 fontSize: 12, color: AppColors.onSurfaceVariant)),
         const SizedBox(height: 16),
 
-        // 步骤列表
-        _StepItem(
-          icon: Icons.fence_rounded,
-          iconBg: AppColors.primary,
-          title: '位置信息与电子围栏',
-          subtitle: '定义宠物的安全活动范围',
-          score: '+30分',
-          done: false,
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-            builder: (_) => FenceManagePage(deviceMac: deviceMac, petName: ''),
-          )),
-        ),
-        const _StepDivider(),
-
-        if (_isHome) ...[
-          _StepItem(
-            icon: Icons.wifi_rounded,
-            iconBg: const Color(0xFF2196F3),
-            title: '受信任 Wi-Fi',
-            subtitle: '添加家中的 Wi-Fi 网络，配合电子围栏使用',
-            score: '+30分',
-            done: false,
-            onTap: () => PetToast.warning(context, '受信任 Wi-Fi 即将上线'),
-          ),
-          const _StepDivider(),
-        ],
-
-        _StepItem(
-          icon: Icons.notifications_rounded,
-          iconBg: const Color(0xFFFF9800),
-          title: '设置警报通知',
-          subtitle: '配置宠物离开安全区域的规则与提醒方式',
-          score: '+40分',
-          done: false,
-          onTap: () => PetToast.warning(context, '警报通知即将上线'),
-        ),
-        const _StepDivider(),
-
-        if (!_isHome) ...[
-          _StepItem(
-            icon: Icons.directions_walk_rounded,
-            iconBg: const Color(0xFF4CAF50),
-            title: '运动轨迹记录',
-            subtitle: '外出时自动记录宠物的活动路径',
-            score: '+20分',
-            done: false,
-            comingSoon: true,
-            onTap: () => PetToast.warning(context, '运动轨迹即将上线'),
-          ),
-          const _StepDivider(),
-        ],
-
-        _StepItem(
-          icon: Icons.bluetooth_rounded,
-          iconBg: const Color(0xFF9C27B0),
-          title: '添加蓝牙信标',
-          subtitle: '绑定信标能更精确地定位您的电子围栏',
-          score: '',
-          done: false,
-          comingSoon: true,
-          onTap: () => PetToast.warning(context, '蓝牙信标即将上线'),
-        ),
-
-        const SizedBox(height: 20),
-
-        // 全提示
+        // 白色步骤容器
         Container(
-          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.05),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [BoxShadow(
+                color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+          ),
+          child: Column(children: [
+            // ① 位置与围栏
+            _StepItem(
+              icon: Icons.fence_rounded,
+              iconBg: AppColors.primary,
+              title: '位置信息与电子围栏',
+              subtitle: '定义宠物的安全活动范围',
+              score: _isHome ? '+30分' : '+60分',
+              done: false,
+              onTap: () => Navigator.push(context, MaterialPageRoute(
+                builder: (_) => FenceManagePage(deviceMac: deviceMac, petName: ''),
+              )),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 54),
+              child: Divider(height: 1, color: Colors.grey.withOpacity(0.12)),
+            ),
+
+            if (_isHome) ...[
+              // 居家：受信任 Wi-Fi
+              _StepItem(
+                icon: Icons.wifi_rounded,
+                iconBg: const Color(0xFF2196F3),
+                title: '受信任 Wi-Fi',
+                subtitle: '添加家中的 Wi-Fi 网络，配合电子围栏使用',
+                score: '+30分',
+                done: false,
+                onTap: () => PetToast.warning(context, '受信任 Wi-Fi 即将上线'),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 54),
+                child: Divider(height: 1, color: Colors.grey.withOpacity(0.12)),
+              ),
+            ],
+
+            // ② 警报通知
+            _StepItem(
+              icon: Icons.notifications_rounded,
+              iconBg: const Color(0xFFFF9800),
+              title: '设置警报通知',
+              subtitle: '配置宠物离开安全区域的规则与提醒方式',
+              score: '+40分',
+              done: false,
+              onTap: () => PetToast.warning(context, '警报通知即将上线'),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 54),
+              child: Divider(height: 1, color: Colors.grey.withOpacity(0.12)),
+            ),
+
+            if (_isHome) ...[
+              // 居家：蓝牙信标
+              _StepItem(
+                icon: Icons.bluetooth_rounded,
+                iconBg: const Color(0xFF9C27B0),
+                title: '添加蓝牙信标',
+                subtitle: '绑定信标能更精确地定位您的电子围栏',
+                score: '',
+                done: false,
+                comingSoon: true,
+                onTap: () => PetToast.warning(context, '蓝牙信标即将上线'),
+              ),
+            ] else ...[
+              // 外出：绑定宠物摄像头
+              _StepItem(
+                icon: Icons.videocam_rounded,
+                iconBg: AppColors.primary,
+                title: '绑定宠物摄像头',
+                subtitle: '联动摄像头可查看宠物实时状态',
+                score: '',
+                done: false,
+                comingSoon: true,
+                onTap: () => PetToast.warning(context, '宠物摄像头即将上线'),
+              ),
+            ],
+          ]),
+        ),
+
+        const SizedBox(height: 24),
+
+        // 安全提示
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.04),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.primary.withOpacity(0.12)),
+            border: Border.all(color: AppColors.primary.withOpacity(0.10)),
           ),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Icon(Icons.info_outline_rounded, size: 16, color: AppColors.primary),
+            Container(
+              width: 20, height: 20,
+              decoration: BoxDecoration(
+                color: AppColors.primary, shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Text('!', style: TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white,
+                    fontFamily: 'Plus Jakarta Sans')),
+              ),
+            ),
             const SizedBox(width: 10),
-            Expanded(child: Text(
-              _isHome
-                  ? '子围栏与受信任 Wi-Fi 结合使用时，能更准确地判断宠物是否在家中安全区域。'
-                  : '外出场景建议开启电子围栏和运动轨迹记录，方便实时掌握宠物位置。',
-              style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 12, color: AppColors.onSurfaceVariant, height: 1.5),
-            )),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('安全提示',
+                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.onSurface)),
+              const SizedBox(height: 4),
+              Text(
+                _isHome
+                    ? '电子围栏与受信任 WiFi 结合使用，能更准确地判断宠物位置，减少误报。建议添加家中和常去地点的 WiFi 网络。'
+                    : '电子围栏与受信任 WiFi 结合使用，能更准确地判断宠物位置，减少误报。建议添加家中和常去地点的 WiFi 网络。',
+                style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 12, color: AppColors.onSurfaceVariant, height: 1.55),
+              ),
+            ])),
           ]),
         ),
       ],
@@ -217,7 +256,7 @@ class _SafetyScoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(16),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(18),
@@ -225,31 +264,41 @@ class _SafetyScoreCard extends StatelessWidget {
           color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 3))],
     ),
     child: Row(children: [
+      // 左：标题 + 安全指数
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('当前安全评分',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-        const SizedBox(height: 4),
         Row(children: [
-          Text(
-            score == 0 ? '安全指数：低' : score < 60 ? '安全指数：中' : '安全指数：高',
-            style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-              color: score == 0 ? AppColors.error : score < 60 ? const Color(0xFFFF9800) : const Color(0xFF4CAF50),
-            ),
-          ),
+          Icon(Icons.shield_rounded, size: 16,
+              color: score == 0 ? AppColors.error : const Color(0xFF4CAF50)),
+          const SizedBox(width: 6),
+          const Text('当前安全评分',
+              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
         ]),
+        const SizedBox(height: 6),
+        Text(
+          '安全指数：${score == 0 ? '低' : score < 60 ? '中' : '高'}',
+          style: TextStyle(
+            fontFamily: 'Plus Jakarta Sans', fontSize: 12, fontWeight: FontWeight.w600,
+            color: score == 0 ? AppColors.error : score < 60 ? const Color(0xFFFF9800) : const Color(0xFF4CAF50),
+          ),
+        ),
       ])),
+      // 右：圆形分数
       Container(
-        width: 60, height: 60,
+        width: 56, height: 56,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: AppColors.primary.withOpacity(0.25), width: 3),
+          border: Border.all(
+              color: score == 0
+                  ? AppColors.error.withOpacity(0.25)
+                  : const Color(0xFF4CAF50).withOpacity(0.25),
+              width: 2.5),
         ),
         child: Center(
           child: Text('$score',
-              style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.primary)),
+              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 22, fontWeight: FontWeight.w900,
+                  color: score == 0 ? AppColors.error : const Color(0xFF4CAF50))),
         ),
       ),
     ]),
