@@ -121,89 +121,83 @@ class _SceneContent extends StatelessWidget {
         const SizedBox(height: 16),
 
         // 白色步骤容器
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(
-                color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
-          ),
-          child: Column(children: [
-            // ① 位置与围栏
-            _StepItem(
-              icon: Icons.fence_rounded,
-              iconBg: AppColors.primary,
-              title: '位置信息与电子围栏',
-              subtitle: '定义宠物的安全活动范围',
-              score: _isHome ? '+30分' : '+60分',
-              done: false,
-              onTap: () => Navigator.push(context, MaterialPageRoute(
-                builder: (_) => FenceManagePage(deviceMac: deviceMac, petName: ''),
-              )),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [BoxShadow(
+                  color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
             ),
-            Padding(
-              padding: const EdgeInsets.only(left: 54),
-              child: Divider(height: 1, color: Colors.grey.withOpacity(0.12)),
-            ),
-
-            if (_isHome) ...[
-              // 居家：受信任 Wi-Fi
+            child: Column(children: [
+              // ① 位置与围栏
               _StepItem(
-                icon: Icons.wifi_rounded,
-                iconBg: const Color(0xFF2196F3),
-                title: '受信任 Wi-Fi',
-                subtitle: '添加家中的 Wi-Fi 网络，配合电子围栏使用',
-                score: '+30分',
-                done: false,
-                onTap: () => PetToast.warning(context, '受信任 Wi-Fi 即将上线'),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 54),
-                child: Divider(height: 1, color: Colors.grey.withOpacity(0.12)),
-              ),
-            ],
-
-            // ② 警报通知
-            _StepItem(
-              icon: Icons.notifications_rounded,
-              iconBg: const Color(0xFFFF9800),
-              title: '设置警报通知',
-              subtitle: '配置宠物离开安全区域的规则与提醒方式',
-              score: '+40分',
-              done: false,
-              onTap: () => PetToast.warning(context, '警报通知即将上线'),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(left: 54),
-              child: Divider(height: 1, color: Colors.grey.withOpacity(0.12)),
-            ),
-
-            if (_isHome) ...[
-              // 居家：蓝牙信标
-              _StepItem(
-                icon: Icons.bluetooth_rounded,
-                iconBg: const Color(0xFF9C27B0),
-                title: '添加蓝牙信标',
-                subtitle: '绑定信标能更精确地定位您的电子围栏',
-                score: '',
-                done: false,
-                comingSoon: true,
-                onTap: () => PetToast.warning(context, '蓝牙信标即将上线'),
-              ),
-            ] else ...[
-              // 外出：绑定宠物摄像头
-              _StepItem(
-                icon: Icons.videocam_rounded,
+                icon: Icons.radar_rounded,
                 iconBg: AppColors.primary,
-                title: '绑定宠物摄像头',
-                subtitle: '联动摄像头可查看宠物实时状态',
-                score: '',
+                title: '位置信息与电子围栏',
+                subtitle: '定义宠物的安全活动范围',
+                score: _isHome ? '+30分' : '+60分',
                 done: false,
-                comingSoon: true,
-                onTap: () => PetToast.warning(context, '宠物摄像头即将上线'),
+                onTap: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => FenceManagePage(deviceMac: deviceMac, petName: ''),
+                )),
               ),
-            ],
-          ]),
+              const _StepDivider(),
+
+              if (_isHome) ...[
+                // 居家：受信任 Wi-Fi
+                _StepItem(
+                  icon: Icons.wifi_rounded,
+                  iconBg: const Color(0xFF2196F3),
+                  title: '受信任 Wi-Fi',
+                  subtitle: '添加家中的 Wi-Fi 网络，配合电子围栏使用',
+                  score: '+30分',
+                  done: false,
+                  onTap: () => PetToast.warning(context, '受信任 Wi-Fi 即将上线'),
+                ),
+                const _StepDivider(),
+              ],
+
+              // ② 警报通知
+              _StepItem(
+                icon: Icons.notifications_rounded,
+                iconBg: const Color(0xFFFF9800),
+                title: '设置警报通知',
+                subtitle: '配置宠物离开安全区域的规则与提醒方式',
+                score: '+40分',
+                done: false,
+                onTap: () => PetToast.warning(context, '警报通知即将上线'),
+              ),
+              const _StepDivider(),
+
+              if (_isHome) ...[
+                // 居家：蓝牙信标
+                _StepItem(
+                  icon: Icons.bluetooth_rounded,
+                  iconBg: const Color(0xFF9C27B0),
+                  title: '添加蓝牙信标',
+                  subtitle: '绑定信标能更精确地定位您的电子围栏',
+                  score: '',
+                  done: false,
+                  comingSoon: true,
+                  onTap: () => PetToast.warning(context, '蓝牙信标即将上线'),
+                ),
+              ] else ...[
+                // 外出：绑定宠物摄像头
+                _StepItem(
+                  icon: Icons.videocam_rounded,
+                  iconBg: AppColors.primary,
+                  title: '绑定宠物摄像头',
+                  subtitle: '联动摄像头可查看宠物实时状态',
+                  score: '',
+                  done: false,
+                  comingSoon: true,
+                  onTap: () => PetToast.warning(context, '宠物摄像头即将上线'),
+                ),
+              ],
+            ]),
+          ),
         ),
 
         const SizedBox(height: 24),
@@ -310,8 +304,9 @@ class _StepDivider extends StatelessWidget {
   const _StepDivider();
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(left: 56),
-    child: Divider(height: 1, color: AppColors.outlineVariant.withOpacity(0.5)),
+    // 16(card padding) + 42(icon) + 14(gap) = 72
+    padding: const EdgeInsets.only(left: 72),
+    child: Divider(height: 1, color: AppColors.outlineVariant.withOpacity(0.4)),
   );
 }
 
@@ -335,21 +330,23 @@ class _StepItem extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
+  Widget build(BuildContext context) => InkWell(
     onTap: onTap,
-    child: Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 14),
+    child: Padding(
+      // 横向 16px padding，确保不出框
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       child: Row(children: [
         // 图标
         Container(
-          width: 40, height: 40,
+          width: 42, height: 42,
           decoration: BoxDecoration(
-            color: comingSoon ? Colors.grey.withOpacity(0.12) : iconBg.withOpacity(0.15),
+            color: comingSoon
+                ? Colors.grey.withOpacity(0.1)
+                : iconBg.withOpacity(0.13),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, size: 20,
-              color: comingSoon ? Colors.grey : iconBg),
+              color: comingSoon ? Colors.grey.shade400 : iconBg),
         ),
         const SizedBox(width: 14),
 
@@ -359,18 +356,19 @@ class _StepItem extends StatelessWidget {
               style: TextStyle(fontFamily: 'Plus Jakarta Sans',
                   fontSize: 14, fontWeight: FontWeight.w700,
                   color: comingSoon ? AppColors.onSurfaceVariant : AppColors.onSurface)),
-          const SizedBox(height: 3),
+          const SizedBox(height: 2),
           Text(subtitle,
               style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
                   fontSize: 11, color: AppColors.onSurfaceVariant)),
         ])),
+        const SizedBox(width: 8),
 
         // 分数 / 即将上线 / 完成状态
         if (done)
           const Icon(Icons.check_circle_rounded, size: 20, color: Color(0xFF4ADE80))
         else if (comingSoon)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: Colors.grey.withOpacity(0.08),
               borderRadius: BorderRadius.circular(20),
@@ -382,9 +380,10 @@ class _StepItem extends StatelessWidget {
         else if (score.isNotEmpty)
           Text(score,
               style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary))
+                  fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary))
         ,
-        const SizedBox(width: 6),
+        if (!done && !comingSoon)
+          const SizedBox(width: 2),
         if (!done && !comingSoon)
           const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.onSurfaceVariant),
       ]),

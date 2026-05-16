@@ -4,9 +4,38 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:dio/dio.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_toast.dart';
 import 'data/repository/pet_peer_repository.dart';
+
+// ── 高德逆地理编码服务 ──────────────────────────────────────
+// 高德 Web API Key（Android Key 同样有效）
+const _amapRestKey = 'd61c615ce9ced8a9199f7372c6d2c06c';
+
+Future<String> _amapRegeocode(LatLng pos) async {
+  try {
+    final dio = Dio();
+    final resp = await dio.get(
+      'https://restapi.amap.com/v3/geocode/regeo',
+      queryParameters: {
+        'key': _amapRestKey,
+        'location': '${pos.longitude.toStringAsFixed(6)},${pos.latitude.toStringAsFixed(6)}',
+        'output': 'json',
+        'extensions': 'base',
+      },
+    ).timeout(const Duration(seconds: 5));
+    final data = resp.data;
+    if (data is Map && data['status'] == '1') {
+      final addr = data['regeocode']?['formatted_address'];
+      if (addr != null && addr.toString().isNotEmpty) return addr.toString();
+    }
+  } catch (e) {
+    debugPrint('[Amap] regeocode error: $e');
+  }
+  // 兜底：显示坐标
+  return '${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)}';
+}
 
 // ── 高德瓦片 URL ──────────────────────────────────────────
 // 使用高德矢量路网瓦片（支持中文标注，style=8）
@@ -65,20 +94,17 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
     }
   }
 
-  // ── 逆地理编码（简单显示坐标，可后续接 /address/get）──
-  void _reverseGeocode(LatLng pos) {
-    setState(() {
-      _address = '经度 ${pos.longitude.toStringAsFixed(6)}  '
-                 '纬度 ${pos.latitude.toStringAsFixed(6)}';
-    });
+  // ── 逆地理编码（高德 REST API）──
+  Future<void> _reverseGeocode(LatLng pos) async {
+    setState(() { _address = '正在获取地址...'; });
+    final addr = await _amapRegeocode(pos);
+    if (mounted) setState(() { _address = addr; });
   }
 
   // ── 地图移动时更新中心 ──
   void _onMapMoved(MapCamera camera, bool hasGesture) {
     if (hasGesture) {
-      setState(() {
-        _center = camera.center;
-      });
+      setState(() { _center = camera.center; });
       _reverseGeocode(camera.center);
     }
   }
