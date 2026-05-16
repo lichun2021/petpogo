@@ -32,6 +32,9 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
   bool   _loading = true;
   int    _petType = 0; // 0=狗狗 1=猫咪 2=通用
 
+  // petType: 0=全部(不传) 1=狗狗(dog) 2=猫咪(cat)
+  static const _petTypeParams = [null, 'dog', 'cat'];
+
   @override
   void initState() {
     super.initState();
@@ -45,7 +48,8 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final cats  = await ref.read(musicRepositoryProvider).fetchAllMusic();
+      final petType = _petTypeParams[_petType];
+      final cats  = await ref.read(musicRepositoryProvider).fetchAllMusic(petType: petType);
       final lists = await ref.read(musicRepositoryProvider).fetchPlaylists().catchError((_) => <Playlist>[]);
       if (mounted) setState(() { _categories = cats; _playlists = lists; _loading = false; });
     } catch (_) {
@@ -108,7 +112,11 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
         // 宠物类型筛选
         SliverToBoxAdapter(child: _PetTypeBar(
           selected: _petType,
-          onSelect: (v) => setState(() => _petType = v),
+          onSelect: (v) {
+            if (v == _petType) return;
+            setState(() { _petType = v; });
+            _load(); // 切换类型重新请求
+          },
         )),
         // 分类卡片网格
         if (_categories.isEmpty)
@@ -287,7 +295,7 @@ class _PetTypeBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-    child: Row(children: ['狗狗', '猫咪', '通用'].asMap().entries.map((e) {
+    child: Row(children: ['全部', '狗狗', '猫咪'].asMap().entries.map((e) {
       final active = e.key == selected;
       return GestureDetector(
         onTap: () { HapticFeedback.selectionClick(); onSelect(e.key); },

@@ -7,8 +7,11 @@ class MusicRepository {
   MusicRepository(this._api);
 
   /// GET /sdkapi/music/list — 所有音乐（按分类聚合）
-  Future<List<MusicCategory>> fetchAllMusic() async {
-    final data = await _api.get<dynamic>('/sdkapi/music/list');
+  /// [petType]: 'dog' | 'cat' | null（不传返回全部）
+  Future<List<MusicCategory>> fetchAllMusic({String? petType}) async {
+    final params = <String, dynamic>{};
+    if (petType != null) params['petType'] = petType;
+    final data = await _api.get<dynamic>('/sdkapi/music/list', params: params);
     final list = data is List ? data : (data['data'] ?? data['list'] ?? []) as List;
     // 后端可能直接返回分类数组或歌曲数组，适配两种格式
     if (list.isNotEmpty && (list.first as Map).containsKey('songs')) {
