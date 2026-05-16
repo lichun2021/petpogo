@@ -44,3 +44,7 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /release_output
+
+# 签名文件（不上传到 Git）
+android/app/petpogo_release.keystore
+android/key.properties
