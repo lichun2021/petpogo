@@ -8,12 +8,14 @@ import '../pet/fence_manage_page.dart';
 class SafetyScenePage extends StatefulWidget {
   final String deviceMac;
   final String deviceName;
-  final int    initialTab; // 0=居家 1=外出
+  final String petName;      // 绑定宠物名称（用于围栏页标题）
+  final int    initialTab;   // 0=居家 1=外出
 
   const SafetyScenePage({
     super.key,
     required this.deviceMac,
     required this.deviceName,
+    this.petName    = '',
     this.initialTab = 0,
   });
 
@@ -77,11 +79,13 @@ class _SafetyScenePageState extends State<SafetyScenePage>
           _SceneContent(
             key: const ValueKey('home'),
             deviceMac:  widget.deviceMac,
+            petName:    widget.petName,
             scene:      _SceneType.home,
           ),
           _SceneContent(
             key: const ValueKey('outing'),
             deviceMac:  widget.deviceMac,
+            petName:    widget.petName,
             scene:      _SceneType.outing,
           ),
         ],
@@ -95,9 +99,11 @@ enum _SceneType { home, outing }
 // ── 场景内容页 ────────────────────────────────────────────
 class _SceneContent extends StatelessWidget {
   final String     deviceMac;
+  final String     petName;
   final _SceneType scene;
 
-  const _SceneContent({super.key, required this.deviceMac, required this.scene});
+  const _SceneContent({super.key, required this.deviceMac,
+      this.petName = '', required this.scene});
 
   bool get _isHome => scene == _SceneType.home;
 
@@ -140,8 +146,10 @@ class _SceneContent extends StatelessWidget {
                 score: _isHome ? '+30分' : '+60分',
                 done: false,
                 onTap: () => Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => FenceManagePage(deviceMac: deviceMac, petName: ''),
-                )),
+                  builder: (_) => FenceManagePage(
+                    deviceMac: deviceMac,
+                    petName: petName,   // 传入宠物名称
+                  ))),
               ),
               const _StepDivider(),
 

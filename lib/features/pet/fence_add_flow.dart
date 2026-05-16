@@ -6,32 +6,44 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:dio/dio.dart';
 import '../../shared/theme/app_colors.dart';
+import '../../shared/utils/coord_transform.dart';
 import '../../shared/widgets/pet_toast.dart';
 import 'data/repository/pet_peer_repository.dart';
 
-// ── 高德逆地理编码服务 ──────────────────────────────────────
-// 高德 Web API Key（Android Key 同样有效）
-const _amapRestKey = 'd61c615ce9ced8a9199f7372c6d2c06c';
-
+// ── 逆地理编码（OSM Nominatim，免费无需 Key）────────────────
+// 高德 REST API 需单独申请「Web 服务」类型 Key（Android Key 不适用）
+// 此处改用 OpenStreetMap Nominatim，支持中文地址返回
 Future<String> _amapRegeocode(LatLng pos) async {
   try {
     final dio = Dio();
+    // Nominatim 要求 User-Agent 标识应用
+    dio.options.headers['User-Agent'] = 'PetPogoApp/1.0';
     final resp = await dio.get(
-      'https://restapi.amap.com/v3/geocode/regeo',
+      'https://nominatim.openstreetmap.org/reverse',
       queryParameters: {
-        'key': _amapRestKey,
-        'location': '${pos.longitude.toStringAsFixed(6)},${pos.latitude.toStringAsFixed(6)}',
-        'output': 'json',
-        'extensions': 'base',
+        'format':          'json',
+        'lat':             pos.latitude.toStringAsFixed(7),
+        'lon':             pos.longitude.toStringAsFixed(7),
+        'accept-language': 'zh-CN,zh',
+        'zoom':            18,
       },
-    ).timeout(const Duration(seconds: 5));
+    ).timeout(const Duration(seconds: 8));
+
     final data = resp.data;
-    if (data is Map && data['status'] == '1') {
-      final addr = data['regeocode']?['formatted_address'];
-      if (addr != null && addr.toString().isNotEmpty) return addr.toString();
+    debugPrint('[Geocode] Nominatim response: $data');
+
+    if (data is Map) {
+      // 优先使用 display_name（完整地址）
+      final display = data['display_name']?.toString() ?? '';
+      if (display.isNotEmpty) {
+        // 去掉末尾多余的国家名（"中国"）
+        final parts = display.split(', ');
+        if (parts.length > 1 && parts.last == '中国') parts.removeLast();
+        return parts.join(' ');
+      }
     }
   } catch (e) {
-    debugPrint('[Amap] regeocode error: $e');
+    debugPrint('[Geocode] Nominatim error: $e');
   }
   // 兜底：显示坐标
   return '${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)}';
@@ -68,6 +80,7 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
   }
 
   // ── GPS 定位 ──────────────────────────────────────────
+  // GPS 返回 WGS-84，高德地图瓦片是 GCJ-02，必须转换否则偏移 100~500m
   Future<void> _getCurrentLocation() async {
     setState(() { _locating = true; });
     try {
@@ -82,13 +95,17 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
       final pos = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(accuracy: LocationAccuracy.high)
       ).timeout(const Duration(seconds: 8));
-      final newCenter = LatLng(pos.latitude, pos.longitude);
-      setState(() {
-        _center = newCenter;
-        _locating = false;
-      });
-      _mapController.move(newCenter, 16);
-      _reverseGeocode(newCenter);
+
+      // WGS-84 → GCJ-02（火星坐标），解决高德地图偏移
+      final gcj = CoordTransform.wgs84ToGcj02(pos.latitude, pos.longitude);
+      debugPrint('[Fence] GPS WGS84: ${pos.latitude},${pos.longitude}');
+      debugPrint('[Fence] Map GCJ02: ${gcj.latitude},${gcj.longitude}');
+
+      setState(() { _center = gcj; _locating = false; });
+      _mapController.move(gcj, 16);
+
+      // Nominatim 用原始 WGS-84 查询（OSM 坐标系）
+      _reverseGeocode(LatLng(pos.latitude, pos.longitude));
     } catch (e) {
       setState(() { _address = '定位失败，请手动选点'; _locating = false; });
     }

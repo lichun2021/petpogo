@@ -496,7 +496,9 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         subtitle: '室内监控安全区域，低功耗定位模式',
         onTap: () => Navigator.push(context, MaterialPageRoute(
           builder: (_) => SafetyScenePage(
-              deviceMac: widget.mac, deviceName: widget.name, initialTab: 0),
+              deviceMac: widget.mac, deviceName: widget.name,
+              petName: _petInfo?.petName ?? '',
+              initialTab: 0),
         )),
       ),
       const SizedBox(height: 10),
@@ -508,7 +510,9 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         subtitle: '户外活动区域，开启虚拟围栏告警',
         onTap: () => Navigator.push(context, MaterialPageRoute(
           builder: (_) => SafetyScenePage(
-              deviceMac: widget.mac, deviceName: widget.name, initialTab: 1),
+              deviceMac: widget.mac, deviceName: widget.name,
+              petName: _petInfo?.petName ?? '',
+              initialTab: 1),
         )),
       ),
       // const SizedBox(height: 10),
