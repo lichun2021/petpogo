@@ -13,6 +13,7 @@ import '../community/data/post_repository.dart';
 import '../device/device_list_page.dart';
 import '../pet/controller/pet_controller.dart';
 import '../pet/pet_list_page.dart';
+import '../music/pet_music_page.dart';
 import 'data/user_stats_provider.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/api/api_client.dart';
@@ -90,7 +91,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PetListPage()))),
                   _MenuItemData(icon: Icons.devices_rounded,        label: l10n.profileBoundDevices,
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeviceListPage()))),
-                  _MenuItemData(icon: Icons.receipt_long_rounded,   label: l10n.profileOrderHistory,  onTap: () {}),
+                  _MenuItemData(icon: Icons.music_note_rounded,      label: '宠物音乐',
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PetMusicPage()))),
                   _MenuItemData(icon: Icons.grid_view_rounded,      label: l10n.profileMyPosts,       onTap: () {}),
                   _MenuItemData(icon: Icons.settings_rounded,       label: l10n.profileSettings,      onTap: () => context.push('/settings')),
                 ]),
