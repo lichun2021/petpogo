@@ -80,8 +80,17 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                       const SizedBox(height: 20),
                       if (_otaInfo != null && _otaInfo!.isUpgrade) _buildOtaBanner(),
                       if (_otaInfo != null && _otaInfo!.isUpgrade) const SizedBox(height: 20),
-                      // 设备功能（始终显示）
+                      // 今日安全概览（有宠物时显示）
+                      if (_petInfo != null && _petInfo!.petName.isNotEmpty) ...[
+                        _buildSafetyOverview(context),
+                        const SizedBox(height: 20),
+                        _buildSafetyScenes(context),
+                        const SizedBox(height: 20),
+                      ],
+                      // 互动 & 安全设置
                       _buildControls(context),
+                      const SizedBox(height: 20),
+                      _buildSafetySettings(context),
                       const SizedBox(height: 20),
                       _buildActions(context),
                     ])),
@@ -270,7 +279,8 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
       const SizedBox(height: 12),
       GestureDetector(
         onTap: () => Navigator.push(context, MaterialPageRoute(
-          builder: (_) => PetLocationPage(petName: pet.petName, deviceMac: widget.mac),
+          builder: (_) => PetLocationPage(
+              petName: pet.petName, deviceMac: widget.mac, petAvatar: pet.avatar),
         )),
         child: Container(
           padding: const EdgeInsets.all(16),
@@ -367,83 +377,235 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     );
   }
 
-  // ── 设备功能：查看位置 + 查看轨迹 + 响铃 + LED ──────────────
+  // ── 今日安全概览 ────────────────────────────────────────
+  Widget _buildSafetyOverview(BuildContext context) {
+    final hasFence = true; // TODO: 从围栏数据判断
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        const Expanded(child: Text('今日安全概览',
+            style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                fontSize: 15, fontWeight: FontWeight.w800))),
+        GestureDetector(
+          onTap: () => PetToast.warning(context, '更多功能即将上线'),
+          child: const Text('更多', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+        ),
+      ]),
+      const SizedBox(height: 12),
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 3))],
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // 状态横幅
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF1F0),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(children: [
+              Container(
+                width: 28, height: 28,
+                decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.12), shape: BoxShape.circle),
+                child: const Icon(Icons.bolt_rounded, size: 16, color: AppColors.primary),
+              ),
+              const SizedBox(width: 10),
+              const Text('宠物行为活跃，安心守护中',
+                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
+            ]),
+          ),
+          const SizedBox(height: 14),
+          // 统计数字
+          Row(children: [
+            Expanded(child: Column(children: [
+              const Text('0', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.onSurface)),
+              const Text('预警提醒', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 12, color: AppColors.onSurfaceVariant)),
+            ])),
+            Container(width: 1, height: 36, color: AppColors.outlineVariant),
+            Expanded(child: Column(children: [
+              Text('0', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 28, fontWeight: FontWeight.w900,
+                  color: hasFence ? AppColors.onSurface : AppColors.error)),
+              const Text('越界提醒', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 12, color: AppColors.onSurfaceVariant)),
+            ])),
+          ]),
+          const SizedBox(height: 14),
+          // 实时动态入口
+          GestureDetector(
+            onTap: () => PetToast.warning(context, '实时动态即将上线'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(children: [
+                const Expanded(child: Text('实时动态',
+                    style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 13, fontWeight: FontWeight.w700))),
+                const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.onSurfaceVariant),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(children: [
+            Container(width: 8, height: 8,
+                decoration: const BoxDecoration(color: Color(0xFF4ADE80), shape: BoxShape.circle)),
+            const SizedBox(width: 8),
+            const Expanded(child: Text('在安全区域内',
+                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.onSurface))),
+            Text(
+              () { final n = DateTime.now(); return '${n.hour.toString().padLeft(2,'0')}:${n.minute.toString().padLeft(2,'0')}'; }(),
+              style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 12, color: AppColors.onSurfaceVariant),
+            ),
+          ]),
+          const SizedBox(height: 4),
+          const Padding(
+            padding: EdgeInsets.only(left: 16),
+            child: Text('宠物当前在围栏内，安心活动',
+                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 11, color: AppColors.onSurfaceVariant)),
+          ),
+        ]),
+      ),
+    ]);
+  }
+
+  // ── 安全场景 ─────────────────────────────────────────────
+  Widget _buildSafetyScenes(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('安全场景', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+          fontSize: 15, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 12),
+      _SceneCard(
+        color: const Color(0xFFFFF3E0),
+        iconBg: const Color(0xFFFF9800),
+        icon: Icons.home_rounded,
+        title: '居家场景',
+        subtitle: '室内监控安全区域，低功耗定位模式',
+        onTap: () => PetToast.warning(context, '居家场景即将上线'),
+      ),
+      const SizedBox(height: 10),
+      _SceneCard(
+        color: const Color(0xFFE8F5E9),
+        iconBg: const Color(0xFF4CAF50),
+        icon: Icons.park_rounded,
+        title: '公园场景',
+        subtitle: '户外活动区域，开启虚拟围栏告警',
+        onTap: () => PetToast.warning(context, '公园场景即将上线'),
+      ),
+      const SizedBox(height: 10),
+      _SceneCard(
+        color: const Color(0xFFEDE7F6),
+        iconBg: const Color(0xFF7C4DFF),
+        icon: Icons.local_hospital_rounded,
+        title: '服务中心',
+        subtitle: '专业护理医疗环境，自动关联健康检测数据',
+        onTap: () => PetToast.warning(context, '服务中心即将上线'),
+      ),
+    ]);
+  }
+
+  // ── 互动（设备功能，重新设计为网格）──────────────────────
   Widget _buildControls(BuildContext context) {
+    final hasPet    = _petInfo != null && _petInfo!.petName.isNotEmpty;
+    final isOnline  = _detail?.onlineStatus == true;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('互动', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+          fontSize: 15, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 12),
+      GridView.count(
+        crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+        crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 2.4,
+        children: [
+          _InteractTile(
+            icon: Icons.lightbulb_rounded,
+            iconColor: _ledOn ? const Color(0xFFFFD60A) : AppColors.primary,
+            label: _ledOn ? '关闭亮灯' : '亮灯',
+            enabled: isOnline,
+            active: _ledOn,
+            onTap: isOnline ? _toggleLed : () => PetToast.warning(context, '设备离线，无法操作'),
+          ),
+          _InteractTile(
+            icon: Icons.notifications_active_rounded,
+            iconColor: _ringing ? const Color(0xFFFF6B35) : AppColors.primary,
+            label: _ringing ? '停止响铃' : '响铃',
+            enabled: isOnline,
+            active: _ringing,
+            onTap: isOnline ? _toggleRing : () => PetToast.warning(context, '设备离线，无法操作'),
+          ),
+          _InteractTile(
+            icon: Icons.location_on_rounded,
+            iconColor: AppColors.primary,
+            label: '查看位置',
+            enabled: hasPet,
+            onTap: hasPet
+                ? () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => PetLocationPage(
+                        petName: _petInfo!.petName, deviceMac: widget.mac,
+                        petAvatar: _petInfo!.avatar)))
+                : () => PetToast.warning(context, '请先绑定宠物'),
+          ),
+          _InteractTile(
+            icon: Icons.route_rounded,
+            iconColor: AppColors.primary,
+            label: '即时轨迹',
+            enabled: hasPet,
+            onTap: hasPet
+                ? () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => PetTrackPage(petName: _petInfo!.petName, deviceMac: widget.mac)))
+                : () => PetToast.warning(context, '请先绑定宠物'),
+          ),
+        ],
+      ),
+    ]);
+  }
+
+  // ── 安全设置 ─────────────────────────────────────────────
+  Widget _buildSafetySettings(BuildContext context) {
     final hasPet = _petInfo != null && _petInfo!.petName.isNotEmpty;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('设备功能',
-          style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-              fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-      const SizedBox(height: 14),
-      // 第一行：查看位置 + 查看轨迹
-        Row(children: [
-          Expanded(
-            child: _ControlChip(
-              icon: Icons.location_on_rounded,
-              label: '查看位置',
-              active: false,
-              activeColor: AppColors.secondary,
-              loading: false,
-              onTap: () {
-                if (hasPet) {
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => PetLocationPage(
-                        petName: _petInfo!.petName, deviceMac: widget.mac),
-                  ));
-                } else {
-                  PetToast.warning(context, '请先绑定宠物再查看位置');
-                }
-              },
-            ),
+      const Text('安全设置', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+          fontSize: 15, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 12),
+      GridView.count(
+        crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+        crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 2.4,
+        children: [
+          _InteractTile(
+            icon: Icons.route_rounded,
+            iconColor: AppColors.secondary,
+            label: '历史轨迹',
+            enabled: hasPet,
+            onTap: hasPet
+                ? () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => PetTrackPage(petName: _petInfo!.petName, deviceMac: widget.mac)))
+                : () => PetToast.warning(context, '请先绑定宠物'),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _ControlChip(
-              icon: Icons.route_rounded,
-              label: '查看轨迹',
-              active: false,
-              activeColor: AppColors.tertiary,
-              loading: false,
-              onTap: () {
-                if (hasPet) {
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => PetTrackPage(
-                        petName: _petInfo!.petName, deviceMac: widget.mac),
-                  ));
-                } else {
-                  PetToast.warning(context, '请先绑定宠物再查看轨迹');
-                }
-              },
-            ),
+          _InteractTile(
+            icon: Icons.search_rounded,
+            iconColor: AppColors.primary,
+            label: '立即寻找',
+            enabled: _detail?.onlineStatus == true,
+            onTap: _detail?.onlineStatus == true
+                ? _toggleRing
+                : () => PetToast.warning(context, '设备离线，无法操作'),
           ),
-        ]),
-        const SizedBox(height: 10),
-        // 第二行：响铃 + LED（仅在线显示）
-        if (_detail?.onlineStatus == true) Row(children: [
-          Expanded(
-            child: _ControlChip(
-              icon: _ringing ? Icons.volume_off_rounded : Icons.notifications_active_rounded,
-              label: _ringing ? '停止响铃' : '响铃寻找',
-              active: _ringing,
-              activeColor: const Color(0xFFFF6B35),
-              loading: false,
-              onTap: _toggleRing,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _ControlChip(
-              icon: _ledOn ? Icons.lightbulb_rounded : Icons.lightbulb_outline_rounded,
-              label: _ledOn ? 'LED 已开' : '开启 LED',
-              active: _ledOn,
-              activeColor: const Color(0xFFFFD60A),
-              loading: false,
-              onTap: _toggleLed,
-            ),
-          ),
-        ]),
-      ]);
+        ],
+      ),
+    ]);
   }
+
 
   Future<void> _toggleRing() async {
     final next = !_ringing;
@@ -673,6 +835,104 @@ class _ControlChip extends StatelessWidget {
             fontFamily: 'Plus Jakarta Sans',
             fontSize: 12, fontWeight: FontWeight.w700, color: fg,
           )),
+        ]),
+      ),
+    );
+  }
+}
+
+// ── 安全场景卡片 ───────────────────────────────────────────
+class _SceneCard extends StatelessWidget {
+  final Color    color, iconBg;
+  final IconData icon;
+  final String   title, subtitle;
+  final VoidCallback onTap;
+  const _SceneCard({
+    required this.color, required this.iconBg, required this.icon,
+    required this.title, required this.subtitle, required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(children: [
+        Container(
+          width: 44, height: 44,
+          decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(14)),
+          child: Icon(icon, color: Colors.white, size: 22),
+        ),
+        const SizedBox(width: 14),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+              fontSize: 14, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 3),
+          Text(subtitle, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              fontSize: 11, color: Colors.black.withOpacity(0.5))),
+        ])),
+        const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.black38),
+      ]),
+    ),
+  );
+}
+
+// ── 互动 / 安全设置格子 ─────────────────────────────────────
+class _InteractTile extends StatelessWidget {
+  final IconData icon;
+  final Color    iconColor;
+  final String   label;
+  final bool     enabled;
+  final bool     active;
+  final VoidCallback onTap;
+
+  const _InteractTile({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.onTap,
+    this.enabled = true,
+    this.active  = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dimmed = !enabled;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: active
+              ? iconColor.withOpacity(0.10)
+              : AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: active ? iconColor.withOpacity(0.4) : AppColors.surfaceContainerHigh,
+          ),
+        ),
+        child: Row(children: [
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              color: dimmed
+                  ? Colors.grey.withOpacity(0.12)
+                  : iconColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18,
+                color: dimmed ? Colors.grey : iconColor),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(label,
+              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 12, fontWeight: FontWeight.w700,
+                  color: dimmed ? Colors.grey : AppColors.onSurface))),
         ]),
       ),
     );
