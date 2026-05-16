@@ -111,6 +111,7 @@ class PetPeerRepository {
     String? mac,
     String? deviceId,
     String? street,
+    String? coordinateType,
   }) async {
     await _peer.post('/pet/fence/add', params: {
       'fenceName': fenceName,
@@ -118,9 +119,10 @@ class PetPeerRepository {
       'latitude':  latitude,
       'radius':    radius,
       'address':   address,
-      if (mac      != null) 'mac':      mac,
-      if (deviceId != null) 'deviceId': deviceId,
-      if (street   != null) 'street':   street,
+      if (mac             != null) 'mac':            mac,
+      if (deviceId        != null) 'deviceId':       deviceId,
+      if (street          != null) 'street':         street,
+      if (coordinateType  != null) 'coordinateType': coordinateType,
     });
   }
 

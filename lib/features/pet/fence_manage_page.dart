@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/theme/app_colors.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
+import 'fence_add_flow.dart';
 
 // ── 围栏管理页 ────────────────────────────────────────────
 class FenceManagePage extends ConsumerStatefulWidget {
@@ -119,24 +120,11 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
     ]));
   }
 
-  void _showAddFenceSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
-      builder: (_) => _FenceFormSheet(
-        title: '添加围栏',
-        onSave: (name, radius, address) async {
-          Navigator.pop(context);
-          try {
-            await ref.read(petPeerRepositoryProvider).addFence(
-              fenceName: name, radius: radius, address: address,
-              longitude: '0', latitude: '0', // TODO: 接入真实定位
-              mac: widget.deviceMac,
-            );
-            await _loadFences();
-          } catch (e) { debugPrint('[Fence] 添加失败: $e'); }
-        },
-      ),
-    );
+  void _showAddFenceSheet(BuildContext context) async {
+    final result = await Navigator.push<bool>(context, MaterialPageRoute(
+      builder: (_) => FenceMapPickerPage(deviceMac: widget.deviceMac),
+    ));
+    if (result == true) _loadFences();
   }
 
   void _showEditFenceSheet(BuildContext context, FenceModel fence) {
