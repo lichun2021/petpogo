@@ -1,83 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:just_audio/just_audio.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_toast.dart';
 import 'data/music_models.dart';
 import 'data/music_repository.dart';
+import 'music_category_page.dart';
 
-// ── 播放状态 Provider ─────────────────────────────────────
-final _playerProvider = Provider.autoDispose<AudioPlayer>((ref) {
-  final player = AudioPlayer();
-  ref.onDispose(player.dispose);
-  return player;
-});
-
-final _playingIdProvider = StateProvider<int?>((ref) => null);
+// ── 分类卡片颜色 ──────────────────────────────────────────
+const _cardColors = [
+  Color(0xFF2C3E50), Color(0xFFF39C12),
+  Color(0xFF16A085), Color(0xFF27AE60),
+  Color(0xFF8E44AD), Color(0xFFE74C3C),
+];
 
 // ═══════════════════════════════════════════════════════════
-// 宠物音乐页
+// 宠物音乐主页
 // ═══════════════════════════════════════════════════════════
 class PetMusicPage extends ConsumerStatefulWidget {
   const PetMusicPage({super.key});
-
   @override
   ConsumerState<PetMusicPage> createState() => _PetMusicPageState();
 }
 
 class _PetMusicPageState extends ConsumerState<PetMusicPage>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabCtrl;
+  late final TabController _mainTab;
 
   List<MusicCategory> _categories = [];
-  bool  _loading = true;
-  String? _error;
+  List<Playlist>      _playlists  = [];
+  bool   _loading = true;
+  int    _petType = 0; // 0=狗狗 1=猫咪 2=通用
 
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 1, vsync: this);
+    _mainTab = TabController(length: 2, vsync: this);
     _load();
   }
 
   @override
-  void dispose() {
-    _tabCtrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _mainTab.dispose(); super.dispose(); }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() => _loading = true);
     try {
-      final list = await ref.read(musicRepositoryProvider).fetchAllMusic();
-      if (!mounted) return;
-      setState(() {
-        _categories = list;
-        _loading = false;
-      });
-      if (_categories.isNotEmpty) {
-        _tabCtrl.dispose();
-      }
-    } catch (e) {
-      if (mounted) setState(() { _loading = false; _error = e.toString(); });
+      final cats  = await ref.read(musicRepositoryProvider).fetchAllMusic();
+      final lists = await ref.read(musicRepositoryProvider).fetchPlaylists().catchError((_) => <Playlist>[]);
+      if (mounted) setState(() { _categories = cats; _playlists = lists; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: const Color(0xFFF5F5F5),
       body: NestedScrollView(
         headerSliverBuilder: (_, __) => [
           SliverAppBar(
-            pinned: true,
-            backgroundColor: AppColors.surface,
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
+            pinned: true, floating: false,
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent, elevation: 0,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_rounded, size: 20),
-              color: AppColors.onSurface,
               onPressed: () => Navigator.pop(context),
             ),
             title: const Text('宠物音乐',
@@ -85,108 +72,116 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
                     fontSize: 17, fontWeight: FontWeight.w800)),
             centerTitle: false,
             actions: [
-              IconButton(
-                icon: const Icon(Icons.playlist_add_rounded),
-                color: AppColors.primary,
-                onPressed: () => _showCreatePlaylistSheet(),
-                tooltip: '新建歌单',
-              ),
+              IconButton(icon: const Icon(Icons.volume_up_outlined),
+                  color: AppColors.onSurface, onPressed: () {}),
             ],
-            bottom: _categories.isEmpty ? null : TabBar(
-              controller: TabController(
-                length: _categories.length, vsync: this,
-                initialIndex: 0,
-              ),
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              indicatorColor: AppColors.primary,
-              indicatorWeight: 3,
+            bottom: TabBar(
+              controller: _mainTab,
+              indicatorColor: AppColors.primary, indicatorWeight: 3,
               labelStyle: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 13, fontWeight: FontWeight.w700),
-              unselectedLabelStyle: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 13, fontWeight: FontWeight.w500),
+                  fontSize: 14, fontWeight: FontWeight.w700),
+              unselectedLabelStyle: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14),
               labelColor: AppColors.primary,
               unselectedLabelColor: AppColors.onSurfaceVariant,
-              tabs: _categories.map((c) => Tab(text: c.name)).toList(),
+              tabs: const [Tab(text: '推荐'), Tab(text: '限免')],
             ),
           ),
         ],
-        body: _buildBody(),
+        body: TabBarView(
+          controller: _mainTab,
+          children: [
+            _buildRecommendTab(),
+            _buildFreeTab(),
+          ],
+        ),
       ),
-      bottomSheet: const _MiniPlayer(),
     );
   }
 
-  Widget _buildBody() {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5));
-    }
-    if (_error != null) {
-      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.cloud_off_rounded, size: 64, color: AppColors.onSurfaceVariant),
-        const SizedBox(height: 16),
-        Text(_error!, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-            fontSize: 13, color: AppColors.onSurfaceVariant)),
-        const SizedBox(height: 16),
-        FilledButton(onPressed: _load, child: const Text('重试')),
-      ]));
-    }
-    if (_categories.isEmpty) {
-      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.music_off_rounded, size: 72,
-            color: AppColors.onSurfaceVariant.withOpacity(0.3)),
-        const SizedBox(height: 16),
-        const Text('暂无音乐', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-            fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.onSurfaceVariant)),
-        const SizedBox(height: 8),
-        const Text('管理员正在添加适合宠物的音乐，敬请期待',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                fontSize: 13, color: AppColors.onSurfaceVariant)),
-      ]));
-    }
-
-    // Tab 视图，每个分类一个列表
-    return DefaultTabController(
-      length: _categories.length,
-      child: Column(children: [
-        TabBar(
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          indicatorColor: AppColors.primary,
-          indicatorWeight: 3,
-          labelStyle: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-              fontSize: 13, fontWeight: FontWeight.w700),
-          unselectedLabelStyle: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-              fontSize: 13, fontWeight: FontWeight.w500),
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.onSurfaceVariant,
-          tabs: _categories.map((c) => Tab(text: '${c.name} (${c.songs.length})'))
-              .toList(),
-        ),
-        Expanded(
-          child: TabBarView(
-            children: _categories.map((cat) => _MusicList(category: cat)).toList(),
+  Widget _buildRecommendTab() {
+    if (_loading) return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    return RefreshIndicator(
+      onRefresh: _load, color: AppColors.primary,
+      child: CustomScrollView(slivers: [
+        // 横幅
+        SliverToBoxAdapter(child: _Banner()),
+        // 宠物类型筛选
+        SliverToBoxAdapter(child: _PetTypeBar(
+          selected: _petType,
+          onSelect: (v) => setState(() => _petType = v),
+        )),
+        // 分类卡片网格
+        if (_categories.isEmpty)
+          SliverToBoxAdapter(child: _emptyCategories())
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+            sliver: SliverGrid(
+              delegate: SliverChildBuilderDelegate(
+                (_, i) {
+                  final cat = _categories[i];
+                  return _CategoryCard(
+                    category: cat,
+                    color: _cardColors[i % _cardColors.length],
+                    onTap: () => Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => MusicCategoryPage(category: cat),
+                    )),
+                  );
+                },
+                childCount: _categories.length,
+              ),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2, crossAxisSpacing: 12,
+                mainAxisSpacing: 12, childAspectRatio: 1.0,
+              ),
+            ),
           ),
-        ),
+        // 我的歌单
+        SliverToBoxAdapter(child: _MyPlaylists(
+          playlists: _playlists,
+          onAdd: _showCreatePlaylist,
+          onOpen: (pl) => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => MusicCategoryPage(playlist: pl),
+          )),
+          onRefresh: _load,
+        )),
+        const SliverToBoxAdapter(child: SizedBox(height: 40)),
       ]),
     );
   }
 
-  void _showCreatePlaylistSheet() {
+  Widget _buildFreeTab() => Center(
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Icon(Icons.lock_open_rounded, size: 64,
+          color: AppColors.onSurfaceVariant.withOpacity(0.3)),
+      const SizedBox(height: 16),
+      const Text('限免专区即将上线', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+          fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.onSurfaceVariant)),
+    ]),
+  );
+
+  Widget _emptyCategories() => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 40),
+    child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Icon(Icons.music_off_rounded, size: 64,
+          color: AppColors.onSurfaceVariant.withOpacity(0.3)),
+      const SizedBox(height: 12),
+      const Text('暂无音乐内容', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+          fontSize: 14, color: AppColors.onSurfaceVariant)),
+    ])),
+  );
+
+  void _showCreatePlaylist() {
     final ctrl = TextEditingController();
     showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
+      context: context, isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
         child: Container(
           margin: const EdgeInsets.all(16),
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(24),
-          ),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Center(child: Container(width: 36, height: 4,
                 decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3),
@@ -194,18 +189,16 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
             const SizedBox(height: 16),
             const Text('新建歌单', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
                 fontSize: 17, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             TextField(
-              controller: ctrl,
-              autofocus: true,
+              controller: ctrl, autofocus: true,
               decoration: InputDecoration(
                 hintText: '歌单名称',
-                filled: true, fillColor: AppColors.surfaceContainer,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                filled: true, fillColor: const Color(0xFFF5F5F5),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               ),
-              style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15),
             ),
             const SizedBox(height: 16),
             FilledButton(
@@ -213,10 +206,9 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
                 if (ctrl.text.trim().isEmpty) return;
                 Navigator.pop(context);
                 try {
-                  await ref.read(musicRepositoryProvider)
-                      .createPlaylist(name: ctrl.text.trim());
-                  if (mounted) PetToast.success(context, '歌单已创建');
-                } catch (e) {
+                  await ref.read(musicRepositoryProvider).createPlaylist(name: ctrl.text.trim());
+                  if (mounted) { PetToast.success(context, '歌单已创建'); _load(); }
+                } catch (_) {
                   if (mounted) PetToast.warning(context, '创建失败，请重试');
                 }
               },
@@ -235,167 +227,261 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
   }
 }
 
-// ── 分类音乐列表 ──────────────────────────────────────────
-class _MusicList extends ConsumerWidget {
-  final MusicCategory category;
-  const _MusicList({required this.category});
-
+// ── 横幅 ──────────────────────────────────────────────────
+class _Banner extends StatelessWidget {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
-      itemCount: category.songs.length,
-      separatorBuilder: (_, __) => const Divider(height: 1, indent: 64),
-      itemBuilder: (_, i) => _SongTile(song: category.songs[i]),
-    );
-  }
-}
-
-// ── 单曲行 ────────────────────────────────────────────────
-class _SongTile extends ConsumerWidget {
-  final MusicItem song;
-  const _SongTile({required this.song});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final playingId = ref.watch(_playingIdProvider);
-    final isPlaying = playingId == song.id;
-
-    return InkWell(
-      onTap: () async {
-        HapticFeedback.selectionClick();
-        final player = ref.read(_playerProvider);
-        if (isPlaying) {
-          await player.pause();
-          ref.read(_playingIdProvider.notifier).state = null;
-        } else {
-          ref.read(_playingIdProvider.notifier).state = song.id;
-          try {
-            await player.setUrl(song.url);
-            await player.play();
-          } catch (e) {
-            ref.read(_playingIdProvider.notifier).state = null;
-            if (context.mounted) PetToast.warning(context, '播放失败，请检查网络');
-          }
-        }
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-        child: Row(children: [
-          // 封面 / 播放状态
-          Stack(alignment: Alignment.center, children: [
-            Container(
-              width: 46, height: 46,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: song.iconUrl != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.network(song.iconUrl!, fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(
-                              Icons.music_note_rounded, color: AppColors.primary, size: 22)))
-                  : const Icon(Icons.music_note_rounded, color: AppColors.primary, size: 22),
-            ),
-            if (isPlaying)
-              Container(
-                width: 46, height: 46,
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        height: 100,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF6C63FF), Color(0xFF48CAE4), Color(0xFF52B788)],
+            begin: Alignment.centerLeft, end: Alignment.centerRight,
+          ),
+        ),
+        child: Stack(children: [
+          // 装饰圆
+          Positioned(right: -20, top: -20,
+            child: Container(width: 120, height: 120,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.55),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.pause_rounded, color: Colors.white, size: 20),
-              ),
-          ]),
-          const SizedBox(width: 12),
-
-          // 标题+艺人
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(song.name,
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 14, fontWeight: FontWeight.w700,
-                    color: isPlaying ? AppColors.primary : AppColors.onSurface),
-                maxLines: 1, overflow: TextOverflow.ellipsis),
-            if (song.artist != null && song.artist!.isNotEmpty)
-              Text(song.artist!,
-                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 11, color: AppColors.onSurfaceVariant)),
-          ])),
-
-          // 时长
-          if (song.durationText.isNotEmpty)
-            Text(song.durationText,
-                style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 11, color: AppColors.onSurfaceVariant)),
-          const SizedBox(width: 8),
-
-          // 播放状态指示
-          if (isPlaying)
-            const Icon(Icons.equalizer_rounded, size: 18, color: AppColors.primary)
-          else
-            const Icon(Icons.play_circle_outline_rounded, size: 20,
-                color: AppColors.onSurfaceVariant),
+                    color: Colors.white.withOpacity(0.08),
+                    shape: BoxShape.circle))),
+          Positioned(right: 60, bottom: -30,
+            child: Container(width: 80, height: 80,
+                decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.06),
+                    shape: BoxShape.circle))),
+          // 文字
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Text('安抚  疗愈  欢乐',
+                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+              const SizedBox(height: 4),
+              Text('为毛孩子开启音乐魔力',
+                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 12, color: Colors.white.withOpacity(0.85))),
+            ]),
+          ),
+          // 右侧音乐图标装饰
+          Positioned(right: 20, top: 0, bottom: 0,
+            child: Center(child: Icon(Icons.music_note_rounded,
+                size: 48, color: Colors.white.withOpacity(0.25)))),
         ]),
       ),
-    );
-  }
+    ),
+  );
 }
 
-// ── 底部迷你播放器 ────────────────────────────────────────
-class _MiniPlayer extends ConsumerWidget {
-  const _MiniPlayer();
+// ── 宠物类型筛选 ──────────────────────────────────────────
+class _PetTypeBar extends StatelessWidget {
+  final int selected;
+  final void Function(int) onSelect;
+  const _PetTypeBar({required this.selected, required this.onSelect});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final playingId = ref.watch(_playingIdProvider);
-    if (playingId == null) return const SizedBox.shrink();
-
-    final player = ref.read(_playerProvider);
-
-    return Container(
-      height: 64,
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.25), blurRadius: 16)],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(children: [
-            const Icon(Icons.music_note_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text('正在播放',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-            ),
-            StreamBuilder<bool>(
-              stream: player.playingStream,
-              builder: (_, snap) {
-                final playing = snap.data ?? false;
-                return Row(children: [
-                  IconButton(
-                    icon: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                        color: Colors.white, size: 28),
-                    onPressed: () => playing ? player.pause() : player.play(),
-                    padding: EdgeInsets.zero,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.stop_rounded, color: Colors.white, size: 24),
-                    onPressed: () {
-                      player.stop();
-                      ref.read(_playingIdProvider.notifier).state = null;
-                    },
-                    padding: EdgeInsets.zero,
-                  ),
-                ]);
-              },
-            ),
-          ]),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+    child: Row(children: ['狗狗', '猫咪', '通用'].asMap().entries.map((e) {
+      final active = e.key == selected;
+      return GestureDetector(
+        onTap: () { HapticFeedback.selectionClick(); onSelect(e.key); },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          margin: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: active ? AppColors.primary : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: active ? AppColors.primary : Colors.grey.withOpacity(0.2)),
+          ),
+          child: Text(e.value,
+              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 13, fontWeight: FontWeight.w700,
+                  color: active ? Colors.white : AppColors.onSurfaceVariant)),
         ),
+      );
+    }).toList()),
+  );
+}
+
+// ── 分类卡片 ──────────────────────────────────────────────
+class _CategoryCard extends StatelessWidget {
+  final MusicCategory category;
+  final Color         color;
+  final VoidCallback  onTap;
+  const _CategoryCard({required this.category, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: () { HapticFeedback.selectionClick(); onTap(); },
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(color: color),
+        child: Stack(children: [
+          // 装饰圆
+          Positioned(right: -15, bottom: -15,
+            child: Container(width: 80, height: 80,
+                decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.08), shape: BoxShape.circle))),
+          // 封面图（如有）
+          if (category.songs.isNotEmpty && category.songs.first.iconUrl != null)
+            Positioned(right: 8, bottom: 8,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(category.songs.first.iconUrl!,
+                    width: 64, height: 64, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox()),
+              ),
+            )
+          else
+            Positioned(right: 12, bottom: 12,
+              child: Icon(Icons.headphones_rounded,
+                  size: 48, color: Colors.white.withOpacity(0.2))),
+          // 标题
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(category.name,
+                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
+              const SizedBox(height: 4),
+              Text('${category.songs.length} 首',
+                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 11, color: Colors.white.withOpacity(0.75))),
+            ]),
+          ),
+          // 播放按钮
+          Positioned(right: 10, top: 10,
+            child: Container(
+              width: 28, height: 28,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18),
+            ),
+          ),
+        ]),
       ),
-    );
-  }
+    ),
+  );
+}
+
+// ── 我的歌单 ──────────────────────────────────────────────
+class _MyPlaylists extends StatelessWidget {
+  final List<Playlist>      playlists;
+  final VoidCallback        onAdd;
+  final void Function(Playlist) onOpen;
+  final VoidCallback        onRefresh;
+  const _MyPlaylists({required this.playlists, required this.onAdd,
+      required this.onOpen, required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        const Text('我的歌单', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            fontSize: 15, fontWeight: FontWeight.w800)),
+        const Spacer(),
+        // NEW 标签
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(color: AppColors.primary,
+              borderRadius: BorderRadius.circular(4)),
+          child: const Text('NEW', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white)),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: onAdd,
+          child: Container(
+            width: 28, height: 28,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.add_rounded, color: AppColors.primary, size: 18),
+          ),
+        ),
+      ]),
+      const SizedBox(height: 12),
+      if (playlists.isEmpty)
+        GestureDetector(
+          onTap: onAdd,
+          child: Container(
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.white, borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.withOpacity(0.15)),
+            ),
+            child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.add_circle_outline_rounded, size: 28,
+                  color: AppColors.primary.withOpacity(0.5)),
+              const SizedBox(height: 4),
+              const Text('新建歌单', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 12, color: AppColors.onSurfaceVariant)),
+            ])),
+          ),
+        )
+      else
+        SizedBox(
+          height: 100,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: playlists.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (_, i) => _PlaylistCard(
+                playlist: playlists[i], onTap: () => onOpen(playlists[i])),
+          ),
+        ),
+    ]),
+  );
+}
+
+class _PlaylistCard extends StatelessWidget {
+  final Playlist     playlist;
+  final VoidCallback onTap;
+  const _PlaylistCard({required this.playlist, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: SizedBox(
+      width: 80,
+      child: Column(children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: playlist.coverUrl != null
+              ? Image.network(playlist.coverUrl!, width: 72, height: 72, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _defaultCover())
+              : _defaultCover(),
+        ),
+        const SizedBox(height: 6),
+        Text(playlist.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                fontSize: 11, fontWeight: FontWeight.w600)),
+        Text('${playlist.songCount}首', style: const TextStyle(
+            fontFamily: 'Plus Jakarta Sans', fontSize: 10, color: AppColors.onSurfaceVariant)),
+      ]),
+    ),
+  );
+
+  Widget _defaultCover() => Container(
+    width: 72, height: 72,
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+          colors: [Color(0xFF6C63FF), Color(0xFF48CAE4)],
+          begin: Alignment.topLeft, end: Alignment.bottomRight),
+    ),
+    child: const Icon(Icons.queue_music_rounded, color: Colors.white, size: 32),
+  );
 }
