@@ -10,6 +10,7 @@ import '../pet/data/repository/pet_peer_repository.dart';
 import '../pet/pet_location_page.dart';
 import '../pet/pet_track_page.dart';
 import '../pet/bind_pet_sheet.dart';
+import 'safety_scene_page.dart';
 
 // ── 设备详情页 ────────────────────────────────────────────
 class DeviceDetailPage extends ConsumerStatefulWidget {
@@ -493,26 +494,32 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         icon: Icons.home_rounded,
         title: '居家场景',
         subtitle: '室内监控安全区域，低功耗定位模式',
-        onTap: () => PetToast.warning(context, '居家场景即将上线'),
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => SafetyScenePage(
+              deviceMac: widget.mac, deviceName: widget.name, initialTab: 0),
+        )),
       ),
       const SizedBox(height: 10),
       _SceneCard(
         color: const Color(0xFFE8F5E9),
         iconBg: const Color(0xFF4CAF50),
         icon: Icons.park_rounded,
-        title: '公园场景',
+        title: '外出场景',
         subtitle: '户外活动区域，开启虚拟围栏告警',
-        onTap: () => PetToast.warning(context, '公园场景即将上线'),
+        onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => SafetyScenePage(
+              deviceMac: widget.mac, deviceName: widget.name, initialTab: 1),
+        )),
       ),
-      const SizedBox(height: 10),
-      _SceneCard(
-        color: const Color(0xFFEDE7F6),
-        iconBg: const Color(0xFF7C4DFF),
-        icon: Icons.local_hospital_rounded,
-        title: '服务中心',
-        subtitle: '专业护理医疗环境，自动关联健康检测数据',
-        onTap: () => PetToast.warning(context, '服务中心即将上线'),
-      ),
+      // const SizedBox(height: 10),
+      // _SceneCard(
+      //   color: const Color(0xFFEDE7F6),
+      //   iconBg: const Color(0xFF7C4DFF),
+      //   icon: Icons.local_hospital_rounded,
+      //   title: '服务中心',
+      //   subtitle: '专业护理医疗环境，自动关联健康检测数据',
+      //   onTap: () => PetToast.warning(context, '服务中心即将上线'),
+      // ),
     ]);
   }
 

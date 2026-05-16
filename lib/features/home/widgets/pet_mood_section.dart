@@ -153,12 +153,12 @@ class _HomePetCard extends StatelessWidget {
   Future<void> _openAmap() async {
     HapticFeedback.lightImpact();
     final uri = Uri.parse(
-      'https://uri.amap.com/search?q=${Uri.encodeComponent("宠物公园")}'
+      'https://uri.amap.com/search?q=${Uri.encodeComponent("宠物外出")}'
       '&t=0&src=petpogo&callnative=1',
     );
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       await launchUrl(
-        Uri.parse('https://www.amap.com/search?query=${Uri.encodeComponent("宠物公园")}'),
+        Uri.parse('https://www.amap.com/search?query=${Uri.encodeComponent("宠物外出")}'),
         mode: LaunchMode.externalApplication,
       );
     }
