@@ -149,28 +149,37 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
   }
 
   void _confirmDelete(BuildContext context, FenceModel fence) {
-    showDialog(context: context, builder: (_) => AlertDialog(
-      backgroundColor: AppColors.surfaceContainerLow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('删除围栏', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700)),
-      content: Text('确定删除「${fence.fenceName}」围栏吗？',
-          style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-        FilledButton(
-          onPressed: () async {
-            Navigator.pop(context);
-            try {
-              await ref.read(petPeerRepositoryProvider).deleteFence(fence.fenceId);
-              await _loadFences();
-            } catch (e) { debugPrint('[Fence] 删除失败: $e'); }
-          },
-          style: FilledButton.styleFrom(backgroundColor: AppColors.error,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-          child: const Text('删除'),
-        ),
-      ],
-    ));
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppColors.surfaceContainerLow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('删除围栏',
+            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700)),
+        content: Text('确定删除「${fence.fenceName}」围栏吗？',
+            style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(dialogCtx); // 用 dialog 自身 context 关闭
+              try {
+                await ref.read(petPeerRepositoryProvider).deleteFence(fence.fenceId);
+                if (mounted) await _loadFences();
+              } catch (e) { debugPrint('[Fence] 删除失败: $e'); }
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
