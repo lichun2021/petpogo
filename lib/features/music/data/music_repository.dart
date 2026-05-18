@@ -8,34 +8,58 @@ class MusicRepository {
 
   /// GET /sdkapi/music/list — 所有音乐（按分类聚合）
   /// [petType]: 'dog' | 'cat' | null（不传返回全部）
+  ///
+  /// 实际 API 返回格式：
+  ///   { categories: [{ id, name, iconUrl, sortOrder, music: [{...}] }] }
   Future<List<MusicCategory>> fetchAllMusic({String? petType}) async {
     final params = <String, dynamic>{};
     if (petType != null) params['petType'] = petType;
     final data = await _api.get<dynamic>('/sdkapi/music/list', params: params);
-    final list = data is List ? data : (data['data'] ?? data['list'] ?? []) as List;
-    // 后端可能直接返回分类数组或歌曲数组，适配两种格式
-    if (list.isNotEmpty && (list.first as Map).containsKey('songs')) {
-      // 分类聚合格式: [{name, songs:[...]}]
-      return list.map((c) {
-        final map = c as Map<String, dynamic>;
-        final songs = (map['songs'] as List? ?? [])
+
+    // ① 后端返回 { categories: [...] }
+    if (data is Map && data['categories'] is List) {
+      final cats = data['categories'] as List;
+      return cats.map((c) {
+        final map   = c as Map<String, dynamic>;
+        // 分类内歌曲字段名是 music（不是 songs）
+        final music = (map['music'] as List? ?? [])
             .map((s) => MusicItem.fromJson(s as Map<String, dynamic>))
             .toList();
-        return MusicCategory(name: map['name'] as String? ?? '其他', songs: songs);
+        return MusicCategory(
+          name:    (map['name'] ?? '其他') as String,
+          iconUrl: (map['iconUrl'] ?? map['icon_url']) as String?,
+          songs:   music,
+        );
       }).toList();
-    } else {
-      // 平铺格式: [{id, name, category, ...}]
-      final items = list
-          .map((s) => MusicItem.fromJson(s as Map<String, dynamic>))
-          .toList();
-      final Map<String, List<MusicItem>> grouped = {};
-      for (final item in items) {
-        grouped.putIfAbsent(item.category.isEmpty ? '全部' : item.category, () => []).add(item);
-      }
-      return grouped.entries
-          .map((e) => MusicCategory(name: e.key, songs: e.value))
-          .toList();
     }
+
+    // ② 兼容：直接返回分类数组 [{name, songs/music:[...]}]
+    final list = data is List ? data : (data['data'] ?? data['list'] ?? []) as List;
+    if (list.isEmpty) return [];
+
+    final firstItem = list.first as Map;
+    if (firstItem.containsKey('songs') || firstItem.containsKey('music')) {
+      return list.map((c) {
+        final map   = c as Map<String, dynamic>;
+        final raw   = (map['songs'] ?? map['music']) as List? ?? [];
+        final music = raw.map((s) => MusicItem.fromJson(s as Map<String, dynamic>)).toList();
+        return MusicCategory(
+          name:    (map['name'] ?? '其他') as String,
+          iconUrl: (map['iconUrl'] ?? map['icon_url']) as String?,
+          songs:   music,
+        );
+      }).toList();
+    }
+
+    // ③ 平铺格式：[{id, name, category, musicUrl, ...}]
+    final items = list
+        .map((s) => MusicItem.fromJson(s as Map<String, dynamic>))
+        .toList();
+    final grouped = <String, List<MusicItem>>{};
+    for (final item in items) {
+      grouped.putIfAbsent(item.category.isEmpty ? '全部' : item.category, () => []).add(item);
+    }
+    return grouped.entries.map((e) => MusicCategory(name: e.key, songs: e.value)).toList();
   }
 
   /// GET /sdkapi/music/playlists — 我的歌单列表 🔒

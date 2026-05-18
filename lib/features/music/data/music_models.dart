@@ -5,28 +5,31 @@ class MusicItem {
   final String name;
   final String url;
   final String category;
+  final String  petType;  // 'all' | 'dog' | 'cat'
   final String? iconUrl;
   final String? artist;
-  final int?   duration; // 秒
+  final int?   duration;
 
   const MusicItem({
     required this.id,
     required this.name,
     required this.url,
     required this.category,
+    this.petType = 'all',
     this.iconUrl,
     this.artist,
     this.duration,
   });
 
   factory MusicItem.fromJson(Map<String, dynamic> j) => MusicItem(
-    id:       j['id'] as int,
+    id:       (j['id'] as num).toInt(),
     name:     (j['name'] ?? j['title'] ?? '') as String,
-    url:      (j['url'] ?? j['audio_url'] ?? '') as String,
+    url:      (j['musicUrl'] ?? j['music_url'] ?? j['url'] ?? j['audio_url'] ?? '') as String,
     category: (j['category'] ?? j['category_name'] ?? '') as String,
-    iconUrl:  j['icon_url'] as String?,
+    petType:  (j['petType'] ?? j['pet_type'] ?? 'all') as String,
+    iconUrl:  (j['iconUrl'] ?? j['icon_url']) as String?,
     artist:   j['artist'] as String?,
-    duration: j['duration'] as int?,
+    duration: j['duration'] == null ? null : (j['duration'] as num).toInt(),
   );
 
   String get durationText {
@@ -39,8 +42,9 @@ class MusicItem {
 
 class MusicCategory {
   final String           name;
+  final String?          iconUrl;  // 分类封面
   final List<MusicItem>  songs;
-  const MusicCategory({required this.name, required this.songs});
+  const MusicCategory({required this.name, this.iconUrl, required this.songs});
 }
 
 class Playlist {

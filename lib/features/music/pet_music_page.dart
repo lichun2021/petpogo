@@ -14,6 +14,27 @@ const _cardColors = [
   Color(0xFF8E44AD), Color(0xFFE74C3C),
 ];
 
+// ── 宠物类型过滤（客户端）────────────────────────────────
+// petType 字段: 'all'=通用 'dog'=狗 'cat'=猫
+// 分类只要包含至少一首匹配的歌曲就保留
+
+List<MusicCategory> _filterByPetType(
+    List<MusicCategory> all, int petTypeIdx) {
+  // 0=全部：直接返回
+  if (petTypeIdx == 0) return all;
+  final target = petTypeIdx == 1 ? 'dog' : 'cat';
+  return all
+      .map((cat) {
+        final songs = cat.songs
+            .where((s) => s.petType == target || s.petType == 'all')
+            .toList();
+        if (songs.isEmpty) return null;
+        return MusicCategory(name: cat.name, iconUrl: cat.iconUrl, songs: songs);
+      })
+      .whereType<MusicCategory>()
+      .toList();
+}
+
 // ═══════════════════════════════════════════════════════════
 // 宠物音乐主页
 // ═══════════════════════════════════════════════════════════
@@ -27,13 +48,15 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
     with SingleTickerProviderStateMixin {
   late final TabController _mainTab;
 
-  List<MusicCategory> _categories = [];
-  List<Playlist>      _playlists  = [];
+  // 全量数据（一次加载）
+  List<MusicCategory> _allCategories = [];
+  List<Playlist>      _playlists     = [];
   bool   _loading = true;
-  int    _petType = 0; // 0=狗狗 1=猫咪 2=通用
+  int    _petType = 0; // 0=全部 1=狗狗 2=猫咪
 
-  // petType: 0=全部(不传) 1=狗狗(dog) 2=猫咪(cat)
-  static const _petTypeParams = [null, 'dog', 'cat'];
+  // 过滤后展示的分类（不触发网络请求）
+  List<MusicCategory> get _displayCategories =>
+      _filterByPetType(_allCategories, _petType);
 
   @override
   void initState() {
@@ -45,13 +68,19 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
   @override
   void dispose() { _mainTab.dispose(); super.dispose(); }
 
+  // 只在进页面 & 下拉刷新时请求，不因切换 petType 重复请求
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final petType = _petTypeParams[_petType];
-      final cats  = await ref.read(musicRepositoryProvider).fetchAllMusic(petType: petType);
-      final lists = await ref.read(musicRepositoryProvider).fetchPlaylists().catchError((_) => <Playlist>[]);
-      if (mounted) setState(() { _categories = cats; _playlists = lists; _loading = false; });
+      // 不传 petType，一次拿全部数据
+      final cats  = await ref.read(musicRepositoryProvider).fetchAllMusic();
+      final lists = await ref.read(musicRepositoryProvider)
+          .fetchPlaylists().catchError((_) => <Playlist>[]);
+      if (mounted) setState(() {
+        _allCategories = cats;
+        _playlists     = lists;
+        _loading       = false;
+      });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -84,7 +113,8 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
               indicatorColor: AppColors.primary, indicatorWeight: 3,
               labelStyle: const TextStyle(fontFamily: 'Plus Jakarta Sans',
                   fontSize: 14, fontWeight: FontWeight.w700),
-              unselectedLabelStyle: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14),
+              unselectedLabelStyle: const TextStyle(
+                  fontFamily: 'Plus Jakarta Sans', fontSize: 14),
               labelColor: AppColors.primary,
               unselectedLabelColor: AppColors.onSurfaceVariant,
               tabs: const [Tab(text: '推荐'), Tab(text: '限免')],
@@ -103,23 +133,24 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
   }
 
   Widget _buildRecommendTab() {
-    if (_loading) return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    if (_loading) return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary));
+    final cats = _displayCategories;
     return RefreshIndicator(
       onRefresh: _load, color: AppColors.primary,
       child: CustomScrollView(slivers: [
-        // 横幅
+        // 横幅（固定，不因切换闪烁）
         SliverToBoxAdapter(child: _Banner()),
-        // 宠物类型筛选
+        // 宠物类型筛选（切换只改 _petType，不请求网络）
         SliverToBoxAdapter(child: _PetTypeBar(
           selected: _petType,
           onSelect: (v) {
             if (v == _petType) return;
-            setState(() { _petType = v; });
-            _load(); // 切换类型重新请求
+            setState(() => _petType = v); // 纯客户端过滤
           },
         )),
         // 分类卡片网格
-        if (_categories.isEmpty)
+        if (cats.isEmpty)
           SliverToBoxAdapter(child: _emptyCategories())
         else
           SliverPadding(
@@ -127,7 +158,7 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
             sliver: SliverGrid(
               delegate: SliverChildBuilderDelegate(
                 (_, i) {
-                  final cat = _categories[i];
+                  final cat = cats[i];
                   return _CategoryCard(
                     category: cat,
                     color: _cardColors[i % _cardColors.length],
@@ -136,7 +167,7 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
                     )),
                   );
                 },
-                childCount: _categories.length,
+                childCount: cats.length,
               ),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2, crossAxisSpacing: 12,
@@ -339,20 +370,22 @@ class _CategoryCard extends StatelessWidget {
             child: Container(width: 80, height: 80,
                 decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.08), shape: BoxShape.circle))),
-          // 封面图（如有）
-          if (category.songs.isNotEmpty && category.songs.first.iconUrl != null)
-            Positioned(right: 8, bottom: 8,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(category.songs.first.iconUrl!,
-                    width: 64, height: 64, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox()),
-              ),
-            )
-          else
-            Positioned(right: 12, bottom: 12,
-              child: Icon(Icons.headphones_rounded,
-                  size: 48, color: Colors.white.withOpacity(0.2))),
+          // 封面图：优先用分类自身 iconUrl，其次第一首歌封面
+          Builder(builder: (_) {
+            final cover = category.iconUrl
+                ?? (category.songs.isNotEmpty ? category.songs.first.iconUrl : null);
+            return cover != null
+                ? Positioned(right: 8, bottom: 8,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(cover,
+                          width: 64, height: 64, fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const SizedBox()),
+                    ))
+                : Positioned(right: 12, bottom: 12,
+                    child: Icon(Icons.headphones_rounded,
+                        size: 48, color: Colors.white.withOpacity(0.2)));
+          }),
           // 标题
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
