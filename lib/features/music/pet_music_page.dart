@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -371,9 +372,9 @@ class _CategoryCard extends StatelessWidget {
           Container(color: color),
           // ② 封面图铺满
           if (cover != null)
-            Image.network(
-              cover, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const SizedBox(),
+            CachedNetworkImage(
+              imageUrl: cover, fit: BoxFit.cover,
+              errorWidget: (_, __, ___) => const SizedBox(),
             ),
           // ③ 渐变遮罩（保证文字可读）
           Container(
@@ -506,8 +507,9 @@ class _PlaylistCard extends StatelessWidget {
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: playlist.coverUrl != null
-              ? Image.network(playlist.coverUrl!, width: 72, height: 72, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _defaultCover())
+              ? CachedNetworkImage(
+                  imageUrl: playlist.coverUrl!, width: 72, height: 72, fit: BoxFit.cover,
+                  errorWidget: (_, __, ___) => _defaultCover())
               : _defaultCover(),
         ),
         const SizedBox(height: 6),

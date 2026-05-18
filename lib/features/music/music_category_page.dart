@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,7 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_toast.dart';
 import 'data/music_models.dart';
 import 'data/music_repository.dart';
+import 'music_player_page.dart';
 
 // ── 全局播放状态 ──────────────────────────────────────────
 // 注意：不用 autoDispose，播放器需全局存活
@@ -67,15 +69,9 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
   Future<void> _playAll() async {
     if (_songs.isEmpty) return;
     HapticFeedback.mediumImpact();
-    final player = ref.read(globalPlayerProvider);
-    ref.read(playingIdProvider.notifier).state = _songs.first.id;
-    try {
-      await player.setUrl(_songs.first.url);
-      await player.play();
-    } catch (e) {
-      ref.read(playingIdProvider.notifier).state = null;
-      if (mounted) PetToast.warning(context, '播放失败');
-    }
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => MusicPlayerPage(playlist: _songs, initialIndex: 0),
+    ));
   }
 
   @override
@@ -110,6 +106,7 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
                 delegate: SliverChildBuilderDelegate(
                   (_, i) => _SongRow(
                     song: _songs[i], index: i + 1,
+                    playlist: _songs,
                     onAddToPlaylist: widget.playlist == null ? null
                         : () => _addToPlaylist(_songs[i]),
                   ),
@@ -132,8 +129,8 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: coverUrl != null
-              ? Image.network(coverUrl, width: 80, height: 80, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _defaultCover())
+              ? CachedNetworkImage(imageUrl: coverUrl, width: 80, height: 80,
+                  fit: BoxFit.cover, errorWidget: (_, __, ___) => _defaultCover())
               : _defaultCover(),
         ),
         const SizedBox(width: 14),
@@ -195,10 +192,12 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
 
 // ── 歌曲行 ────────────────────────────────────────────────
 class _SongRow extends ConsumerWidget {
-  final MusicItem  song;
-  final int        index;
-  final VoidCallback? onAddToPlaylist;
-  const _SongRow({required this.song, required this.index, this.onAddToPlaylist});
+  final MusicItem        song;
+  final int              index;
+  final List<MusicItem>  playlist;       // 全列表（用于传入播放器）
+  final VoidCallback?    onAddToPlaylist;
+  const _SongRow({required this.song, required this.index,
+      required this.playlist, this.onAddToPlaylist});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -209,22 +208,15 @@ class _SongRow extends ConsumerWidget {
       color: Colors.white,
       child: Column(children: [
         InkWell(
-          onTap: () async {
+          onTap: () {
             HapticFeedback.selectionClick();
-            final player = ref.read(globalPlayerProvider);
-            if (isPlaying) {
-              await player.pause();
-              ref.read(playingIdProvider.notifier).state = null;
-            } else {
-              ref.read(playingIdProvider.notifier).state = song.id;
-              try {
-                await player.setUrl(song.url);
-                await player.play();
-              } catch (_) {
-                ref.read(playingIdProvider.notifier).state = null;
-                if (context.mounted) PetToast.warning(context, '播放失败');
-              }
-            }
+            final startIdx = playlist.indexOf(song);
+            Navigator.push(context, MaterialPageRoute(
+              builder: (_) => MusicPlayerPage(
+                playlist: playlist,
+                initialIndex: startIdx < 0 ? 0 : startIdx,
+              ),
+            ));
           },
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -234,8 +226,9 @@ class _SongRow extends ConsumerWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: song.iconUrl != null
-                      ? Image.network(song.iconUrl!, width: 44, height: 44, fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _emptyThumb())
+                      ? CachedNetworkImage(imageUrl: song.iconUrl!,
+                          width: 44, height: 44, fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => _emptyThumb())
                       : _emptyThumb(),
                 ),
                 if (isPlaying)
