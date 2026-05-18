@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -281,8 +282,8 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
               border: Border.all(color: AppColors.primary.withOpacity(0.5), width: 1.5)),
           child: ClipOval(
             child: pet.avatar.isNotEmpty
-                ? Image.network(pet.avatar, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _petEmoji(pet.petName))
+                ? CachedNetworkImage(imageUrl: pet.avatar, fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) => _petEmoji(pet.petName))
                 : _petEmoji(pet.petName),
           ),
         ),

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -443,7 +444,20 @@ class _MessageBubble extends StatelessWidget {
     } else if (imgUrl != null) {
       content = ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Image.network(imgUrl, width: 180, fit: BoxFit.cover),
+        child: CachedNetworkImage(
+          imageUrl: imgUrl,
+          width: 180, fit: BoxFit.cover,
+          placeholder: (_, __) => Container(
+            width: 180, height: 120,
+            color: Colors.grey.withOpacity(0.15),
+            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          ),
+          errorWidget: (_, __, ___) => Container(
+            width: 120, height: 80,
+            color: Colors.grey.withOpacity(0.1),
+            child: const Icon(Icons.broken_image_rounded, color: Colors.grey),
+          ),
+        ),
       );
     } else {
       content = Text(text ?? '[消息]',

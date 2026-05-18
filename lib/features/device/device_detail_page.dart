@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -293,7 +294,8 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                 decoration: BoxDecoration(color: AppColors.primaryContainer.withOpacity(0.25),
                     shape: BoxShape.circle),
                 child: pet.avatar.isNotEmpty
-                    ? ClipOval(child: Image.network(pet.avatar, fit: BoxFit.cover))
+                    ? ClipOval(child: CachedNetworkImage(imageUrl: pet.avatar, fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => const Icon(Icons.pets_rounded, color: AppColors.primary, size: 24)))
                     : const Icon(Icons.pets_rounded, color: AppColors.primary, size: 24)),
             const SizedBox(width: 14),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

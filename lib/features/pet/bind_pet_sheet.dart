@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -510,8 +511,8 @@ class _PetSelectCard extends StatelessWidget {
               decoration: BoxDecoration(shape: BoxShape.circle,
                   border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 1.5)),
               child: ClipOval(child: pet.avatar.isNotEmpty
-                  ? Image.network(pet.avatar, fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _emoji(pet.name))
+                  ? CachedNetworkImage(imageUrl: pet.avatar, fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => _emoji(pet.name))
                   : _emoji(pet.name)),
             ),
             const SizedBox(width: 12),
