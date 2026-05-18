@@ -8,8 +8,11 @@ import 'data/music_models.dart';
 import 'data/music_repository.dart';
 
 // ── 全局播放状态 ──────────────────────────────────────────
-final globalPlayerProvider = Provider.autoDispose<AudioPlayer>((ref) {
-  final p = AudioPlayer(); ref.onDispose(p.dispose); return p;
+// 注意：不用 autoDispose，播放器需全局存活
+final globalPlayerProvider = Provider<AudioPlayer>((ref) {
+  final p = AudioPlayer();
+  ref.onDispose(p.dispose);
+  return p;
 });
 final playingIdProvider = StateProvider<int?>((ref) => null);
 

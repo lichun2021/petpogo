@@ -358,53 +358,57 @@ class _CategoryCard extends StatelessWidget {
   const _CategoryCard({required this.category, required this.color, required this.onTap});
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: () { HapticFeedback.selectionClick(); onTap(); },
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        decoration: BoxDecoration(color: color),
-        child: Stack(children: [
-          // 装饰圆
-          Positioned(right: -15, bottom: -15,
-            child: Container(width: 80, height: 80,
-                decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.08), shape: BoxShape.circle))),
-          // 封面图：优先用分类自身 iconUrl，其次第一首歌封面
-          Builder(builder: (_) {
-            final cover = category.iconUrl
-                ?? (category.songs.isNotEmpty ? category.songs.first.iconUrl : null);
-            return cover != null
-                ? Positioned(right: 8, bottom: 8,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(cover,
-                          width: 64, height: 64, fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const SizedBox()),
-                    ))
-                : Positioned(right: 12, bottom: 12,
-                    child: Icon(Icons.headphones_rounded,
-                        size: 48, color: Colors.white.withOpacity(0.2)));
-          }),
-          // 标题
+  Widget build(BuildContext context) {
+    final cover = category.iconUrl
+        ?? (category.songs.isNotEmpty ? category.songs.first.iconUrl : null);
+
+    return GestureDetector(
+      onTap: () { HapticFeedback.selectionClick(); onTap(); },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(fit: StackFit.expand, children: [
+          // ① 底色（无图时显示）
+          Container(color: color),
+          // ② 封面图铺满
+          if (cover != null)
+            Image.network(
+              cover, fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const SizedBox(),
+            ),
+          // ③ 渐变遮罩（保证文字可读）
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  color.withOpacity(cover != null ? 0.65 : 0),
+                  Colors.black.withOpacity(cover != null ? 0.45 : 0),
+                ],
+              ),
+            ),
+          ),
+          // ④ 文字内容
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+            padding: const EdgeInsets.fromLTRB(14, 14, 48, 14),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(category.name,
                   style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
+                      fontSize: 15, fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      shadows: [Shadow(blurRadius: 4, color: Colors.black38)])),
               const SizedBox(height: 4),
               Text('${category.songs.length} 首',
                   style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 11, color: Colors.white.withOpacity(0.75))),
+                      fontSize: 11, color: Colors.white.withOpacity(0.85))),
             ]),
           ),
-          // 播放按钮
+          // ⑤ 播放按钮
           Positioned(right: 10, top: 10,
             child: Container(
               width: 28, height: 28,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withOpacity(0.25),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18),
@@ -412,8 +416,8 @@ class _CategoryCard extends StatelessWidget {
           ),
         ]),
       ),
-    ),
-  );
+    );
+  }
 }
 
 // ── 我的歌单 ──────────────────────────────────────────────
