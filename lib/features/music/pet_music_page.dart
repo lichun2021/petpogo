@@ -150,6 +150,27 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
             setState(() => _petType = v); // 纯客户端过滤
           },
         )),
+        // 过滤结果提示（非「全部」时显示）
+        if (_petType != 0)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(children: [
+                Icon(Icons.filter_alt_outlined, size: 13,
+                    color: AppColors.primary.withOpacity(0.8)),
+                const SizedBox(width: 4),
+                Text(
+                  '已筛选：共 ${_displayCategories.fold(0, (s, c) => s + c.songs.length)} 首'
+                      '（${_petType == 1 ? "狗狗" : "猫咪"}专属 + 通用）',
+                  style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 11,
+                    color: AppColors.primary.withOpacity(0.8),
+                  ),
+                ),
+              ]),
+            ),
+          ),
         // 分类卡片网格
         if (cats.isEmpty)
           SliverToBoxAdapter(child: _emptyCategories())
@@ -398,10 +419,18 @@ class _CategoryCard extends StatelessWidget {
                       fontSize: 15, fontWeight: FontWeight.w800,
                       color: Colors.white,
                       shadows: [Shadow(blurRadius: 4, color: Colors.black38)])),
-              const SizedBox(height: 4),
-              Text('${category.songs.length} 首',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 11, color: Colors.white.withOpacity(0.85))),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.22),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text('${category.songs.length} 首',
+                    style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 12, fontWeight: FontWeight.w700,
+                        color: Colors.white.withOpacity(0.95))),
+              ),
             ]),
           ),
           // ⑤ 播放按钮
