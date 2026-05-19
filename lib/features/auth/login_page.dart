@@ -263,6 +263,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Icon(Icons.info_outline_rounded,
+                      size: 13, color: AppColors.onSurfaceVariant),
+                  const SizedBox(width: 4),
+                  Text('首次登录初始密码为 123456，建议登录后修改',
+                      style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 11, color: AppColors.onSurfaceVariant)),
+                ]),
               ],
 
               const SizedBox(height: 36),
