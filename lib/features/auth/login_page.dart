@@ -107,6 +107,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         debugPrint('[LoginPage] 登录成功，等待路由守卫跳转');
       } else if (next.status == AuthStatus.error && next.errorMessage != null) {
         PetToast.error(context, next.errorMessage!);
+        // 密码登录时账号未注册 → 自动引导切换到短信登录
+        if (!_isSmsLogin && (next.errorMessage!.contains('未注册') || next.errorMessage!.contains('验证码登录'))) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('该手机号未注册，请先用验证码登录/注册',
+                  style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
+              action: SnackBarAction(
+                label: '切换验证码',
+                onPressed: () => setState(() => _isSmsLogin = true),
+              ),
+              duration: const Duration(seconds: 5),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
     });
 
