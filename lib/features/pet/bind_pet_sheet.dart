@@ -8,6 +8,7 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_toast.dart';
 import '../community/data/post_repository.dart';
 import '../pet/data/models/pet_model.dart';
+import 'breed_picker_page.dart';
 import 'data/repository/pet_peer_repository.dart';
 import 'data/models/pet_peer_models.dart';
 
@@ -41,6 +42,8 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
   late final TextEditingController _ageCtrl;
   late final TextEditingController _weightCtrl;
   String _sex = 'GG';
+  /// 'cat' | 'dog' | null（未选）
+  String? _species;
 
   bool _saving = false;
 
@@ -295,9 +298,59 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
           _field(controller: _nameCtrl, hint: '例：Lucky、小饼干', icon: Icons.badge_rounded),
           const SizedBox(height: 14),
 
+          // ── 宠物种类（决定品种列表）──
+          _label('宠物种类'),
+          const SizedBox(height: 8),
+          Row(children: [
+            _SpeciesChip(label: '🐱 猫', value: 'cat', current: _species,
+                onTap: (v) => setState(() { _species = v; _breedCtrl.clear(); })),
+            const SizedBox(width: 10),
+            _SpeciesChip(label: '🐶 狗', value: 'dog', current: _species,
+                onTap: (v) => setState(() { _species = v; _breedCtrl.clear(); })),
+          ]),
+          const SizedBox(height: 14),
+
           _label('品种（选填）'),
           const SizedBox(height: 6),
-          _field(controller: _breedCtrl, hint: '金毛、英短、哈士奇...', icon: Icons.category_rounded),
+          GestureDetector(
+            onTap: () async {
+              if (_species == null) {
+                PetToast.warning(context, '请先选择宠物种类（猫/狗）');
+                return;
+              }
+              final breed = await Navigator.push<String>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BreedPickerPage(species: _species!),
+                ),
+              );
+              if (breed != null) setState(() => _breedCtrl.text = breed);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(children: [
+                Icon(Icons.category_rounded, color: AppColors.primary, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _breedCtrl.text.isEmpty ? '点击选择品种' : _breedCtrl.text,
+                    style: TextStyle(
+                      fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                      color: _breedCtrl.text.isEmpty
+                          ? AppColors.onSurfaceVariant.withOpacity(0.5)
+                          : AppColors.onSurface,
+                    ),
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded,
+                    color: AppColors.onSurfaceVariant, size: 18),
+              ]),
+            ),
+          ),
           const SizedBox(height: 14),
 
           Row(children: [
@@ -407,9 +460,59 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
           _field(controller: _nameCtrl, hint: '例：Lucky', icon: Icons.badge_rounded),
           const SizedBox(height: 14),
 
+          // ── 宠物种类 ──
+          _label('宠物种类'),
+          const SizedBox(height: 8),
+          Row(children: [
+            _SpeciesChip(label: '🐱 猫', value: 'cat', current: _species,
+                onTap: (v) => setState(() { _species = v; _breedCtrl.clear(); })),
+            const SizedBox(width: 10),
+            _SpeciesChip(label: '🐶 狗', value: 'dog', current: _species,
+                onTap: (v) => setState(() { _species = v; _breedCtrl.clear(); })),
+          ]),
+          const SizedBox(height: 14),
+
           _label('品种（选填）'),
           const SizedBox(height: 6),
-          _field(controller: _breedCtrl, hint: '金毛、英短...', icon: Icons.category_rounded),
+          GestureDetector(
+            onTap: () async {
+              if (_species == null) {
+                PetToast.warning(context, '请先选择宠物种类（猫/狗）');
+                return;
+              }
+              final breed = await Navigator.push<String>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BreedPickerPage(species: _species!),
+                ),
+              );
+              if (breed != null) setState(() => _breedCtrl.text = breed);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(children: [
+                Icon(Icons.category_rounded, color: AppColors.primary, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _breedCtrl.text.isEmpty ? '点击选择品种' : _breedCtrl.text,
+                    style: TextStyle(
+                      fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                      color: _breedCtrl.text.isEmpty
+                          ? AppColors.onSurfaceVariant.withOpacity(0.5)
+                          : AppColors.onSurface,
+                    ),
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded,
+                    color: AppColors.onSurfaceVariant, size: 18),
+              ]),
+            ),
+          ),
           const SizedBox(height: 14),
 
           Row(children: [
@@ -568,6 +671,46 @@ class _PetSelectCard extends StatelessWidget {
       case 'hamster': return '仓鼠';
       default:        return type;
     }
+  }
+}
+
+// ── 种类选项（猫/狗）────────────────────────────────────────
+class _SpeciesChip extends StatelessWidget {
+  final String label, value;
+  final String? current;
+  final void Function(String) onTap;
+  const _SpeciesChip({
+    required this.label,
+    required this.value,
+    required this.current,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final sel = current == value;
+    return GestureDetector(
+      onTap: () { HapticFeedback.selectionClick(); onTap(value); },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+        decoration: BoxDecoration(
+          color: sel ? AppColors.primary : AppColors.surfaceContainer,
+          borderRadius: BorderRadius.circular(20),
+          border: sel ? null : Border.all(
+            color: AppColors.outlineVariant.withOpacity(0.4), width: 1),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Plus Jakarta Sans',
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: sel ? Colors.white : AppColors.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -38,6 +38,11 @@ import '../../features/auth/login_page.dart';
 import '../../features/message/chat_page.dart';
 import '../../features/shell/main_shell.dart';
 import '../../features/splash/splash_page.dart';
+import '../../features/consultation/consultation_page.dart';
+import '../../features/consultation/report_diagnosis_page.dart';
+import '../../features/consultation/report_care_page.dart';
+import '../../features/consultation/report_medical_page.dart';
+import '../../features/consultation/data/models/consultation_models.dart';
 import '../../app.dart' show globalNavigatorKey;
 
 // ── 路由实例和内部 ProviderContainer 用于守卫读取状态 ──────
@@ -173,8 +178,54 @@ final appRouter = GoRouter(
 
     // 子页面 — 登录页（从下滑入）
     _slide(AppRoutes.login, const LoginPage()),
+
+    // ── 宠小伊 AI 问诊 ────────────────────────────────────
+    // 主聊天页（extra: petId）— 全屏，覆盖底部 tab
+    GoRoute(
+      path: AppRoutes.consultation,
+      pageBuilder: (context, state) {
+        final petId = state.extra is String ? state.extra as String : '';
+        return _slidePage(state, ConsultationPage(petId: petId));
+      },
+    ),
+    // 问诊报告详情页（extra: ConsultationReport）
+    GoRoute(
+      path: AppRoutes.reportDiagnosis,
+      pageBuilder: (context, state) {
+        final report = _extractReport(state.extra);
+        return _slidePage(state, ReportDiagnosisPage(report: report));
+      },
+    ),
+    // 治疗养护建议页（extra: ConsultationReport）
+    GoRoute(
+      path: AppRoutes.reportCare,
+      pageBuilder: (context, state) {
+        final report = _extractReport(state.extra);
+        return _slidePage(state, ReportCarePage(report: report));
+      },
+    ),
+    // 医疗检测方案页（extra: ConsultationReport）
+    GoRoute(
+      path: AppRoutes.reportMedical,
+      pageBuilder: (context, state) {
+        final report = _extractReport(state.extra);
+        return _slidePage(state, ReportMedicalPage(report: report));
+      },
+    ),
   ],
 );
+
+/// 报告页统一的 extra 解码 —— 缺省给空报告，避免直接打开路由时崩溃
+ConsultationReport _extractReport(Object? extra) {
+  if (extra is ConsultationReport) return extra;
+  return const ConsultationReport(
+    report: '',
+    primaryDisease: '',
+    symptomSummary: '',
+    medicalSolutions: '',
+    diseaseCards: [],
+  );
+}
 
 // ══════════════════════════════════════════════════════════
 //  动画工厂方法

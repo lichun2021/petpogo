@@ -18,6 +18,16 @@ abstract class AppRoutes {
   static const bindDevice  = '/bind-device';
   static const login       = '/login';   // 登录页
 
+  // ── 宠小伊 AI 问诊 ──────────────────────────────────────
+  /// 主聊天页（extra: 宠物 petId 字符串）
+  static const consultation     = '/consultation';
+  /// 智能医生问诊报告详情页（extra: ConsultationReport 对象）
+  static const reportDiagnosis  = '/consultation/report/diagnosis';
+  /// 治疗养护建议页（extra: ConsultationReport 对象）
+  static const reportCare       = '/consultation/report/care';
+  /// 医疗检测方案页（extra: ConsultationReport 对象）
+  static const reportMedical    = '/consultation/report/medical';
+
   // ── 带参数路由（用方法生成，杜绝拼错） ──────────────
   static String scanQr(String deviceType)       => '/scan-qr/$deviceType';
   static String bindSuccess(String deviceType)  => '/bind-success/$deviceType';

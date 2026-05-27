@@ -126,6 +126,86 @@ class ApiClient {
     await _dio.delete(path);
   }
 
+  // ── SSE 流式响应 ───────────────────────────────────────
+
+  /// 流式 POST，返回 SSE 帧流（适用大模型逐 token 输出等场景）
+  ///
+  /// [url] 可以是相对路径（走 baseUrl）或完整 URL（http(s)://...），
+  /// 完整 URL 形式用于打第三方后端（如宠小伊 49.234.39.11:8007），
+  /// 此时会绕开 baseUrl 但仍然经过现有拦截器。
+  ///
+  /// 行为：
+  ///   - 4xx/5xx → 经 _ErrorInterceptor 转 ApiException 抛出
+  ///   - 200 但流中 event: error → 作为普通帧 yield，Repository 自行处理
+  ///   - 服务器关流 → Stream 自然结束
+  ///
+  /// 调用方必须用 try/catch 包裹 `await for` 以处理 ApiException。
+  Stream<SseFrame> postStream(
+    String url, {
+    Object? data,
+    Map<String, dynamic>? headers,
+    CancelToken? cancelToken,
+  }) async* {
+    final response = await _dio.post<ResponseBody>(
+      url,
+      data: data,
+      cancelToken: cancelToken,
+      options: Options(
+        responseType: ResponseType.stream,
+        // SSE 是长连接，receiveTimeout 必须关掉，否则会被强制断开
+        receiveTimeout: Duration.zero,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
+          if (headers != null) ...headers,
+        },
+      ),
+    );
+
+    // ── SSE 分帧解析 ──
+    // 协议：每帧由若干 "field: value\n" 行组成，以空行（\n\n）结束
+    String currentEvent = 'message';
+    final dataBuf = StringBuffer();
+
+    final lines = response.data!.stream
+        .cast<List<int>>()
+        .transform(utf8.decoder)
+        .transform(const LineSplitter());
+
+    await for (final line in lines) {
+      if (line.isEmpty) {
+        // 空行 = 一帧结束 → flush
+        if (dataBuf.isNotEmpty || currentEvent != 'message') {
+          yield SseFrame(event: currentEvent, data: dataBuf.toString());
+          currentEvent = 'message';
+          dataBuf.clear();
+        }
+        continue;
+      }
+      // 以 ':' 开头是 SSE 注释/心跳，忽略
+      if (line.startsWith(':')) continue;
+
+      final idx = line.indexOf(':');
+      if (idx < 0) continue;
+      final field = line.substring(0, idx);
+      var value = line.substring(idx + 1);
+      if (value.startsWith(' ')) value = value.substring(1);
+
+      if (field == 'event') {
+        currentEvent = value;
+      } else if (field == 'data') {
+        if (dataBuf.isNotEmpty) dataBuf.write('\n');
+        dataBuf.write(value);
+      }
+      // id / retry 字段暂不处理
+    }
+
+    // 服务器关流前如果还有未 flush 的帧（没以空行结尾），补 yield 一次
+    if (dataBuf.isNotEmpty || currentEvent != 'message') {
+      yield SseFrame(event: currentEvent, data: dataBuf.toString());
+    }
+  }
+
   // ── Token 管理 ────────────────────────────────────────
 
   /// 登录成功后更新 Token
@@ -144,6 +224,26 @@ class ApiClient {
   void clearToken() {
     _dio.options.headers.remove('Authorization');
   }
+}
+
+// ── SSE 帧 ────────────────────────────────────────────────
+/// Server-Sent Events 单帧
+///
+/// SSE 协议格式：
+///   event: <name>\n        ← 可选，默认 'message'
+///   data: <payload>\n      ← 多行 data 会被拼成同一帧（用 \n 分隔）
+///   \n                     ← 空行结束一帧
+class SseFrame {
+  /// 事件名，缺省 'message'（SSE 协议规定）
+  final String event;
+
+  /// data 字段的内容（多行 data 已以 \n 拼接）
+  final String data;
+
+  const SseFrame({required this.event, required this.data});
+
+  @override
+  String toString() => 'SseFrame(event=$event, data=$data)';
 }
 
 // ── Auth 拦截器 ───────────────────────────────────────────
@@ -214,7 +314,11 @@ class _DevLogInterceptor extends Interceptor {
 
     debugPrint('\n┌─── [API 响应] ─────────────────────────────');
     debugPrint('│ ${response.statusCode} ${response.requestOptions.uri}  (${ms}ms)');
-    debugPrint('│ Body: ${response.data}');
+    if (response.requestOptions.responseType == ResponseType.stream) {
+      debugPrint('│ Body: <streaming>');
+    } else {
+      debugPrint('│ Body: ${response.data}');
+    }
     debugPrint('└─────────────────────────────────────────────');
     handler.next(response);
   }

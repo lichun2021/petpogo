@@ -10,6 +10,7 @@ import '../device/device_detail_page.dart';
 import '../bind_device/select_device_page.dart';
 import 'widgets/ai_translate_panel.dart';
 import 'widgets/ai_image_panel.dart';
+import 'widgets/ai_consultation_banner.dart';
 import 'widgets/no_device_banner.dart';
 import 'widgets/pet_mood_section.dart';
 
@@ -93,6 +94,11 @@ class _HomePageState extends ConsumerState<HomePage> {
 
                 // ── AI 图像情绪识别面板 ─────────────────
                 const AiImagePanel(),
+
+                const SizedBox(height: 16),
+
+                // ── 宠小伊 AI 问诊入口 ─────────────────
+                const AiConsultationBanner(),
 
                 const SizedBox(height: 28),
 

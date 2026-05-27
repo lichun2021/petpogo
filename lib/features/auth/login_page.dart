@@ -129,7 +129,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       backgroundColor: AppColors.surface,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -143,7 +143,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         color: AppColors.primary)),
               ]),
 
-              const SizedBox(height: 48),
+              const SizedBox(height: 32),
 
               // ── 标题 ─────────────────────────────────────
               const Text('欢迎回来 👋',
@@ -186,8 +186,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               const SizedBox(height: 8),
               TextField(
                 controller: _phoneCtrl,
-                keyboardType: TextInputType.phone,
+                keyboardType: TextInputType.number,
                 textInputAction: TextInputAction.next,
+                autofillHints: const [],
                 style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
                     fontSize: 15, color: AppColors.onSurface),
                 decoration: _inputDecoration(

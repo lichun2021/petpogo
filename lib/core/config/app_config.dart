@@ -50,6 +50,12 @@ class AppConfig {
   static const String translationBaseUrl = 'http://YOUR_TRANSLATION_HOST:8078';
 
   // ──────────────────────────────────────────────
+  // 宠小伊 AI 问诊（独立后端 — 临时明文 HTTP，上线前换 HTTPS 域名）
+  // ──────────────────────────────────────────────
+  /// 完整 URL 由 Repository 拼接：[aiConsultBaseUrl] + [ApiEndpoints.aiConsult*]
+  static const String aiConsultBaseUrl = 'http://49.234.39.11:8007';
+
+  // ──────────────────────────────────────────────
   // App 信息
   // ──────────────────────────────────────────────
   static const String appVersion     = '1.0.5';

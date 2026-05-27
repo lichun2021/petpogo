@@ -83,5 +83,20 @@
 	<string>PetPogo 需要蓝牙权限，以便连接 KeyTracker 设备。</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>PetPogo 需要蓝牙权限，以便连接 KeyTracker 设备。</string>
+	<!-- ── 明文 HTTP 例外（临时方案，上线前后端需提供 HTTPS）── -->
+	<!-- 宠小伊 AI 问诊后端 49.234.39.11:8007 当前仅支持 HTTP -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>49.234.39.11</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<false/>
+			</dict>
+		</dict>
+	</dict>
 </dict>
 </plist>

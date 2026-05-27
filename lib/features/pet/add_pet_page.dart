@@ -9,6 +9,7 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../app.dart' show AppL10nX;
 import '../community/data/post_repository.dart';
+import '../pet/breed_picker_page.dart';
 import '../pet/controller/pet_controller.dart';
 
 
@@ -464,7 +465,48 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
           // 品种
           _FieldLabel('品种'),
           const SizedBox(height: 8),
-          _InputField(controller: _breedCtrl, hint: '英短 / 金毛 / 不知道', icon: Icons.category_rounded),
+          GestureDetector(
+            onTap: () async {
+              final species = _petTypes[_selectedType]['species'] as String;
+              final breed = await Navigator.push<String>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BreedPickerPage(species: species),
+                ),
+              );
+              if (breed != null) {
+                setState(() => _breedCtrl.text = breed);
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, spreadRadius: -4)],
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.category_rounded, color: AppColors.primary, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _breedCtrl.text.isEmpty ? '点击选择品种' : _breedCtrl.text,
+                      style: TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 15,
+                        color: _breedCtrl.text.isEmpty
+                            ? AppColors.onSurfaceVariant
+                            : AppColors.onSurface,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded,
+                      color: AppColors.onSurfaceVariant, size: 20),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 20),
 
           // 性别
