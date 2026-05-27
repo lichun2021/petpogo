@@ -120,7 +120,7 @@ class _AssistantHeader extends StatelessWidget {
         CircleAvatar(
           radius: 22,
           backgroundColor: AppColors.secondaryContainer,
-          child: const Text('🩺', style: TextStyle(fontSize: 22)),
+          backgroundImage: const AssetImage('assets/images/chongxiaoyi.png'),
         ),
         const SizedBox(width: 10),
         Expanded(

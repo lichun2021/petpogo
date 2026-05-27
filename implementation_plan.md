@@ -3,7 +3,7 @@
 > **AI 医生名称**：宠小伊（ChongXiaoYi）  
 > **后端地址**：`http://49.234.39.11:8007`  
 > **宠物ID方案**：方案 A — 直接使用 PeerApi 的 `petId` 字段  
-> **报告类型**：三类独立页面（智能医生问诊报告 / 治疗养护建议 / 医疗检测方案）
+> **报告类型**：三类独立页面（宠小伊问诊报告 / 治疗养护建议 / 医疗检测方案）
 
 ---
 
@@ -18,7 +18,7 @@
 | `lib/features/consultation/controller/consultation_controller.dart` | Riverpod 状态管理 |
 | `lib/features/consultation/consultation_page.dart` | 主聊天页 |
 | `lib/features/consultation/report_list_page.dart` | 报告入口列表页（三块卡片） |
-| `lib/features/consultation/report_diagnosis_page.dart` | ① 智能医生问诊报告页 |
+| `lib/features/consultation/report_diagnosis_page.dart` | ① 宠小伊问诊报告页 |
 | `lib/features/consultation/report_care_page.dart` | ② 治疗养护建议页 |
 | `lib/features/consultation/report_medical_page.dart` | ③ 医疗检测方案页 |
 | `lib/features/home/widgets/ai_consultation_banner.dart` | 首页入口 Banner 卡片 |
@@ -207,7 +207,7 @@ Body（聊天消息列表）
 
 报告准备区（当 reportReady=true）
   ┌────────────────────────────────┐
-  │ 📋 智能医生问诊报告  已生成    │
+  │ 📋 宠小伊问诊报告  已生成    │
   │ 🏥 治疗养护建议     已生成    │
   │ 🔬 医疗检测方案     已生成    │
   └────────────────────────────────┘
@@ -231,7 +231,7 @@ Body（聊天消息列表）
 仿照截图（第二行最左屏）：
 
 ```
-┌──── 智能医生问诊报告 ────────────────┐
+┌──── 宠小伊问诊报告 ────────────────┐
 │  📋  宠小伊智能宠医已开出诊断，       │
 │      请点击查看详情           →      │
 └──────────────────────────────────┘
@@ -253,7 +253,7 @@ Body（聊天消息列表）
 
 ### Step 8 — 三类报告页
 
-#### ① `report_diagnosis_page.dart` — 智能医生问诊报告
+#### ① `report_diagnosis_page.dart` — 宠小伊问诊报告
 
 内容来源：`report.diseaseCards` + `report.report`
 

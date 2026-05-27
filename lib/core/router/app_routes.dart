@@ -21,7 +21,7 @@ abstract class AppRoutes {
   // ── 宠小伊 AI 问诊 ──────────────────────────────────────
   /// 主聊天页（extra: 宠物 petId 字符串）
   static const consultation     = '/consultation';
-  /// 智能医生问诊报告详情页（extra: ConsultationReport 对象）
+  /// 宠小伊问诊报告详情页（extra: ConsultationReport 对象）
   static const reportDiagnosis  = '/consultation/report/diagnosis';
   /// 治疗养护建议页（extra: ConsultationReport 对象）
   static const reportCare       = '/consultation/report/care';

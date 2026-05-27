@@ -188,12 +188,16 @@ final appRouter = GoRouter(
         return _slidePage(state, ConsultationPage(petId: petId));
       },
     ),
-    // 问诊报告详情页（extra: ConsultationReport）
+    // 问诊报告详情页（extra: Map 或 ConsultationReport）
     GoRoute(
       path: AppRoutes.reportDiagnosis,
       pageBuilder: (context, state) {
-        final report = _extractReport(state.extra);
-        return _slidePage(state, ReportDiagnosisPage(report: report));
+        final args    = _extractReportArgs(state.extra);
+        return _slidePage(state, ReportDiagnosisPage(
+          report:     args.$1,
+          petInfo:    args.$2,
+          petAvatar:  args.$3,
+        ));
       },
     ),
     // 治疗养护建议页（extra: ConsultationReport）
@@ -215,9 +219,33 @@ final appRouter = GoRouter(
   ],
 );
 
-/// 报告页统一的 extra 解码 —— 缺省给空报告，避免直接打开路由时崩溃
+/// 报告页统一的 extra 解码 — 支持 Map 或直接 ConsultationReport
+/// 返回 (report, petInfo?, petAvatar)
+(
+  ConsultationReport,
+  PetInfoSnapshot?,
+  String,
+) _extractReportArgs(Object? extra) {
+  if (extra is Map) {
+    final report    = extra['report'] as ConsultationReport?;
+    final petInfo   = extra['petInfo'] as PetInfoSnapshot?;
+    final petAvatar = (extra['petAvatar'] as String?) ?? '';
+    return (report ?? _emptyReport(), petInfo, petAvatar);
+  }
+  if (extra is ConsultationReport) return (extra, null, '');
+  return (_emptyReport(), null, '');
+}
+
+/// 旧版兼容（其他报告子页面仍用此方法）
 ConsultationReport _extractReport(Object? extra) {
   if (extra is ConsultationReport) return extra;
+  if (extra is Map && extra['report'] is ConsultationReport) {
+    return extra['report'] as ConsultationReport;
+  }
+  return _emptyReport();
+}
+
+ConsultationReport _emptyReport() {
   return const ConsultationReport(
     report: '',
     primaryDisease: '',

@@ -158,6 +158,8 @@ class ConsultationReport {
   final String symptomSummary;
   final String medicalSolutions;
   final List<DiseaseCard> diseaseCards;
+  /// 诊断依据（diagnostic_basis 字段）
+  final String diagnosticBasis;
 
   const ConsultationReport({
     required this.report,
@@ -165,6 +167,7 @@ class ConsultationReport {
     required this.symptomSummary,
     required this.medicalSolutions,
     required this.diseaseCards,
+    this.diagnosticBasis = '',
   });
 
   factory ConsultationReport.fromJson(Map<String, dynamic> json) {
@@ -174,6 +177,7 @@ class ConsultationReport {
       primaryDisease:   (json['primary_disease'] as String?) ?? '',
       symptomSummary:   (json['symptom_summary'] as String?) ?? '',
       medicalSolutions: (json['medical_solutions'] as String?) ?? '',
+      diagnosticBasis:  (json['diagnostic_basis'] as String?) ?? '',
       diseaseCards: cards
           .whereType<Map>()
           .map((e) => DiseaseCard.fromJson(e.cast<String, dynamic>()))

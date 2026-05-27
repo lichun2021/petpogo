@@ -21,6 +21,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/router/app_routes.dart';
 import '../../shared/theme/app_colors.dart';
+import '../pet/data/repository/pet_peer_repository.dart';
 import 'controller/consultation_controller.dart';
 import 'data/models/consultation_models.dart';
 
@@ -94,7 +95,24 @@ class _ConsultationPageState extends ConsumerState<ConsultationPage> {
       report = ref.read(consultationControllerProvider(widget.petId)).report;
     }
     if (!mounted || report == null) return;
-    context.push(route, extra: report);
+
+    // 获取宠物头像（如果可以拿到）
+    final petInfo =
+        ref.read(consultationControllerProvider(widget.petId)).session?.petInfo;
+    String petAvatar = '';
+    try {
+      final petModel = await ref
+          .read(petPeerRepositoryProvider)
+          .fetchPetInfo(deviceId: widget.petId);
+      petAvatar = petModel.avatar;
+    } catch (_) {}
+
+    if (!mounted) return;
+    context.push(route, extra: {
+      'report':    report,
+      'petInfo':   petInfo,
+      'petAvatar': petAvatar,
+    });
   }
 
   void _openHistoryDrawer(ConsultationState state) {
@@ -169,13 +187,14 @@ class _ConsultationPageState extends ConsumerState<ConsultationPage> {
                           },
                         ),
 
-                      // ── 消息 + 报告卡区 ──────────────────
+                      // ── 消息列表 + 报告卡（生成完成后出现）──
                       Expanded(
                         child: ListView.builder(
                           controller: _scrollCtrl,
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                          // report != null 时末尾追加报告卡片区
                           itemCount: state.messages.length +
-                              (state.reportReady ? 1 : 0),
+                              (state.report != null ? 1 : 0),
                           itemBuilder: (context, i) {
                             if (i < state.messages.length) {
                               return _MessageBubble(message: state.messages[i]);
@@ -186,8 +205,8 @@ class _ConsultationPageState extends ConsumerState<ConsultationPage> {
                               onTapCare: () => _openReport(AppRoutes.reportCare),
                               onTapMedical: () =>
                                   _openReport(AppRoutes.reportMedical),
-                              isGenerating: state.isGeneratingReport,
-                              hasReport: state.report != null,
+                              isGenerating: false,
+                              hasReport: true,
                             );
                           },
                         ),
@@ -199,8 +218,14 @@ class _ConsultationPageState extends ConsumerState<ConsultationPage> {
                           reportReady: state.reportReady,
                           isGenerating: state.isGeneratingReport,
                           hasSession: state.hasSession,
-                          onGenerateReport: () =>
-                              _openReport(AppRoutes.reportDiagnosis),
+                          onGenerateReport: () async {
+                            HapticFeedback.mediumImpact();
+                            await ref
+                                .read(consultationControllerProvider(widget.petId).notifier)
+                                .generateReport();
+                            // 生成完成同滕到底部显示卡片
+                            _scrollToBottom();
+                          },
                         ),
 
                       // ── 输入栏（历史模式隐藏）────────────
@@ -1343,13 +1368,45 @@ class _ReportCardsArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 统一的副标题 & 可点击状态逻辑
+    String diagSubtitle;
+    String careSubtitle;
+    String medSubtitle;
+    VoidCallback? diagTap;
+    VoidCallback? careTap;
+    VoidCallback? medTap;
+
+    if (isGenerating) {
+      // 正在生成中：所有卡片显示加载，禁用点击
+      diagSubtitle = '正在生成报告，请稍候…';
+      careSubtitle = '正在生成报告，请稍候…';
+      medSubtitle  = '正在生成报告，请稍候…';
+      diagTap = careTap = medTap = null;
+    } else if (!hasReport) {
+      // 还没生成：只有诊断卡可点击（触发生成），另外两张提示
+      diagSubtitle = '点击生成完整诊断报告';
+      careSubtitle = '生成报告后解锁';
+      medSubtitle  = '生成报告后解锁';
+      diagTap = onTapDiagnosis;
+      careTap = null;
+      medTap  = null;
+    } else {
+      // 报告已生成：三张全部可用
+      diagSubtitle = '宠小伊智能宠医已开出诊断，点击查看';
+      careSubtitle = '已生成在家处理建议，点击查看';
+      medSubtitle  = '已生成医疗检测方案，点击查看';
+      diagTap = onTapDiagnosis;
+      careTap = onTapCare;
+      medTap  = onTapMedical;
+    }
+
     return Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 16),
       child: Column(
         children: [
           _ReportCard(
             icon: Icons.medical_information_outlined,
-            title: '智能医生问诊报告',
+            title: '宠小伊问诊报告',
             subtitle: hasReport
                 ? '宠小伊智能宠医已开出诊断，请点击查看详情'
                 : isGenerating
@@ -1373,32 +1430,32 @@ class _ReportCardsArea extends StatelessWidget {
             onTap: onTapMedical,
           ),
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.secondaryContainer.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: const [
-                  Icon(Icons.image_search_outlined,
-                      size: 15, color: AppColors.secondary),
-                  SizedBox(width: 6),
-                  Text('本次问诊将加入宠物全景画像，可提高准确率',
-                      style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.secondary)),
-                ]),
-                const SizedBox(height: 4),
-                Text('默认保存，如需关闭，可在全景画像或二维码中进行管理',
-                    style: TextStyle(
-                        fontSize: 11, color: AppColors.onSurfaceVariant)),
-              ],
-            ),
-          ),
+          // Container(
+          //   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          //   decoration: BoxDecoration(
+          //     color: AppColors.secondaryContainer.withOpacity(0.3),
+          //     borderRadius: BorderRadius.circular(12),
+          //   ),
+          //   child: Column(
+          //     crossAxisAlignment: CrossAxisAlignment.start,
+          //     children: [
+          //       Row(children: const [
+          //         Icon(Icons.image_search_outlined,
+          //             size: 15, color: AppColors.secondary),
+          //         SizedBox(width: 6),
+          //         Text('本次问诊将加入宠物全景画像，可提高准确率',
+          //             style: TextStyle(
+          //                 fontSize: 13,
+          //                 fontWeight: FontWeight.w700,
+          //                 color: AppColors.secondary)),
+          //       ]),
+          //       const SizedBox(height: 4),
+          //       Text('默认保存，如需关闭，可在全景画像或二维码中进行管理',
+          //           style: TextStyle(
+          //               fontSize: 11, color: AppColors.onSurfaceVariant)),
+          //     ],
+          //   ),
+          // ),
         ],
       ),
     );
@@ -1753,6 +1810,258 @@ class _InputBar extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  报告选择底部面板
+// ══════════════════════════════════════════════════════════
+class _ReportPickerSheet extends StatelessWidget {
+  final ConsultationReport report;
+  final PetInfoSnapshot? petInfo;
+  final String petAvatar;
+  final VoidCallback onTapDiagnosis;
+  final VoidCallback onTapCare;
+  final VoidCallback onTapMedical;
+
+  const _ReportPickerSheet({
+    required this.report,
+    required this.petInfo,
+    required this.petAvatar,
+    required this.onTapDiagnosis,
+    required this.onTapCare,
+    required this.onTapMedical,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 24,
+            spreadRadius: -4,
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 拖动条
+            const SizedBox(height: 12),
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── 宠物信息头部 ────────────────────────────
+            if (petInfo != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    // 头像
+                    _SheetAvatar(avatarUrl: petAvatar, name: petInfo!.name),
+                    const SizedBox(width: 12),
+                    // 名字 + 主疾病
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            petInfo!.name.isEmpty ? '宠物' : petInfo!.name,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.onSurface,
+                            ),
+                          ),
+                          if (report.primaryDisease.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Row(children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFEF4444),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Flexible(
+                                child: Text(
+                                  '疑似 ${report.primaryDisease}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFFEF4444),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ]),
+                          ],
+                        ],
+                      ),
+                    ),
+                    // 关闭按钮
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      color: AppColors.onSurfaceVariant,
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: 16),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+
+            // ── 3 张报告卡 ──────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  _SheetCard(
+                    icon: Icons.medical_information_outlined,
+                    title: '宠小伊问诊报告',
+                    subtitle: '综合诊断 · 可能疾病分析',
+                    accentColor: const Color(0xFF6366F1),
+                    onTap: onTapDiagnosis,
+                  ),
+                  const SizedBox(height: 10),
+                  _SheetCard(
+                    icon: Icons.home_outlined,
+                    title: '治疗养护建议',
+                    subtitle: '居家护理指南',
+                    accentColor: const Color(0xFF10B981),
+                    onTap: onTapCare,
+                  ),
+                  const SizedBox(height: 10),
+                  _SheetCard(
+                    icon: Icons.science_outlined,
+                    title: '医疗检测方案',
+                    subtitle: '推荐医院检查与治疗',
+                    accentColor: const Color(0xFF0EA5E9),
+                    onTap: onTapMedical,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SheetAvatar extends StatelessWidget {
+  final String avatarUrl;
+  final String name;
+  const _SheetAvatar({required this.avatarUrl, required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    final emoji = name.contains('猫') ? '🐱' : name.contains('狗') ? '🐶' : '🐾';
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: const Color(0xFF6366F1).withOpacity(0.08),
+        border: Border.all(
+          color: const Color(0xFF6366F1).withOpacity(0.2),
+          width: 1.5,
+        ),
+      ),
+      child: ClipOval(
+        child: avatarUrl.isNotEmpty
+            ? Image.network(avatarUrl, fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    Center(child: Text(emoji, style: const TextStyle(fontSize: 24))))
+            : Center(child: Text(emoji, style: const TextStyle(fontSize: 24))),
+      ),
+    );
+  }
+}
+
+class _SheetCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color accentColor;
+  final VoidCallback onTap;
+  const _SheetCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.accentColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(
+            color: accentColor.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: accentColor.withOpacity(0.15), width: 1),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: accentColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 22, color: accentColor),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: accentColor,
+                        )),
+                    Text(subtitle,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.onSurfaceVariant,
+                        )),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  size: 14, color: accentColor.withOpacity(0.5)),
+            ],
+          ),
+        ),
       ),
     );
   }
