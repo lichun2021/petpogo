@@ -3,6 +3,7 @@
 ///
 ///  UI 职责：
 ///    ✅ 渲染账号 / 密码输入框
+///    ✅ 国家/区号选择（下拉底部弹窗，数据来自 PeerApi）
 ///    ✅ 监听 AuthState 变化，显示加载 / 错误 / 成功反馈
 ///    ✅ 登录成功后由路由守卫自动跳转，页面不直接 push
 ///    ❌ 不包含任何业务逻辑（全部在 AuthController）
@@ -13,6 +14,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/widgets/pet_toast.dart';
+import 'data/models/country_model.dart';
+import 'data/country_repository.dart';
 import 'controller/auth_controller.dart';
 
 
@@ -27,7 +30,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _phoneCtrl    = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _codeCtrl     = TextEditingController();
-  
+  final _searchCtrl   = TextEditingController();
+
   bool _obscure = true;
   bool _isSmsLogin = true;
 
@@ -35,19 +39,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   int _countdown = 0;
   Timer? _timer;
 
+  CountryInfo _selectedCountry = CountryInfo.china;
+
   @override
   void dispose() {
     _phoneCtrl.dispose();
     _passwordCtrl.dispose();
     _codeCtrl.dispose();
+    _searchCtrl.dispose();
     _timer?.cancel();
     super.dispose();
   }
 
   void _startCountdown() {
-    setState(() {
-      _countdown = 60;
-    });
+    setState(() { _countdown = 60; });
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_countdown > 0) {
         setState(() => _countdown--);
@@ -64,7 +69,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       return;
     }
     setState(() => _isSendingSms = true);
-    final error = await ref.read(authControllerProvider.notifier).sendSms(phone);
+    final error = await ref
+        .read(authControllerProvider.notifier)
+        .sendSms(phone, nationNum: _selectedCountry.dialCode);
     if (!mounted) return;
     setState(() => _isSendingSms = false);
     if (error == null) {
@@ -81,33 +88,55 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       PetToast.warning(context, '请先输入手机号');
       return;
     }
+    final nationNum = _selectedCountry.dialCode;
     if (_isSmsLogin) {
       final code = _codeCtrl.text.trim();
       if (code.isEmpty) {
         PetToast.warning(context, '请输入验证码');
         return;
       }
-      ref.read(authControllerProvider.notifier).loginWithSms(phone: phone, code: code);
+      ref.read(authControllerProvider.notifier)
+          .loginWithSms(phone: phone, code: code, nationNum: nationNum);
     } else {
       final password = _passwordCtrl.text.trim();
       if (password.isEmpty) {
         PetToast.warning(context, '请输入密码');
         return;
       }
-      ref.read(authControllerProvider.notifier).loginWithPwd(phone: phone, password: password);
+      ref.read(authControllerProvider.notifier)
+          .loginWithPwd(phone: phone, password: password, nationNum: nationNum);
     }
+  }
+
+  // ── 打开国家选择器底部弹窗 ──────────────────────────────────
+  void _showCountryPicker(List<CountryInfo> countries) {
+    _searchCtrl.clear();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _CountryPickerSheet(
+        countries: countries,
+        selected: _selectedCountry,
+        searchCtrl: _searchCtrl,
+        onSelect: (c) {
+          setState(() => _selectedCountry = c);
+          Navigator.pop(context);
+        },
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
+    final countriesAsync = ref.watch(countryListProvider);
 
     ref.listen<AuthState>(authControllerProvider, (_, next) {
       if (next.status == AuthStatus.loggedIn) {
         debugPrint('[LoginPage] 登录成功，等待路由守卫跳转');
       } else if (next.status == AuthStatus.error && next.errorMessage != null) {
         PetToast.error(context, next.errorMessage!);
-        // 密码登录时账号未注册 → 自动引导切换到短信登录
         if (!_isSmsLogin && (next.errorMessage!.contains('未注册') || next.errorMessage!.contains('验证码登录'))) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -150,12 +179,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   style: TextStyle(fontFamily: 'Plus Jakarta Sans',
                       fontSize: 28, fontWeight: FontWeight.w800,
                       color: AppColors.onSurface)),
-              const SizedBox(height: 6),
-              Text('未注册手机号验证后自动创建账号',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 14, color: AppColors.onSurfaceVariant)),
+              const SizedBox(height: 20),
 
-              const SizedBox(height: 30),
 
               // ── 切换登录方式 ──────────────────────────────
               Row(
@@ -181,19 +206,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ),
               const SizedBox(height: 24),
 
-              // ── 手机号输入框 ────────────────────────────────
+              // ── 手机号输入框（带国家选择器前缀）─────────────
               const _FieldLabel('手机号'),
               const SizedBox(height: 8),
               TextField(
                 controller: _phoneCtrl,
-                keyboardType: TextInputType.number,
+                keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.next,
                 autofillHints: const [],
                 style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
                     fontSize: 15, color: AppColors.onSurface),
-                decoration: _inputDecoration(
+                decoration: _inputDecorationWithCountry(
                   hint: '请输入手机号',
-                  prefixIcon: Icons.phone_android_rounded,
+                  country: _selectedCountry,
+                  onCountryTap: () => countriesAsync.whenData(
+                      (list) => _showCountryPicker(list)),
                 ),
               ),
 
@@ -324,6 +351,45 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
+  InputDecoration _inputDecorationWithCountry({
+    required String hint,
+    required CountryInfo country,
+    required VoidCallback onCountryTap,
+  }) =>
+      InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            fontSize: 14, color: AppColors.onSurfaceVariant.withOpacity(0.6)),
+        prefixIcon: GestureDetector(
+          onTap: onCountryTap,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 10, right: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(country.flagEmoji,
+                    style: const TextStyle(fontSize: 20)),
+                Icon(Icons.arrow_drop_down_rounded,
+                    size: 14, color: AppColors.onSurfaceVariant),
+              ],
+            ),
+          ),
+        ),
+        prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+        filled: true,
+        fillColor: AppColors.surfaceContainerLow,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: AppColors.outline.withOpacity(0.2))),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: AppColors.primary, width: 1.5)),
+      );
+
   InputDecoration _inputDecoration({
     required String hint,
     required IconData prefixIcon,
@@ -348,6 +414,159 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide(color: AppColors.primary, width: 1.5)),
       );
+}
+
+// ── 国家选择器底部弹窗 ─────────────────────────────────────────
+class _CountryPickerSheet extends StatefulWidget {
+  final List<CountryInfo> countries;
+  final CountryInfo selected;
+  final TextEditingController searchCtrl;
+  final ValueChanged<CountryInfo> onSelect;
+
+  const _CountryPickerSheet({
+    required this.countries,
+    required this.selected,
+    required this.searchCtrl,
+    required this.onSelect,
+  });
+
+  @override
+  State<_CountryPickerSheet> createState() => _CountryPickerSheetState();
+}
+
+class _CountryPickerSheetState extends State<_CountryPickerSheet> {
+  late List<CountryInfo> _filtered;
+
+  @override
+  void initState() {
+    super.initState();
+    _filtered = widget.countries;
+    widget.searchCtrl.addListener(_onSearch);
+  }
+
+  @override
+  void dispose() {
+    widget.searchCtrl.removeListener(_onSearch);
+    super.dispose();
+  }
+
+  void _onSearch() {
+    final q = widget.searchCtrl.text.trim().toLowerCase();
+    setState(() {
+      _filtered = q.isEmpty
+          ? widget.countries
+          : widget.countries.where((c) =>
+              c.country.toLowerCase().contains(q) ||
+              c.countryEn.toLowerCase().contains(q) ||
+              c.phoneId.contains(q) ||
+              c.countryId.toLowerCase().contains(q)).toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.72,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          // ── 顶部把手 ──
+          const SizedBox(height: 12),
+          Container(
+            width: 36, height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Text('选择国家/地区',
+                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 16, fontWeight: FontWeight.w700,
+                    color: AppColors.onSurface)),
+          ),
+          const SizedBox(height: 12),
+          // ── 搜索框 ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: TextField(
+              controller: widget.searchCtrl,
+              autofocus: true,
+              style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14),
+              decoration: InputDecoration(
+                hintText: '搜索国家名称或区号',
+                hintStyle: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 14, color: Colors.grey.shade400),
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Divider(height: 1),
+          // ── 列表 ──
+          Expanded(
+            child: _filtered.isEmpty
+                ? Center(
+                    child: Text('未找到相关国家',
+                        style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            color: Colors.grey.shade400)),
+                  )
+                : ListView.builder(
+                    itemCount: _filtered.length,
+                    itemBuilder: (ctx, i) {
+                      final c = _filtered[i];
+                      final isSelected = c == widget.selected;
+                      return ListTile(
+                        leading: Text(c.flagEmoji,
+                            style: const TextStyle(fontSize: 22)),
+                        title: Text(c.country,
+                            style: TextStyle(
+                                fontFamily: 'Plus Jakarta Sans',
+                                fontSize: 15,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.onSurface)),
+                        subtitle: Text(c.countryEn,
+                            style: TextStyle(
+                                fontFamily: 'Plus Jakarta Sans',
+                                fontSize: 12,
+                                color: Colors.grey.shade500)),
+                        trailing: Text(
+                          c.phoneId,
+                          style: TextStyle(
+                              fontFamily: 'Plus Jakarta Sans',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : AppColors.onSurfaceVariant),
+                        ),
+                        selected: isSelected,
+                        selectedTileColor: AppColors.primary.withOpacity(0.05),
+                        onTap: () => widget.onSelect(c),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _FieldLabel extends StatelessWidget {

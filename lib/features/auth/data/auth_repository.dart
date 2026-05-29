@@ -43,10 +43,11 @@ class AuthRepository {
 
   AuthRepository(this._client, this._storage);
 
-  // ── 发送短信验证码 ────────────────────────────────────────
-  Future<Result<bool>> sendSms(String phone) async {
+  // ── 发送短信验证码 ────────────────────────────────────
+  Future<Result<bool>> sendSms(String phone, {String nationNum = '86'}) async {
     try {
-      await _client.post('/sdkapi/auth/sms', data: {'phone': phone});
+      await _client.post('/sdkapi/auth/sms',
+          data: {'phone': phone, 'nationNum': nationNum});
       return const Success(true);
     } on DioException catch (e) {
       final ex = e.error is ApiException
@@ -58,20 +59,24 @@ class AuthRepository {
     }
   }
 
-  // ── 短信验证码登录（不存在则自动注册）───────────────────────
+  // ── 短信验证码登录（不存在则自动注册）─────────────────────
   Future<Result<UserInfo>> loginWithSms({
     required String phone,
     required String code,
+    String nationNum = '86',
   }) async {
-    return _doLogin('/sdkapi/auth/login', {'phone': phone, 'code': code});
+    return _doLogin('/sdkapi/auth/login',
+        {'phone': phone, 'code': code, 'nationNum': nationNum});
   }
 
-  // ── 密码登录 ─────────────────────────────────────────────
+  // ── 密码登录 ─────────────────────────────────────────
   Future<Result<UserInfo>> loginWithPwd({
     required String phone,
     required String password,
+    String nationNum = '86',
   }) async {
-    return _doLogin('/sdkapi/auth/login-pwd', {'phone': phone, 'password': password});
+    return _doLogin('/sdkapi/auth/login-pwd',
+        {'phone': phone, 'password': password, 'nationNum': nationNum});
   }
 
   // legacy compatibility

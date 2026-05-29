@@ -97,11 +97,13 @@ class AuthController extends StateNotifier<AuthState> {
   Future<void> loginWithSms({
     required String phone,
     required String code,
+    String nationNum = '86',
   }) async {
-    debugPrint('[AuthCtrl] [状态] → loading (phone=$phone, type=sms)');
+    debugPrint('[AuthCtrl] [状态] → loading (phone=$phone, nationNum=$nationNum, type=sms)');
     state = state.copyWith(status: AuthStatus.loading);
 
-    final result = await _repo.loginWithSms(phone: phone, code: code);
+    final result = await _repo.loginWithSms(
+        phone: phone, code: code, nationNum: nationNum);
 
     result.when(
       success: (user) {
@@ -122,11 +124,13 @@ class AuthController extends StateNotifier<AuthState> {
   Future<void> loginWithPwd({
     required String phone,
     required String password,
+    String nationNum = '86',
   }) async {
-    debugPrint('[AuthCtrl] [状态] → loading (phone=$phone, type=pwd)');
+    debugPrint('[AuthCtrl] [状态] → loading (phone=$phone, nationNum=$nationNum, type=pwd)');
     state = state.copyWith(status: AuthStatus.loading);
 
-    final result = await _repo.loginWithPwd(phone: phone, password: password);
+    final result = await _repo.loginWithPwd(
+        phone: phone, password: password, nationNum: nationNum);
 
     result.when(
       success: (user) {
@@ -144,8 +148,8 @@ class AuthController extends StateNotifier<AuthState> {
     );
   }
 
-  Future<String?> sendSms(String phone) async {
-    final result = await _repo.sendSms(phone);
+  Future<String?> sendSms(String phone, {String nationNum = '86'}) async {
+    final result = await _repo.sendSms(phone, nationNum: nationNum);
     return result.when(
       success: (_) => null,
       failure: (err) => err.userMessage,
