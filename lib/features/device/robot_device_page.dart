@@ -50,6 +50,13 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     final base = _moveSpeed.toInt();
     final scaledM0 = (m0Speed * base ~/ 100).clamp(0, 100);
     final scaledM1 = (m1Speed * base ~/ 100).clamp(0, 100);
+
+    // 可读日志
+    final m0DirStr = m0Dir == 1 ? '正转↑' : '反转↓';
+    final m1DirStr = m1Dir == 1 ? '正转↑' : '反转↓';
+    debugPrint('[遥控] 左轮(motor_0): $m0DirStr speed=$scaledM0 | '
+        '右轮(motor_1): $m1DirStr speed=$scaledM1 | base=$base%');
+
     ref.read(deviceRepositoryProvider).motorControl(
       mac: widget.mac,
       motor0Direction: m0Dir,
@@ -843,7 +850,7 @@ class _JoystickPadState extends State<_JoystickPad> {
 
   void _triggerControl() {
     if (_throttle?.isActive == true) return;
-    _throttle = Timer(const Duration(milliseconds: 100), () {
+    _throttle = Timer(const Duration(milliseconds: 1000), () {
       if (!mounted || !_active) return;
       _computeAndSend(_knob);
     });
