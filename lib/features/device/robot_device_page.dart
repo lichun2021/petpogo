@@ -417,38 +417,6 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             ),
           ]),
         ),
-
-        const SizedBox(height: 16),
-
-        // 快捷按键行
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12)],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _QuickBtn(icon: Icons.arrow_upward_rounded, label: '前进',
-                  color: AppColors.secondary,
-                  onTap: () => _sendMotorControl(1, 100, 1, 100)),
-              _QuickBtn(icon: Icons.rotate_left_rounded, label: '左转',
-                  color: AppColors.primary,
-                  onTap: () => _sendMotorControl(1, 0, 1, 100)),
-              _QuickBtn(icon: Icons.stop_rounded, label: '停止',
-                  color: AppColors.error,
-                  onTap: () => _sendMotorControl(0, 0, 0, 0)),
-              _QuickBtn(icon: Icons.rotate_right_rounded, label: '右转',
-                  color: AppColors.primary,
-                  onTap: () => _sendMotorControl(1, 100, 1, 0)),
-              _QuickBtn(icon: Icons.arrow_downward_rounded, label: '后退',
-                  color: AppColors.tertiary,
-                  onTap: () => _sendMotorControl(0, 100, 0, 100)),
-            ],
-          ),
-        ),
       ]),
     );
   }
