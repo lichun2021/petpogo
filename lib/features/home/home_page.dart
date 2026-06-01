@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../app.dart' show AppL10nX;
 import '../device/data/repository/device_repository.dart';
 import '../device/device_list_page.dart';
 import '../device/device_detail_page.dart';
+import '../device/robot_device_page.dart';
 import '../bind_device/select_device_page.dart';
 import 'widgets/ai_translate_panel.dart';
 import 'widgets/ai_image_panel.dart';
@@ -179,8 +179,14 @@ class _HomeDeviceCard extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
+        final key  = (device.productKey as String? ?? '').toLowerCase();
+        final name = (device.displayName as String? ?? '').toLowerCase();
+        final isRobot = key.contains('robot') || name.contains('机器人') ||
+            name.contains('robot') || key.contains('bot') || name.contains('bot');
         Navigator.push(context, MaterialPageRoute(
-          builder: (_) => DeviceDetailPage(mac: device.mac, name: device.displayName),
+          builder: (_) => isRobot
+              ? RobotDevicePage(mac: device.mac, name: device.displayName)
+              : DeviceDetailPage(mac: device.mac, name: device.displayName),
         ));
       },
       child: Container(

@@ -6,6 +6,7 @@ import '../../shared/theme/app_colors.dart';
 import '../device/data/repository/device_repository.dart';
 import '../device/data/models/device_model.dart';
 import '../device/device_detail_page.dart';
+import '../device/robot_device_page.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
 import '../pet/bind_pet_sheet.dart';
@@ -168,8 +169,11 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
     return GestureDetector(
       onTap: () async {
         HapticFeedback.selectionClick();
+        final deviceType = _detectType(device);
         await Navigator.push(context, MaterialPageRoute(
-          builder: (_) => DeviceDetailPage(mac: device.mac, name: device.displayName),
+          builder: (_) => deviceType == _DeviceType.robot
+              ? RobotDevicePage(mac: device.mac, name: device.displayName)
+              : DeviceDetailPage(mac: device.mac, name: device.displayName),
         ));
         // 返回后刷新宠物信息
         _loadPet();
@@ -270,8 +274,11 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
     return GestureDetector(
       onTap: () async {
         HapticFeedback.selectionClick();
+        final deviceType = _detectType(widget.device);
         await Navigator.push(context, MaterialPageRoute(
-          builder: (_) => DeviceDetailPage(mac: widget.device.mac, name: widget.device.displayName),
+          builder: (_) => deviceType == _DeviceType.robot
+              ? RobotDevicePage(mac: widget.device.mac, name: widget.device.displayName)
+              : DeviceDetailPage(mac: widget.device.mac, name: widget.device.displayName),
         ));
         _loadPet();
       },

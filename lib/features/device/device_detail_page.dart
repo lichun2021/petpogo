@@ -12,6 +12,8 @@ import '../pet/pet_location_page.dart';
 import '../pet/pet_track_page.dart';
 import '../pet/bind_pet_sheet.dart';
 import 'safety_scene_page.dart';
+import 'robot_device_page.dart';
+import '../bind_device/select_device_page.dart';
 
 // ── 设备详情页 ────────────────────────────────────────────
 class DeviceDetailPage extends ConsumerStatefulWidget {
@@ -123,13 +125,78 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         color: AppColors.onSurface,
         onPressed: () => Navigator.pop(context),
       ),
-      title: Text(_detail?.name ?? widget.name, overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15, fontWeight: FontWeight.w700)),
+      title: GestureDetector(
+        onTap: () => _showDeviceSwitcher(context),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                _detail?.displayName ?? widget.name,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 2),
+            const Icon(Icons.keyboard_arrow_down_rounded,
+                size: 20, color: AppColors.onSurface),
+          ],
+        ),
+      ),
       centerTitle: true,
       actions: [
-        IconButton(icon: const Icon(Icons.refresh_rounded), color: AppColors.onSurfaceVariant, onPressed: _loadAll),
+        IconButton(
+          icon: const Icon(Icons.add_circle_outline_rounded),
+          color: AppColors.primary,
+          tooltip: '添加设备',
+          onPressed: () {
+            Navigator.push(context, MaterialPageRoute(
+              builder: (_) => const SelectDevicePage(),
+            ));
+          },
+        ),
       ],
     );
+  }
+
+  // ── 设备切换弹窗 ──────────────────────────────────────
+  void _showDeviceSwitcher(BuildContext context) {
+    final devices = ref.read(deviceListProvider).devices;
+    if (devices.isEmpty) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _DeviceSwitcherSheet(
+        devices: devices,
+        currentMac: widget.mac,
+        onSelect: (device) {
+          Navigator.pop(context);
+          if (device.mac == widget.mac) return;
+          final isRobot = _isRobotDevice(device);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => isRobot
+                  ? RobotDevicePage(mac: device.mac, name: device.displayName)
+                  : DeviceDetailPage(mac: device.mac, name: device.displayName),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  bool _isRobotDevice(DeviceModel d) {
+    final key  = d.productKey.toLowerCase();
+    final name = d.displayName.toLowerCase();
+    return key.contains('robot') || name.contains('机器人') ||
+        name.contains('robot') || key.contains('bot') || name.contains('bot');
   }
 
   Widget _buildStatusHero() {
@@ -382,7 +449,6 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
 
   // ── 今日安全概览 ────────────────────────────────────────
   Widget _buildSafetyOverview(BuildContext context) {
-    final hasFence = true; // TODO: 从围栏数据判断
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         const Expanded(child: Text('今日安全概览',
@@ -432,11 +498,10 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                   fontSize: 12, color: AppColors.onSurfaceVariant)),
             ])),
             Container(width: 1, height: 36, color: AppColors.outlineVariant),
-            Expanded(child: Column(children: [
+            Expanded(child: Column(children: const [
               Text('0', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 28, fontWeight: FontWeight.w900,
-                  color: hasFence ? AppColors.onSurface : AppColors.error)),
-              const Text('越界提醒', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.onSurface)),
+              Text('越界提醒', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
                   fontSize: 12, color: AppColors.onSurfaceVariant)),
             ])),
           ]),
@@ -753,26 +818,6 @@ class _SmallAction extends StatelessWidget {
   }
 }
 
-// ── 信息格 ─────────────────────────────────────────────────
-class _InfoCell extends StatelessWidget {
-  final String label, value;
-  const _InfoCell({required this.label, required this.value});
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    decoration: BoxDecoration(color: AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.surfaceContainerHigh)),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-      Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 10,
-          fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant, letterSpacing: 0.5)),
-      const SizedBox(height: 4),
-      Text(value, style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-          fontWeight: FontWeight.w600, color: AppColors.onSurface), overflow: TextOverflow.ellipsis),
-    ]),
-  );
-}
-
 // ── 操作大按钮 ─────────────────────────────────────────────
 class _ActionButton extends StatelessWidget {
   final IconData icon; final String label; final VoidCallback onTap;
@@ -794,60 +839,6 @@ class _ActionButton extends StatelessWidget {
           const SizedBox(width: 8),
           Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
               fontWeight: FontWeight.w700, color: c)),
-        ]),
-      ),
-    );
-  }
-}
-
-// ── 控制芯片按钮 ──────────────────────────────────────────
-class _ControlChip extends StatelessWidget {
-  final IconData icon;
-  final String   label;
-  final bool     active;
-  final bool     loading;
-  final Color    activeColor;
-  final VoidCallback onTap;
-
-  const _ControlChip({
-    required this.icon,
-    required this.label,
-    required this.active,
-    required this.loading,
-    required this.activeColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = active
-        ? activeColor.withOpacity(0.15)
-        : AppColors.surfaceContainerLow;
-    final fg = active ? activeColor : AppColors.onSurfaceVariant;
-
-    return GestureDetector(
-      onTap: loading ? null : onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: active ? activeColor.withOpacity(0.5) : AppColors.surfaceContainerHigh,
-            width: 1.5,
-          ),
-        ),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          loading
-              ? SizedBox(width: 20, height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: fg))
-              : Icon(icon, color: fg, size: 24),
-          const SizedBox(height: 6),
-          Text(label, style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
-            fontSize: 12, fontWeight: FontWeight.w700, color: fg,
-          )),
         ]),
       ),
     );
@@ -948,6 +939,131 @@ class _InteractTile extends StatelessWidget {
                   color: dimmed ? Colors.grey : AppColors.onSurface))),
         ]),
       ),
+    );
+  }
+}
+
+// ── 设备切换底部弹窗（项圈详情页使用）────────────────────────
+class _DeviceSwitcherSheet extends StatelessWidget {
+  final List<DeviceModel> devices;
+  final String currentMac;
+  final ValueChanged<DeviceModel> onSelect;
+
+  const _DeviceSwitcherSheet({
+    required this.devices,
+    required this.currentMac,
+    required this.onSelect,
+  });
+
+  bool _isRobot(DeviceModel d) {
+    final key  = d.productKey.toLowerCase();
+    final name = d.displayName.toLowerCase();
+    return key.contains('robot') || name.contains('机器人') ||
+        name.contains('robot') || key.contains('bot') || name.contains('bot');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+          20, 12, 20, 20 + MediaQuery.of(context).padding.bottom),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        // 拖拽指示条
+        Container(
+          width: 40, height: 4,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade300,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text('切换设备',
+              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1A1A2E))),
+        ),
+        const SizedBox(height: 16),
+        ...devices.map((d) {
+          final isSelected = d.mac == currentMac;
+          final isRobot    = _isRobot(d);
+          return GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              onSelect(d);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.primary.withOpacity(0.07)
+                    : AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected
+                      ? AppColors.primary.withOpacity(0.4)
+                      : AppColors.outlineVariant,
+                  width: 1.5,
+                ),
+              ),
+              child: Row(children: [
+                // 设备图标
+                Container(
+                  width: 44, height: 44,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: isRobot
+                          ? [const Color(0xFF00897B), const Color(0xFF006760)]
+                          : [const Color(0xFFff784e), const Color(0xFFa83206)],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    isRobot ? Icons.smart_toy_rounded : Icons.pets_rounded,
+                    color: Colors.white, size: 22,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(d.displayName,
+                      style: TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 14, fontWeight: FontWeight.w700,
+                        color: isSelected ? AppColors.primary : AppColors.onSurface,
+                      )),
+                  const SizedBox(height: 2),
+                  Row(children: [
+                    Text(isRobot ? '智能宠物机器人' : '智能项圈',
+                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 11, color: AppColors.onSurfaceVariant)),
+                    const SizedBox(width: 8),
+                    Container(width: 6, height: 6,
+                        decoration: BoxDecoration(
+                          color: d.isOnline
+                              ? const Color(0xFF4ADE80)
+                              : AppColors.onSurfaceVariant,
+                          shape: BoxShape.circle,
+                        )),
+                    const SizedBox(width: 4),
+                    Text(d.isOnline ? '在线' : '离线',
+                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 11, color: AppColors.onSurfaceVariant)),
+                  ]),
+                ])),
+                if (isSelected)
+                  const Icon(Icons.check_circle_rounded,
+                      color: AppColors.primary, size: 20),
+              ]),
+            ),
+          );
+        }),
+      ]),
     );
   }
 }

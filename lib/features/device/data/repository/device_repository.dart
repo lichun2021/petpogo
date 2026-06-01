@@ -74,10 +74,26 @@ class DeviceRepository {
   /// POST /device/shadow/update — 设备影子控制
   /// [mac]  设备 MAC
   /// [data] 键值对，如 {'led_r': 'true'} 或 {'ring_tone': '1'}
-  /// data 字段会序列化成 JSON 字符串传给网关
   Future<void> shadowUpdate({required String mac, required Map<String, String> data}) async {
     final jsonData = '{${data.entries.map((e) => '"${e.key}":"${e.value}"').join(",")}}';
     await _peer.post('/device/shadow/update', params: {'mac': mac, 'data': jsonData});
+  }
+
+  /// POST /device/shadow/update — 机器人电机控制 (PeerApiSpeed 接口)
+  /// motor_0 = 左轮，motor_1 = 右轮
+  /// direction: 1=正转(前进方向), 0=反转(后退方向)
+  /// speed: 0~100 (速度百分比)
+  Future<void> motorControl({
+    required String mac,
+    required int motor0Direction,
+    required int motor0Speed,
+    required int motor1Direction,
+    required int motor1Speed,
+  }) async {
+    final data =
+        '{"motor_0":{"direction":$motor0Direction,"speed":$motor0Speed},'
+        '"motor_1":{"direction":$motor1Direction,"speed":$motor1Speed}}';
+    await _peer.post('/device/shadow/update', params: {'mac': mac, 'data': data});
   }
 }
 
