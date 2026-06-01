@@ -911,8 +911,10 @@ class _JoystickPadState extends State<_JoystickPad> {
               )],
             ),
           ),
-          // 十字引导线
-          CustomPaint(size: Size(diameter, diameter), painter: _CrosshairPainter()),
+          // 爬印中心图标
+          Icon(Icons.pets_rounded,
+              size: diameter * 0.38,
+              color: AppColors.primary.withOpacity(0.12)),
           // 方向图标
           Positioned(top: 10, child: Icon(Icons.keyboard_arrow_up_rounded,
               size: 22, color: AppColors.primary.withOpacity(0.35))),
@@ -944,8 +946,8 @@ class _JoystickPadState extends State<_JoystickPad> {
                   offset: const Offset(0, 4),
                 )],
               ),
-              child: Icon(Icons.gamepad_rounded,
-                  color: AppColors.onPrimary, size: _active ? 26 : 22),
+              child: Icon(Icons.pets_rounded,
+                  color: AppColors.onPrimary, size: _active ? 24 : 20),
             ),
           ),
         ]),
@@ -954,23 +956,7 @@ class _JoystickPadState extends State<_JoystickPad> {
   }
 }
 
-// ── 摇杆十字参考线 ────────────────────────────────────────
-class _CrosshairPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppColors.outlineVariant
-      ..strokeWidth = 1.2
-      ..style = PaintingStyle.stroke;
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    canvas.drawLine(Offset(cx, 0), Offset(cx, size.height), paint);
-    canvas.drawLine(Offset(0, cy), Offset(size.width, cy), paint);
-  }
 
-  @override
-  bool shouldRepaint(_CrosshairPainter _) => false;
-}
 
 // ── 快捷操作按钮 ──────────────────────────────────────────
 class _QuickBtn extends StatelessWidget {
