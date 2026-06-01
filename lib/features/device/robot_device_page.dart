@@ -104,7 +104,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            physics: const BouncingScrollPhysics(),
+            physics: const NeverScrollableScrollPhysics(),
             children: [
               _buildRemoteControl(),
               _buildPetPlay(),
