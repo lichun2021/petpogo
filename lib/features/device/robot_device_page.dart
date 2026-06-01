@@ -51,11 +51,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     final scaledM0 = (m0Speed * base ~/ 100).clamp(0, 100);
     final scaledM1 = (m1Speed * base ~/ 100).clamp(0, 100);
 
-    // 可读日志
-    final m0DirStr = m0Dir == 1 ? '正转↑' : '反转↓';
-    final m1DirStr = m1Dir == 1 ? '正转↑' : '反转↓';
-    debugPrint('[遥控] 左轮(motor_0): $m0DirStr speed=$scaledM0 | '
-        '右轮(motor_1): $m1DirStr speed=$scaledM1 | base=$base%');
+    // 可读日志（direction: 1=正转↑, 2=反转↓, 0=停止）
+    String dirStr(int d) => d == 1 ? '正转↑' : d == 2 ? '反转↓' : '停止■';
+    debugPrint('[遥控] 左轮(motor_0): ${dirStr(m0Dir)} speed=$scaledM0 | '
+        '右轮(motor_1): ${dirStr(m1Dir)} speed=$scaledM1 | base=$base%');
 
     ref.read(deviceRepositoryProvider).motorControl(
       mac: widget.mac,
@@ -871,8 +870,8 @@ class _JoystickPadState extends State<_JoystickPad> {
     final left  = (dy + dx).clamp(-1.0, 1.0);
     final right = (dy - dx).clamp(-1.0, 1.0);
     widget.onControl(
-      left  >= 0 ? 1 : 0, (left.abs()  * 100).round().clamp(0, 100),
-      right >= 0 ? 1 : 0, (right.abs() * 100).round().clamp(0, 100),
+      left  >= 0 ? 1 : 2, (left.abs()  * 100).round().clamp(0, 100),
+      right >= 0 ? 1 : 2, (right.abs() * 100).round().clamp(0, 100),
     );
   }
 
@@ -912,9 +911,9 @@ class _JoystickPadState extends State<_JoystickPad> {
             ),
           ),
           // 爬印中心图标
-          Icon(Icons.pets_rounded,
-              size: diameter * 0.38,
-              color: AppColors.primary.withOpacity(0.12)),
+          // Icon(Icons.pets_rounded,
+          //     size: diameter * 0.38,
+          //     color: AppColors.primary.withOpacity(0.12)),
           // 方向图标
           Positioned(top: 10, child: Icon(Icons.keyboard_arrow_up_rounded,
               size: 22, color: AppColors.primary.withOpacity(0.35))),
