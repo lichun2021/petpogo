@@ -324,100 +324,139 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
 
   // ── 遥控标签：可滑动摇杆 ──────────────────────────────
   Widget _buildRemoteControl() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(20),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       child: Column(children: [
 
-        // 摇杆区域
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [BoxShadow(
-              color: AppColors.cardShadow,
-              blurRadius: 16, offset: const Offset(0, 4),
-            )],
-          ),
-          child: Column(children: [
-            const Text('摇杆控制',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 14, fontWeight: FontWeight.w700,
-                    color: AppColors.onSurface)),
-            const SizedBox(height: 4),
-            const Text('滑动摇杆遥控机器人移动，松手自动停止',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 11, color: AppColors.onSurfaceVariant)),
-            const SizedBox(height: 24),
-            Center(
-              child: _JoystickPad(
-                onControl: _sendMotorControl,
-                padRadius: 110,
-              ),
+        // 摇杆卡片
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [BoxShadow(
+                color: AppColors.cardShadow,
+                blurRadius: 16, offset: const Offset(0, 4),
+              )],
             ),
-          ]),
-        ),
-
-        const SizedBox(height: 16),
-
-        // 速度滑块
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12)],
+            child: Column(children: [
+              // 标题行
+              Row(children: [
+                const Text('摇杆控制',
+                    style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 14, fontWeight: FontWeight.w700,
+                        color: AppColors.onSurface)),
+                const SizedBox(width: 6),
+                Text('速度 ${_moveSpeed.toInt()}%',
+                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 12, color: AppColors.onSurfaceVariant)),
+                const Spacer(),
+                // ⚙️ 速度设置
+                GestureDetector(
+                  onTap: () => _showSpeedSheet(context),
+                  child: Container(
+                    width: 36, height: 36,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.tune_rounded,
+                        size: 18, color: AppColors.primary),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 4),
+              const Text('拖动方向盘控制机器人移动，松手自动停止',
+                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 11, color: AppColors.onSurfaceVariant)),
+              const SizedBox(height: 20),
+              Expanded(
+                child: Center(
+                  child: _JoystickPad(
+                    onControl: _sendMotorControl,
+                    padRadius: 115,
+                  ),
+                ),
+              ),
+            ]),
           ),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        ),
+      ]),
+    );
+  }
+
+  // 速度设置弹窗
+  void _showSpeedSheet(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      backgroundColor: Colors.transparent,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx2, setLocal) => Container(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+          decoration: const BoxDecoration(
+            color: AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(2),
+                )),
+            const SizedBox(height: 20),
             Row(children: [
-              const Icon(Icons.speed_rounded, size: 18, color: AppColors.primary),
-              const SizedBox(width: 8),
+              const Icon(Icons.speed_rounded, size: 20, color: AppColors.primary),
+              const SizedBox(width: 10),
               const Text('移动速度',
                   style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 14, fontWeight: FontWeight.w700,
+                      fontSize: 16, fontWeight: FontWeight.w800,
                       color: AppColors.onSurface)),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.primaryContainer.withOpacity(0.25),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text('${_moveSpeed.toInt()}%',
                     style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 13, fontWeight: FontWeight.w700,
+                        fontSize: 14, fontWeight: FontWeight.w800,
                         color: AppColors.primary)),
               ),
             ]),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             SliderTheme(
-              data: SliderTheme.of(context).copyWith(
+              data: SliderTheme.of(ctx2).copyWith(
                 activeTrackColor: AppColors.primary,
                 inactiveTrackColor: AppColors.surfaceContainerHigh,
                 thumbColor: AppColors.primary,
                 overlayColor: AppColors.primaryGlow,
-                trackHeight: 4,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 9),
+                trackHeight: 5,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 11),
               ),
               child: Slider(
                 value: _moveSpeed, min: 10, max: 100,
                 divisions: 9,
-                onChanged: (v) => setState(() => _moveSpeed = v),
+                onChanged: (v) {
+                  setLocal(() {});
+                  setState(() => _moveSpeed = v);
+                },
               ),
             ),
             const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('慢速', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 10, color: AppColors.onSurfaceVariant)),
-                Text('快速', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 10, color: AppColors.onSurfaceVariant)),
+                Text('慢速 10%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 12, color: AppColors.onSurfaceVariant)),
+                Text('快速 100%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 12, color: AppColors.onSurfaceVariant)),
               ],
             ),
+            const SizedBox(height: 8),
           ]),
         ),
-      ]),
+      ),
     );
   }
 
@@ -796,18 +835,6 @@ class _JoystickPadState extends State<_JoystickPad> {
     super.dispose();
   }
 
-  void _onPanUpdate(DragUpdateDetails d) {
-    final center = Offset(widget.padRadius, widget.padRadius);
-    var delta = d.localPosition - center;
-    final dist = delta.distance;
-    if (dist > _maxDist) delta = delta / dist * _maxDist;
-    setState(() { _knob = delta; _active = true; });
-    _triggerControl();
-  }
-
-  void _onPanEnd(DragEndDetails _) => _stop();
-  void _onPanCancel() => _stop();
-
   void _stop() {
     _throttle?.cancel();
     setState(() { _knob = Offset.zero; _active = false; });
@@ -838,10 +865,18 @@ class _JoystickPadState extends State<_JoystickPad> {
     final r = widget.padRadius;
     final diameter = r * 2;
 
-    return GestureDetector(
-      onPanUpdate: _onPanUpdate,
-      onPanEnd: _onPanEnd,
-      onPanCancel: _onPanCancel,
+    return Listener(
+      onPointerDown: (_) {},
+      onPointerMove: (e) {
+        final center = Offset(widget.padRadius, widget.padRadius);
+        var delta = e.localPosition - center;
+        final dist = delta.distance;
+        if (dist > _maxDist) delta = delta / dist * _maxDist;
+        setState(() { _knob = delta; _active = true; });
+        _triggerControl();
+      },
+      onPointerUp: (_) => _stop(),
+      onPointerCancel: (_) => _stop(),
       child: SizedBox(
         width: diameter, height: diameter,
         child: Stack(alignment: Alignment.center, children: [
