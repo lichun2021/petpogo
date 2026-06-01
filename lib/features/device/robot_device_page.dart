@@ -830,30 +830,39 @@ class _JoystickPad extends StatefulWidget {
 class _JoystickPadState extends State<_JoystickPad> {
   Offset _knob = Offset.zero;
   bool _active = false;
-  Timer? _throttle;
+  Timer? _periodicTimer;
 
   static const double _thumbR = 28.0;
+  // 发送间隔（按住期间每隔此时间发一次指令）
+  static const Duration _sendInterval = Duration(milliseconds: 300);
 
   double get _maxDist => widget.padRadius - _thumbR;
 
   @override
   void dispose() {
-    _throttle?.cancel();
+    _periodicTimer?.cancel();
     super.dispose();
   }
 
-  void _stop() {
-    _throttle?.cancel();
-    setState(() { _knob = Offset.zero; _active = false; });
-    widget.onControl(0, 0, 0, 0);
-  }
-
-  void _triggerControl() {
-    if (_throttle?.isActive == true) return;
-    _throttle = Timer(const Duration(milliseconds: 1000), () {
-      if (!mounted || !_active) return;
+  void _startTimer() {
+    if (_periodicTimer?.isActive == true) return;
+    // 立即发送第一帧
+    _computeAndSend(_knob);
+    // 之后每隔 _sendInterval 发一次
+    _periodicTimer = Timer.periodic(_sendInterval, (_) {
+      if (!mounted || !_active) {
+        _periodicTimer?.cancel();
+        return;
+      }
       _computeAndSend(_knob);
     });
+  }
+
+  void _stop() {
+    _periodicTimer?.cancel();
+    _periodicTimer = null;
+    setState(() { _knob = Offset.zero; _active = false; });
+    widget.onControl(0, 0, 0, 0);
   }
 
   void _computeAndSend(Offset knob) {
@@ -880,7 +889,7 @@ class _JoystickPadState extends State<_JoystickPad> {
         final dist = delta.distance;
         if (dist > _maxDist) delta = delta / dist * _maxDist;
         setState(() { _knob = delta; _active = true; });
-        _triggerControl();
+        _startTimer(); // 只在 Timer 未启动时才启动，不受 move 事件频率影响
       },
       onPointerUp: (_) => _stop(),
       onPointerCancel: (_) => _stop(),
