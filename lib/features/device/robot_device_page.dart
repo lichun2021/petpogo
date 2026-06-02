@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../shell/main_shell.dart' show hideBottomNavProvider;
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_toast.dart';
 import '../auth/controller/auth_controller.dart';
@@ -30,6 +32,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   int _activeTab = 0;
 
   double _moveSpeed = 50; // 10~100
+  double _deviceVolume = 100; // 设备音量 0~100
   bool _cameraOn = true;
 
   // ── Agora 视频推流状态 ──────────────────────────────────
@@ -41,6 +44,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   bool   _micOn         = false;
   String? _agoraError;
   double _kbps         = 0;
+  bool   _videoFrozen  = false; // 视频网络拥塑冻结状态
   Timer? _statsTimer;
 
   @override
@@ -83,30 +87,51 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
 
       // 3. 创建引擎
       _engine = createAgoraRtcEngine();
+      debugPrint('[Agora] 开始 initialize, appId=${info.appId}');
       await _engine!.initialize(RtcEngineContext(
         appId: info.appId,
         channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
+        // areaCode 不设置，使用 SDK 默认（全球）
       ));
+      debugPrint('[Agora] initialize 成功');
 
-      // 4. Android 设置 JPEG 解码（ESP32 使用 VIDEO_DATA_TYPE_GENERIC_JPEG）
+      // 4. ⭐ 关键: 设置 JPEG 解码（仅 Android 有效）+ 低延迟优化
       if (Platform.isAndroid) {
-        await _engine!.setParameters('{"engine.video.codec_type": "20"}');
+        try {
+          await _engine!.setParameters('{"engine.video.codec_type": "20"}');
+          // 降低播放缓冲区，减少卡顿等待时间
+          await _engine!.setParameters('{"rtc.video.playout_delay_min": 0}');
+          await _engine!.setParameters('{"rtc.video.playout_delay_max": 300}');
+          debugPrint('[Agora] setParameters JPEG 成功');
+        } catch (e) {
+          debugPrint('[Agora] setParameters JPEG 失败（可忽略）: $e');
+          // 不阻断主流程，继续尝试 joinChannel
+        }
       }
 
       // 5. 启用音视频 + IoT 音频模式
+      debugPrint('[Agora] enableVideo...');
       await _engine!.enableVideo();
+      debugPrint('[Agora] enableAudio...');
       await _engine!.enableAudio();
+      debugPrint('[Agora] setAudioProfile...');
       await _engine!.setAudioProfile(
         profile: AudioProfileType.audioProfileDefault,
         scenario: AudioScenarioType.audioScenarioChatroom,
       );
-      await _engine!.setEnableSpeakerphone(true);
+      debugPrint('[Agora] setEnableSpeakerphone...');
+      // setEnableSpeakerphone 已移至 onJoinChannelSuccess，此处跳过
+      debugPrint('[Agora] enableLocalVideo(false)...');
       await _engine!.enableLocalVideo(false);  // APP 不发送本地摄像头
 
       // 6. 注册事件
+      debugPrint('[Agora] registerEventHandler...');
       _engine!.registerEventHandler(RtcEngineEventHandler(
         onJoinChannelSuccess: (_, __) {
           if (mounted) setState(() { _agoraJoined = true; _agoraLoading = false; });
+          // 加入频道后再开启扬声器（防止提前调用报 -3）
+          _engine?.setEnableSpeakerphone(true);
+          debugPrint('[Agora] 加入频道成功，已开启扬声器');
         },
         onUserJoined: (_, uid, __) {
           if (mounted) setState(() => _remoteUid = uid);
@@ -131,10 +156,28 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           // Token 即将过期，重新获取
           _startAgora();
         },
+        onConnectionStateChanged: (_, state, reason) {
+          debugPrint('[Agora] 连接状态: $state reason=$reason');
+        },
+        onRemoteVideoStateChanged: (_, uid, state, reason, __) {
+          debugPrint('[Agora] 远端视频状态 uid=$uid state=$state reason=$reason');
+          final frozen = state == RemoteVideoState.remoteVideoStateFrozen;
+          if (mounted && frozen != _videoFrozen) {
+            setState(() => _videoFrozen = frozen);
+          }
+        },
       ));
 
       // 7. 加入频道（观众模式）
-      await _engine!.setClientRole(role: ClientRoleType.clientRoleAudience);
+      debugPrint('[Agora] setClientRole Broadcaster (默认静音)...');
+      // ⭐ 必须用 Broadcaster，ESP32 的 RTSA Lite 只在 onUserJoined(10001) 时才开始推流
+      // Audience 模式不会触发对方的 onUserJoined，ESP32 感知不到 App 进来
+      await _engine!.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
+      // ⭐ enableLocalAudio(true) + mute = 音频模块保持活跃（Agora 识别为真正 Broadcaster）但不发声
+      // 注意：enableLocalAudio(false) + publishMicrophoneTrack:true 是矛盾的，会导致 ESP32 收不到通知
+      await _engine!.enableLocalAudio(true);
+      await _engine!.muteLocalAudioStream(true);  // 静音，用户按对讲时再解除
+      debugPrint('[Agora] joinChannel...');
       await _engine!.joinChannel(
         token: info.token,
         channelId: info.channelName,
@@ -143,11 +186,12 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           autoSubscribeVideo: true,
           autoSubscribeAudio: true,
           publishCameraTrack: false,
-          publishMicrophoneTrack: false,
+          publishMicrophoneTrack: true,  // Broadcaster 模式需 true（实际靠 muteLocalAudioStream 控制）
         ),
       );
-    } catch (e) {
-      debugPrint('[Agora] 初始化失败: $e');
+      debugPrint('[Agora] joinChannel 调用完成（等待 onJoinChannelSuccess）');
+    } catch (e, st) {
+      debugPrint('[Agora] 初始化失败: $e\n$st');
       if (mounted) setState(() { _agoraLoading = false; _agoraError = e.toString(); });
     }
   }
@@ -161,12 +205,11 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     _remoteUid = null;
   }
 
-  /// 对讲开关
+  /// 对讲开关（Broadcaster 模式下直接 mute/unmute，无需切换角色）
   Future<void> _toggleMic() async {
     if (_engine == null) return;
     final next = !_micOn;
     if (next) {
-      await _engine!.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
       await _engine!.enableLocalAudio(true);
       await _engine!.muteLocalAudioStream(false);
     } else {
@@ -326,7 +369,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         ),
       ),
       child: Container(
-        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        margin: const EdgeInsets.fromLTRB(12, 8, 12, 12),
         decoration: BoxDecoration(
           color: AppColors.inverseSurface,
           borderRadius: BorderRadius.circular(16),
@@ -435,6 +478,30 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 ),
               ),
 
+            // 视频冻结提示层（网络拥塑时）
+            if (_videoFrozen && _remoteUid != null)
+              Positioned(
+                bottom: 8, left: 0, right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(width: 12, height: 12,
+                          child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white70)),
+                        SizedBox(width: 8),
+                        Text('网络恢复中...', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
             // 速率标签
             Positioned(
               top: 10, left: 10,
@@ -511,6 +578,43 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                         fontSize: 9, color: Colors.white),
                   ),
                 ]),
+              ),
+            ),
+
+            // 全屏按鈕（右下）
+            Positioned(
+              bottom: 10, right: 10,
+              child: GestureDetector(
+                onTap: () {
+                  if (_engine == null || _agoraInfo == null) return;
+                  // 全屏前隐藏底部导航栏
+                  ref.read(hideBottomNavProvider.notifier).state = true;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) =>
+                      _FullscreenVideoPage(
+                        engine:      _engine!,
+                        channelName: _agoraInfo!.channelName,
+                        remoteUid:   _remoteUid,
+                        onControl:   _sendMotorControl,
+                        micOn:       _micOn,
+                        onToggleMic: _toggleMic,
+                      ),
+                    ),
+                  ).then((_) {
+                    // 退出全屏后恢复底部导航栏
+                    ref.read(hideBottomNavProvider.notifier).state = false;
+                  });
+                },
+                child: Container(
+                  width: 32, height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.black45,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.fullscreen_rounded,
+                      color: Colors.white, size: 20),
+                ),
               ),
             ),
           ]),
@@ -598,14 +702,14 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             child: Column(children: [
               // 标题行
               Row(children: [
-                const Text('摇杆控制',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 14, fontWeight: FontWeight.w700,
-                        color: AppColors.onSurface)),
-                const SizedBox(width: 6),
-                Text('速度 ${_moveSpeed.toInt()}%',
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 12, color: AppColors.onSurfaceVariant)),
+                // const Text('摇杆控制',
+                //     style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                //         fontSize: 14, fontWeight: FontWeight.w700,
+                //         color: AppColors.onSurface)),
+                // const SizedBox(width: 6),
+                // Text('速度 ${_moveSpeed.toInt()}%',
+                //     style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                //         fontSize: 12, color: AppColors.onSurfaceVariant)),
                 const Spacer(),
                 // ⚙️ 速度设置
                 GestureDetector(
@@ -705,6 +809,65 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 Text('慢速 10%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
                     fontSize: 12, color: AppColors.onSurfaceVariant)),
                 Text('快速 100%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 12, color: AppColors.onSurfaceVariant)),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // ── 设备音量 ────────────────────────────────
+            const Divider(height: 28),
+            Row(children: [
+              const Icon(Icons.volume_up_rounded, size: 20, color: AppColors.primary),
+              const SizedBox(width: 10),
+              const Text('设备音量',
+                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 16, fontWeight: FontWeight.w800,
+                      color: AppColors.onSurface)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryContainer.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text('${_deviceVolume.toInt()}%',
+                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 14, fontWeight: FontWeight.w800,
+                        color: AppColors.primary)),
+              ),
+            ]),
+            const SizedBox(height: 16),
+            SliderTheme(
+              data: SliderTheme.of(ctx2).copyWith(
+                activeTrackColor: AppColors.primary,
+                inactiveTrackColor: AppColors.surfaceContainerHigh,
+                thumbColor: AppColors.primary,
+                overlayColor: AppColors.primaryGlow,
+                trackHeight: 5,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 11),
+              ),
+              child: Slider(
+                value: _deviceVolume, min: 0, max: 100,
+                divisions: 10,
+                onChanged: (v) {
+                  setLocal(() {});
+                  setState(() => _deviceVolume = v);
+                  // 调节 Agora 远端播放音量
+                  if (_remoteUid != null) {
+                    _engine?.adjustUserPlaybackSignalVolume(
+                      uid: _remoteUid!,
+                      volume: v.toInt(),
+                    );
+                  }
+                },
+              ),
+            ),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('静音 0%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 12, color: AppColors.onSurfaceVariant)),
+                Text('最大 100%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
                     fontSize: 12, color: AppColors.onSurfaceVariant)),
               ],
             ),
@@ -1104,8 +1267,13 @@ class _TopBarIcon extends StatelessWidget {
 class _JoystickPad extends StatefulWidget {
   final void Function(int m0Dir, int m0Speed, int m1Dir, int m1Speed) onControl;
   final double padRadius;
+  final bool transparent; // 全屏透明模式
 
-  const _JoystickPad({required this.onControl, this.padRadius = 110});
+  const _JoystickPad({
+    required this.onControl,
+    this.padRadius = 110,
+    this.transparent = false,
+  });
 
   @override
   State<_JoystickPad> createState() => _JoystickPadState();
@@ -1181,7 +1349,24 @@ class _JoystickPadState extends State<_JoystickPad> {
         width: diameter, height: diameter,
         child: Stack(alignment: Alignment.center, children: [
           // 外圆背景
-          Container(
+          if (widget.transparent)
+            ClipOval(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(
+                  width: diameter, height: diameter,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.12),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.25), width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            Container(
             width: diameter, height: diameter,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
@@ -1189,50 +1374,81 @@ class _JoystickPadState extends State<_JoystickPad> {
               border: Border.all(
                 color: AppColors.primary.withOpacity(0.2), width: 2,
               ),
-              boxShadow: [BoxShadow(
+              boxShadow: widget.transparent ? [] : [BoxShadow(
                 color: AppColors.cardShadow,
                 blurRadius: 12, offset: const Offset(0, 4),
               )],
             ),
           ),
-          // 爬印中心图标
-          // Icon(Icons.pets_rounded,
-          //     size: diameter * 0.38,
-          //     color: AppColors.primary.withOpacity(0.12)),
           // 方向图标
           Positioned(top: 10, child: Icon(Icons.keyboard_arrow_up_rounded,
-              size: 22, color: AppColors.primary.withOpacity(0.35))),
+              size: 22, color: widget.transparent
+                  ? Colors.white.withOpacity(0.7)
+                  : AppColors.primary.withOpacity(0.35))),
           Positioned(bottom: 10, child: Icon(Icons.keyboard_arrow_down_rounded,
-              size: 22, color: AppColors.primary.withOpacity(0.35))),
+              size: 22, color: widget.transparent
+                  ? Colors.white.withOpacity(0.7)
+                  : AppColors.primary.withOpacity(0.35))),
           Positioned(left: 10, child: Icon(Icons.keyboard_arrow_left_rounded,
-              size: 22, color: AppColors.primary.withOpacity(0.35))),
+              size: 22, color: widget.transparent
+                  ? Colors.white.withOpacity(0.7)
+                  : AppColors.primary.withOpacity(0.35))),
           Positioned(right: 10, child: Icon(Icons.keyboard_arrow_right_rounded,
-              size: 22, color: AppColors.primary.withOpacity(0.35))),
-          // 摇杆头
+              size: 22, color: widget.transparent
+                  ? Colors.white.withOpacity(0.7)
+                  : AppColors.primary.withOpacity(0.35))),
+          // 摇杆头（透明模式用玻璃质感）
           Transform.translate(
             offset: _knob,
-            child: AnimatedContainer(
-              duration: _active ? Duration.zero : const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              width: _thumbR * 2, height: _thumbR * 2,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: _active
-                      ? [AppColors.primaryDim, AppColors.primary]
-                      : [AppColors.primary, AppColors.primaryContainer],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [BoxShadow(
-                  color: AppColors.primary.withOpacity(_active ? 0.6 : 0.35),
-                  blurRadius: _active ? 18 : 10,
-                  offset: const Offset(0, 4),
-                )],
-              ),
-              child: Icon(Icons.pets_rounded,
-                  color: AppColors.onPrimary, size: _active ? 24 : 20),
-            ),
+            child: widget.transparent
+                ? ClipOval(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                      child: AnimatedContainer(
+                        duration: _active ? Duration.zero : const Duration(milliseconds: 200),
+                        curve: Curves.easeOut,
+                        width: _thumbR * 2, height: _thumbR * 2,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withOpacity(_active ? 0.45 : 0.22),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.65), width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white.withOpacity(_active ? 0.3 : 0.1),
+                              blurRadius: _active ? 18 : 8,
+                            ),
+                          ],
+                        ),
+                        child: Icon(Icons.pets_rounded,
+                            color: Colors.white.withOpacity(0.9),
+                            size: _active ? 24 : 20),
+                      ),
+                    ),
+                  )
+                : AnimatedContainer(
+                    duration: _active ? Duration.zero : const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    width: _thumbR * 2, height: _thumbR * 2,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: _active
+                            ? [AppColors.primaryDim, AppColors.primary]
+                            : [AppColors.primary, AppColors.primaryContainer],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [BoxShadow(
+                        color: AppColors.primary.withOpacity(_active ? 0.6 : 0.35),
+                        blurRadius: _active ? 18 : 10,
+                        offset: const Offset(0, 4),
+                      )],
+                    ),
+                    child: Icon(Icons.pets_rounded,
+                        color: AppColors.onPrimary, size: _active ? 24 : 20),
+                  ),
           ),
         ]),
       ),
@@ -1240,7 +1456,236 @@ class _JoystickPadState extends State<_JoystickPad> {
   }
 }
 
+// ── 全屏视频页（横屏全屏 + 透明质感覆盖层）────────────────
 
+class _FullscreenVideoPage extends StatefulWidget {
+  final RtcEngine engine;
+  final String channelName;
+  final int? remoteUid;
+  final void Function(int, int, int, int) onControl;
+  final bool micOn;
+  final Future<void> Function() onToggleMic;
+
+  const _FullscreenVideoPage({
+    required this.engine,
+    required this.channelName,
+    required this.remoteUid,
+    required this.onControl,
+    required this.micOn,
+    required this.onToggleMic,
+  });
+
+  @override
+  State<_FullscreenVideoPage> createState() => _FullscreenVideoPageState();
+}
+
+class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
+  bool _interactOpen = false;
+  bool _micOn = false;
+  bool _speakerOn = true;
+
+  static const _interactItems = [
+    (Icons.music_note_rounded,    '安抚'),
+    (Icons.sports_tennis_rounded, '玩耗'),
+    (Icons.stars_rounded,         '逢趣'),
+    (Icons.restaurant_rounded,    '喜食'),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _micOn = widget.micOn;
+    // 全屏时横屏
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  }
+
+  @override
+  void dispose() {
+    // 退出全屏时恢复竖屏
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    super.dispose();
+  }
+
+  Future<void> _toggleMic() async {
+    await widget.onToggleMic();
+    setState(() => _micOn = !_micOn);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final safe = MediaQuery.of(context).padding;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+
+          // ── 视频 ───────────────────────────────────────
+          if (widget.remoteUid != null && Platform.isAndroid)
+            AgoraVideoView(
+              controller: VideoViewController.remote(
+                rtcEngine: widget.engine,
+                canvas: VideoCanvas(uid: widget.remoteUid!),
+                connection: RtcConnection(channelId: widget.channelName),
+              ),
+            )
+          else
+            const Center(child: Icon(Icons.videocam_off_rounded,
+                size: 64, color: Colors.white24)),
+
+          // ── 右上：麦克风 + 扬声器 + 退出全屏（横排，同等大小）──────
+          Positioned(
+            top: safe.top + 12,
+            right: safe.right + 16,
+            child: Row(
+              children: [
+                _GlassBtn(
+                  icon: _micOn ? Icons.mic_rounded : Icons.mic_off_rounded,
+                  active: _micOn,
+                  onTap: _toggleMic,
+                ),
+                const SizedBox(width: 10),
+                _GlassBtn(
+                  icon: _speakerOn
+                      ? Icons.volume_up_rounded
+                      : Icons.volume_off_rounded,
+                  active: _speakerOn,
+                  onTap: () async {
+                    setState(() => _speakerOn = !_speakerOn);
+                    await widget.engine.setEnableSpeakerphone(_speakerOn);
+                  },
+                ),
+                const SizedBox(width: 10),
+                _GlassBtn(
+                  icon: Icons.fullscreen_exit_rounded,
+                  onTap: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+
+          // ── 右下：互动按钮（单独保留，大按钮）──────────────────────
+          Positioned(
+            bottom: safe.bottom + 32,
+            right: 20,
+            child: _GlassBtn(
+              icon: Icons.emoji_emotions_rounded,
+              active: _interactOpen,
+              size: 72,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _interactOpen = !_interactOpen);
+              },
+            ),
+          ),
+
+          // ── 左下：透明摇杆 ──────────────────────────────────────
+          Positioned(
+            bottom: safe.bottom + 70,
+            left: safe.left + 16,
+            child: _JoystickPad(
+              onControl: widget.onControl,
+              padRadius: 80,
+              transparent: true,
+            ),
+          ),
+
+          // ── 互动展开面板（从屏幕顶部中间向下弹出）───────────────────
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            top: _interactOpen ? safe.top + 60.0 : -140.0,
+            left: 0,
+            right: 0,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 220),
+              opacity: _interactOpen ? 1.0 : 0.0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: _interactItems.map((item) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _GlassBtn(
+                          icon: item.$1,
+                          size: 56,
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            // TODO: 接入互动 API
+                          },
+                        ),
+                        const SizedBox(height: 6),
+                        Text(item.$2,
+                            style: const TextStyle(
+                                fontFamily: 'Plus Jakarta Sans',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white70)),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+
+        ],
+      ),
+    );
+  }
+}
+
+// ── 透明质感按鈕 ─────────────────────────────────────────
+class _GlassBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool active;
+  final double size;
+
+  const _GlassBtn({
+    required this.icon,
+    required this.onTap,
+    this.active = false,
+    this.size = 44,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(size / 2),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            width: size, height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: active
+                  ? Colors.white.withOpacity(0.35)
+                  : Colors.white.withOpacity(0.15),
+              border: Border.all(
+                color: Colors.white.withOpacity(active ? 0.6 : 0.3),
+                width: 1.2,
+              ),
+            ),
+            child: Icon(icon,
+                size: size * 0.45,
+                color: active ? Colors.white : Colors.white70),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 // ── 快捷操作按钮 ──────────────────────────────────────────
 class _QuickBtn extends StatelessWidget {

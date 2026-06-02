@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/router/app_routes.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../app.dart' show AppL10nX;
 import '../../shared/widgets/glass_bottom_nav.dart';
+
+/// 全局控制底部导航栏显隐（全屏视频时隐藏）
+final hideBottomNavProvider = StateProvider<bool>((ref) => false);
 
 /// 底部 Tab 导航的外壳 Widget
 ///
@@ -14,15 +18,15 @@ import '../../shared/widgets/glass_bottom_nav.dart';
 ///
 /// 由 app_router.dart 的 ShellRoute 使用，
 /// Tab 切换时此 Widget 不会销毁重建，只换 child 内容区。
-class MainShell extends StatefulWidget {
+class MainShell extends ConsumerStatefulWidget {
   final Widget child;
   const MainShell({super.key, required this.child});
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends ConsumerState<MainShell> {
   // 当前选中的 Tab 索引（0=首页 1=消息 2=社区 3=商城 4=我的）
   int _currentIndex = 0;
 
@@ -46,18 +50,22 @@ class _MainShellState extends State<MainShell> {
       NavItem(icon: Icons.person_outline,        activeIcon: Icons.person_rounded,        label: l10n.navProfile),
     ];
 
+    final hideNav = ref.watch(hideBottomNavProvider);
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: widget.child,
-      extendBody: false,        // 关闭：让系统自动为 body 预留导航栏高度
-      bottomNavigationBar: GlassBottomNav(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() => _currentIndex = index);
-          context.go(_tabs[index]);
-        },
-        items: navItems,
-      ),
+      extendBody: hideNav,   // 全屏时 body 延伸到底部边缘
+      bottomNavigationBar: hideNav
+          ? null
+          : GlassBottomNav(
+              currentIndex: _currentIndex,
+              onTap: (index) {
+                setState(() => _currentIndex = index);
+                context.go(_tabs[index]);
+              },
+              items: navItems,
+            ),
     );
   }
 }

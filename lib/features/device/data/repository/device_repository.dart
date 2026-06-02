@@ -126,11 +126,16 @@ class AgoraTokenInfo {
   });
 
   factory AgoraTokenInfo.fromJson(Map<String, dynamic> json) {
+    // userId 可能是 int(10003) 或 String("10003")，兼容两种格式
+    final rawId = json['userId'];
+    final userId = rawId is int
+        ? rawId
+        : int.tryParse(rawId?.toString() ?? '') ?? 10001;
     return AgoraTokenInfo(
       appId:       json['appId']       as String,
       channelName: json['channelName'] as String,
       token:       json['token']       as String,
-      userId:      int.parse((json['userId'] as String?) ?? '10001'),
+      userId:      userId,
     );
   }
 }

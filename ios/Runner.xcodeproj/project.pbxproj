@@ -398,7 +398,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# [Fix] Extract XCFrameworks before embedding (prevents 'source: unbound variable')\nif [ -f \"${PODS_ROOT}/Target Support Files/TXIMSDK_Plus_iOS_XCFramework/TXIMSDK_Plus_iOS_XCFramework-xcframeworks.sh\" ]; then\n  \"${PODS_ROOT}/Target Support Files/TXIMSDK_Plus_iOS_XCFramework/TXIMSDK_Plus_iOS_XCFramework-xcframeworks.sh\"\nfi\nif [ -f \"${PODS_ROOT}/Target Support Files/tencent_cloud_chat_sdk/tencent_cloud_chat_sdk-xcframeworks.sh\" ]; then\n  \"${PODS_ROOT}/Target Support Files/tencent_cloud_chat_sdk/tencent_cloud_chat_sdk-xcframeworks.sh\"\nfi\n\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
