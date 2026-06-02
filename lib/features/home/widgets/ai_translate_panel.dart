@@ -30,7 +30,6 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
   bool _isRecording = false;
   String? _recordPath;
   int _recordSecs = 0;
-  late final _timer = Stream.periodic(const Duration(seconds: 1));
 
   @override
   void initState() {
@@ -562,38 +561,3 @@ class _NotPetView extends StatelessWidget {
   }
 }
 
-// ── 配额徽章 ────────────────────────────────────────────────
-class _QuotaBadge extends StatelessWidget {
-  final dynamic quota; // AiQuota?
-  const _QuotaBadge({this.quota});
-
-  @override
-  Widget build(BuildContext context) {
-    if (quota == null) return const SizedBox.shrink();
-    final isUnlimited = quota.isUnlimited as bool;
-    final remaining   = quota.remaining  as int;
-    final color = isUnlimited ? AppColors.primary : (remaining <= 2 ? AppColors.error : AppColors.onSurfaceVariant);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(
-          isUnlimited ? Icons.all_inclusive_rounded : Icons.bolt_rounded,
-          size: 12, color: color,
-        ),
-        const SizedBox(width: 3),
-        Text(
-          isUnlimited ? 'VIP 无限' : '剩余 $remaining 次',
-          style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 11,
-            fontWeight: FontWeight.w700, color: color,
-          ),
-        ),
-      ]),
-    );
-  }
-}

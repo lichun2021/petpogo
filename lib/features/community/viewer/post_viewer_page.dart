@@ -187,9 +187,6 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
     HapticFeedback.lightImpact();
   }
 
-  void _toggleLike() => _onLikeTap();
-
-
   @override
   Widget build(BuildContext context) {
     final post = ref.watch(feedControllerProvider).posts

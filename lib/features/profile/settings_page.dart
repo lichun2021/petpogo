@@ -14,9 +14,8 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n   = context.l10n;
-    final locale = ref.watch(localeProvider);
+    ref.watch(localeProvider); // 保持对 locale 变化的订阅
     final auth   = ref.watch(authControllerProvider);
-    final isChinese = locale.languageCode == 'zh';
     final user = auth.user;
 
     return Scaffold(
@@ -77,19 +76,6 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  // ── 修改昵称 Bottom Sheet ─────────────────────────────
-  void _showNicknameSheet(BuildContext context, WidgetRef ref, String current) {
-    final ctrl = TextEditingController(text: current);
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surfaceContainerLowest,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (ctx) => _NicknameSheet(ctrl: ctrl, ref: ref),
-    );
-  }
-
   // ── 修改密码 Bottom Sheet ─────────────────────────────
   void _showPasswordSheet(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
@@ -129,68 +115,6 @@ class SettingsPage extends ConsumerWidget {
           ),
         ),
       );
-}
-
-// ── 昵称 Sheet ──────────────────────────────────────────────
-class _NicknameSheet extends ConsumerStatefulWidget {
-  final TextEditingController ctrl;
-  final WidgetRef ref;
-  const _NicknameSheet({required this.ctrl, required this.ref});
-
-  @override
-  ConsumerState<_NicknameSheet> createState() => _NicknameSheetState();
-}
-
-class _NicknameSheetState extends ConsumerState<_NicknameSheet> {
-  bool _loading = false;
-  String? _error;
-
-  Future<void> _submit() async {
-    final name = widget.ctrl.text.trim();
-    if (name.isEmpty) { setState(() => _error = '昵称不能为空'); return; }
-    setState(() { _loading = true; _error = null; });
-    try {
-      final client = ref.read(apiClientProvider);
-      await client.put<Map<String, dynamic>>(
-        '/sdkapi/user/profile',
-        data: {'nickname': name},
-      );
-      // 刷新本地用户信息
-      await ref.read(authControllerProvider.notifier).refreshUser();
-      if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('昵称已更新'), behavior: SnackBarBehavior.floating),
-      );
-    } catch (e) {
-      setState(() { _loading = false; _error = e.toString(); });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('修改昵称', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-              fontSize: 18, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 20),
-          _SheetField(controller: widget.ctrl, hint: '输入新昵称', icon: Icons.person_rounded),
-          if (_error != null) ...[
-            const SizedBox(height: 8),
-            Text(_error!, style: TextStyle(color: AppColors.error, fontSize: 13)),
-          ],
-          const SizedBox(height: 20),
-          _SheetButton(label: '保存', loading: _loading, onTap: _submit),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
 }
 
 // ── 密码 Sheet ──────────────────────────────────────────────
@@ -343,61 +267,6 @@ class _SheetButton extends StatelessWidget {
       ),
     );
   }
-}
-
-// ── 语言切换 Tile ──────────────────────────────────────────
-class _LanguageTile extends StatelessWidget {
-  final bool isChinese;
-  final WidgetRef ref;
-  const _LanguageTile({required this.isChinese, required this.ref});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(children: [
-        Icon(Icons.language_rounded, color: AppColors.primary, size: 20),
-        const SizedBox(width: 12),
-        Text(l10n.settingsLanguage,
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15,
-                color: AppColors.onSurface)),
-        const Spacer(),
-        Container(
-          height: 34,
-          decoration: BoxDecoration(color: AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(999)),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            _LangChip(label: '中文', selected: isChinese,
-                onTap: () => ref.read(localeProvider.notifier).setLocale(const Locale('zh'))),
-            _LangChip(label: 'EN', selected: !isChinese,
-                onTap: () => ref.read(localeProvider.notifier).setLocale(const Locale('en'))),
-          ]),
-        ),
-      ]),
-    );
-  }
-}
-
-class _LangChip extends StatelessWidget {
-  final String label; final bool selected; final VoidCallback onTap;
-  const _LangChip({required this.label, required this.selected, required this.onTap});
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutCubic,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: selected ? AppColors.primary : Colors.transparent,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-          fontSize: 13, fontWeight: FontWeight.w700,
-          color: selected ? Colors.white : AppColors.onSurfaceVariant)),
-    ),
-  );
 }
 
 // ── 普通设置 Tile ──────────────────────────────────────────

@@ -1,9 +1,7 @@
-import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../shared/utils/image_pick_helper.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../app.dart' show AppL10nX;
@@ -32,7 +30,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Widget build(BuildContext context) {
     final l10n     = context.l10n;
     final auth     = ref.watch(authControllerProvider);
-    final petState = ref.watch(petControllerProvider);
     final stats    = ref.watch(userStatsProvider).stats;
 
     // 登录后首次刷新数据
@@ -368,43 +365,6 @@ class _AiQuotaChip extends StatelessWidget {
           )),
         ],
       ]),
-    );
-  }
-}
-
-
-// ── 工具函数 ───────────────────────────────────────────
-String _speciesLabel(String type) {
-  switch (type) {
-    case 'cat':     return '猫';
-    case 'dog':     return '狗';
-    case 'rabbit':  return '兔子';
-    case 'hamster': return '仓鼠';
-    case 'bird':    return '鸟';
-    case 'fish':    return '鱼';
-    default:        return '宠物';
-  }
-}
-
-// ── 宠物列表为空占位符 ────────────────────────────────
-class _EmptyPets extends StatelessWidget {
-  final dynamic l10n;
-  const _EmptyPets({required this.l10n});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 32),
-      alignment: Alignment.center,
-      child: Column(
-        children: [
-          Text('🐾', style: TextStyle(fontSize: 40)),
-          const SizedBox(height: 12),
-          Text('还没有宠物，快去添加第一只吧！',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
-                  color: AppColors.onSurfaceVariant)),
-        ],
-      ),
     );
   }
 }
@@ -807,51 +767,6 @@ class _MenuItemRow extends StatelessWidget {
       ),
     );
   }
-}
-
-// ── 头像来源选项行 ─────────────────────────────────────────────
-class _AvatarSourceTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final Color? iconColor;
-  final Color? textColor;
-
-  const _AvatarSourceTile({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.iconColor,
-    this.textColor,
-  });
-
-  @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.transparent,
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        child: Row(children: [
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              color: (iconColor ?? AppColors.primary).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, size: 22, color: iconColor ?? AppColors.primary),
-          ),
-          const SizedBox(width: 16),
-          Text(label, style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
-            fontSize: 15, fontWeight: FontWeight.w600,
-            color: textColor ?? AppColors.onSurface,
-          )),
-        ]),
-      ),
-    ),
-  );
 }
 
 class _GuestProfileView extends StatelessWidget {

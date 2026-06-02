@@ -114,7 +114,6 @@ class ConsultationController extends StateNotifier<ConsultationState> {
   final String _petId;
 
   static const bool _useSyncFallback = false;
-  bool _reportFinalized = false;
 
   ConsultationController(this._repo, this._petId)
       : super(const ConsultationState());
@@ -299,7 +298,6 @@ class ConsultationController extends StateNotifier<ConsultationState> {
     result.when(
       success: (report) {
         debugPrint('[宠小伊] generateReport OK disease=${report.primaryDisease}');
-        _reportFinalized = true;
         state = state.copyWith(isGeneratingReport: false, report: report);
       },
       failure: (e) {

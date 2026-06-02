@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,7 +6,6 @@ import 'package:image_picker/image_picker.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_toast.dart';
 import '../community/data/post_repository.dart';
-import '../pet/data/models/pet_model.dart';
 import 'breed_picker_page.dart';
 import 'data/repository/pet_peer_repository.dart';
 import 'data/models/pet_peer_models.dart';
@@ -182,15 +180,6 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
         setState(() => _saving = false);
         PetToast.error(context, e.toString().replaceAll('Exception: ', ''));
       }
-    }
-  }
-
-  /// 「我的」用 male/female，PeerApi 用 GG/MM
-  String _mapGender(String gender) {
-    switch (gender) {
-      case 'male':   return 'GG';
-      case 'female': return 'MM';
-      default:       return gender; // 已经是 GG/MM 格式则直接返回
     }
   }
 
@@ -400,36 +389,6 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
     );
   }
 
-  Widget _buildNoPets() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Text('🐾', style: TextStyle(fontSize: 48)),
-        const SizedBox(height: 12),
-        const Text('还没有建档的宠物', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-            fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-        const SizedBox(height: 6),
-        Text('先为宠物建档，再绑定到设备',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
-                color: AppColors.onSurfaceVariant), textAlign: TextAlign.center),
-        const SizedBox(height: 20),
-        FilledButton.icon(
-          onPressed: () {
-            // Sheet 不再显示「去添加宠物」按钮（_buildNoPets 已不被调用）
-            Navigator.pop(context);
-          },
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('去添加宠物', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-              fontWeight: FontWeight.w700)),
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        ),
-      ]),
-    );
-  }
 
   // ══════════════════════════════════════════════════════════
   //  编辑模式 UI（修改已绑定宠物的信息）
@@ -580,97 +539,6 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       ),
     );
-  }
-}
-
-// ── 宠物选择卡片 ──────────────────────────────────────────
-class _PetSelectCard extends StatelessWidget {
-  final PetModel pet;
-  final bool saving;
-  final VoidCallback onTap;
-  const _PetSelectCard({required this.pet, required this.saving, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final isMale = pet.gender == 'male';
-    final gLabel = isMale ? '♂ 公' : pet.gender == 'female' ? '♀ 母' : '';
-    final gColor = isMale ? const Color(0xFF1565C0) : const Color(0xFFC2185B);
-
-    return GestureDetector(
-      onTap: saving ? null : onTap,
-      child: AnimatedOpacity(
-        opacity: saving ? 0.5 : 1.0,
-        duration: const Duration(milliseconds: 200),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.onSurfaceVariant.withOpacity(0.1)),
-          ),
-          child: Row(children: [
-            // 头像 / emoji
-            Container(width: 48, height: 48,
-              decoration: BoxDecoration(shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 1.5)),
-              child: ClipOval(child: pet.avatar.isNotEmpty
-                  ? CachedNetworkImage(imageUrl: pet.avatar, fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => _emoji(pet.name))
-                  : _emoji(pet.name)),
-            ),
-            const SizedBox(width: 12),
-            // 信息
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Text(pet.name, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-                if (gLabel.isNotEmpty) ...[ const SizedBox(width: 6),
-                  Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(color: gColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12)),
-                    child: Text(gLabel, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 10, fontWeight: FontWeight.w700, color: gColor))),
-                ],
-              ]),
-              const SizedBox(height: 3),
-              Text(
-                [if (pet.breed.isNotEmpty) pet.breed,
-                 if (pet.type.isNotEmpty) _speciesLabel(pet.type)].join(' · '),
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                    color: AppColors.onSurfaceVariant),
-              ),
-            ])),
-            // 选择箭头
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text('选择', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
-            ),
-          ]),
-        ),
-      ),
-    );
-  }
-
-  Widget _emoji(String name) => Container(
-      color: AppColors.primary.withOpacity(0.15),
-      child: Center(child: Text(
-        name.contains('猫') || name.toLowerCase().contains('cat') ? '🐱'
-            : name.contains('狗') || name.toLowerCase().contains('dog') ? '🐶' : '🐾',
-        style: const TextStyle(fontSize: 22))));
-
-  String _speciesLabel(String type) {
-    switch (type) {
-      case 'cat':     return '猫';
-      case 'dog':     return '狗';
-      case 'rabbit':  return '兔子';
-      case 'hamster': return '仓鼠';
-      default:        return type;
-    }
   }
 }
 

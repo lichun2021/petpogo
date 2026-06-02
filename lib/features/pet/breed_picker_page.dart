@@ -21,7 +21,6 @@ class BreedPickerPage extends StatefulWidget {
 class _BreedPickerPageState extends State<BreedPickerPage> {
   // 按字母分组 { 'A': ['阿比西尼亚猫', ...], ... }
   Map<String, List<String>> _groups = const {};
-  List<String> _sortedLetters = const [];
   bool _loading = true;
 
   String _query = '';
@@ -53,12 +52,10 @@ class _BreedPickerPageState extends State<BreedPickerPage> {
     final raw   = data[key] as Map<String, dynamic>;
     final groups = raw.map(
         (k, v) => MapEntry(k, List<String>.from(v as List)));
-    final letters = groups.keys.toList()..sort();
     if (mounted) {
       setState(() {
-        _groups       = groups;
-        _sortedLetters = letters;
-        _loading      = false;
+        _groups  = groups;
+        _loading = false;
       });
     }
   }

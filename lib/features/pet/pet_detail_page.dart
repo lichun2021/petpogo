@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../shared/theme/app_colors.dart';
-import '../../app.dart' show AppL10nX;
 
 /// 宠物详情页 — 健康卡、AI识别历史、设备关联
 class PetDetailPage extends StatelessWidget {

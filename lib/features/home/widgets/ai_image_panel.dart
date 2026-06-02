@@ -319,36 +319,6 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
   }
 }
 
-// ── 选图按钮 ──────────────────────────────────────────────
-class _PickButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  const _PickButton({required this.icon, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(children: [
-        Container(
-          width: 60, height: 60,
-          decoration: BoxDecoration(
-            color: AppColors.surfaceContainerHighest,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: AppColors.primary, size: 28),
-        ),
-        const SizedBox(height: 6),
-        Text(label, style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-          color: AppColors.onSurfaceVariant,
-        )),
-      ]),
-    );
-  }
-}
-
 // ── 上传进度 ──────────────────────────────────────────────
 class _ProgressView extends StatelessWidget {
   final String label;
@@ -607,40 +577,3 @@ class _NotPetView extends StatelessWidget {
   }
 }
 
-// ── 配额徽章 ────────────────────────────────────────────────
-class _QuotaBadge extends StatelessWidget {
-  final dynamic quota; // AiQuota?
-  const _QuotaBadge({this.quota});
-
-  @override
-  Widget build(BuildContext context) {
-    if (quota == null) return const SizedBox.shrink();
-    final isUnlimited = quota.isUnlimited as bool;
-    final remaining   = quota.remaining  as int;
-    final color = isUnlimited
-        ? AppColors.primary
-        : (remaining <= 2 ? AppColors.error : AppColors.onSurfaceVariant);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(
-          isUnlimited ? Icons.all_inclusive_rounded : Icons.bolt_rounded,
-          size: 12, color: color,
-        ),
-        const SizedBox(width: 3),
-        Text(
-          isUnlimited ? 'VIP 无限' : '剩余 $remaining 次',
-          style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 11,
-            fontWeight: FontWeight.w700, color: color,
-          ),
-        ),
-      ]),
-    );
-  }
-}

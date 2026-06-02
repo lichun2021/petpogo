@@ -6,7 +6,6 @@ import 'package:just_audio/just_audio.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_toast.dart';
 import 'data/music_models.dart';
-import 'data/music_repository.dart';
 import 'music_player_page.dart';
 
 // ── 全局播放状态 ──────────────────────────────────────────
