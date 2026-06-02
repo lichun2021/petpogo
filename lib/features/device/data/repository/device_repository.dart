@@ -95,6 +95,44 @@ class DeviceRepository {
         '"motor_1":{"direction":$motor1Direction,"speed":$motor1Speed}}';
     await _peer.post('/device/shadow/update', params: {'mac': mac, 'data': data});
   }
+
+  /// POST /pet/agora/getToken — 获取 Agora RTC Token（同时触发 ESP32 加入频道）
+  /// 返回 [AgoraTokenInfo]，包含 appId / channelName / token / userId
+  Future<AgoraTokenInfo> getAgoraToken({
+    required String mac,
+    required String customerId,
+  }) async {
+    final res = await _peer.post<AgoraTokenInfo>(
+      '/pet/agora/getToken',
+      params: {'mac': mac, 'loginCustomerId': customerId},
+      fromInfo: (d) => AgoraTokenInfo.fromJson(d as Map<String, dynamic>),
+    );
+    return res.info!;
+  }
+}
+
+// ── Agora Token 数据模型 ──────────────────────────────────
+class AgoraTokenInfo {
+  final String appId;
+  final String channelName;
+  final String token;
+  final int    userId;
+
+  const AgoraTokenInfo({
+    required this.appId,
+    required this.channelName,
+    required this.token,
+    required this.userId,
+  });
+
+  factory AgoraTokenInfo.fromJson(Map<String, dynamic> json) {
+    return AgoraTokenInfo(
+      appId:       json['appId']       as String,
+      channelName: json['channelName'] as String,
+      token:       json['token']       as String,
+      userId:      int.parse((json['userId'] as String?) ?? '10001'),
+    );
+  }
 }
 
 // ── Providers ────────────────────────────────────────────

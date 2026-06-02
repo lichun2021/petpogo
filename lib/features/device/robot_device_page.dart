@@ -1,9 +1,13 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_toast.dart';
+import '../auth/controller/auth_controller.dart';
 import '../device/data/models/device_model.dart';
 import '../device/data/repository/device_repository.dart';
 import 'device_detail_page.dart';
@@ -28,6 +32,17 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   double _moveSpeed = 50; // 10~100
   bool _cameraOn = true;
 
+  // ── Agora 视频推流状态 ──────────────────────────────────
+  RtcEngine? _engine;
+  AgoraTokenInfo? _agoraInfo;
+  int?   _remoteUid;     // ESP32 的 uid（通常 10002）
+  bool   _agoraLoading  = false;
+  bool   _agoraJoined   = false;
+  bool   _micOn         = false;
+  String? _agoraError;
+  double _kbps         = 0;
+  Timer? _statsTimer;
+
   @override
   void initState() {
     super.initState();
@@ -37,12 +52,128 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         setState(() => _activeTab = _tabController.index);
       }
     });
+    // 页面打开后自动启动视频
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startAgora());
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _statsTimer?.cancel();
+    _stopAgora();
     super.dispose();
+  }
+
+  // ── Agora 工具方法 ──────────────────────────────────────
+
+  /// 初始化引擎 + 加入频道
+  Future<void> _startAgora() async {
+    if (_agoraLoading || _agoraJoined) return;
+    setState(() { _agoraLoading = true; _agoraError = null; });
+    try {
+      // 1. 请求权限
+      await [Permission.microphone, Permission.camera].request();
+
+      // 2. 获取 Token（下发 ESP32 参数）
+      final auth  = ref.read(authControllerProvider);
+      final userId = auth.user?.id ?? '0';
+      final info = await ref.read(deviceRepositoryProvider)
+          .getAgoraToken(mac: widget.mac, customerId: userId);
+      _agoraInfo = info;
+
+      // 3. 创建引擎
+      _engine = createAgoraRtcEngine();
+      await _engine!.initialize(RtcEngineContext(
+        appId: info.appId,
+        channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
+      ));
+
+      // 4. Android 设置 JPEG 解码（ESP32 使用 VIDEO_DATA_TYPE_GENERIC_JPEG）
+      if (Platform.isAndroid) {
+        await _engine!.setParameters('{"engine.video.codec_type": "20"}');
+      }
+
+      // 5. 启用音视频 + IoT 音频模式
+      await _engine!.enableVideo();
+      await _engine!.enableAudio();
+      await _engine!.setAudioProfile(
+        profile: AudioProfileType.audioProfileDefault,
+        scenario: AudioScenarioType.audioScenarioChatroom,
+      );
+      await _engine!.setEnableSpeakerphone(true);
+      await _engine!.enableLocalVideo(false);  // APP 不发送本地摄像头
+
+      // 6. 注册事件
+      _engine!.registerEventHandler(RtcEngineEventHandler(
+        onJoinChannelSuccess: (_, __) {
+          if (mounted) setState(() { _agoraJoined = true; _agoraLoading = false; });
+        },
+        onUserJoined: (_, uid, __) {
+          if (mounted) setState(() => _remoteUid = uid);
+          debugPrint('[Agora] ESP32 加入频道 uid=$uid');
+        },
+        onUserOffline: (_, uid, __) {
+          if (mounted) setState(() => _remoteUid = null);
+          debugPrint('[Agora] ESP32 离开 uid=$uid');
+        },
+        onRtcStats: (_, stats) {
+          if (mounted) {
+            setState(() {
+              _kbps = stats.rxVideoKBitRate?.toDouble() ?? 0;
+            });
+          }
+        },
+        onError: (err, msg) {
+          debugPrint('[Agora] 错误 $err: $msg');
+          if (mounted) setState(() => _agoraError = 'Agora错误 $err');
+        },
+        onTokenPrivilegeWillExpire: (_, __) {
+          // Token 即将过期，重新获取
+          _startAgora();
+        },
+      ));
+
+      // 7. 加入频道（观众模式）
+      await _engine!.setClientRole(role: ClientRoleType.clientRoleAudience);
+      await _engine!.joinChannel(
+        token: info.token,
+        channelId: info.channelName,
+        uid: info.userId,
+        options: const ChannelMediaOptions(
+          autoSubscribeVideo: true,
+          autoSubscribeAudio: true,
+          publishCameraTrack: false,
+          publishMicrophoneTrack: false,
+        ),
+      );
+    } catch (e) {
+      debugPrint('[Agora] 初始化失败: $e');
+      if (mounted) setState(() { _agoraLoading = false; _agoraError = e.toString(); });
+    }
+  }
+
+  /// 离开频道 + 释放引擎
+  Future<void> _stopAgora() async {
+    await _engine?.leaveChannel();
+    await _engine?.release();
+    _engine = null;
+    _agoraJoined = false;
+    _remoteUid = null;
+  }
+
+  /// 对讲开关
+  Future<void> _toggleMic() async {
+    if (_engine == null) return;
+    final next = !_micOn;
+    if (next) {
+      await _engine!.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
+      await _engine!.enableLocalAudio(true);
+      await _engine!.muteLocalAudioStream(false);
+    } else {
+      await _engine!.muteLocalAudioStream(true);
+      await _engine!.enableLocalAudio(false);
+    }
+    setState(() => _micOn = next);
   }
 
   // ── 电机控制（PeerApiSpeed 接口）──────────────────────
@@ -183,7 +314,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     );
   }
 
-  // ── 摄像头区域 ────────────────────────────────────────
+  // ── 摄像头区域（Agora 视频流）────────────────────────────
   Widget _buildCameraView() {
     return Container(
       height: 220,
@@ -197,30 +328,113 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       child: Container(
         margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         decoration: BoxDecoration(
-          color: AppColors.onPrimaryContainer,
+          color: AppColors.inverseSurface,
           borderRadius: BorderRadius.circular(16),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: Stack(fit: StackFit.expand, children: [
-            // 摄像头占位
-            Container(
-              color: AppColors.inverseSurface,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.videocam_rounded,
-                      size: 48,
-                      color: AppColors.onPrimary.withOpacity(0.35)),
-                  const SizedBox(height: 8),
-                  Text('摄像头预览',
-                      style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
-                          fontSize: 13,
-                          color: AppColors.onPrimary.withOpacity(0.45))),
-                ],
+            // ── 视频内容区 ──────────────────────────────────
+            if (_agoraJoined && _remoteUid != null && _agoraInfo != null && Platform.isAndroid)
+              // Android：显示 Agora JPEG 视频流
+              AgoraVideoView(
+                controller: VideoViewController.remote(
+                  rtcEngine: _engine!,
+                  canvas: VideoCanvas(uid: _remoteUid!),
+                  connection: RtcConnection(channelId: _agoraInfo!.channelName),
+                ),
+              )
+            else if (_agoraLoading)
+              // 连接中
+              Container(
+                color: AppColors.inverseSurface,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(width: 36, height: 36,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5, color: AppColors.primaryContainer)),
+                    const SizedBox(height: 12),
+                    Text('连接设备摄像头...',
+                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 13,
+                            color: AppColors.onPrimary.withOpacity(0.6))),
+                  ],
+                ),
+              )
+            else if (_agoraError != null)
+              // 错误状态
+              Container(
+                color: AppColors.inverseSurface,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline_rounded,
+                        size: 40, color: AppColors.onPrimary.withOpacity(0.5)),
+                    const SizedBox(height: 8),
+                    Text('视频连接失败',
+                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 13,
+                            color: AppColors.onPrimary.withOpacity(0.6))),
+                    const SizedBox(height: 4),
+                    GestureDetector(
+                      onTap: _startAgora,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text('点击重试',
+                            style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                                fontSize: 12, color: AppColors.primaryContainer)),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (Platform.isIOS && _agoraJoined)
+              // iOS：仅音频提示
+              Container(
+                color: AppColors.inverseSurface,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.volume_up_rounded,
+                        size: 48, color: AppColors.onPrimary.withOpacity(0.5)),
+                    const SizedBox(height: 8),
+                    Text('iOS 仅支持音频对讲',
+                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 13,
+                            color: AppColors.onPrimary.withOpacity(0.6))),
+                    Text('ESP32 H.264 升级后可支持 iOS 视频',
+                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 11,
+                            color: AppColors.onPrimary.withOpacity(0.4))),
+                  ],
+                ),
+              )
+            else
+              // 占位图
+              Container(
+                color: AppColors.inverseSurface,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.videocam_rounded,
+                        size: 48,
+                        color: AppColors.onPrimary.withOpacity(0.35)),
+                    const SizedBox(height: 8),
+                    Text('摄像头预览',
+                        style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 13,
+                            color: AppColors.onPrimary.withOpacity(0.45))),
+                  ],
+                ),
               ),
-            ),
+
             // 速率标签
             Positioned(
               top: 10, left: 10,
@@ -230,17 +444,23 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   color: Colors.black54,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text('0.0\nKB/s',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 9, color: Colors.white, height: 1.3)),
+                child: Text(
+                  '${_kbps.toStringAsFixed(0)}\nKB/s',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 9, color: Colors.white, height: 1.3),
+                ),
               ),
             ),
-            // 摄像头开关
+
+            // 摄像头开关（左下）
             Positioned(
               bottom: 10, left: 10,
               child: GestureDetector(
-                onTap: () => setState(() => _cameraOn = !_cameraOn),
+                onTap: () {
+                  setState(() => _cameraOn = !_cameraOn);
+                  if (_cameraOn) { _startAgora(); } else { _stopAgora(); setState(() {}); }
+                },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   width: 44, height: 24,
@@ -262,6 +482,35 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                     ),
                   ]),
                 ),
+              ),
+            ),
+
+            // 连接状态标签（右上）
+            Positioned(
+              top: 10, right: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _remoteUid != null
+                      ? Colors.green.withOpacity(0.8)
+                      : Colors.black54,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(
+                    width: 6, height: 6,
+                    decoration: BoxDecoration(
+                      color: _remoteUid != null ? Colors.greenAccent : Colors.white38,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _remoteUid != null ? '已连接' : '等待设备',
+                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 9, color: Colors.white),
+                  ),
+                ]),
               ),
             ),
           ]),
@@ -610,53 +859,89 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     );
   }
 
-  // ── 对讲标签 ──────────────────────────────────────────
+  // ── 对讲标签（Agora 开麦克对讲）────────────────────────────
   Widget _buildIntercom() {
+    final isReady = _agoraJoined;
     return Center(
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Container(
+        // 麦克风图标（麦开时变绿）
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
           width: 120, height: 120,
           decoration: BoxDecoration(
-            gradient: AppColors.primaryGradient,
+            gradient: _micOn
+                ? const LinearGradient(
+                    colors: [Color(0xFF43A047), Color(0xFF66BB6A)],
+                    begin: Alignment.topLeft, end: Alignment.bottomRight)
+                : AppColors.primaryGradient,
             shape: BoxShape.circle,
             boxShadow: [BoxShadow(
-              color: AppColors.primaryGlow,
-              blurRadius: 30, spreadRadius: 0,
+              color: _micOn
+                  ? Colors.green.withOpacity(0.4)
+                  : AppColors.primaryGlow,
+              blurRadius: _micOn ? 40 : 30, spreadRadius: 0,
             )],
           ),
-          child: const Icon(Icons.mic_rounded, size: 52, color: AppColors.onPrimary),
-        ),
-        const SizedBox(height: 20),
-        const Text('按住说话',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.onSurface)),
-        const SizedBox(height: 8),
-        const Text('松开停止',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                fontSize: 14, color: AppColors.onSurfaceVariant)),
-        const SizedBox(height: 32),
-        GestureDetector(
-          onTapDown: (_) {
-            HapticFeedback.heavyImpact();
-            PetToast.warning(context, '对讲中...');
-          },
-          onTapUp: (_) => PetToast.warning(context, '对讲结束'),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [BoxShadow(
-                color: AppColors.primaryGlow,
-                blurRadius: 16, offset: const Offset(0, 6),
-              )],
-            ),
-            child: const Text('按住对讲',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 16, fontWeight: FontWeight.w800,
-                    color: AppColors.onPrimary)),
+          child: Icon(
+            _micOn ? Icons.mic_rounded : Icons.mic_off_rounded,
+            size: 52, color: AppColors.onPrimary,
           ),
         ),
+        const SizedBox(height: 20),
+        Text(
+          isReady ? (_micOn ? '对讲中...' : '连接已建立') : '连接设备中...',
+          style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+              fontSize: 18, fontWeight: FontWeight.w800,
+              color: AppColors.onSurface),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          isReady ? '点击按钮开启/关闭对讲' : '请稍候...',
+          style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+              fontSize: 14, color: AppColors.onSurfaceVariant),
+        ),
+        const SizedBox(height: 32),
+        // 对讲按钮
+        GestureDetector(
+          onTap: isReady ? _toggleMic : null,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+            decoration: BoxDecoration(
+              gradient: isReady
+                  ? (_micOn
+                      ? const LinearGradient(
+                          colors: [Color(0xFF43A047), Color(0xFF66BB6A)])
+                      : AppColors.primaryGradient)
+                  : null,
+              color: isReady ? null : AppColors.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: isReady ? [BoxShadow(
+                color: _micOn
+                    ? Colors.green.withOpacity(0.4)
+                    : AppColors.primaryGlow,
+                blurRadius: 16, offset: const Offset(0, 6),
+              )] : [],
+            ),
+            child: Text(
+              isReady ? (_micOn ? '关闭对讲' : '开启对讲') : '连接中...',
+              style: TextStyle(
+                fontFamily: 'Plus Jakarta Sans',
+                fontSize: 16, fontWeight: FontWeight.w800,
+                color: isReady ? AppColors.onPrimary : AppColors.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ),
+        // 错误信息
+        if (_agoraError != null) ...[
+          const SizedBox(height: 16),
+          Text(_agoraError!,
+              style: const TextStyle(
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 11, color: Colors.redAccent),
+              textAlign: TextAlign.center),
+        ],
       ]),
     );
   }

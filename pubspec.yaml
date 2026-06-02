@@ -53,6 +53,7 @@ dependencies:
   record: ^6.0.0
   path_provider: ^2.1.2        # 获取临时目录存储录音文件
   just_audio: ^0.10.5
+  agora_rtc_engine: ^6.3.2    # 机器人视频推流（ESP32 JPEG 流，仅 Android）
 
   # QR Scanner & Generator
   mobile_scanner: ^7.2.0
