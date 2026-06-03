@@ -50,7 +50,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
           borderRadius: BorderRadius.circular(24),
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Container(
             width: 36,
             height: 4,
@@ -59,15 +59,15 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(height: 12),
-          const Text('选择照片来源',
+          SizedBox(height: 12),
+          Text('选择照片来源',
               style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
                 color: AppColors.onSurface,
               )),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           ListTile(
             leading: Container(
               width: 40,
@@ -76,10 +76,10 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
                 color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.camera_alt_rounded,
+              child: Icon(Icons.camera_alt_rounded,
                   color: AppColors.primary),
             ),
-            title: const Text('拍照',
+            title: Text('拍照',
                 style: TextStyle(
                   fontFamily: AppFonts.primary,
                   fontWeight: FontWeight.w600,
@@ -94,17 +94,17 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
                 color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.photo_library_rounded,
+              child: Icon(Icons.photo_library_rounded,
                   color: AppColors.primary),
             ),
-            title: const Text('从相册选择',
+            title: Text('从相册选择',
                 style: TextStyle(
                   fontFamily: AppFonts.primary,
                   fontWeight: FontWeight.w600,
                 )),
             onTap: () => Navigator.pop(context, ImageSource.gallery),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
         ]),
       ),
     );
@@ -146,7 +146,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            duration: const Duration(seconds: 3),
+            duration: Duration(seconds: 3),
           ));
         }
       }
@@ -164,7 +164,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
             color: AppColors.cardShadow,
             blurRadius: 18,
             spreadRadius: -10,
-            offset: const Offset(0, 8),
+            offset: Offset(0, 8),
           ),
         ],
       ),
@@ -179,14 +179,14 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
                 color: AppColors.tertiary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.add_photo_alternate_rounded,
                 color: AppColors.tertiary,
                 size: 19,
               ),
             ),
-            const SizedBox(width: 10),
-            const Expanded(
+            SizedBox(width: 10),
+            Expanded(
               child: Text('读懂宠物表情',
                   style: TextStyle(
                     fontFamily: AppFonts.primary,
@@ -201,7 +201,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
                 state.phase == AiPhase.error)
               TextButton(
                 onPressed: _reset,
-                child: const Text('再拍一张',
+                child: Text('再拍一张',
                     style: TextStyle(
                       fontFamily: AppFonts.primary,
                       fontSize: 12,
@@ -209,18 +209,18 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
                     )),
               ),
           ]),
-          const SizedBox(height: 18),
+          SizedBox(height: 18),
 
           // 内容区（固定最小高度，防止切换阶段时外框跳动）
           ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 190),
+            constraints: BoxConstraints(minHeight: 190),
             child: Center(
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
+                duration: Duration(milliseconds: 300),
                 child: switch (state.phase) {
                   AiPhase.idle => _buildIdleView(),
                   AiPhase.uploading => _ProgressView(
-                      key: const ValueKey('upload'),
+                      key: ValueKey('upload'),
                       label: '上传图片中…',
                       progress: state.uploadProgress,
                       icon: '☁️',
@@ -231,18 +231,18 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
                       icon: '🔍',
                     ),
                   AiPhase.result => _ResultView(
-                      key: const ValueKey('result'),
+                      key: ValueKey('result'),
                       result: state.result!,
                       previewFile: _previewFile,
                     ),
                   AiPhase.notPet => _NotPetView(
-                      key: const ValueKey('notPet'),
+                      key: ValueKey('notPet'),
                       reason: state.notPetReason ?? '未检测到宠物',
                       quota: state.result?.quota,
                       onRetry: _reset,
                     ),
                   AiPhase.error => _ErrorView(
-                      key: const ValueKey('error'),
+                      key: ValueKey('error'),
                       message: state.errorMessage ?? '分析失败',
                       onRetry: _reset,
                     ),
@@ -257,7 +257,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
 
   Widget _buildIdleView() {
     return Column(
-      key: const ValueKey('idle'),
+      key: ValueKey('idle'),
       children: [
         // 预览图（缩小 + 边框）
         if (_previewFile != null) ...[
@@ -288,14 +288,14 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
               ),
             ),
           ).animate().fadeIn(duration: 300.ms),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           SizedBox(
             height: 44,
             child: Row(children: [
               OutlinedButton.icon(
                 onPressed: _showPickSheet,
-                icon: const Icon(Icons.camera_alt_rounded, size: 16),
-                label: const Text(
+                icon: Icon(Icons.camera_alt_rounded, size: 16),
+                label: Text(
                   '换张图',
                   style: TextStyle(fontSize: 13),
                   overflow: TextOverflow.clip,
@@ -307,12 +307,12 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _startAnalysis,
-                  icon: const Icon(Icons.auto_awesome_rounded, size: 16),
-                  label: const Text(
+                  icon: Icon(Icons.auto_awesome_rounded, size: 16),
+                  label: Text(
                     '开始分析',
                     style: TextStyle(fontSize: 13),
                     overflow: TextOverflow.clip,
@@ -332,13 +332,13 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
           ),
         ] else ...[
           // 单个相机按钮，点击弹出来源菜单
-          const Text('选择宠物照片，AI 读懂它的心情',
+          Text('选择宠物照片，AI 读懂它的心情',
               style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontSize: 13,
                 color: AppColors.onSurfaceVariant,
               )),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           GestureDetector(
             onTap: _showPickSheet,
             child: Container(
@@ -355,12 +355,12 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
                   ),
                 ],
               ),
-              child: const Icon(Icons.camera_alt_rounded,
+              child: Icon(Icons.camera_alt_rounded,
                   color: Colors.white, size: 32),
             ),
           ),
-          const SizedBox(height: 10),
-          const Text('点击拍照或从相册选择',
+          SizedBox(height: 10),
+          Text('点击拍照或从相册选择',
               style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontSize: 11,
@@ -386,15 +386,15 @@ class _ProgressView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(children: [
-      Text(icon, style: const TextStyle(fontSize: 40)),
-      const SizedBox(height: 12),
+      Text(icon, style: TextStyle(fontSize: 40)),
+      SizedBox(height: 12),
       Text(label,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: AppFonts.primary,
             fontSize: 14,
             color: AppColors.onSurfaceVariant,
           )),
-      const SizedBox(height: 12),
+      SizedBox(height: 12),
       ClipRRect(
         borderRadius: BorderRadius.circular(4),
         child: LinearProgressIndicator(
@@ -404,9 +404,9 @@ class _ProgressView extends StatelessWidget {
           minHeight: 6,
         ),
       ),
-      const SizedBox(height: 4),
+      SizedBox(height: 4),
       Text('${(progress * 100).toInt()}%',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: AppFonts.primary,
             fontSize: 11,
             color: AppColors.onSurfaceVariant,
@@ -424,18 +424,18 @@ class _SpinnerView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(children: [
-      Text(icon, style: const TextStyle(fontSize: 40))
+      Text(icon, style: TextStyle(fontSize: 40))
           .animate(onPlay: (c) => c.repeat())
           .rotate(duration: 2.seconds),
-      const SizedBox(height: 12),
+      SizedBox(height: 12),
       Text(label,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: AppFonts.primary,
             fontSize: 14,
             color: AppColors.onSurfaceVariant,
           )),
-      const SizedBox(height: 12),
-      const CircularProgressIndicator(
+      SizedBox(height: 12),
+      CircularProgressIndicator(
           color: AppColors.primary, strokeWidth: 2.5),
     ]);
   }
@@ -462,7 +462,7 @@ class _ResultView extends StatelessWidget {
             child: Image.file(previewFile!,
                 height: 120, width: double.infinity, fit: BoxFit.cover),
           ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
 
         // 主情绪
         Container(
@@ -472,8 +472,8 @@ class _ResultView extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(children: [
-            Text(result.primaryEmoji, style: const TextStyle(fontSize: 36)),
-            const SizedBox(width: 14),
+            Text(result.primaryEmoji, style: TextStyle(fontSize: 36)),
+            SizedBox(width: 14),
             Expanded(
                 child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -496,31 +496,31 @@ class _ResultView extends StatelessWidget {
           ]),
         ).animate().fadeIn(duration: 400.ms),
 
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
 
         // Top-3
         if (result.top3.length > 1) ...[
-          const Text('情绪分布',
+          Text('情绪分布',
               style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: AppColors.onSurfaceVariant,
               )),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           ...result.top3.take(3).map((e) => Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Row(children: [
                   SizedBox(
                     width: 60,
                     child: Text(e.labelZh,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: AppFonts.primary,
                           fontSize: 12,
                           color: AppColors.onSurface,
                         )),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                       child: ClipRRect(
                     borderRadius: BorderRadius.circular(3),
@@ -531,16 +531,16 @@ class _ResultView extends StatelessWidget {
                       minHeight: 6,
                     ),
                   )),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Text(e.percentText,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: AppFonts.primary,
                         fontSize: 11,
                         color: AppColors.onSurfaceVariant,
                       )),
                 ]),
               )),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
         ],
 
         // 建议
@@ -554,11 +554,11 @@ class _ResultView extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('💡', style: TextStyle(fontSize: 16)),
-                const SizedBox(width: 8),
+                Text('💡', style: TextStyle(fontSize: 16)),
+                SizedBox(width: 8),
                 Expanded(
                     child: Text(result.advice,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: AppFonts.primary,
                           fontSize: 12,
                           color: AppColors.onSurface,
@@ -568,7 +568,7 @@ class _ResultView extends StatelessWidget {
             ),
           ),
 
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
 
         // 配额
         Row(mainAxisAlignment: MainAxisAlignment.end, children: [
@@ -579,12 +579,12 @@ class _ResultView extends StatelessWidget {
             size: 14,
             color: AppColors.onSurfaceVariant,
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           Text(
             result.quota.isUnlimited
                 ? 'VIP 无限次'
                 : '今日剩余 ${result.quota.remaining} 次',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppFonts.primary,
               fontSize: 11,
               color: AppColors.onSurfaceVariant,
@@ -605,23 +605,23 @@ class _ErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(children: [
-      const Text('😓', style: TextStyle(fontSize: 40)),
-      const SizedBox(height: 12),
+      Text('😓', style: TextStyle(fontSize: 40)),
+      SizedBox(height: 12),
       Text(message,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: AppFonts.primary,
             fontSize: 13,
             color: AppColors.onSurfaceVariant,
           )),
-      const SizedBox(height: 16),
+      SizedBox(height: 16),
       ElevatedButton(
         onPressed: onRetry,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
         ),
-        child: const Text('重试'),
+        child: Text('重试'),
       ),
     ]);
   }
@@ -639,28 +639,28 @@ class _NotPetView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Text('🤔', style: TextStyle(fontSize: 40)),
-        const SizedBox(height: 12),
+        Text('🤔', style: TextStyle(fontSize: 40)),
+        SizedBox(height: 12),
         Text(reason,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppFonts.primary,
               fontSize: 14,
               color: AppColors.onSurface,
               fontWeight: FontWeight.w600,
             )),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         Text('请换一张宠物的清晰照片再试试',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppFonts.primary,
               fontSize: 12,
               color: AppColors.onSurfaceVariant,
             )),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         OutlinedButton.icon(
           onPressed: onRetry,
-          icon: const Icon(Icons.refresh_rounded, size: 16),
-          label: const Text('重新选图'),
+          icon: Icon(Icons.refresh_rounded, size: 16),
+          label: Text('重新选图'),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary,
             side: BorderSide(color: AppColors.primary),

@@ -12,7 +12,7 @@ class GlassBottomNav extends StatelessWidget {
   final ValueChanged<int> onTap;
   final List<NavItem> items;
 
-  const GlassBottomNav({
+  GlassBottomNav({
     super.key,
     required this.currentIndex,
     required this.onTap,
@@ -31,7 +31,7 @@ class GlassBottomNav extends StatelessWidget {
             BoxShadow(
               color: AppColors.ambientShadow,
               blurRadius: 40,
-              offset: const Offset(0, -10),
+              offset: Offset(0, -10),
             ),
           ],
         ),
@@ -64,7 +64,7 @@ class NavButton extends StatefulWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const NavButton({
+  NavButton({
     super.key,
     required this.item,
     required this.selected,
@@ -85,7 +85,7 @@ class _NavButtonState extends State<NavButton>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 120),
+      duration: Duration(milliseconds: 120),
     );
     _scale = Tween<double>(begin: 1.0, end: 1.2).animate(
       CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut),
@@ -113,7 +113,7 @@ class _NavButtonState extends State<NavButton>
     return GestureDetector(
       onTap: widget.onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
+        duration: Duration(milliseconds: 250),
         curve: Curves.easeOutCubic,
         padding: EdgeInsets.symmetric(
           horizontal: widget.selected ? 18 : 14,
@@ -138,9 +138,9 @@ class _NavButtonState extends State<NavButton>
                 size: 24,
               ),
             ),
-            const SizedBox(height: 2),
+            SizedBox(height: 2),
             AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 200),
+              duration: Duration(milliseconds: 200),
               style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontSize: 10,
@@ -166,7 +166,7 @@ class NavItem {
   final IconData activeIcon;
   final String label;
 
-  const NavItem({
+  NavItem({
     required this.icon,
     required this.activeIcon,
     required this.label,

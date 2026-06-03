@@ -16,7 +16,7 @@ class PostViewerPage extends ConsumerStatefulWidget {
   final List<PostModel> posts;
   final int initialIndex;
 
-  const PostViewerPage({
+  PostViewerPage({
     super.key,
     required this.posts,
     required this.initialIndex,
@@ -85,7 +85,7 @@ class _PostViewerPageState extends ConsumerState<PostViewerPage> {
                     color: Colors.black.withOpacity(0.45),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
+                  child: Icon(Icons.close_rounded, color: Colors.white, size: 20),
                 ),
               ),
             ),
@@ -102,7 +102,7 @@ class _PostViewerPageState extends ConsumerState<PostViewerPage> {
                   children: List.generate(
                     posts.length.clamp(0, 8),
                     (i) => AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
+                      duration: Duration(milliseconds: 200),
                       margin: const EdgeInsets.symmetric(vertical: 2),
                       width: 3,
                       height: i == _currentIndex ? 20 : 6,
@@ -223,7 +223,7 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
             bottom: MediaQuery.of(context).padding.bottom + 24,
             child: AnimatedOpacity(
               opacity: _showControls ? 1 : 0,
-              duration: const Duration(milliseconds: 200),
+              duration: Duration(milliseconds: 200),
               child: _buildInfo(post),
             ),
           ),
@@ -234,7 +234,7 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
             bottom: MediaQuery.of(context).padding.bottom + 24,
             child: AnimatedOpacity(
               opacity: _showControls ? 1 : 0,
-              duration: const Duration(milliseconds: 200),
+              duration: Duration(milliseconds: 200),
               child: _buildActions(post),
             ),
           ),
@@ -257,7 +257,7 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
       if (post.coverUrl != null) {
         return CachedNetworkImage(imageUrl: post.coverUrl!, fit: BoxFit.cover);
       }
-      return const Center(child: CircularProgressIndicator(color: Colors.white));
+      return Center(child: CircularProgressIndicator(color: Colors.white));
     }
 
     // 图片（多图横向滑动）
@@ -267,7 +267,7 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
           child: CachedNetworkImage(
             imageUrl: post.mediaUrls.first,
             fit: BoxFit.contain,
-            placeholder: (_, __) => const Center(child: CircularProgressIndicator(color: Colors.white)),
+            placeholder: (_, __) => Center(child: CircularProgressIndicator(color: Colors.white)),
           ),
         );
       }
@@ -280,7 +280,7 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
               child: CachedNetworkImage(
                 imageUrl: post.mediaUrls[i],
                 fit: BoxFit.contain,
-                placeholder: (_, __) => const Center(child: CircularProgressIndicator(color: Colors.white)),
+                placeholder: (_, __) => Center(child: CircularProgressIndicator(color: Colors.white)),
               ),
             ),
           ),
@@ -290,7 +290,7 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(post.mediaUrls.length, (i) => AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
+                duration: Duration(milliseconds: 200),
                 margin: const EdgeInsets.symmetric(horizontal: 3),
                 width: i == _imgIndex ? 16 : 6, height: 6,
                 decoration: BoxDecoration(
@@ -311,7 +311,7 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Text(post.content,
-          style: const TextStyle(fontSize: 24, color: AppColors.onSurface, height: 1.6),
+          style: TextStyle(fontSize: 24, color: AppColors.onSurface, height: 1.6),
           textAlign: TextAlign.center,
         ),
       ),
@@ -325,14 +325,14 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
       children: [
         Row(children: [
           _Avatar(url: post.userAvatar, name: post.nickname, size: 32),
-          const SizedBox(width: 10),
-          Text(post.nickname, style: const TextStyle(
+          SizedBox(width: 10),
+          Text(post.nickname, style: TextStyle(
             fontFamily: AppFonts.primary, fontSize: 14,
             fontWeight: FontWeight.w700, color: Colors.white,
           )),
         ]),
         if (post.content.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(post.content,
             maxLines: 2, overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -342,10 +342,10 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
           ),
         ],
         if (post.location != null) ...[
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Row(children: [
             Icon(Icons.location_on_rounded, size: 12, color: Colors.white.withOpacity(0.6)),
-            const SizedBox(width: 4),
+            SizedBox(width: 4),
             Text(post.location!, style: TextStyle(
               fontSize: 12, color: Colors.white.withOpacity(0.6),
             )),
@@ -367,14 +367,14 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
             : post.isLiked ? Colors.red : Colors.white,
         onTap: _onLikeTap,
       ),
-      const SizedBox(height: 20),
+      SizedBox(height: 20),
       _ActionBtn(
         icon: Icons.chat_bubble_outline_rounded,
         label: '${post.commentCount}',
         color: Colors.white,
         onTap: () => _showComments(context, post),
       ),
-      const SizedBox(height: 20),
+      SizedBox(height: 20),
       _ActionBtn(
         icon: Icons.share_rounded,
         label: '分享',
@@ -407,7 +407,7 @@ class _ActionBtn extends StatelessWidget {
     onTap: onTap,
     child: Column(children: [
       Icon(icon, color: color, size: 30),
-      const SizedBox(height: 4),
+      SizedBox(height: 4),
       Text(label, style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 12)),
     ]),
   );
@@ -491,7 +491,7 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     return Container(
       height: MediaQuery.of(context).size.height * 0.65 + bottom,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -501,22 +501,22 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
           width: 40, height: 4,
           decoration: BoxDecoration(color: AppColors.outline, borderRadius: BorderRadius.circular(2))),
 
-        const Text('评论', style: TextStyle(fontFamily: AppFonts.primary,
+        Text('评论', style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
 
-        const Divider(),
+        Divider(),
 
         // 评论列表
         Expanded(
           child: _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? Center(child: CircularProgressIndicator())
               : _comments.isEmpty
-                  ? const Center(child: Text('暂无评论，来说第一句吧 💬',
+                  ? Center(child: Text('暂无评论，来说第一句吧 💬',
                       style: TextStyle(color: AppColors.onSurfaceVariant)))
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                       itemCount: _comments.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 16),
+                      separatorBuilder: (_, __) => SizedBox(height: 16),
                       itemBuilder: (_, i) => _CommentItem(comment: _comments[i]),
                     ),
         ),
@@ -528,7 +528,7 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
             Expanded(
               child: TextField(
                 controller: _ctrl,
-                style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14),
+                style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: '说点什么…',
                   hintStyle: TextStyle(color: AppColors.onSurfaceVariant.withOpacity(0.5), fontSize: 14),
@@ -539,13 +539,13 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             GestureDetector(
               onTap: _submit,
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                child: Icon(Icons.send_rounded, color: Colors.white, size: 20),
               ),
             ),
           ]),
@@ -563,12 +563,12 @@ class _CommentItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _Avatar(url: comment.userAvatar, name: comment.nickname, size: 36),
-      const SizedBox(width: 10),
+      SizedBox(width: 10),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(comment.nickname, style: const TextStyle(
+        Text(comment.nickname, style: TextStyle(
           fontFamily: AppFonts.primary, fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-        const SizedBox(height: 4),
-        Text(comment.content, style: const TextStyle(
+        SizedBox(height: 4),
+        Text(comment.content, style: TextStyle(
           fontFamily: AppFonts.primary, fontSize: 14, color: AppColors.onSurface, height: 1.4)),
       ])),
     ]);

@@ -37,7 +37,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     HapticFeedback.selectionClick();
     Scrollable.ensureVisible(
       target,
-      duration: const Duration(milliseconds: 480),
+      duration: Duration(milliseconds: 480),
       curve: Curves.easeOutCubic,
       alignment: 0.08,
     );
@@ -56,11 +56,11 @@ class _HomePageState extends ConsumerState<HomePage> {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   const _HomeTopBar(),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   _HomeHero(
                     onConsult: () => _openConsultation(context, ref),
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   _ActionDock(
                     onConsult: () => _openConsultation(context, ref),
                     onVoice: () => _scrollTo(_voiceKey),
@@ -70,17 +70,17 @@ class _HomePageState extends ConsumerState<HomePage> {
                   const _SectionHeader(
                     title: 'AI 解析',
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   KeyedSubtree(
                     key: _voiceKey,
-                    child: const AiTranslatePanel(),
+                    child: AiTranslatePanel(),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   KeyedSubtree(
                     key: _imageKey,
-                    child: const AiImagePanel(),
+                    child: AiImagePanel(),
                   ),
-                  const SizedBox(height: 28),
+                  SizedBox(height: 28),
                   const _HomeDeviceSection(),
                 ]),
               ),
@@ -99,7 +99,7 @@ class _HomeTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             // children: [
@@ -126,8 +126,6 @@ class _HomeTopBar extends StatelessWidget {
             // ],
           ),
         ),
-        const _ScanButton(),
-        const SizedBox(width: 8),
         _TopIconButton(
           icon: Icons.person_rounded,
           onTap: () => context.go(AppRoutes.profile),
@@ -150,7 +148,7 @@ void _openConsultation(BuildContext context, WidgetRef ref) async {
     context,
     ref: ref,
     onPicked: (petId) {
-      Future.delayed(const Duration(milliseconds: 60), () {
+      Future.delayed(Duration(milliseconds: 60), () {
         if (context.mounted) {
           context.push(AppRoutes.consultation, extra: petId);
         }
@@ -165,7 +163,7 @@ void _showNoDeviceDialog(BuildContext context) {
     builder: (ctx) => AlertDialog(
       backgroundColor: AppColors.surfaceContainerLowest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      title: const Text(
+      title: Text(
         '需要绑定设备',
         style: TextStyle(
           fontSize: 16,
@@ -173,7 +171,7 @@ void _showNoDeviceDialog(BuildContext context) {
           color: AppColors.onSurface,
         ),
       ),
-      content: const Text(
+      content: Text(
         '绑定设备并完善宠物档案后，就可以开启 AI 问诊。',
         style: TextStyle(
           fontSize: 14,
@@ -194,7 +192,7 @@ void _showNoDeviceDialog(BuildContext context) {
             Navigator.of(ctx).pop();
             context.push(AppRoutes.bindDevice);
           },
-          child: const Text(
+          child: Text(
             '去绑定',
             style: TextStyle(
               color: AppColors.secondary,
@@ -243,7 +241,7 @@ class _HomeHero extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: [
             Color(0xFFFFFCFA),
             Color(0xFFFFE7E1),
@@ -258,7 +256,7 @@ class _HomeHero extends ConsumerWidget {
             color: AppColors.primary.withValues(alpha: 0.11),
             blurRadius: 26,
             spreadRadius: -10,
-            offset: const Offset(0, 12),
+            offset: Offset(0, 12),
           ),
         ],
       ),
@@ -276,7 +274,7 @@ class _HomeHero extends ConsumerWidget {
                       '你好，$displayName',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: AppFonts.primary,
                         fontSize: 25,
                         fontWeight: FontWeight.w900,
@@ -284,28 +282,28 @@ class _HomeHero extends ConsumerWidget {
                         height: 1.10,
                       ),
                     ),
-                    const SizedBox(height: 9),
+                    SizedBox(height: 9),
                     Text(
                       petLine,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: AppFonts.primary,
                         fontSize: 13.5,
                         height: 1.42,
                         color: AppColors.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     _HeroButton(onTap: onConsult),
                   ],
                 ),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: 14),
               const _AssistantImageCard(),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _HeroMetricStrip(
             items: [
               _HeroMetricData(
@@ -348,7 +346,7 @@ class _AssistantImageCard extends StatelessWidget {
             color: AppColors.primary.withValues(alpha: 0.08),
             blurRadius: 18,
             spreadRadius: -10,
-            offset: const Offset(0, 8),
+            offset: Offset(0, 8),
           ),
         ],
       ),
@@ -376,8 +374,8 @@ class _HeroButton extends StatelessWidget {
       height: 42,
       child: ElevatedButton.icon(
         onPressed: onTap,
-        icon: const Icon(Icons.medical_services_rounded, size: 17),
-        label: const Text('问问宠小伊'),
+        icon: Icon(Icons.medical_services_rounded, size: 17),
+        label: Text('问问宠小伊'),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.secondary,
           foregroundColor: Colors.white,
@@ -450,7 +448,7 @@ class _HeroMetricCell extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(data.icon, size: 17, color: data.color),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           Flexible(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -460,7 +458,7 @@ class _HeroMetricCell extends StatelessWidget {
                   data.value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AppFonts.primary,
                     fontSize: 17,
                     fontWeight: FontWeight.w900,
@@ -468,12 +466,12 @@ class _HeroMetricCell extends StatelessWidget {
                     height: 1.0,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   data.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     color: AppColors.onSurfaceVariant,
@@ -525,7 +523,7 @@ class _ActionDock extends StatelessWidget {
             onTap: onConsult,
           ),
         ),
-        const SizedBox(width: 9),
+        SizedBox(width: 9),
         Expanded(
           child: _ActionTile(
             icon: Icons.graphic_eq_rounded,
@@ -534,7 +532,7 @@ class _ActionDock extends StatelessWidget {
             onTap: onVoice,
           ),
         ),
-        const SizedBox(width: 9),
+        SizedBox(width: 9),
         Expanded(
           child: _ActionTile(
             icon: Icons.add_photo_alternate_rounded,
@@ -584,10 +582,10 @@ class _ActionTileState extends State<_ActionTile> {
 
     return AnimatedScale(
       scale: _pressed ? 0.97 : 1,
-      duration: const Duration(milliseconds: 120),
+      duration: Duration(milliseconds: 120),
       curve: Curves.easeOutCubic,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
+        duration: Duration(milliseconds: 160),
         curve: Curves.easeOutCubic,
         height: 58,
         decoration: BoxDecoration(
@@ -634,12 +632,12 @@ class _ActionTileState extends State<_ActionTile> {
                       size: 17,
                     ),
                   ),
-                  const SizedBox(width: 9),
+                  SizedBox(width: 9),
                   Text(
                     widget.title,
                     maxLines: 1,
                     softWrap: false,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: AppFonts.primary,
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
@@ -647,7 +645,7 @@ class _ActionTileState extends State<_ActionTile> {
                       height: 1.0,
                     ),
                   ),
-                  const Spacer(),
+                  Spacer(),
                   Icon(
                     Icons.arrow_forward_rounded,
                     color: widget.color,
@@ -681,7 +679,7 @@ class _MaybePetMoodSectionState extends ConsumerState<_MaybePetMoodSection> {
 
     if (!auth.isLoggedIn) {
       _requestedForUserId = null;
-      return const SizedBox(height: 12);
+      return SizedBox(height: 12);
     }
 
     final userId = auth.user?.id ?? '';
@@ -701,10 +699,10 @@ class _MaybePetMoodSectionState extends ConsumerState<_MaybePetMoodSection> {
     }
 
     if (petState.pets.isEmpty) {
-      return const SizedBox(height: 12);
+      return SizedBox(height: 12);
     }
 
-    return const Column(
+    return Column(
       children: [
         SizedBox(height: 22),
         PetMoodSection(),
@@ -719,7 +717,7 @@ class _PetMoodLoadingShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
+    return Column(
       children: [
         SizedBox(height: 22),
         SizedBox(
@@ -761,7 +759,7 @@ class _SectionHeader extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: AppFonts.primary,
                   fontSize: 19,
                   fontWeight: FontWeight.w900,
@@ -770,7 +768,7 @@ class _SectionHeader extends StatelessWidget {
                 ),
               ),
               if (subtitle != null) ...[
-                const SizedBox(height: 3),
+                SizedBox(height: 3),
                 Text(
                   subtitle!,
                   maxLines: 1,
@@ -790,7 +788,7 @@ class _SectionHeader extends StatelessWidget {
             onPressed: onAction,
             child: Text(
               actionLabel!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
                 color: AppColors.primary,
@@ -824,10 +822,10 @@ class _HomeDeviceSection extends ConsumerWidget {
               ? null
               : () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const DeviceListPage()),
+                    MaterialPageRoute(builder: (_) => DeviceListPage()),
                   ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         if (state.isLoading && state.devices.isEmpty)
           const _DeviceLoadingPanel()
         else if (state.devices.isEmpty)
@@ -844,11 +842,11 @@ class _HomeDeviceSection extends ConsumerWidget {
               child: TextButton(
                 onPressed: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const DeviceListPage()),
+                  MaterialPageRoute(builder: (_) => DeviceListPage()),
                 ),
                 child: Text(
                   '查看全部 ${state.devices.length} 台设备',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
                     color: AppColors.primary,
@@ -874,7 +872,7 @@ class _DeviceLoadingPanel extends StatelessWidget {
         color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(22),
       ),
-      child: const CircularProgressIndicator(
+      child: CircularProgressIndicator(
         color: AppColors.primary,
         strokeWidth: 2.5,
       ),
@@ -898,7 +896,7 @@ class _EmptyDevicePanel extends StatelessWidget {
             color: AppColors.cardShadow,
             blurRadius: 18,
             spreadRadius: -8,
-            offset: const Offset(0, 8),
+            offset: Offset(0, 8),
           ),
         ],
       ),
@@ -911,14 +909,14 @@ class _EmptyDevicePanel extends StatelessWidget {
               color: AppColors.primary.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.add_link_rounded,
               color: AppColors.primary,
               size: 25,
             ),
           ),
-          const SizedBox(width: 14),
-          const Expanded(
+          SizedBox(width: 14),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -945,10 +943,10 @@ class _EmptyDevicePanel extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           IconButton.filled(
             onPressed: () => context.push(AppRoutes.bindDevice),
-            icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+            icon: Icon(Icons.arrow_forward_rounded, size: 18),
             style: IconButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
@@ -995,7 +993,7 @@ class _HomeDeviceCard extends StatelessWidget {
                 color: AppColors.cardShadow,
                 blurRadius: 18,
                 spreadRadius: -8,
-                offset: const Offset(0, 8),
+                offset: Offset(0, 8),
               ),
             ],
           ),
@@ -1014,7 +1012,7 @@ class _HomeDeviceCard extends StatelessWidget {
                   color: accent,
                 ),
               ),
-              const SizedBox(width: 13),
+              SizedBox(width: 13),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1023,18 +1021,18 @@ class _HomeDeviceCard extends StatelessWidget {
                       device.displayName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: AppFonts.primary,
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
                         color: AppColors.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     Row(
                       children: [
                         _StatusDot(color: accent),
-                        const SizedBox(width: 6),
+                        SizedBox(width: 6),
                         Text(
                           device.isOnline ? '在线守护中' : '暂时离线',
                           style: TextStyle(
@@ -1050,7 +1048,7 @@ class _HomeDeviceCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(
@@ -1066,7 +1064,7 @@ class _HomeDeviceCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Icon(
                 Icons.chevron_right_rounded,
                 color: AppColors.onSurfaceVariant,
@@ -1110,7 +1108,7 @@ class _ScanButton extends ConsumerWidget {
         HapticFeedback.mediumImpact();
         await Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const SelectDevicePage()),
+          MaterialPageRoute(builder: (_) => SelectDevicePage()),
         );
         ref.read(deviceListProvider.notifier).load();
       },
@@ -1149,10 +1147,10 @@ class _TopPillButton extends StatelessWidget {
                   color: AppColors.primary,
                   size: 19,
                 ),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
                     color: AppColors.primary,

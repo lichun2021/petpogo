@@ -36,7 +36,7 @@ class ImSystemNotice {
   final String content;     // 最终展示文案
   final DateTime time;
 
-  const ImSystemNotice({
+  ImSystemNotice({
     required this.type,
     this.action = '',
     required this.fromName,
@@ -72,7 +72,7 @@ class ImState {
   /// 错误信息（null = 无错误）
   final String? errorMessage;
 
-  const ImState({
+  ImState({
     this.conversations      = const [],
     this.friendApplications = const [],
     this.systemNotices      = const [],
@@ -131,7 +131,7 @@ class ImController extends StateNotifier<ImState> {
   /// 系统消息监听器（点赞/评论）
   V2TimAdvancedMsgListener? _systemMsgListener;
 
-  ImController(this._repo, this._ref) : super(const ImState());
+  ImController(this._repo, this._ref) : super(ImState());
 
   // ── IM 登录 ──────────────────────────────────────────────
   /// 在用户 PetPogo 登录成功后调用
@@ -183,7 +183,7 @@ class ImController extends StateNotifier<ImState> {
         loadFriendApplications();
         loadConversations();
         // iOS SDK 数据同步有延迟，延迟 3s 再补拉一次
-        Future.delayed(const Duration(seconds: 3), () {
+        Future.delayed(Duration(seconds: 3), () {
           if (mounted) {
             debugPrint('[ImCtrl] ⏰ 延迟补拉好友申请（iOS SDK 同步保障）');
             loadFriendApplications();
@@ -227,7 +227,7 @@ class ImController extends StateNotifier<ImState> {
               insetPadding: const EdgeInsets.symmetric(horizontal: 32),
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1A1A2E),
+                  color: Color(0xFF1A1A2E),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(color: Colors.white.withOpacity(0.08)),
                 ),
@@ -240,11 +240,11 @@ class ImController extends StateNotifier<ImState> {
                       color: Colors.redAccent.withOpacity(0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.devices_other_rounded,
+                    child: Icon(Icons.devices_other_rounded,
                         color: Colors.redAccent, size: 28),
                   ),
-                  const SizedBox(height: 16),
-                  const Text('账号已在其他设备登录',
+                  SizedBox(height: 16),
+                  Text('账号已在其他设备登录',
                     style: TextStyle(
                       fontFamily: AppFonts.primary,
                       fontSize: 16, fontWeight: FontWeight.w700,
@@ -252,7 +252,7 @@ class ImController extends StateNotifier<ImState> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                   Text(
                     '当前设备已自动退出登录。\n如非本人操作，请尽快修改密码。',
                     style: TextStyle(
@@ -262,7 +262,7 @@ class ImController extends StateNotifier<ImState> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: TextButton(
@@ -274,7 +274,7 @@ class ImController extends StateNotifier<ImState> {
                             borderRadius: BorderRadius.circular(14)),
                       ),
                       onPressed: () => Navigator.of(_).pop(),
-                      child: const Text('我知道了',
+                      child: Text('我知道了',
                         style: TextStyle(fontFamily: AppFonts.primary,
                             fontWeight: FontWeight.w700, fontSize: 14)),
                     ),
@@ -693,7 +693,7 @@ class ImController extends StateNotifier<ImState> {
   Future<void> logoutIm() async {
     _cleanupListeners();
     await _repo.logout();
-    state = const ImState();
+    state = ImState();
   }
 
   void _cleanupListeners() {

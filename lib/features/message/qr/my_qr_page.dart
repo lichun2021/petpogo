@@ -29,10 +29,10 @@ class MyQrCodePage extends ConsumerWidget {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.onSurface),
+          icon: Icon(Icons.arrow_back_rounded, color: AppColors.onSurface),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           '我的二维码',
           style: TextStyle(
             fontFamily: AppFonts.primary, fontSize: 18,
@@ -42,7 +42,7 @@ class MyQrCodePage extends ConsumerWidget {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.share_rounded, color: AppColors.onSurface),
+            icon: Icon(Icons.share_rounded, color: AppColors.onSurface),
             onPressed: () {
               HapticFeedback.lightImpact();
               PetToast.show(context, '分享功能即将上线 🐾');
@@ -59,7 +59,7 @@ class MyQrCodePage extends ConsumerWidget {
               // ── 名片容器 ──────────────────────────────────
               Container(
                 width: double.infinity,
-                constraints: const BoxConstraints(maxWidth: 340),
+                constraints: BoxConstraints(maxWidth: 340),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(28),
@@ -68,7 +68,7 @@ class MyQrCodePage extends ConsumerWidget {
                       color: AppColors.primary.withOpacity(0.12),
                       blurRadius: 40,
                       spreadRadius: -4,
-                      offset: const Offset(0, 12),
+                      offset: Offset(0, 12),
                     ),
                   ],
                 ),
@@ -85,7 +85,7 @@ class MyQrCodePage extends ConsumerWidget {
                     //     ),
                     //     borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
                     //   ),
-                    //   child: const Center(
+                    //   child: Center(
                     //     child: Text('🐾 PetPogo',
                     //       style: TextStyle(
                     //         fontFamily: AppFonts.primary, fontSize: 20,
@@ -98,19 +98,19 @@ class MyQrCodePage extends ConsumerWidget {
 
                     // 头像（跨越分隔线）
                     Transform.translate(
-                      offset: const Offset(0, -36),
+                      offset: Offset(0, -36),
                       child: Column(
                         children: [
                           _buildAvatar(avatar, nickname),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           Text(
                             nickname,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: AppFonts.primary, fontSize: 18,
                               fontWeight: FontWeight.w700, color: AppColors.onSurface,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             'PetPogo 宠物主人',
                             style: TextStyle(
@@ -124,7 +124,7 @@ class MyQrCodePage extends ConsumerWidget {
 
                     // QR 码
                     Transform.translate(
-                      offset: const Offset(0, -20),
+                      offset: Offset(0, -20),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 32),
                         child: Container(
@@ -144,10 +144,10 @@ class MyQrCodePage extends ConsumerWidget {
                                   size: 200,
                                   backgroundColor: Colors.transparent,
                                   errorCorrectionLevel: QrErrorCorrectLevel.M,
-                                  embeddedImage: const AssetImage('assets/icons/app_icon.png'),
-                                  embeddedImageStyle: const QrEmbeddedImageStyle(size: Size(30, 30)),
+                                  embeddedImage: AssetImage('assets/icons/app_icon.png'),
+                                  embeddedImageStyle: QrEmbeddedImageStyle(size: Size(30, 30)),
                                 )
-                              : const SizedBox(
+                              : SizedBox(
                                   width: 200, height: 200,
                                   child: Center(child: CircularProgressIndicator()),
                                 ),
@@ -157,7 +157,7 @@ class MyQrCodePage extends ConsumerWidget {
 
                     // 提示文字
                     Transform.translate(
-                      offset: const Offset(0, -12),
+                      offset: Offset(0, -12),
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                         child: Text(
@@ -202,7 +202,7 @@ class MyQrCodePage extends ConsumerWidget {
               backgroundColor: AppColors.primaryContainer,
               child: Text(
                 name.isNotEmpty ? name[0] : '?',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 28, fontWeight: FontWeight.w700,
                   color: AppColors.primary,
                 ),

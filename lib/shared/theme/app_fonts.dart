@@ -15,7 +15,9 @@ abstract class AppFonts {
   /// 可选值：
   ///   'AZhuBubble' — 阿朱泡泡体（已打包，卡通可爱）⭐
 
-  static const String primary = 'Plus Jakarta Sans'; // 系统兜底 iOS→苹方 Android→Noto CJK
+  /// 当前主字体（运行时可变，由 fontFamilyProvider 管理）
+  // ignore: prefer_final_fields
+  static String primary = 'Plus Jakarta Sans'; // 系统兜底 iOS→苹方 Android→Noto CJK
 
   /// 英文辅助字体（Plus Jakarta Sans，作为非中文字符的回退）
   static const String latin = 'Plus Jakarta Sans';
@@ -26,5 +28,5 @@ abstract class AppFonts {
   static const double scale = 1.1;
 
   /// fontFamilyFallback 列表（直接用于 TextStyle）
-  static const List<String> fallback = [primary];
+  static List<String> get fallback => [primary];
 }

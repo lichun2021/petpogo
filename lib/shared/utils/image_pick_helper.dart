@@ -32,13 +32,13 @@ class ImagePickHelper {
     // 3. 裁剪（圆形区域，可拖动）
     final cropped = await ImageCropper().cropImage(
       sourcePath: picked.path,
-      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+      aspectRatio: CropAspectRatio(ratioX: 1, ratioY: 1),
       uiSettings: [
         AndroidUiSettings(
           toolbarTitle: '调整头像',
-          toolbarColor: const Color(0xFF9e2f04),
+          toolbarColor: Color(0xFF9e2f04),
           toolbarWidgetColor: Colors.white,
-          activeControlsWidgetColor: const Color(0xFFe85d26),
+          activeControlsWidgetColor: Color(0xFFe85d26),
           initAspectRatio: CropAspectRatioPreset.square,
           lockAspectRatio: true,
           hideBottomControls: false,
@@ -68,25 +68,25 @@ class _SourceSheet extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Container(width: 40, height: 4,
             margin: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
                 color: Colors.grey.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(999))),
         ListTile(
-          leading: const Icon(Icons.camera_alt_rounded),
-          title: const Text('拍照',
+          leading: Icon(Icons.camera_alt_rounded),
+          title: Text('拍照',
               style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w600)),
           onTap: () => Navigator.pop(context, ImageSource.camera),
         ),
         ListTile(
-          leading: const Icon(Icons.photo_library_rounded),
-          title: const Text('从相册选择',
+          leading: Icon(Icons.photo_library_rounded),
+          title: Text('从相册选择',
               style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w600)),
           onTap: () => Navigator.pop(context, ImageSource.gallery),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
       ]),
     );
   }

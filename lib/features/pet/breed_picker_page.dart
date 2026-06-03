@@ -21,7 +21,7 @@ class BreedPickerPage extends StatefulWidget {
 
 class _BreedPickerPageState extends State<BreedPickerPage> {
   // 按字母分组 { 'A': ['阿比西尼亚猫', ...], ... }
-  Map<String, List<String>> _groups = const {};
+  Map<String, List<String>> _groups = {};
   bool _loading = true;
 
   String _query = '';
@@ -97,7 +97,7 @@ class _BreedPickerPageState extends State<BreedPickerPage> {
     }
     _scrollCtrl.animateTo(
       offset.clamp(0.0, _scrollCtrl.position.maxScrollExtent),
-      duration: const Duration(milliseconds: 220),
+      duration: Duration(milliseconds: 220),
       curve: Curves.easeOut,
     );
   }
@@ -115,13 +115,13 @@ class _BreedPickerPageState extends State<BreedPickerPage> {
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           color: AppColors.onSurface,
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
           widget.species == 'cat' ? '选择猫品种' : '选择狗品种',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: AppFonts.primary,
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -147,7 +147,7 @@ class _BreedPickerPageState extends State<BreedPickerPage> {
               child: TextField(
                 controller: _searchCtrl,
                 onChanged: (v) => setState(() => _query = v),
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: AppFonts.primary,
                   fontSize: 14,
                   color: AppColors.onSurface,
@@ -186,7 +186,7 @@ class _BreedPickerPageState extends State<BreedPickerPage> {
         ),
       ),
       body: _loading
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(color: AppColors.secondary),
             )
           : items.isEmpty
@@ -245,7 +245,7 @@ class _SectionHeader extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Text(
         letter,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: AppFonts.primary,
           fontSize: 12,
           fontWeight: FontWeight.w800,
@@ -287,13 +287,13 @@ class _BreedTile extends StatelessWidget {
           children: [
             Text(
               breed,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontSize: 15,
                 color: AppColors.onSurface,
               ),
             ),
-            const Spacer(),
+            Spacer(),
             Icon(
               Icons.chevron_right_rounded,
               color: AppColors.outlineVariant,
@@ -339,7 +339,7 @@ class _SideIndex extends StatelessWidget {
                     child: Center(
                       child: Text(
                         l,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                           color: AppColors.secondary,
@@ -369,11 +369,11 @@ class _EmptySearch extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('🔍', style: TextStyle(fontSize: 40)),
-          const SizedBox(height: 12),
+          Text('🔍', style: TextStyle(fontSize: 40)),
+          SizedBox(height: 12),
           Text(
             '没有找到「$query」',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppFonts.primary,
               fontSize: 15,
               color: AppColors.onSurfaceVariant,

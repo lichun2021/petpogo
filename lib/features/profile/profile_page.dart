@@ -81,21 +81,21 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               delegate: SliverChildListDelegate([
 
                 _UserInfoCard(l10n: l10n, user: auth.user, stats: stats),
-                const SizedBox(height: 28),
+                SizedBox(height: 28),
 
                 // ── 菜单 ─────────────────────────────
                 _MenuGroup(items: [
                   _MenuItemData(icon: Icons.pets_rounded,           label: l10n.profileMyPets,
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PetListPage()))),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PetListPage()))),
                   _MenuItemData(icon: Icons.devices_rounded,        label: l10n.profileBoundDevices,
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeviceListPage()))),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DeviceListPage()))),
                   _MenuItemData(icon: Icons.music_note_rounded,      label: '宠物音乐',
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PetMusicPage()))),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PetMusicPage()))),
                   _MenuItemData(icon: Icons.grid_view_rounded,      label: l10n.profileMyPosts,       onTap: () {}),
                   _MenuItemData(icon: Icons.settings_rounded,       label: l10n.profileSettings,      onTap: () => context.push('/settings')),
                 ]),
 
-                const SizedBox(height: 32),
+                SizedBox(height: 32),
 
                 Center(
                   child: TextButton.icon(
@@ -136,7 +136,7 @@ class _UserInfoCardState extends ConsumerState<_UserInfoCard> {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surfaceContainerLowest,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (ctx) => _NicknameInlineSheet(ctrl: ctrl, ref: ref, onSaved: () {
         // 刷新用户信息
@@ -218,12 +218,12 @@ class _UserInfoCardState extends ConsumerState<_UserInfoCard> {
                   ),
                   child: ClipOval(
                     child: _uploadingAvatar
-                        ? const Center(child: CircularProgressIndicator(strokeWidth: 2.5))
+                        ? Center(child: CircularProgressIndicator(strokeWidth: 2.5))
                         : avatarUrl.isNotEmpty
                             ? CachedNetworkImage(imageUrl: avatarUrl, fit: BoxFit.cover,
                                 errorWidget: (_, __, ___) =>
-                                    const Center(child: Text('🧑', style: TextStyle(fontSize: 38))))
-                            : const Center(child: Text('🧑', style: TextStyle(fontSize: 38))),
+                                    Center(child: Text('🧑', style: TextStyle(fontSize: 38))))
+                            : Center(child: Text('🧑', style: TextStyle(fontSize: 38))),
                   ),
                 ),
                 // 相机图标覆盖
@@ -237,14 +237,14 @@ class _UserInfoCardState extends ConsumerState<_UserInfoCard> {
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 2),
                       ),
-                      child: const Icon(Icons.camera_alt_rounded, size: 12, color: Colors.white),
+                      child: Icon(Icons.camera_alt_rounded, size: 12, color: Colors.white),
                     ),
                   ),
               ],
             ),
           ),
 
-          const SizedBox(width: 20),
+          SizedBox(width: 20),
 
           // ── 用户信息 ───────────────────────────────────────
           Expanded(
@@ -257,34 +257,34 @@ class _UserInfoCardState extends ConsumerState<_UserInfoCard> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(nickname,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontFamily: AppFonts.primary, fontSize: 20,
                               fontWeight: FontWeight.w800, letterSpacing: -0.4,
                               color: AppColors.onSurface)),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.edit_rounded, size: 14, color: AppColors.onSurfaceVariant),
+                      SizedBox(width: 4),
+                      Icon(Icons.edit_rounded, size: 14, color: AppColors.onSurfaceVariant),
                     ],
                   ),
                 ),
                 if (maskedPhone.isNotEmpty) ...[
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(maskedPhone,
                       style: TextStyle(
                           fontFamily: AppFonts.primary, fontSize: 12,
                           color: AppColors.onSurfaceVariant)),
                 ],
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Row(
                   children: [
                     _StatCol(value: postStr,     label: l10n.profilePosts),
-                    const SizedBox(width: 20),
+                    SizedBox(width: 20),
                     _StatCol(value: followerStr, label: l10n.profileFollowers),
-                    const SizedBox(width: 20),
+                    SizedBox(width: 20),
                     _StatCol(value: likeStr,     label: '获赞'),
                   ],
                 ),
                 // ── AI 次数 ──────────────────────
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 _AiQuotaChip(quota: user?.aiQuota),
               ],
             ),
@@ -324,12 +324,12 @@ class _AiQuotaChip extends StatelessWidget {
           isUnlimited ? Icons.all_inclusive_rounded : Icons.auto_awesome_rounded,
           size: 14, color: accent,
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: 6),
         Text('AI 分析', style: TextStyle(
           fontFamily: AppFonts.primary, fontSize: 12,
           fontWeight: FontWeight.w700, color: accent,
         )),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         if (isUnlimited)
           Text('VIP 无限 ✨', style: TextStyle(
             fontFamily: AppFonts.primary, fontSize: 11,
@@ -347,7 +347,7 @@ class _AiQuotaChip extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 7),
+          SizedBox(width: 7),
           RichText(text: TextSpan(
             style: TextStyle(
               fontFamily: AppFonts.primary, fontSize: 12,
@@ -449,11 +449,11 @@ class _PetPageViewState extends State<_PetPageView> {
         ),
         // 圆点指示（只有多宠物时显示）
         if (pets.length > 1) ...[
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(pets.length, (i) => AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
+              duration: Duration(milliseconds: 250),
               margin: const EdgeInsets.symmetric(horizontal: 3),
               width:  i == _page ? 18 : 6,
               height: 6,
@@ -490,8 +490,8 @@ class _PetCard extends StatelessWidget {
 
   // 物种对应渐变色
   List<Color> get _gradients => type == '猫'
-      ? [const Color(0xFF6EC6F5), const Color(0xFF4A90D9)]
-      : [const Color(0xFFFFB347), const Color(0xFFE07B39)];
+      ? [Color(0xFF6EC6F5), Color(0xFF4A90D9)]
+      : [Color(0xFFFFB347), Color(0xFFE07B39)];
 
   String _ageText() {
     if (birthday.isEmpty) return '';
@@ -515,8 +515,8 @@ class _PetCard extends StatelessWidget {
     final isMale = gender == 'male';
     final isFemale = gender == 'female';
     final gLabel = isMale ? '♂ 公' : isFemale ? '♀ 母' : '';
-    final gColor = isMale ? const Color(0xFF1A6BB5) : const Color(0xFFB51A6B);
-    final gBg    = isMale ? const Color(0xFFDCEEFF) : const Color(0xFFFFDCEE);
+    final gColor = isMale ? Color(0xFF1A6BB5) : Color(0xFFB51A6B);
+    final gBg    = isMale ? Color(0xFFDCEEFF) : Color(0xFFFFDCEE);
 
     return Container(
       decoration: BoxDecoration(
@@ -529,7 +529,7 @@ class _PetCard extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: _gradients.first.withOpacity(0.45),
-            blurRadius: 24, spreadRadius: -4, offset: const Offset(0, 8),
+            blurRadius: 24, spreadRadius: -4, offset: Offset(0, 8),
           ),
         ],
       ),
@@ -580,13 +580,13 @@ class _PetCard extends StatelessWidget {
                       ),
                       child: Center(
                         child: Text(emoji,
-                            style: const TextStyle(fontSize: 22)),
+                            style: TextStyle(fontSize: 22)),
                       ),
                     ),
                   ],
                 ),
 
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
 
                 // 右：信息
                 Expanded(
@@ -602,7 +602,7 @@ class _PetCard extends StatelessWidget {
                             child: Text(name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontFamily: AppFonts.primary,
                                     fontSize: 14,
                                     fontWeight: FontWeight.w900,
@@ -610,7 +610,7 @@ class _PetCard extends StatelessWidget {
                                     letterSpacing: -0.3)),
                           ),
                           if (gLabel.isNotEmpty) ...[
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Padding(
                               padding: const EdgeInsets.only(right: 10),
                               child: Container(
@@ -634,7 +634,7 @@ class _PetCard extends StatelessWidget {
 
                       // 品种
                       if (breed.isNotEmpty) ...[
-                        const SizedBox(height: 3),
+                        SizedBox(height: 3),
                         Text(breed,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -644,7 +644,7 @@ class _PetCard extends StatelessWidget {
                                 color: Colors.white.withOpacity(0.80))),
                       ],
 
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
 
                       // 年龄 + 生日 chips（白底半透明）
                       Wrap(
@@ -689,9 +689,9 @@ class _WhiteChip extends StatelessWidget {
     ),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(icon, size: 11, color: Colors.white),
-      const SizedBox(width: 4),
+      SizedBox(width: 4),
       Text(label,
-          style: const TextStyle(
+          style: TextStyle(
               fontFamily: AppFonts.primary,
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -756,9 +756,9 @@ class _MenuItemRow extends StatelessWidget {
                       boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 8)]),
                   child: Icon(data.icon, size: 20, color: AppColors.primary),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 Expanded(child: Text(data.label,
-                    style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
+                    style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
                         fontWeight: FontWeight.w600, color: AppColors.onSurface))),
                 Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant, size: 20),
               ],
@@ -783,16 +783,16 @@ class _GuestProfileView extends StatelessWidget {
             Container(
               width: 100, height: 100,
               decoration: BoxDecoration(color: AppColors.surfaceContainerLow, shape: BoxShape.circle),
-              child: const Center(child: Icon(Icons.person_rounded, size: 48, color: AppColors.onSurfaceVariant)),
+              child: Center(child: Icon(Icons.person_rounded, size: 48, color: AppColors.onSurfaceVariant)),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Text(l10n.profileGuestMode,
-                style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 20,
+                style: TextStyle(fontFamily: AppFonts.primary, fontSize: 20,
                     fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(l10n.profileGuestSubtitle,
                 style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14, color: AppColors.onSurfaceVariant)),
-            const SizedBox(height: 28),
+            SizedBox(height: 28),
             ElevatedButton(
                 onPressed: () => context.push(AppRoutes.login),
                 child: Text(l10n.profileLoginRegister)),
@@ -846,31 +846,31 @@ class _NicknameInlineSheetState extends ConsumerState<_NicknameInlineSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('修改昵称', style: TextStyle(fontFamily: AppFonts.primary,
+          Text('修改昵称', style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 18, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Container(
             decoration: BoxDecoration(color: AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(14)),
             child: TextField(
               controller: widget.ctrl,
               autofocus: true,
-              style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 15),
+              style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15),
               decoration: InputDecoration(
                 hintText: '输入新昵称',
                 hintStyle: TextStyle(color: AppColors.onSurfaceVariant,
                     fontFamily: AppFonts.primary, fontSize: 14),
-                prefixIcon: const Icon(Icons.person_rounded, color: AppColors.primary, size: 20),
+                prefixIcon: Icon(Icons.person_rounded, color: AppColors.primary, size: 20),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
             ),
           ),
           if (_error != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(_error!, style: TextStyle(color: AppColors.error, fontSize: 13)),
           ],
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           SizedBox(
             width: double.infinity, height: 52,
             child: ElevatedButton(
@@ -882,13 +882,13 @@ class _NicknameInlineSheetState extends ConsumerState<_NicknameInlineSheet> {
                 elevation: 0,
               ),
               child: _loading
-                  ? const SizedBox(width: 20, height: 20,
+                  ? SizedBox(width: 20, height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('保存', style: TextStyle(fontFamily: AppFonts.primary,
+                  : Text('保存', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 16, fontWeight: FontWeight.w700)),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
         ],
       ),
     );

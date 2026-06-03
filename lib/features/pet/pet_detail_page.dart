@@ -26,7 +26,7 @@ class PetDetailPage extends StatelessWidget {
               icon: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(color: Colors.black26, shape: BoxShape.circle),
-                child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+                child: Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
               ),
               onPressed: () => Navigator.pop(context),
             ),
@@ -35,7 +35,7 @@ class PetDetailPage extends StatelessWidget {
                 icon: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(color: Colors.black26, shape: BoxShape.circle),
-                  child: const Icon(Icons.edit_rounded, size: 18, color: Colors.white),
+                  child: Icon(Icons.edit_rounded, size: 18, color: Colors.white),
                 ),
                 onPressed: () {},
               ),
@@ -62,15 +62,15 @@ class PetDetailPage extends StatelessWidget {
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white, width: 2),
                             ),
-                            child: const Center(child: Text('🐱', style: TextStyle(fontSize: 38))),
+                            child: Center(child: Text('🐱', style: TextStyle(fontSize: 38))),
                           ),
-                          const SizedBox(height: 10),
-                          const Text('Doudou',
+                          SizedBox(height: 10),
+                          Text('Doudou',
                               style: TextStyle(fontFamily: AppFonts.primary, fontSize: 28,
                                   fontWeight: FontWeight.w800, color: Colors.white)),
                           Row(children: [
                             _Badge('CAT', Colors.white.withOpacity(0.25), Colors.white),
-                            const SizedBox(width: 6),
+                            SizedBox(width: 6),
                             _Badge('British Shorthair', Colors.white.withOpacity(0.25), Colors.white),
                           ]),
                         ],
@@ -100,24 +100,24 @@ class PetDetailPage extends StatelessWidget {
                   ],
                 ).animate().fadeIn().slideY(begin: 0.1),
 
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
 
                 // ── 健康状态 ────────────────────────────
                 _SectionTitle('健康状态'),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Row(children: [
                   Expanded(child: _HealthCard(emoji: '💉', label: '疫苗',  status: '已接种', color: AppColors.secondary, isOk: true)),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(child: _HealthCard(emoji: '🩺', label: '体检',  status: '待复诊', color: AppColors.error, isOk: false)),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(child: _HealthCard(emoji: '💊', label: '驱虫',  status: '正常',   color: AppColors.secondary, isOk: true)),
                 ]).animate().fadeIn().slideY(begin: 0.1, delay: 80.ms),
 
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
 
                 // ── AI 识别历史 ─────────────────────────
                 _SectionTitle('AI 识别记录'),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 ...[
                   _TranslateHistoryCard(time: '今天 14:30', emoji: '🥺', content: '主人快来抱我！我好想你了嘛～',
                       emotions: ['撒娇 78%', '开心 45%']),
@@ -132,11 +132,11 @@ class PetDetailPage extends StatelessWidget {
                   ).animate().fadeIn().slideY(begin: 0.1, delay: (100 + e.key * 60).ms)
                 ),
 
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
 
                 // ── 关联设备 ────────────────────────────
                 _SectionTitle('关联设备'),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _LinkedDeviceCard(
                   name: 'KeyTracker',
                   icon: Icons.key_rounded,
@@ -179,7 +179,7 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(title, style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 18,
+    return Text(title, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 18,
         fontWeight: FontWeight.w700, color: AppColors.onSurface, letterSpacing: -0.3));
   }
 }
@@ -212,11 +212,11 @@ class _InfoRow extends StatelessWidget {
       child: Row(
         children: [
           Icon(icon, color: AppColors.primary, size: 20),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
               color: AppColors.onSurfaceVariant)),
-          const Spacer(),
-          Text(value, style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
+          Spacer(),
+          Text(value, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
               fontWeight: FontWeight.w600, color: AppColors.onSurface)),
         ],
       ),
@@ -247,11 +247,11 @@ class _HealthCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 28)),
-          const SizedBox(height: 6),
+          Text(emoji, style: TextStyle(fontSize: 28)),
+          SizedBox(height: 6),
           Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
               fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant)),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(status, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
               fontWeight: FontWeight.w700, color: color)),
         ],
@@ -277,13 +277,13 @@ class _TranslateHistoryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Text(emoji, style: const TextStyle(fontSize: 20)),
-            const SizedBox(width: 8),
+            Text(emoji, style: TextStyle(fontSize: 20)),
+            SizedBox(width: 8),
             Expanded(child: Text(content, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 13,
+                style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13,
                     color: AppColors.onSurface, height: 1.4))),
           ]),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Row(
             children: [
               ...emotions.map((e) => Container(
@@ -294,7 +294,7 @@ class _TranslateHistoryCard extends StatelessWidget {
                 child: Text(e, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 10,
                     fontWeight: FontWeight.w700, color: AppColors.primary)),
               )),
-              const Spacer(),
+              Spacer(),
               Text(time, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 10,
                   color: AppColors.onSurfaceVariant)),
             ],
@@ -325,18 +325,18 @@ class _LinkedDeviceCard extends StatelessWidget {
         Container(width: 48, height: 48,
             decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle),
             child: Icon(icon, color: iconColor, size: 24)),
-        const SizedBox(width: 14),
+        SizedBox(width: 14),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(name, style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+          Text(name, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
           Row(children: [
             Container(width: 6, height: 6, decoration: BoxDecoration(color: AppColors.online, shape: BoxShape.circle)),
-            const SizedBox(width: 5),
+            SizedBox(width: 5),
             Text(status, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.secondary)),
             Text('  ·  $location', style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11, color: AppColors.onSurfaceVariant)),
           ]),
         ])),
         Column(children: [
-          Text('$battery%', style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+          Text('$battery%', style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
           Icon(Icons.battery_5_bar_rounded, size: 18, color: AppColors.onSurfaceVariant),
         ]),
       ]),

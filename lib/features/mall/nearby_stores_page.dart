@@ -58,8 +58,8 @@ class _NearbyStoresPageState extends State<NearbyStoresPage> {
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
-        leading: const BackButton(),
-        title: const Text('附近门店'),
+        leading: BackButton(),
+        title: Text('附近门店'),
         actions: [
           Container(
             margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
@@ -96,14 +96,14 @@ class _NearbyStoresPageState extends State<NearbyStoresPage> {
                   return GestureDetector(
                     onTap: () => setState(() => _sortIndex = i),
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
+                      duration: Duration(milliseconds: 200),
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
                       decoration: BoxDecoration(
                         color: isSelected ? AppColors.primary : AppColors.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(999),
                         boxShadow: isSelected
-                            ? [BoxShadow(color: AppColors.primaryGlow, blurRadius: 10, offset: const Offset(0, 3))]
+                            ? [BoxShadow(color: AppColors.primaryGlow, blurRadius: 10, offset: Offset(0, 3))]
                             : null,
                       ),
                       child: Row(
@@ -118,7 +118,7 @@ class _NearbyStoresPageState extends State<NearbyStoresPage> {
                             ),
                           ),
                           if (i == 0) ...[
-                            const SizedBox(width: 2),
+                            SizedBox(width: 2),
                             Icon(
                               Icons.keyboard_arrow_down_rounded,
                               size: 16,
@@ -138,11 +138,11 @@ class _NearbyStoresPageState extends State<NearbyStoresPage> {
           Expanded(
             child: RefreshIndicator(
               color: AppColors.primary,
-              onRefresh: () async => await Future.delayed(const Duration(seconds: 1)),
+              onRefresh: () async => await Future.delayed(Duration(seconds: 1)),
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                 itemCount: _stores.length + 1,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                separatorBuilder: (_, __) => SizedBox(height: 12),
                 itemBuilder: (_, i) {
                   if (i == _stores.length) {
                     return Center(
@@ -188,7 +188,7 @@ class _StoreCard extends StatelessWidget {
             color: AppColors.cardShadow,
             blurRadius: 20,
             spreadRadius: -5,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -213,10 +213,10 @@ class _StoreCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Center(
-                    child: Text(store['emoji'] as String, style: const TextStyle(fontSize: 36)),
+                    child: Text(store['emoji'] as String, style: TextStyle(fontSize: 36)),
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
 
                 // 门店信息
                 Expanded(
@@ -233,7 +233,7 @@ class _StoreCard extends StatelessWidget {
                         ),
                         maxLines: 2,
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Row(
                         children: [
                           ...List.generate(
@@ -244,7 +244,7 @@ class _StoreCard extends StatelessWidget {
                               size: 14,
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          SizedBox(width: 6),
                           Text(
                             '已售$sales',
                             style: TextStyle(
@@ -255,7 +255,7 @@ class _StoreCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Row(
                         children: [
                           Container(
@@ -274,7 +274,7 @@ class _StoreCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const Spacer(),
+                          Spacer(),
                           Flexible(
                             child: Text(
                               store['address'] as String,
@@ -286,7 +286,7 @@ class _StoreCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(
                             store['distance'] as String,
                             style: TextStyle(

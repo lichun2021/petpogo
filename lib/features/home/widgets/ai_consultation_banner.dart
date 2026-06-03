@@ -24,7 +24,7 @@ class AiConsultationBanner extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceContainerLowest,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
+        title: Text(
           '需要绑定设备',
           style: TextStyle(
             fontSize: 16,
@@ -32,7 +32,7 @@ class AiConsultationBanner extends ConsumerWidget {
             color: AppColors.onSurface,
           ),
         ),
-        content: const Text(
+        content: Text(
           '使用 AI 问诊前，请先绑定您的宠物设备并完善宠物档案。',
           style: TextStyle(
             fontSize: 14,
@@ -86,7 +86,7 @@ class AiConsultationBanner extends ConsumerWidget {
           context,
           ref: ref,
           onPicked: (petId) {
-            Future.delayed(const Duration(milliseconds: 60), () {
+            Future.delayed(Duration(milliseconds: 60), () {
               if (context.mounted) {
                 context.push(AppRoutes.consultation, extra: petId);
               }
@@ -112,7 +112,7 @@ class AiConsultationBanner extends ConsumerWidget {
               BoxShadow(
                 color: AppColors.secondary.withOpacity(0.25),
                 blurRadius: 18,
-                offset: const Offset(0, 8),
+                offset: Offset(0, 8),
               ),
             ],
           ),
@@ -146,14 +146,14 @@ class AiConsultationBanner extends ConsumerWidget {
                           color: Colors.black.withOpacity(0.35),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text('🔒', style: TextStyle(fontSize: 20)),
                         ),
                       ),
                     ),
                 ],
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               // 文案（Expanded 防止挤压右侧按钮）
               Expanded(
                 child: Column(
@@ -166,19 +166,19 @@ class AiConsultationBanner extends ConsumerWidget {
                           '宠小伊 · AI 问诊',
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
                           ),
                         ),
                       ),
-                      if (!isLocked) ...const [
+                      if (!isLocked) ...[
                         SizedBox(width: 6),
                         _NewBadge(),
                       ],
                     ]),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       isLocked
                           ? '请先绑定设备并添加宠物档案'
@@ -194,7 +194,7 @@ class AiConsultationBanner extends ConsumerWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               // 右侧胶囊（固定宽度不伸缩）
               Container(
                 padding:
@@ -214,7 +214,7 @@ class AiConsultationBanner extends ConsumerWidget {
                         color: AppColors.secondary,
                       ),
                     ),
-                    const SizedBox(width: 2),
+                    SizedBox(width: 2),
                     Icon(
                       Icons.arrow_forward_rounded,
                       size: 14,
@@ -241,7 +241,7 @@ class _NewBadge extends StatelessWidget {
         color: AppColors.tertiaryContainer,
         borderRadius: BorderRadius.circular(4),
       ),
-      child: const Text(
+      child: Text(
         'NEW',
         style: TextStyle(
           fontSize: 9,

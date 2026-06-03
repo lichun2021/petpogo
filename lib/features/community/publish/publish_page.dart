@@ -32,7 +32,7 @@ class _PublishPageState extends ConsumerState<PublishPage>
     super.initState();
     _fabAnim = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: Duration(milliseconds: 600),
     );
     _fabAnim.forward();
     // 监听文字变化，实时更新发布按钮激活状态
@@ -89,14 +89,14 @@ class _PublishPageState extends ConsumerState<PublishPage>
           builder: (_) => AlertDialog(
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20)),
-            title: const Row(children: [
+            title: Row(children: [
               Icon(Icons.no_photography_rounded, color: Color(0xFFFF6B6B)),
               SizedBox(width: 8),
               Flexible(child: Text('需要相机权限',
                 style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 17, fontWeight: FontWeight.w700))),
             ]),
-            content: const Text(
+            content: Text(
               '拍照或视频通话需要使用相机。\n请在「设置 → PetPogo」中开启相机权限。',
               style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 14, height: 1.6),
@@ -117,7 +117,7 @@ class _PublishPageState extends ConsumerState<PublishPage>
                   Navigator.pop(context);
                   openAppSettings();
                 },
-                child: const Text('去设置',
+                child: Text('去设置',
                   style: TextStyle(color: Colors.white,
                       fontFamily: AppFonts.primary,
                       fontWeight: FontWeight.w700)),
@@ -145,7 +145,7 @@ class _PublishPageState extends ConsumerState<PublishPage>
     HapticFeedback.mediumImpact();
     final picked = await _picker.pickVideo(
       source: ImageSource.gallery,
-      maxDuration: const Duration(minutes: 3),
+      maxDuration: Duration(minutes: 3),
     );
     if (picked == null) return;
     final file = File(picked.path);
@@ -220,7 +220,7 @@ class _PublishPageState extends ConsumerState<PublishPage>
           if (pub.isUploading)
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0, end: pub.uploadProgress ?? 0),
-              duration: const Duration(milliseconds: 300),
+              duration: Duration(milliseconds: 300),
               builder: (_, v, __) => LinearProgressIndicator(
                 value: v,
                 minHeight: 3,
@@ -238,7 +238,7 @@ class _PublishPageState extends ConsumerState<PublishPage>
                   // ── 文本输入卡片 ─────────────────────────
                   _TextCard(controller: _textCtrl),
 
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
 
                   // ── 图片预览 ─────────────────────────────
                   if (pub.selectedMediaType == MediaType.image &&
@@ -255,7 +255,7 @@ class _PublishPageState extends ConsumerState<PublishPage>
                       },
                       onAddMore: pub.selectedImages.length < 9 ? _showMediaPicker : null, // ignore: dead_null_aware_expression
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                   ],
 
                   // ── 视频预览 ─────────────────────────────
@@ -271,7 +271,7 @@ class _PublishPageState extends ConsumerState<PublishPage>
                         setState(() {});
                       },
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                   ],
 
                   // ── 视频提示 ─────────────────────────────
@@ -284,8 +284,8 @@ class _PublishPageState extends ConsumerState<PublishPage>
                       ),
                       child: Row(children: [
                         Icon(Icons.info_outline_rounded, size: 14, color: AppColors.secondary),
-                        const SizedBox(width: 6),
-                        const Expanded(
+                        SizedBox(width: 6),
+                        Expanded(
                           child: Text('视频发布后将进行转码，完成后自动显示',
                             style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant)),
                         ),
@@ -294,7 +294,7 @@ class _PublishPageState extends ConsumerState<PublishPage>
 
                   // ── 添加媒体按钮（无媒体时显示） ──────────
                   if (!pub.selectedMediaType.hasMedia) ...[
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     _AddMediaCard(onTap: _showMediaPicker),
                   ],
                 ],
@@ -329,7 +329,7 @@ class _GradientHeader extends StatelessWidget {
     final top = MediaQuery.of(context).padding.top;
     return Container(
       padding: EdgeInsets.only(top: top),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFFa83206), Color(0xFFff784e)],
           begin: Alignment.centerLeft,
@@ -340,10 +340,10 @@ class _GradientHeader extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.close_rounded, color: Colors.white),
+            icon: Icon(Icons.close_rounded, color: Colors.white),
             onPressed: isBusy ? null : onClose,
           ),
-          const Expanded(
+          Expanded(
             child: Text('发布动态',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -354,13 +354,13 @@ class _GradientHeader extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: isBusy
-                ? const SizedBox(
+                ? SizedBox(
                     width: 24, height: 24,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : GestureDetector(
                     onTap: canPublish ? onPublish : null,
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
+                      duration: Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                       decoration: BoxDecoration(
                         color: canPublish ? Colors.white : Colors.white.withOpacity(0.35),
@@ -373,7 +373,7 @@ class _GradientHeader extends StatelessWidget {
                         style: TextStyle(
                           fontFamily: AppFonts.primary, fontWeight: FontWeight.w800,
                           fontSize: 14,
-                          color: canPublish ? const Color(0xFFa83206) : Colors.white.withOpacity(0.5),
+                          color: canPublish ? Color(0xFFa83206) : Colors.white.withOpacity(0.5),
                         )),
                     ),
                   ),
@@ -395,7 +395,7 @@ class _TextCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: const [BoxShadow(color: Color(0x14a83206), blurRadius: 16, offset: Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Color(0x14a83206), blurRadius: 16, offset: Offset(0, 4))],
       ),
       child: Column(
         children: [
@@ -404,7 +404,7 @@ class _TextCard extends StatelessWidget {
             maxLines: 6,
             minLines: 4,
             maxLength: 500,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppFonts.primary, fontSize: 16, color: AppColors.onSurface),
             decoration: InputDecoration(
               hintText: '分享你的宠物日常… 🐾',
@@ -420,7 +420,7 @@ class _TextCard extends StatelessWidget {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(20),
-                borderSide: const BorderSide(color: AppColors.primaryContainer, width: 1.5),
+                borderSide: BorderSide(color: AppColors.primaryContainer, width: 1.5),
               ),
               contentPadding: const EdgeInsets.all(18),
               counterText: '',  // 隐藏默认计数器，避免 iOS overlay 残影
@@ -448,7 +448,7 @@ class _AddMediaCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.primaryContainer.withOpacity(0.4), width: 1.5),
-          boxShadow: const [BoxShadow(color: Color(0x0Ea83206), blurRadius: 12, offset: Offset(0, 3))],
+          boxShadow: [BoxShadow(color: Color(0x0Ea83206), blurRadius: 12, offset: Offset(0, 3))],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -458,33 +458,33 @@ class _AddMediaCard extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: AppColors.primaryGradient,
                 shape: BoxShape.circle,
-                boxShadow: const [BoxShadow(color: Color(0x40a83206), blurRadius: 12, offset: Offset(0, 4))],
+                boxShadow: [BoxShadow(color: Color(0x40a83206), blurRadius: 12, offset: Offset(0, 4))],
               ),
-              child: const Icon(Icons.add_photo_alternate_rounded, color: Colors.white, size: 28),
+              child: Icon(Icons.add_photo_alternate_rounded, color: Colors.white, size: 28),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('添加图片 / 视频',
+                Text('添加图片 / 视频',
                   style: TextStyle(
                     fontFamily: AppFonts.primary, fontWeight: FontWeight.w700,
                     fontSize: 15, color: AppColors.primary,
                   )),
-                const SizedBox(width: 5),
+                SizedBox(width: 5),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Text('必选',
+                  child: Text('必选',
                     style: TextStyle(fontFamily: AppFonts.primary, fontSize: 10,
                         fontWeight: FontWeight.w700, color: AppColors.primary)),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text('支持拍照、相册、视频',
               style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant.withOpacity(0.7))),
           ],
@@ -507,8 +507,8 @@ class _ImagePreviewGrid extends StatelessWidget {
     final count = images.length + (showAdd ? 1 : 0);
     return GridView.builder(
       shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      physics: NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3, mainAxisSpacing: 8, crossAxisSpacing: 8,
       ),
       itemCount: count,
@@ -522,7 +522,7 @@ class _ImagePreviewGrid extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.primaryContainer.withOpacity(0.4), width: 1.5),
               ),
-              child: const Icon(Icons.add_rounded, color: AppColors.primary, size: 32),
+              child: Icon(Icons.add_rounded, color: AppColors.primary, size: 32),
             ),
           );
         }
@@ -539,8 +539,8 @@ class _ImagePreviewGrid extends StatelessWidget {
                 onTap: () => onRemove(i),
                 child: Container(
                   width: 22, height: 22,
-                  decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                  child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
+                  decoration: BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                  child: Icon(Icons.close_rounded, color: Colors.white, size: 14),
                 ),
               ),
             ),
@@ -562,7 +562,7 @@ class _VideoPreviewCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Color(0x1Fa83206), blurRadius: 12, offset: Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Color(0x1Fa83206), blurRadius: 12, offset: Offset(0, 4))],
       ),
       child: Stack(
         alignment: Alignment.center,
@@ -576,8 +576,8 @@ class _VideoPreviewCard extends StatelessWidget {
           ),
           Container(
             width: 56, height: 56,
-            decoration: const BoxDecoration(color: Colors.black38, shape: BoxShape.circle),
-            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
+            decoration: BoxDecoration(color: Colors.black38, shape: BoxShape.circle),
+            child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
           ),
           Positioned(
             top: 10, right: 10,
@@ -585,8 +585,8 @@ class _VideoPreviewCard extends StatelessWidget {
               onTap: onRemove,
               child: Container(
                 width: 30, height: 30,
-                decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                child: const Icon(Icons.close_rounded, color: Colors.white, size: 18),
+                decoration: BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                child: Icon(Icons.close_rounded, color: Colors.white, size: 18),
               ),
             ),
           ),
@@ -610,7 +610,7 @@ class _MediaPickerSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         boxShadow: [BoxShadow(color: Color(0x30000000), blurRadius: 30, offset: Offset(0, -4))],
@@ -621,33 +621,33 @@ class _MediaPickerSheet extends StatelessWidget {
         children: [
           Container(width: 36, height: 4,
             decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 20),
-          const Text('选择媒体',
+          SizedBox(height: 20),
+          Text('选择媒体',
             style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w800, fontSize: 17, color: AppColors.onSurface)),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Row(children: [
             _SheetOption(
               icon: Icons.camera_alt_rounded,
               label: '拍照',
-              gradient: const LinearGradient(colors: [Color(0xFFa83206), Color(0xFFff784e)]),
+              gradient: LinearGradient(colors: [Color(0xFFa83206), Color(0xFFff784e)]),
               onTap: onCamera,
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             _SheetOption(
               icon: Icons.photo_library_rounded,
               label: '相册图片',
-              gradient: const LinearGradient(colors: [Color(0xFF006760), Color(0xFF7fe6db)]),
+              gradient: LinearGradient(colors: [Color(0xFF006760), Color(0xFF7fe6db)]),
               onTap: onPickImages,
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             _SheetOption(
               icon: Icons.videocam_rounded,
               label: '视频',
-              gradient: const LinearGradient(colors: [Color(0xFF705900), Color(0xFFfdd34d)]),
+              gradient: LinearGradient(colors: [Color(0xFF705900), Color(0xFFfdd34d)]),
               onTap: onPickVideo,
             ),
           ]),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           GestureDetector(
             onTap: () => Navigator.of(context).pop(),
             child: Container(
@@ -657,7 +657,7 @@ class _MediaPickerSheet extends StatelessWidget {
                 color: AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Text('取消', textAlign: TextAlign.center,
+              child: Text('取消', textAlign: TextAlign.center,
                 style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w600, fontSize: 15, color: AppColors.onSurfaceVariant)),
             ),
           ),
@@ -685,12 +685,12 @@ class _SheetOption extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: gradient,
               borderRadius: BorderRadius.circular(18),
-              boxShadow: [BoxShadow(color: gradient.colors.first.withOpacity(0.35), blurRadius: 10, offset: const Offset(0, 4))],
+              boxShadow: [BoxShadow(color: gradient.colors.first.withOpacity(0.35), blurRadius: 10, offset: Offset(0, 4))],
             ),
             child: Icon(icon, color: Colors.white, size: 30),
           ),
-          const SizedBox(height: 8),
-          Text(label, style: const TextStyle(
+          SizedBox(height: 8),
+          Text(label, style: TextStyle(
             fontFamily: AppFonts.primary, fontWeight: FontWeight.w600,
             fontSize: 13, color: AppColors.onSurface)),
         ]),

@@ -109,10 +109,10 @@ class _ScanAddFriendPageState extends ConsumerState<ScanAddFriendPage> {
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 24),
+                    icon: Icon(Icons.arrow_back_rounded, color: Colors.white, size: 24),
                     onPressed: () => Navigator.pop(context),
                   ),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       '扫码加好友',
                       textAlign: TextAlign.center,
@@ -124,7 +124,7 @@ class _ScanAddFriendPageState extends ConsumerState<ScanAddFriendPage> {
                   ),
                   // 手电筒
                   IconButton(
-                    icon: const Icon(Icons.flashlight_on_rounded, color: Colors.white, size: 24),
+                    icon: Icon(Icons.flashlight_on_rounded, color: Colors.white, size: 24),
                     onPressed: () => _ctrl.toggleTorch(),
                   ),
                 ],
@@ -148,7 +148,7 @@ class _ScanAddFriendPageState extends ConsumerState<ScanAddFriendPage> {
                       color: Colors.black.withOpacity(0.55),
                       borderRadius: BorderRadius.circular(24),
                     ),
-                    child: const Text(
+                    child: Text(
                       '将对方的 PetPogo 二维码对准扫描框',
                       style: TextStyle(
                         fontFamily: AppFonts.primary, fontSize: 13,
@@ -238,7 +238,7 @@ class _CornerPainter extends CustomPainter {
       canvas.drawPath(path, paint);
     }
 
-    corner(corners[0], const Offset(0, 0), corners[1]);
+    corner(corners[0], Offset(0, 0), corners[1]);
     corner(corners[2], Offset(size.width, 0), corners[3]);
     corner(corners[4], Offset(0, size.height), corners[5]);
     corner(corners[6], Offset(size.width, size.height), corners[7]);
@@ -301,33 +301,33 @@ class _AddFriendDialogState extends State<_AddFriendDialog> {
                 color: AppColors.primaryContainer.withOpacity(0.3),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.person_add_rounded, color: AppColors.primary, size: 28),
+              child: Icon(Icons.person_add_rounded, color: AppColors.primary, size: 28),
             ),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: 16),
+            Text(
               '添加好友',
               style: TextStyle(
                 fontFamily: AppFonts.primary, fontSize: 20,
                 fontWeight: FontWeight.w800, color: AppColors.onSurface,
               ),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             Text(
               '用户 ID: ${widget.userId}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AppFonts.primary, fontSize: 12,
                 color: AppColors.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             // 验证消息
             TextField(
               controller: _ctrl,
               maxLength: 50,
-              style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14),
+              style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14),
               decoration: InputDecoration(
                 labelText: '验证消息',
-                labelStyle: const TextStyle(fontFamily: AppFonts.primary, fontSize: 13),
+                labelStyle: TextStyle(fontFamily: AppFonts.primary, fontSize: 13),
                 filled: true,
                 fillColor: AppColors.surfaceContainerLow,
                 border: OutlineInputBorder(
@@ -335,10 +335,10 @@ class _AddFriendDialogState extends State<_AddFriendDialog> {
                   borderSide: BorderSide.none,
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                counterStyle: const TextStyle(fontSize: 10, color: AppColors.onSurfaceVariant),
+                counterStyle: TextStyle(fontSize: 10, color: AppColors.onSurfaceVariant),
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             // 按钮
             Row(
               children: [
@@ -353,11 +353,11 @@ class _AddFriendDialogState extends State<_AddFriendDialog> {
                         side: BorderSide(color: AppColors.outlineVariant),
                       ),
                     ),
-                    child: const Text('取消',
+                    child: Text('取消',
                       style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w600)),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: _adding ? null : () {
@@ -374,11 +374,11 @@ class _AddFriendDialogState extends State<_AddFriendDialog> {
                       ),
                     ),
                     child: _adding
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 20, height: 20,
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                           )
-                        : const Text('发送申请',
+                        : Text('发送申请',
                             style: TextStyle(
                               fontFamily: AppFonts.primary,
                               fontWeight: FontWeight.w700, fontSize: 14,

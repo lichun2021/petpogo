@@ -57,7 +57,7 @@ class PetToast {
       builder: (ctx) => _ToastBanner(
         message: message,
         style: style,
-        duration: duration ?? const Duration(milliseconds: 2200),
+        duration: duration ?? Duration(milliseconds: 2200),
         onClose: () {
           try { entry.remove(); } catch (_) {}
           if (_current == entry) _current = null;
@@ -99,10 +99,10 @@ class _ToastBannerState extends State<_ToastBanner>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 340),
+      duration: Duration(milliseconds: 340),
     );
     _slide = Tween<Offset>(
-      begin: const Offset(0, -1.5),
+      begin: Offset(0, -1.5),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutBack));
 
@@ -122,7 +122,7 @@ class _ToastBannerState extends State<_ToastBanner>
     if (_dismissed || !mounted) return;
     _dismissed = true;
     await _ctrl.animateTo(0,
-        duration: const Duration(milliseconds: 280),
+        duration: Duration(milliseconds: 280),
         curve: Curves.easeInCubic);
     widget.onClose();
   }
@@ -137,23 +137,23 @@ class _ToastBannerState extends State<_ToastBanner>
   Widget build(BuildContext context) {
     final (Color bg, Color fg, IconData icon) = switch (widget.style) {
       _ToastStyle.success => (
-          const Color(0xFF1A1A2E),
-          const Color(0xFF4ADE80),
+          Color(0xFF1A1A2E),
+          Color(0xFF4ADE80),
           Icons.check_circle_rounded,
         ),
       _ToastStyle.warning => (
-          const Color(0xFF1A1A2E),
-          const Color(0xFFFBBF24),
+          Color(0xFF1A1A2E),
+          Color(0xFFFBBF24),
           Icons.warning_amber_rounded,
         ),
       _ToastStyle.error => (
-          const Color(0xFF1A1A2E),
-          const Color(0xFFFF6B6B),
+          Color(0xFF1A1A2E),
+          Color(0xFFFF6B6B),
           Icons.error_outline_rounded,
         ),
       _ToastStyle.info => (
-          const Color(0xFF1A1A2E),
-          const Color(0xFF60A5FA),   // 柔和蓝色，区别于红色 error
+          Color(0xFF1A1A2E),
+          Color(0xFF60A5FA),   // 柔和蓝色，区别于红色 error
           Icons.notifications_rounded,
         ),
     };
@@ -195,7 +195,7 @@ class _ToastBannerState extends State<_ToastBanner>
                     color: Colors.black.withOpacity(0.28),
                     blurRadius: 24,
                     spreadRadius: -4,
-                    offset: const Offset(0, 8),
+                    offset: Offset(0, 8),
                   ),
                   BoxShadow(
                     color: fg.withOpacity(0.18),
@@ -214,7 +214,7 @@ class _ToastBannerState extends State<_ToastBanner>
                   ),
                   child: Icon(icon, color: fg, size: 20),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(child: Text(
                   widget.message,
                   style: TextStyle(
@@ -225,7 +225,7 @@ class _ToastBannerState extends State<_ToastBanner>
                     height: 1.4,
                   ),
                 )),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Icon(Icons.keyboard_arrow_up_rounded,
                     size: 18, color: fg.withOpacity(0.5)),
               ]),

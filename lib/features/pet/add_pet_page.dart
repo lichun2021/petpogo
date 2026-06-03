@@ -56,7 +56,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
     super.initState();
     _successCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: Duration(milliseconds: 600),
     );
     _successScale = CurvedAnimation(parent: _successCtrl, curve: Curves.elasticOut);
   }
@@ -78,7 +78,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
         // 没有选头像时震动+高亮提示
         HapticFeedback.vibrate();
         setState(() => _avatarRequired = true);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('请先选择宠物头像 🐾',
               style: TextStyle(fontFamily: AppFonts.primary)),
           backgroundColor: AppColors.error,
@@ -116,7 +116,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
       if (mounted) {
         setState(() => _avatarUploading = false);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('上传失败：$e', style: const TextStyle(fontFamily: AppFonts.primary)),
+          content: Text('上传失败：$e', style: TextStyle(fontFamily: AppFonts.primary)),
           backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating,
         ));
       }
@@ -140,18 +140,18 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
           Container(width: 36, height: 4,
               decoration: BoxDecoration(color: AppColors.onSurfaceVariant.withOpacity(0.25),
                   borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 16),
-          const Text('选择头像来源',
+          SizedBox(height: 16),
+          Text('选择头像来源',
               style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           Row(children: [
             Expanded(child: _SourceOption(
               icon: Icons.camera_alt_rounded,
               label: '拍照',
               onTap: () => Navigator.pop(context, ImageSource.camera),
             )),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(child: _SourceOption(
               icon: Icons.photo_library_rounded,
               label: '从相册选择',
@@ -199,7 +199,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('添加失败：$e',
-              style: const TextStyle(fontFamily: AppFonts.primary)),
+              style: TextStyle(fontFamily: AppFonts.primary)),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -218,7 +218,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
         elevation: 0,
         leading: _step < 2
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                 onPressed: () {
                   if (_step > 0) setState(() => _step--);
                   else context.pop();
@@ -226,11 +226,11 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
               )
             : null,
         title: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
+          duration: Duration(milliseconds: 200),
           child: Text(
             _step == 0 ? '选择宠物类型' : _step == 1 ? '宠物信息' : '添加成功',
             key: ValueKey(_step),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppFonts.primary,
               fontWeight: FontWeight.w700,
               fontSize: 18,
@@ -247,7 +247,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
           // ── 内容区：仅淡入淡出，无位移 ─────────────────────
           Expanded(
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 280),
+              duration: Duration(milliseconds: 280),
               transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
               child: _step == 0
                   ? _buildStep0(l10n)
@@ -264,7 +264,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
   // ── Step 0: 选宠物类型 ─────────────────────────────
   Widget _buildStep0(dynamic l10n) {
     return Column(
-      key: const ValueKey(0),
+      key: ValueKey(0),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
@@ -273,16 +273,16 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('你的宠物是哪种？',
-                  style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 24,
+                  style: TextStyle(fontFamily: AppFonts.primary, fontSize: 24,
                       fontWeight: FontWeight.w800, color: AppColors.onSurface, letterSpacing: -0.5)),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text('目前支持猫和狗的健康监测与AI分析',
                   style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13,
                       color: AppColors.onSurfaceVariant)),
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: 24),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: SizedBox(
@@ -304,7 +304,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
                         setState(() => _selectedType = i);
                       },
                       child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
+                        duration: Duration(milliseconds: 220),
                         curve: Curves.easeOutCubic,
                         decoration: BoxDecoration(
                           color: selected ? cardColor : AppColors.surfaceContainerLowest,
@@ -328,19 +328,19 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
                           children: [
                             AnimatedScale(
                               scale: selected ? 1.1 : 1.0,
-                              duration: const Duration(milliseconds: 220),
+                              duration: Duration(milliseconds: 220),
                               // 缩小 emoji 避免卡片太满
                               child: Text(t['emoji']!,
-                                  style: const TextStyle(fontSize: 54)),
+                                  style: TextStyle(fontSize: 54)),
                             ),
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10),
                             Text(t['label']!,
                                 style: TextStyle(
                                   fontFamily: AppFonts.primary, fontSize: 16,
                                   fontWeight: FontWeight.w800,
                                   color: selected ? AppColors.primary : AppColors.onSurface,
                                 )),
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 10),
                               child: Text(t['desc']!,
@@ -353,23 +353,23 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
                                   )),
                             ),
                             // 固定高度占位——避免卡片高度随选择状态变化
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             AnimatedOpacity(
                               opacity: selected ? 1.0 : 0.0,
-                              duration: const Duration(milliseconds: 200),
+                              duration: Duration(milliseconds: 200),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: AppColors.primary,
                                   borderRadius: BorderRadius.circular(999),
                                 ),
-                                child: const Text('✓ 已选择',
+                                child: Text('✓ 已选择',
                                     style: TextStyle(fontFamily: AppFonts.primary,
                                         fontSize: 10, fontWeight: FontWeight.w700,
                                         color: Colors.white)),
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
                           ],
                         ),
                       ),
@@ -393,12 +393,12 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
   Widget _buildStep1(dynamic l10n) {
     final selected = _petTypes[_selectedType];
     return SingleChildScrollView(
-      key: const ValueKey(1),
+      key: ValueKey(1),
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
 
           // 头像选择（必选）
           GestureDetector(
@@ -407,7 +407,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
               child: Stack(
                 children: [
                   AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
+                    duration: Duration(milliseconds: 200),
                     width: 100, height: 100,
                     decoration: BoxDecoration(
                       color: _avatarRequired
@@ -422,12 +422,12 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
                     ),
                     child: ClipOval(
                       child: _avatarUploading
-                          ? const Center(child: CircularProgressIndicator(
+                          ? Center(child: CircularProgressIndicator(
                               strokeWidth: 2.5, color: AppColors.primary))
                           : _avatarFile != null
                               ? Image.file(_avatarFile!, fit: BoxFit.cover)
                               : Center(child: Text(selected['emoji']!,
-                                  style: const TextStyle(fontSize: 52))),
+                                  style: TextStyle(fontSize: 52))),
                     ),
                   ),
                   Positioned(
@@ -435,7 +435,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
                     child: Container(
                       width: 32, height: 32,
                       decoration: BoxDecoration(
-                          color: _avatarUrl != null ? const Color(0xFF4ADE80) : AppColors.primary,
+                          color: _avatarUrl != null ? Color(0xFF4ADE80) : AppColors.primary,
                           shape: BoxShape.circle,
                           border: Border.all(color: AppColors.surface, width: 2)),
                       child: Icon(
@@ -448,24 +448,24 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
             ),
           ),
           if (_avatarRequired)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 6),
               child: Text('头像是必选项',
                   style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 11, color: AppColors.error),
                   textAlign: TextAlign.center),
             ),
-          const SizedBox(height: 28),
+          SizedBox(height: 28),
 
           // 名字
           _FieldLabel('宠物名字 *'),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _InputField(controller: _nameCtrl, hint: '给宠物起个名字吧', icon: Icons.badge_rounded),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // 品种
           _FieldLabel('品种'),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           GestureDetector(
             onTap: () async {
               final species = _petTypes[_selectedType]['species'] as String;
@@ -489,7 +489,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
               child: Row(
                 children: [
                   Icon(Icons.category_rounded, color: AppColors.primary, size: 20),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       _breedCtrl.text.isEmpty ? '点击选择品种' : _breedCtrl.text,
@@ -508,11 +508,11 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // 性别
           _FieldLabel('性别'),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Wrap(
             spacing: 12, runSpacing: 8,
             children: ['公', '母'].map((g) {
@@ -520,7 +520,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
               return GestureDetector(
                 onTap: () { HapticFeedback.selectionClick(); setState(() => _gender = g); },
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
+                  duration: Duration(milliseconds: 180),
                   padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
                   decoration: BoxDecoration(
                     color: sel ? AppColors.primary : AppColors.surfaceContainerLowest,
@@ -535,16 +535,16 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
               );
             }).toList(),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // 生日
           _FieldLabel('生日（选填）'),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           GestureDetector(
             onTap: () async {
               final d = await showDatePicker(
                 context: context,
-                initialDate: DateTime.now().subtract(const Duration(days: 365)),
+                initialDate: DateTime.now().subtract(Duration(days: 365)),
                 firstDate: DateTime(2000),
                 lastDate: DateTime.now(),
               );
@@ -560,17 +560,17 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
               child: Row(
                 children: [
                   Icon(Icons.cake_rounded, color: AppColors.primary, size: 20),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Text(_birthday ?? '选择生日',
                       style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
                           color: _birthday != null ? AppColors.onSurface : AppColors.onSurfaceVariant)),
-                  const Spacer(),
+                  Spacer(),
                   Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant, size: 20),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
 
           PrimaryButton(
             label: '完成添加',
@@ -587,7 +587,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
   Widget _buildStep2(dynamic l10n) {
     final selected = _petTypes[_selectedType];
     return Center(
-      key: const ValueKey(2),
+      key: ValueKey(2),
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
@@ -608,21 +608,21 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(selected['emoji']!, style: const TextStyle(fontSize: 48)),
+                    Text(selected['emoji']!, style: TextStyle(fontSize: 48)),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: 32),
             Text('${_nameCtrl.text} 已添加！',
-                style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 28,
+                style: TextStyle(fontFamily: AppFonts.primary, fontSize: 28,
                     fontWeight: FontWeight.w800, color: AppColors.onSurface, letterSpacing: -0.5)),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text('在「我的」页面可以查看和管理你的宠物',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
                     color: AppColors.onSurfaceVariant, height: 1.5)),
-            const SizedBox(height: 40),
+            SizedBox(height: 40),
 
             // 下一步：绑定设备
             PressableButton(
@@ -631,9 +631,9 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
                 width: double.infinity, height: 52,
                 decoration: BoxDecoration(
                   color: AppColors.primary, borderRadius: BorderRadius.circular(999),
-                  boxShadow: [BoxShadow(color: AppColors.primaryGlow, blurRadius: 16, offset: const Offset(0, 6))],
+                  boxShadow: [BoxShadow(color: AppColors.primaryGlow, blurRadius: 16, offset: Offset(0, 6))],
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.sensors_rounded, color: Colors.white, size: 20),
@@ -644,7 +644,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextButton(
               onPressed: () => context.go('/profile'),
               child: Text('稍后再说', style: TextStyle(color: AppColors.onSurfaceVariant,
@@ -699,7 +699,7 @@ class _InputField extends StatelessWidget {
       ),
       child: TextField(
         controller: controller,
-        style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 15, color: AppColors.onSurface),
+        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15, color: AppColors.onSurface),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(color: AppColors.onSurfaceVariant, fontFamily: AppFonts.primary),
@@ -741,8 +741,8 @@ class _SourceOption extends StatelessWidget {
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, color: AppColors.primary, size: 28),
-          const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontFamily: AppFonts.primary,
+          SizedBox(height: 8),
+          Text(label, style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
         ]),
       ),

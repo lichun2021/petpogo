@@ -7,7 +7,7 @@ class PetAvatar extends StatelessWidget {
   final double size;
   final String fallbackEmoji;
 
-  const PetAvatar({
+  PetAvatar({
     super.key,
     this.imageUrl,
     this.size = 44,

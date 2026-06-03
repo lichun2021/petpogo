@@ -53,7 +53,7 @@ class _ConsultationPageState extends ConsumerState<ConsultationPage> {
       if (_scrollCtrl.hasClients) {
         _scrollCtrl.animateTo(
           _scrollCtrl.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 220),
+          duration: Duration(milliseconds: 220),
           curve: Curves.easeOut,
         );
       }
@@ -244,7 +244,7 @@ class _ConsultationPageState extends ConsumerState<ConsultationPage> {
       shadowColor: Colors.transparent,
       titleSpacing: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+        icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20),
         color: AppColors.onSurface,
         onPressed: () => Navigator.maybePop(context),
       ),
@@ -257,10 +257,10 @@ class _ConsultationPageState extends ConsumerState<ConsultationPage> {
                   backgroundColor: AppColors.secondaryContainer,
                   child: Text(
                     _emojiForGender(pet.gender),
-                    style: const TextStyle(fontSize: 18),
+                    style: TextStyle(fontSize: 18),
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -270,7 +270,7 @@ class _ConsultationPageState extends ConsumerState<ConsultationPage> {
                         pet.name.isEmpty ? '宠物' : pet.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
                           color: AppColors.onSurface,
@@ -300,7 +300,7 @@ class _ConsultationPageState extends ConsumerState<ConsultationPage> {
           alignment: Alignment.center,
           children: [
             IconButton(
-              icon: const Icon(Icons.menu_rounded, size: 22),
+              icon: Icon(Icons.menu_rounded, size: 22),
               color: AppColors.onSurface,
               tooltip: '历史问诊',
               onPressed: () => _openHistoryDrawer(s),
@@ -321,7 +321,7 @@ class _ConsultationPageState extends ConsumerState<ConsultationPage> {
               ),
           ],
         ),
-        const SizedBox(width: 4),
+        SizedBox(width: 4),
       ],
     );
   }
@@ -352,7 +352,7 @@ class _HistoryViewBanner extends StatelessWidget {
         children: [
           Icon(Icons.history_rounded,
               size: 16, color: AppColors.secondary),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Text(
               '历史记录：$title',
@@ -374,7 +374,7 @@ class _HistoryViewBanner extends StatelessWidget {
                 color: AppColors.secondary,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Text(
+              child: Text(
                 '返回问诊',
                 style: TextStyle(
                     fontSize: 12,
@@ -412,7 +412,7 @@ class _HistoryDrawer extends StatelessWidget {
     return Drawer(
       width: MediaQuery.of(context).size.width * 0.82,
       backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20),
           bottomLeft: Radius.circular(20),
@@ -429,8 +429,8 @@ class _HistoryDrawer extends StatelessWidget {
                 children: [
                   Icon(Icons.history_rounded,
                       size: 22, color: AppColors.secondary),
-                  const SizedBox(width: 10),
-                  const Expanded(
+                  SizedBox(width: 10),
+                  Expanded(
                     child: Text(
                       '历史问诊',
                       style: TextStyle(
@@ -441,7 +441,7 @@ class _HistoryDrawer extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 20),
+                    icon: Icon(Icons.close_rounded, size: 20),
                     color: AppColors.onSurfaceVariant,
                     onPressed: () => Navigator.of(context).pop(),
                   ),
@@ -449,12 +449,12 @@ class _HistoryDrawer extends StatelessWidget {
               ),
             ),
             Divider(color: AppColors.outline.withOpacity(0.2), height: 1),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
 
             // ── 内容区 ───────────────────────────────
             Expanded(
               child: isLoading
-                  ? const Center(
+                  ? Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -479,7 +479,7 @@ class _HistoryDrawer extends StatelessWidget {
                                   size: 48,
                                   color: AppColors.onSurfaceVariant
                                       .withOpacity(0.4)),
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
                               Text(
                                 '暂无历史问诊记录',
                                 style: TextStyle(
@@ -536,7 +536,7 @@ class _HistorySessionTile extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceContainerLowest,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
+        title: Text(
           '删除问诊记录',
           style: TextStyle(
             fontSize: 16,
@@ -560,7 +560,7 @@ class _HistorySessionTile extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('删除',
+            child: Text('删除',
                 style: TextStyle(
                     color: AppColors.error, fontWeight: FontWeight.w700)),
           ),
@@ -589,9 +589,9 @@ class _HistorySessionTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               alignment: Alignment.center,
-              child: const Text('🩺', style: TextStyle(fontSize: 17)),
+              child: Text('🩺', style: TextStyle(fontSize: 17)),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             // 标题 + 日期
             Expanded(
               child: Column(
@@ -602,13 +602,13 @@ class _HistorySessionTile extends StatelessWidget {
                     summary.displayTitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: AppColors.onSurface,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     summary.dateOnly,
                     style: TextStyle(
@@ -643,7 +643,7 @@ class _InitLoading extends StatelessWidget {
   const _InitLoading();
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -689,7 +689,7 @@ class _MessageBubble extends StatelessWidget {
           ),
           child: Text(
             message.content,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
               fontSize: 15,
               height: 1.4,
@@ -742,7 +742,7 @@ class _AiBubble extends StatelessWidget {
             color: AppColors.cardShadow,
             blurRadius: 12,
             spreadRadius: -4,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       );
@@ -757,7 +757,7 @@ class _AiBubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const _AiAvatar(),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -784,7 +784,7 @@ class _AiBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _AiAvatar(),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Flexible(
             child: Container(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
@@ -846,23 +846,23 @@ class _AiBubble extends StatelessWidget {
   }
 
   static final _mdStyle = MarkdownStyleSheet(
-    p: const TextStyle(
+    p: TextStyle(
         fontSize: 15, height: 1.55, color: AppColors.onSurface),
-    strong: const TextStyle(
+    strong: TextStyle(
         fontSize: 15,
         fontWeight: FontWeight.w700,
         color: AppColors.onSurface),
-    em: const TextStyle(
+    em: TextStyle(
         fontSize: 15,
         fontStyle: FontStyle.italic,
         color: AppColors.onSurface),
-    h1: const TextStyle(
+    h1: TextStyle(
         fontSize: 19, fontWeight: FontWeight.w800, color: AppColors.onSurface),
-    h2: const TextStyle(
+    h2: TextStyle(
         fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.onSurface),
-    h3: const TextStyle(
+    h3: TextStyle(
         fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.onSurface),
-    listBullet: const TextStyle(fontSize: 15, color: AppColors.onSurface),
+    listBullet: TextStyle(fontSize: 15, color: AppColors.onSurface),
     blockSpacing: 6,
     listIndent: 16,
   );
@@ -936,8 +936,8 @@ class _ThinkingSectionState extends State<_ThinkingSection> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // 🧠 emoji 图标
-                  Text('🧠', style: const TextStyle(fontSize: 14)),
-                  const SizedBox(width: 5),
+                  Text('🧠', style: TextStyle(fontSize: 14)),
+                  SizedBox(width: 5),
                   Text(
                     widget.isStreaming ? '思考中…' : '思考',
                     style: TextStyle(
@@ -946,7 +946,7 @@ class _ThinkingSectionState extends State<_ThinkingSection> {
                       color: AppColors.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: 6),
                   if (widget.isStreaming)
                     SizedBox(
                       width: 10,
@@ -1034,15 +1034,15 @@ class _MedicalAnalysisSection extends StatelessWidget {
 
   /// 根据概率返回颜色
   static Color _cardColor(int prob) {
-    if (prob >= 50) return const Color(0xFFFFEBEE); // 高风险 - 淡红
-    if (prob >= 25) return const Color(0xFFFFF3E0); // 中风险 - 淡橙
-    return const Color(0xFFE8F5E9);                 // 低风险 - 淡绿
+    if (prob >= 50) return Color(0xFFFFEBEE); // 高风险 - 淡红
+    if (prob >= 25) return Color(0xFFFFF3E0); // 中风险 - 淡橙
+    return Color(0xFFE8F5E9);                 // 低风险 - 淡绿
   }
 
   static Color _headerColor(int prob) {
-    if (prob >= 50) return const Color(0xFFE53935);
-    if (prob >= 25) return const Color(0xFFEF6C00);
-    return const Color(0xFF2E7D32);
+    if (prob >= 50) return Color(0xFFE53935);
+    if (prob >= 25) return Color(0xFFEF6C00);
+    return Color(0xFF2E7D32);
   }
 
   @override
@@ -1065,8 +1065,8 @@ class _MedicalAnalysisSection extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(width: 6),
-              const Text(
+              SizedBox(width: 6),
+              Text(
                 '医疗图谱分析',
                 style: TextStyle(
                   fontSize: 13,
@@ -1084,13 +1084,13 @@ class _MedicalAnalysisSection extends StatelessWidget {
             data: content.trim(),
             shrinkWrap: true,
             styleSheet: MarkdownStyleSheet(
-              p: const TextStyle(
+              p: TextStyle(
                   fontSize: 13, height: 1.5, color: AppColors.onSurface),
             ),
           )
         else
           ...entries.map((e) => _DiseaseCard(entry: e)),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
       ],
     );
   }
@@ -1148,7 +1148,7 @@ class _DiseaseCard
                   ),
                   child: Text(
                     '${entry.prob}%',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
@@ -1199,7 +1199,7 @@ class _DiagnosisCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(children: const [
+          Row(children: [
             Icon(Icons.check_circle_outline_rounded,
                 size: 14, color: AppColors.tertiary),
             SizedBox(width: 4),
@@ -1209,12 +1209,12 @@ class _DiagnosisCard extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: AppColors.tertiary)),
           ]),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           MarkdownBody(
             data: content.trim(),
             shrinkWrap: true,
             styleSheet: MarkdownStyleSheet(
-              p: const TextStyle(
+              p: TextStyle(
                   fontSize: 14, height: 1.5, color: AppColors.onSurface),
             ),
           ),
@@ -1241,7 +1241,7 @@ class _FollowUpBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _AiAvatar(),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Flexible(
             child: Container(
               padding:
@@ -1265,11 +1265,11 @@ class _FollowUpBubble extends StatelessWidget {
                       shrinkWrap: true,
                       selectable: false,
                       styleSheet: MarkdownStyleSheet(
-                        p: const TextStyle(
+                        p: TextStyle(
                             fontSize: 15,
                             height: 1.5,
                             color: AppColors.onSurface),
-                        strong: const TextStyle(
+                        strong: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
                             color: AppColors.onSurface),
@@ -1300,7 +1300,7 @@ class _TypingIndicatorState extends State<_TypingIndicator>
     super.initState();
     _c = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: Duration(milliseconds: 900),
     )..repeat();
   }
 
@@ -1397,21 +1397,21 @@ class _ReportCardsArea extends StatelessWidget {
             onTap: diagTap,
             showLoading: isGenerating,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _ReportCard(
             icon: Icons.home_outlined,
             title: '治疗养护建议',
             subtitle: careSubtitle,
             onTap: careTap,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _ReportCard(
             icon: Icons.science_outlined,
             title: '医疗检测方案',
             subtitle: medSubtitle,
             onTap: medTap,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           // Container(
           //   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           //   decoration: BoxDecoration(
@@ -1421,7 +1421,7 @@ class _ReportCardsArea extends StatelessWidget {
           //   child: Column(
           //     crossAxisAlignment: CrossAxisAlignment.start,
           //     children: [
-          //       Row(children: const [
+          //       Row(children: [
           //         Icon(Icons.image_search_outlined,
           //             size: 15, color: AppColors.secondary),
           //         SizedBox(width: 6),
@@ -1431,7 +1431,7 @@ class _ReportCardsArea extends StatelessWidget {
           //                 fontWeight: FontWeight.w700,
           //                 color: AppColors.secondary)),
           //       ]),
-          //       const SizedBox(height: 4),
+          //       SizedBox(height: 4),
           //       Text('默认保存，如需关闭，可在全景画像或二维码中进行管理',
           //           style: TextStyle(
           //               fontSize: 11, color: AppColors.onSurfaceVariant)),
@@ -1476,7 +1476,7 @@ class _ReportCard extends StatelessWidget {
               color: AppColors.cardShadow,
               blurRadius: 12,
               spreadRadius: -4,
-              offset: const Offset(0, 2),
+              offset: Offset(0, 2),
             ),
           ],
         ),
@@ -1491,18 +1491,18 @@ class _ReportCard extends StatelessWidget {
               ),
               child: Icon(icon, size: 22, color: AppColors.secondary),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: AppColors.secondary,
                       )),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1514,7 +1514,7 @@ class _ReportCard extends StatelessWidget {
               ),
             ),
             if (showLoading)
-              const SizedBox(
+              SizedBox(
                 width: 18,
                 height: 18,
                 child: CircularProgressIndicator(
@@ -1550,7 +1550,7 @@ class _GeneratingOverlay extends StatelessWidget {
                 BoxShadow(
                   color: Colors.black.withOpacity(0.15),
                   blurRadius: 24,
-                  offset: const Offset(0, 8),
+                  offset: Offset(0, 8),
                 ),
               ],
             ),
@@ -1591,8 +1591,8 @@ class _GeneratingOverlay extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                const Text(
+                SizedBox(height: 16),
+                Text(
                   '正在生成诊断报告…',
                   style: TextStyle(
                     fontSize: 15,
@@ -1600,7 +1600,7 @@ class _GeneratingOverlay extends StatelessWidget {
                     color: AppColors.onSurface,
                   ),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(
                   '宠小伊正在分析问诊记录，请稍候…',
                   style: TextStyle(
@@ -1689,7 +1689,7 @@ class _ActionPill extends StatelessWidget {
                 color: highlight && enabled
                     ? Colors.white
                     : AppColors.onSurfaceVariant),
-            const SizedBox(width: 6),
+            SizedBox(width: 6),
             Text(label,
                 style: TextStyle(
                   fontSize: 13,
@@ -1750,7 +1750,7 @@ class _InputBar extends StatelessWidget {
                 maxLines: 3,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => enabled ? onSend() : null,
-                style: const TextStyle(fontSize: 14),
+                style: TextStyle(fontSize: 14),
                 decoration: InputDecoration(
                   hintText: isReplying ? '宠小伊正在回复…' : '请输入问题',
                   hintStyle: TextStyle(
@@ -1766,7 +1766,7 @@ class _InputBar extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Material(
             color: enabled
                 ? AppColors.secondary

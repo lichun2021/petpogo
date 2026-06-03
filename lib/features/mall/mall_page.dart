@@ -48,14 +48,14 @@ class MallPage extends StatelessWidget {
 
                 _HeroBanner(l10n: l10n),
 
-                const SizedBox(height: 32),
+                SizedBox(height: 32),
 
                 // ── 分类标题 ─────────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(l10n.mallCategories,
-                        style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 24,
+                        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 24,
                             fontWeight: FontWeight.w800, letterSpacing: -0.4, color: AppColors.onSurface)),
                     Text(l10n.mallViewAll,
                         style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13,
@@ -63,16 +63,16 @@ class MallPage extends StatelessWidget {
                   ],
                 ),
 
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 _CategoriesGrid(l10n: l10n),
-                const SizedBox(height: 32),
+                SizedBox(height: 32),
 
                 // ── Trending ────────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(l10n.mallTrending,
-                        style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 24,
+                        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 24,
                             fontWeight: FontWeight.w800, letterSpacing: -0.4, color: AppColors.onSurface)),
                     Container(
                       padding: const EdgeInsets.all(8),
@@ -82,19 +82,19 @@ class MallPage extends StatelessWidget {
                   ],
                 ),
 
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 ..._products.map((p) => Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: _ProductCard(product: p, l10n: l10n),
                 )),
 
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
 
                 Text(l10n.mallNearbyStores,
-                    style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 24,
+                    style: TextStyle(fontFamily: AppFonts.primary, fontSize: 24,
                         fontWeight: FontWeight.w800, letterSpacing: -0.4, color: AppColors.onSurface)),
 
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 _NearbyStoresRow(),
               ]),
             ),
@@ -116,14 +116,14 @@ class _HeroBanner extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: AppColors.primaryGradient,
-        boxShadow: [BoxShadow(color: AppColors.primaryGlow, blurRadius: 32, offset: const Offset(0, 12))],
+        boxShadow: [BoxShadow(color: AppColors.primaryGlow, blurRadius: 32, offset: Offset(0, 12))],
       ),
       clipBehavior: Clip.hardEdge,
       child: Stack(
         children: [
           Positioned.fill(
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0xCCa83206), Colors.transparent],
                   begin: Alignment.centerLeft, end: Alignment.centerRight,
@@ -131,7 +131,7 @@ class _HeroBanner extends StatelessWidget {
               ),
             ),
           ),
-          const Positioned(right: -10, bottom: -10,
+          Positioned(right: -10, bottom: -10,
               child: Text('🐱📱', style: TextStyle(fontSize: 100))),
           Positioned(
             left: 24, top: 24, bottom: 24,
@@ -146,15 +146,15 @@ class _HeroBanner extends StatelessWidget {
                       style: TextStyle(fontFamily: AppFonts.primary, fontSize: 9, fontWeight: FontWeight.w900,
                           letterSpacing: 1.5, color: AppColors.onTertiaryFixed)),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Text(l10n.mallHeroBannerTitle,
                     style: TextStyle(fontFamily: AppFonts.primary, fontSize: 26, fontWeight: FontWeight.w800,
                         letterSpacing: -0.8, color: AppColors.onPrimary, height: 1.15)),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(l10n.mallHeroBannerDesc,
                     style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11,
                         color: AppColors.onPrimary.withOpacity(0.8), height: 1.4)),
-                const SizedBox(height: 14),
+                SizedBox(height: 14),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(color: AppColors.surfaceContainerLowest, borderRadius: BorderRadius.circular(999)),
@@ -183,7 +183,7 @@ class _CategoriesGrid extends StatelessWidget {
           label: l10n.mallCategoryFood, count: l10n.mallCategoryFoodCount,
           icon: Icons.restaurant_rounded, bgColor: AppColors.surfaceContainerLow, iconColor: AppColors.primary,
         )),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Expanded(child: _CategoryCard(
           label: l10n.mallCategoryToys, count: l10n.mallCategoryToysCount,
           icon: Icons.smart_toy_rounded, bgColor: AppColors.secondaryContainer, iconColor: AppColors.secondary,
@@ -222,7 +222,7 @@ class _CategoryCard extends StatelessWidget {
               Icon(icon, color: iconColor, size: 32),
             ],
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           Container(
             height: 60,
             decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white.withOpacity(0.4)),
@@ -246,16 +246,16 @@ class _ProductCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 40, spreadRadius: -8, offset: const Offset(0, 8))],
+        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 40, spreadRadius: -8, offset: Offset(0, 8))],
       ),
       child: Row(
         children: [
           Container(
             width: 80, height: 80,
             decoration: BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: BorderRadius.circular(16)),
-            child: Center(child: Text(product.emoji, style: const TextStyle(fontSize: 40))),
+            child: Center(child: Text(product.emoji, style: TextStyle(fontSize: 40))),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,11 +263,11 @@ class _ProductCard extends StatelessWidget {
                 Text(product.name,
                     style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
                         fontWeight: FontWeight.w700, color: AppColors.onSurface), maxLines: 2),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Row(
                   children: [
                     Icon(Icons.star_rounded, color: AppColors.tertiaryFixed, size: 14),
-                    const SizedBox(width: 3),
+                    SizedBox(width: 3),
                     Text(product.rating.toString(),
                         style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
                             fontWeight: FontWeight.w700, color: AppColors.onSurface)),
@@ -275,7 +275,7 @@ class _ProductCard extends StatelessWidget {
                         style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11, color: AppColors.onSurfaceVariant)),
                   ],
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -285,7 +285,7 @@ class _ProductCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                      child: const Icon(Icons.add_shopping_cart_rounded, color: Colors.white, size: 18),
+                      child: Icon(Icons.add_shopping_cart_rounded, color: Colors.white, size: 18),
                     ),
                   ],
                 ),
@@ -306,7 +306,7 @@ class _NearbyStoresRow extends StatelessWidget {
       child: ListView(
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,
-        children: const [
+        children: [
           _StoreCard(name: '聚宠生活馆', desc: '专业洗洗美容、宠物寄养及优选有机零食。',
               distance: '1.2 公里', rating: '4.9', tags: ['洗洗', '卡幾'],
               bgColor: AppColors.secondaryContainer, textColor: AppColors.onSecondaryContainer, emoji: '🏪'),
@@ -349,7 +349,7 @@ class _StoreCard extends StatelessWidget {
             height: 130, color: bgColor.withOpacity(0.6),
             child: Stack(
               children: [
-                Center(child: Text(emoji, style: const TextStyle(fontSize: 64))),
+                Center(child: Text(emoji, style: TextStyle(fontSize: 64))),
                 Positioned(
                   bottom: 12, left: 12,
                   child: Container(
@@ -377,17 +377,17 @@ class _StoreCard extends StatelessWidget {
                               fontWeight: FontWeight.w800, color: textColor))),
                       Row(children: [
                         Icon(Icons.star_rounded, size: 12, color: AppColors.tertiary),
-                        const SizedBox(width: 2),
+                        SizedBox(width: 2),
                         Text(rating, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11,
                             fontWeight: FontWeight.w700, color: textColor)),
                       ]),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(desc, maxLines: 2, overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11,
                           color: textColor.withOpacity(0.75), height: 1.5)),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Row(
                     children: tags.map((t) => Container(
                       margin: const EdgeInsets.only(right: 6),

@@ -18,10 +18,10 @@ class SelectDevicePage extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('绑定设备',
+        title: Text('绑定设备',
             style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700, fontSize: 18)),
         centerTitle: true,
       ),
@@ -30,26 +30,26 @@ class SelectDevicePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('选择设备类型',
+            Text('选择设备类型',
                 style: TextStyle(fontFamily: AppFonts.primary, fontSize: 26,
                     fontWeight: FontWeight.w800, letterSpacing: -0.5, color: AppColors.onSurface)),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             Text('选择要添加的智能设备，按设备底部二维码扫码绑定',
                 style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
                     color: AppColors.onSurfaceVariant)),
-            const SizedBox(height: 28),
+            SizedBox(height: 28),
 
             // ── 智能项圈 ──────────────────────────────────────
             _DeviceCard(
               emoji: '🐾',
               iconWidget: Stack(alignment: Alignment.center, children: [
                 Icon(Icons.circle_outlined, color: AppColors.secondary.withOpacity(0.5), size: 32),
-                const Icon(Icons.pets_rounded, color: AppColors.secondary, size: 16),
+                Icon(Icons.pets_rounded, color: AppColors.secondary, size: 16),
               ]),
               iconBg: AppColors.secondaryContainer.withOpacity(0.35),
               name: '智能项圈',
               desc: '给宠物佩戴，实时 GPS 定位 + 健康监测',
-              features: const ['实时定位', '走失预警', '活动轨迹', '健康监测'],
+              features: ['实时定位', '走失预警', '活动轨迹', '健康监测'],
               gradient: LinearGradient(
                 colors: [AppColors.secondaryContainer.withOpacity(0.4), AppColors.surfaceContainerLowest],
                 begin: Alignment.topLeft, end: Alignment.bottomRight,
@@ -57,21 +57,21 @@ class SelectDevicePage extends StatelessWidget {
               onTap: () {
                 HapticFeedback.mediumImpact();
                 Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => const ScanQrPage(deviceType: '智能项圈'),
+                  builder: (_) => ScanQrPage(deviceType: '智能项圈'),
                 ));
               },
             ).animate().fadeIn().slideY(begin: 0.1),
 
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // ── 智能宠物机器人 ────────────────────────────────
             _DeviceCard(
               emoji: '🤖',
-              iconWidget: const Icon(Icons.smart_toy_rounded, color: AppColors.primary, size: 30),
+              iconWidget: Icon(Icons.smart_toy_rounded, color: AppColors.primary, size: 30),
               iconBg: AppColors.primaryContainer.withOpacity(0.3),
               name: '智能宠物机器人',
               desc: '放置家中，互动陪伴 + 远程监控',
-              features: const ['远程互动', 'AI 陪伴', '视频监控', '定位'],
+              features: ['远程互动', 'AI 陪伴', '视频监控', '定位'],
               gradient: LinearGradient(
                 colors: [AppColors.primaryContainer.withOpacity(0.25), AppColors.surfaceContainerLowest],
                 begin: Alignment.topLeft, end: Alignment.bottomRight,
@@ -79,12 +79,12 @@ class SelectDevicePage extends StatelessWidget {
               onTap: () {
                 HapticFeedback.mediumImpact();
                 Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => const ScanQrPage(deviceType: '智能宠物机器人'),
+                  builder: (_) => ScanQrPage(deviceType: '智能宠物机器人'),
                 ));
               },
             ).animate().fadeIn().slideY(begin: 0.1, delay: 80.ms),
 
-            const Spacer(),
+            Spacer(),
 
             // 提示信息
             Container(
@@ -94,8 +94,8 @@ class SelectDevicePage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(children: [
-                const Icon(Icons.info_outline_rounded, size: 18, color: AppColors.primary),
-                const SizedBox(width: 10),
+                Icon(Icons.info_outline_rounded, size: 18, color: AppColors.primary),
+                SizedBox(width: 10),
                 Expanded(child: Text('扫描设备包装盒或设备背面的二维码完成绑定',
                     style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13,
                         color: AppColors.onSurfaceVariant, height: 1.5))),
@@ -138,21 +138,21 @@ class _DeviceCard extends StatelessWidget {
             Container(width: 56, height: 56,
                 decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(16)),
                 child: Center(child: iconWidget)),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Text(emoji, style: const TextStyle(fontSize: 18)),
-                const SizedBox(width: 6),
-                Text(name, style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 18,
+                Text(emoji, style: TextStyle(fontSize: 18)),
+                SizedBox(width: 6),
+                Text(name, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 18,
                     fontWeight: FontWeight.w800, color: AppColors.onSurface)),
               ]),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(desc, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
                   color: AppColors.onSurfaceVariant, height: 1.4)),
             ])),
-            const Icon(Icons.arrow_forward_ios_rounded, size: 15, color: AppColors.onSurfaceVariant),
+            Icon(Icons.arrow_forward_ios_rounded, size: 15, color: AppColors.onSurfaceVariant),
           ]),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           Wrap(spacing: 8, runSpacing: 6, children: features.map((f) => Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(

@@ -25,10 +25,10 @@ class _BindSuccessPageState extends State<BindSuccessPage>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _ctrl = AnimationController(vsync: this, duration: Duration(milliseconds: 800));
     _scale = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
-    _fade  = CurvedAnimation(parent: _ctrl, curve: const Interval(0.3, 1.0, curve: Curves.easeOut));
-    Future.delayed(const Duration(milliseconds: 100), () {
+    _fade  = CurvedAnimation(parent: _ctrl, curve: Interval(0.3, 1.0, curve: Curves.easeOut));
+    Future.delayed(Duration(milliseconds: 100), () {
       _ctrl.forward();
       HapticFeedback.heavyImpact();
     });
@@ -49,7 +49,7 @@ class _BindSuccessPageState extends State<BindSuccessPage>
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Column(
             children: [
-              const Spacer(),
+              Spacer(),
 
               // 成功图标
               ScaleTransition(
@@ -70,14 +70,14 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(_isCollar ? '🐾' : '🤖',
-                          style: const TextStyle(fontSize: 52)),
-                      const Icon(Icons.check_circle_rounded, color: Colors.white, size: 28),
+                          style: TextStyle(fontSize: 52)),
+                      Icon(Icons.check_circle_rounded, color: Colors.white, size: 28),
                     ],
                   ),
                 ),
               ),
 
-              const SizedBox(height: 36),
+              SizedBox(height: 36),
 
               // 文字
               FadeTransition(
@@ -86,9 +86,9 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                   children: [
                     Text('${widget.deviceType} 绑定成功！',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 28,
+                        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 28,
                             fontWeight: FontWeight.w800, color: AppColors.onSurface, letterSpacing: -0.6)),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Text('你的设备已与账号关联\n可以在首页查看实时状态',
                         textAlign: TextAlign.center,
                         style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
@@ -97,7 +97,7 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                 ),
               ),
 
-              const SizedBox(height: 40),
+              SizedBox(height: 40),
 
               // 设备功能说明卡
               FadeTransition(
@@ -113,23 +113,23 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                     children: _isCollar
                         ? [
                             _FeatureRow(icon: Icons.location_on_rounded, label: '实时 GPS 定位', color: AppColors.primary),
-                            const SizedBox(height: 14),
+                            SizedBox(height: 14),
                             _FeatureRow(icon: Icons.notifications_active_rounded, label: '走失预警通知', color: AppColors.secondary),
-                            const SizedBox(height: 14),
+                            SizedBox(height: 14),
                             _FeatureRow(icon: Icons.battery_charging_full_rounded, label: '健康监测报告', color: AppColors.tertiary),
                           ]
                         : [
                             _FeatureRow(icon: Icons.smart_toy_rounded, label: 'AI 馬伴互动', color: AppColors.primary),
-                            const SizedBox(height: 14),
+                            SizedBox(height: 14),
                             _FeatureRow(icon: Icons.videocam_rounded, label: '远程视频监控', color: AppColors.secondary),
-                            const SizedBox(height: 14),
+                            SizedBox(height: 14),
                             _FeatureRow(icon: Icons.music_note_rounded, label: '播放舒缓音乐', color: AppColors.tertiary),
                           ],
                   ),
                 ),
               ),
 
-              const Spacer(),
+              Spacer(),
 
               // 操作按钮
               FadeTransition(
@@ -141,7 +141,7 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                       icon: Icons.sensors_rounded,
                       onPressed: () => context.go('/'),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     TextButton(
                       onPressed: () => context.go('/bind-device'),
                       child: Text('继续添加设备',
@@ -152,7 +152,7 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                 ),
               ),
 
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
             ],
           ),
         ),
@@ -173,10 +173,10 @@ class _FeatureRow extends StatelessWidget {
       Container(width: 36, height: 36,
           decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
           child: Icon(icon, color: color, size: 18)),
-      const SizedBox(width: 14),
-      Text(label, style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
+      SizedBox(width: 14),
+      Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
           fontWeight: FontWeight.w600, color: AppColors.onSurface)),
-      const Spacer(),
+      Spacer(),
       Icon(Icons.check_rounded, color: color, size: 18),
     ]);
   }

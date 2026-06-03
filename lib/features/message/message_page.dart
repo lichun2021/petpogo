@@ -51,7 +51,7 @@ class _MessagePageState extends ConsumerState<MessagePage> {
   void _openContacts() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const ContactsPage()),
+      MaterialPageRoute(builder: (_) => ContactsPage()),
     );
   }
 
@@ -76,7 +76,7 @@ class _MessagePageState extends ConsumerState<MessagePage> {
             shadowColor: Colors.transparent,
             title: Text(
               l10n.messageTitle,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AppFonts.primary, fontSize: 22,
                 fontWeight: FontWeight.w800, letterSpacing: -0.4,
                 color: AppColors.onSurface,
@@ -88,7 +88,7 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                     onPressed: _openContacts,
                     tooltip: '联系人',
                   ),
-              const SizedBox(width: 4),
+              SizedBox(width: 4),
             ],
           ),
 
@@ -103,9 +103,9 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                 _NotificationSection(
                   friendApplications: state.friendApplications,
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
 
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
 
                 // 搜索栏
                 Container(
@@ -116,7 +116,7 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                   ),
                   child: TextField(
                     controller: _searchCtrl,
-                    style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14),
+                    style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14),
                     decoration: InputDecoration(
                       border: InputBorder.none, isDense: true,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -132,22 +132,22 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
 
                 // 私信列表标题
                 Text(
                   l10n.messageDirectMessages,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: AppFonts.primary, fontSize: 16,
                     fontWeight: FontWeight.w700, color: AppColors.onSurface,
                     letterSpacing: -0.2,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
 
                 // 加载中
                 if (state.isLoading)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.symmetric(vertical: 32),
                     child: Center(
                       child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5),
@@ -159,14 +159,14 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                     padding: const EdgeInsets.symmetric(vertical: 32),
                     child: Center(
                       child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 40),
-                        const SizedBox(height: 8),
+                        Icon(Icons.error_outline_rounded, color: AppColors.error, size: 40),
+                        SizedBox(height: 8),
                         Text(state.errorMessage!,
                             style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13, color: AppColors.error)),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         TextButton(
                           onPressed: () => ref.read(imControllerProvider.notifier).loadConversations(),
-                          child: const Text('重试'),
+                          child: Text('重试'),
                         ),
                       ]),
                     ),
@@ -201,7 +201,7 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                       return (b.orderkey ?? 0).compareTo(a.orderkey ?? 0);
                     });
                     if (chats.isEmpty) {
-                      return const Padding(
+                      return Padding(
                         padding: EdgeInsets.symmetric(vertical: 48),
                         child: Center(
                           child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -280,10 +280,10 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                 color: AppColors.surfaceContainerLow,
                 shape: BoxShape.circle,
               ),
-              child: const Center(child: Text('💬', style: TextStyle(fontSize: 44))),
+              child: Center(child: Text('💬', style: TextStyle(fontSize: 44))),
             ),
-            const SizedBox(height: 20),
-            const Text('请先登录账号',
+            SizedBox(height: 20),
+            Text('请先登录账号',
                 style: TextStyle(fontFamily: AppFonts.primary, fontSize: 18,
                     fontWeight: FontWeight.w700, color: AppColors.onSurface)),
           ],
@@ -405,7 +405,7 @@ class _InteractSheet extends StatelessWidget {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.75,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -425,23 +425,23 @@ class _InteractSheet extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 12, 16, 8),
             child: Row(children: [
-              const Text('互动通知', style: TextStyle(
+              Text('互动通知', style: TextStyle(
                 fontFamily: AppFonts.primary, fontSize: 20,
                 fontWeight: FontWeight.w800, color: AppColors.onSurface,
               )),
-              const Spacer(),
+              Spacer(),
               IconButton(
-                icon: const Icon(Icons.close_rounded),
+                icon: Icon(Icons.close_rounded),
                 color: AppColors.onSurfaceVariant,
                 onPressed: () => Navigator.pop(context),
               ),
             ]),
           ),
-          const Divider(height: 1, thickness: 0.5, color: Color(0x18000000)),
+          Divider(height: 1, thickness: 0.5, color: Color(0x18000000)),
 
           // 通知列表
           if (notices.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 48),
               child: Center(
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -464,7 +464,7 @@ class _InteractSheet extends StatelessWidget {
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
                 itemCount: notices.length,
-                separatorBuilder: (_, __) => const Divider(
+                separatorBuilder: (_, __) => Divider(
                   height: 1, thickness: 0.5, indent: 60,
                   color: Color(0x10000000),
                 ),
@@ -526,20 +526,20 @@ class _InteractNoticeItem extends StatelessWidget {
           decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
           child: Icon(icon, color: iconColor, size: 20),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         // 文案
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
               notice.content,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AppFonts.primary, fontSize: 13,
                 fontWeight: FontWeight.w600, color: AppColors.onSurface,
                 height: 1.45,
               ),
             ),
-            const SizedBox(height: 3),
-            Text(timeStr, style: const TextStyle(
+            SizedBox(height: 3),
+            Text(timeStr, style: TextStyle(
               fontFamily: AppFonts.primary, fontSize: 11,
               color: AppColors.onSurfaceVariant,
             )),
@@ -578,12 +578,12 @@ class _NotificationItem extends StatelessWidget {
               decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
               child: Icon(icon, color: iconColor, size: 22),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
+                  Text(title, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
                       fontWeight: FontWeight.w700, color: AppColors.onSurface)),
                   Text(subtitle, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
                       color: AppColors.onSurfaceVariant)),
@@ -598,14 +598,14 @@ class _NotificationItem extends StatelessWidget {
                     Text(time, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 10,
                         color: AppColors.onSurfaceVariant)),
                   if (hasUnread) ...[
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Container(width: 8, height: 8,
                         decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle)),
                   ],
                 ],
               ),
             if (onTap != null) ...[
-              const SizedBox(width: 4),
+              SizedBox(width: 4),
               Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.onSurfaceVariant),
             ],
           ],
@@ -637,7 +637,7 @@ class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
       ref.read(imControllerProvider.notifier).loadFriendApplications();
       _loadSent();
       // 定时轮询，小调修写开题时即时显示
-      _refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _refreshTimer = Timer.periodic(Duration(seconds: 3), (_) {
         if (mounted) {
           ref.read(imControllerProvider.notifier).loadFriendApplications();
         }
@@ -692,19 +692,19 @@ class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
           surfaceTintColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_rounded, size: 20),
+            icon: Icon(Icons.arrow_back_ios_rounded, size: 20),
             color: AppColors.onSurface,
             onPressed: () => Navigator.pop(context),
           ),
-          title: const Text('好友申请',
+          title: Text('好友申请',
               style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 17, fontWeight: FontWeight.w700)),
           centerTitle: true,
           bottom: TabBar(
-            labelStyle: const TextStyle(
+            labelStyle: TextStyle(
                 fontFamily: AppFonts.primary, fontWeight: FontWeight.w700,
                 fontSize: 13),
-            unselectedLabelStyle: const TextStyle(
+            unselectedLabelStyle: TextStyle(
                 fontFamily: AppFonts.primary, fontSize: 13),
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.onSurfaceVariant,
@@ -712,7 +712,7 @@ class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
             indicatorSize: TabBarIndicatorSize.label,
             tabs: [
               Tab(text: '收到的${received.isNotEmpty ? "  (${received.length})" : ""}'),
-              const Tab(text: '发出的'),
+              Tab(text: '发出的'),
             ],
           ),
         ),
@@ -723,7 +723,7 @@ class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
                   itemCount: received.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (_, __) => SizedBox(height: 10),
                   itemBuilder: (_, i) {
                     final app     = received[i];
                     final uid     = app.userID ?? '';
@@ -740,7 +740,7 @@ class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
                               foregroundColor: AppColors.onSurfaceVariant,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 6)),
-                          child: const Text('拒绝', style: TextStyle(
+                          child: Text('拒绝', style: TextStyle(
                               fontFamily: AppFonts.primary,
                               fontWeight: FontWeight.w600)),
                         ),
@@ -754,7 +754,7 @@ class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
                                 borderRadius: BorderRadius.circular(12)),
                             elevation: 0,
                           ),
-                          child: const Text('同意', style: TextStyle(
+                          child: Text('同意', style: TextStyle(
                               fontFamily: AppFonts.primary, fontSize: 13,
                               fontWeight: FontWeight.w700, color: Colors.white)),
                         ),
@@ -770,7 +770,7 @@ class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
                 .toList();
             final isLoading = _loadingSent && resultNotices.isEmpty;
             if (isLoading) {
-              return const Center(child: CircularProgressIndicator(
+              return Center(child: CircularProgressIndicator(
                   color: AppColors.primary, strokeWidth: 2.5));
             }
             final items = <Widget>[];
@@ -788,7 +788,7 @@ class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
                     color: AppColors.surfaceContainerHigh.withOpacity(0.5),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(Icons.delete_sweep_rounded,
+                  child: Icon(Icons.delete_sweep_rounded,
                       color: AppColors.onSurfaceVariant, size: 28),
                 ),
                 onDismissed: (_) {
@@ -837,7 +837,7 @@ class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
                     color: AppColors.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Text('待确认 ⏳',
+                  child: Text('待确认 ⏳',
                       style: TextStyle(
                           fontFamily: AppFonts.primary,
                           fontSize: 12, fontWeight: FontWeight.w600,
@@ -849,7 +849,7 @@ class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
             return ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
               itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (_, __) => SizedBox(height: 10),
               itemBuilder: (_, i) => items[i],
             );
           }),
@@ -860,8 +860,8 @@ class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
 
   Widget _buildEmpty(String msg) => Center(
     child: Column(mainAxisSize: MainAxisSize.min, children: [
-      const Text('🐾', style: TextStyle(fontSize: 52)),
-      const SizedBox(height: 12),
+      Text('🐾', style: TextStyle(fontSize: 52)),
+      SizedBox(height: 12),
       Text(msg, style: TextStyle(fontFamily: AppFonts.primary,
           fontSize: 14, color: AppColors.onSurfaceVariant)),
     ]),
@@ -887,19 +887,19 @@ class _RequestCard extends StatelessWidget {
         radius: 24,
         backgroundColor: AppColors.primaryContainer,
         child: Text(name.isNotEmpty ? name[0] : '?',
-            style: const TextStyle(fontSize: 18,
+            style: TextStyle(fontSize: 18,
                 fontWeight: FontWeight.w800, color: AppColors.primary)),
       ),
-      const SizedBox(width: 12),
+      SizedBox(width: 12),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(name, style: const TextStyle(fontFamily: AppFonts.primary,
+        Text(name, style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-        const SizedBox(height: 2),
+        SizedBox(height: 2),
         Text(wording, style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 12, color: AppColors.onSurfaceVariant,
             fontStyle: FontStyle.italic)),
       ])),
-      const SizedBox(width: 8),
+      SizedBox(width: 8),
       trailing,
     ]),
   );
@@ -941,7 +941,7 @@ class _ConversationCardState extends State<_ConversationCard>
   @override
   void initState() {
     super.initState();
-    _ctrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 280));
+    _ctrl  = AnimationController(vsync: this, duration: Duration(milliseconds: 280));
     _rCtrl = AnimationController.unbounded(vsync: this); // value = px offset
   }
 
@@ -953,9 +953,9 @@ class _ConversationCardState extends State<_ConversationCard>
   }
 
   void _open()  => _ctrl.animateTo(1.0,
-      duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+      duration: Duration(milliseconds: 260), curve: Curves.easeOutCubic);
   void _close() => _ctrl.animateTo(0.0,
-      duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+      duration: Duration(milliseconds: 260), curve: Curves.easeOutCubic);
 
   void _onDragStart(DragStartDetails _) {
     _allowRightSwipe = _ctrl.value < 0.02 && !_deleting;
@@ -995,7 +995,7 @@ class _ConversationCardState extends State<_ConversationCard>
   void _springBack(double velocity) {
     _rCtrl.animateTo(
       0,
-      duration: const Duration(milliseconds: 280),
+      duration: Duration(milliseconds: 280),
       curve: Curves.easeOutCubic,
     );
   }
@@ -1007,7 +1007,7 @@ class _ConversationCardState extends State<_ConversationCard>
     final target = _screenWidth > 0 ? _screenWidth + 50 : 500.0;
     _rCtrl.animateTo(
       target,
-      duration: const Duration(milliseconds: 260),
+      duration: Duration(milliseconds: 260),
       curve: Curves.easeIn,
     ).then((_) {
       if (mounted) _runAction(widget.onDelete);
@@ -1020,7 +1020,7 @@ class _ConversationCardState extends State<_ConversationCard>
     setState(() => _busy = true);
     // 先关闭面板动画，等动画完成
     await _ctrl.animateTo(0.0,
-        duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic);
+        duration: Duration(milliseconds: 220), curve: Curves.easeOutCubic);
     await fn();
     // 业务完成后重置（setState 驱动 rebuild，确保按钮区消失）
     if (mounted) setState(() => _busy = false);
@@ -1080,12 +1080,12 @@ class _ConversationCardState extends State<_ConversationCard>
                           color: AppColors.surfaceContainerLowest, width: 2),
                     ),
                     child: Center(child: Text('$unread',
-                        style: const TextStyle(color: Colors.white,
+                        style: TextStyle(color: Colors.white,
                             fontSize: 9, fontWeight: FontWeight.w800))),
                   ),
                 ),
             ]),
-            const SizedBox(width: 14),
+            SizedBox(width: 14),
             Expanded(child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1098,7 +1098,7 @@ class _ConversationCardState extends State<_ConversationCard>
                     Icon(Icons.push_pin_rounded, size: 12,
                         color: AppColors.primary.withOpacity(0.6)),
                 ]),
-                const SizedBox(height: 3),
+                SizedBox(height: 3),
                 Text(lastMsg, maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontFamily: AppFonts.primary, fontSize: 12,
@@ -1108,7 +1108,7 @@ class _ConversationCardState extends State<_ConversationCard>
                         hasUnread ? FontWeight.w600 : FontWeight.w400)),
               ],
             )),
-            Text(time, style: const TextStyle(
+            Text(time, style: TextStyle(
                 fontFamily: AppFonts.primary, fontSize: 10,
                 color: AppColors.onSurfaceVariant)),
           ]),
@@ -1140,9 +1140,9 @@ class _ConversationCardState extends State<_ConversationCard>
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.delete_rounded, color: Colors.white,
                         size: 20 + 6 * delProgress),
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
                     if (delProgress > 0.6)
-                      const Text('删除', style: TextStyle(
+                      Text('删除', style: TextStyle(
                           color: Colors.white, fontSize: 12,
                           fontWeight: FontWeight.w700,
                           fontFamily: AppFonts.primary)),
@@ -1165,7 +1165,7 @@ class _ConversationCardState extends State<_ConversationCard>
                   _SwipeActionBtn(
                     icon: Icons.delete_sweep_outlined,
                     label: '清空',
-                    color: const Color(0xFFFF9500),
+                    color: Color(0xFFFF9500),
                     onTap: () => _runAction(widget.onClear),
                   ),
                   _SwipeActionBtn(
@@ -1255,8 +1255,8 @@ class _SwipeActionBtn extends StatelessWidget {
         decoration: BoxDecoration(color: color),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(icon, color: Colors.white, size: 22),
-          const SizedBox(height: 5),
-          Text(label, style: const TextStyle(
+          SizedBox(height: 5),
+          Text(label, style: TextStyle(
             color: Colors.white, fontSize: 11,
             fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
         ]),

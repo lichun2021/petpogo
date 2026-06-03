@@ -16,14 +16,14 @@ class NoDeviceBanner extends StatelessWidget {
           HapticFeedback.mediumImpact();
           context.push('/bind-device');
         },
-        icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
-        label: const Text('添加我的第一台设备'),
+        icon: Icon(Icons.add_circle_outline_rounded, size: 20),
+        label: Text('添加我的第一台设备'),
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
           backgroundColor: AppColors.primary.withOpacity(0.06),
           side: BorderSide(color: AppColors.primary.withOpacity(0.30), width: 1.5),
           padding: const EdgeInsets.symmetric(vertical: 16),
-          textStyle: const TextStyle(
+          textStyle: TextStyle(
             fontFamily: AppFonts.primary,
             fontSize: 15,
             fontWeight: FontWeight.w700,

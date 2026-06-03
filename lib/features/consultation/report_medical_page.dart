@@ -27,11 +27,11 @@ class ReportMedicalPage extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           color: AppColors.onSurface,
           onPressed: () => Navigator.maybePop(context),
         ),
-        title: const Text(
+        title: Text(
           '医疗检测方案',
           style: TextStyle(
             fontSize: 17,
@@ -47,33 +47,33 @@ class ReportMedicalPage extends StatelessWidget {
             disease: report.primaryDisease,
             symptom: report.symptomSummary,
           ),
-          const SizedBox(height: 18),
+          SizedBox(height: 18),
           if (items.isNotEmpty) ...[
             const _SectionLabel(
                 icon: Icons.science_outlined, text: '建议检测项目'),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             for (var i = 0; i < items.length; i++) ...[
               _MedicalItemCard(item: items[i], index: i + 1),
-              if (i < items.length - 1) const SizedBox(height: 10),
+              if (i < items.length - 1) SizedBox(height: 10),
             ],
-            const SizedBox(height: 18),
+            SizedBox(height: 18),
           ] else if (report.medicalSolutions.isNotEmpty) ...[
             const _SectionLabel(
                 icon: Icons.science_outlined, text: '建议检测项目'),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _PlainTextCard(text: report.medicalSolutions),
-            const SizedBox(height: 18),
+            SizedBox(height: 18),
           ],
           if (report.diseaseCards.any((c) => c.diagnosis.isNotEmpty)) ...[
             const _SectionLabel(
                 icon: Icons.biotech_outlined, text: '诊断思路（按疾病）'),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             for (final card in report.diseaseCards)
               if (card.diagnosis.isNotEmpty) ...[
                 _DiagnosisHintCard(name: card.name, diagnosis: card.diagnosis),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
               ],
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
           ],
           const _FooterNote(),
         ],
@@ -88,7 +88,7 @@ class ReportMedicalPage extends StatelessWidget {
   ///   ```
   /// 拆出 (title, desc) 元组。当不带粗体冒号时，title 留空、desc 取整行。
   static List<_MedicalItem> _parseSolutions(String raw) {
-    if (raw.trim().isEmpty) return const [];
+    if (raw.trim().isEmpty) return [];
     final out = <_MedicalItem>[];
 
     final lines = raw
@@ -157,7 +157,7 @@ class _HeaderCard extends StatelessWidget {
           BoxShadow(
             color: AppColors.secondary.withOpacity(0.25),
             blurRadius: 16,
-            offset: const Offset(0, 6),
+            offset: Offset(0, 6),
           ),
         ],
       ),
@@ -165,7 +165,7 @@ class _HeaderCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
+            children: [
               Icon(Icons.local_hospital_outlined,
                   size: 16, color: Colors.white),
               SizedBox(width: 6),
@@ -179,10 +179,10 @@ class _HeaderCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             disease.isEmpty ? '尚未明确主要疾病' : disease,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
               color: Colors.white,
@@ -190,7 +190,7 @@ class _HeaderCard extends StatelessWidget {
             ),
           ),
           if (symptom.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -200,7 +200,7 @@ class _HeaderCard extends StatelessWidget {
               ),
               child: Text(
                 symptom,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   height: 1.5,
                   color: Colors.white,
@@ -223,10 +223,10 @@ class _SectionLabel extends StatelessWidget {
     return Row(
       children: [
         Icon(icon, size: 16, color: AppColors.secondary),
-        const SizedBox(width: 6),
+        SizedBox(width: 6),
         Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
             color: AppColors.onSurface,
@@ -255,7 +255,7 @@ class _MedicalItemCard extends StatelessWidget {
             color: AppColors.cardShadow,
             blurRadius: 10,
             spreadRadius: -4,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -272,14 +272,14 @@ class _MedicalItemCard extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(
               '$index',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
                 color: AppColors.onSecondaryContainer,
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,18 +287,18 @@ class _MedicalItemCard extends StatelessWidget {
                 if (item.title.isNotEmpty)
                   Text(
                     item.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: AppColors.secondary,
                     ),
                   ),
                 if (item.title.isNotEmpty && item.desc.isNotEmpty)
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                 if (item.desc.isNotEmpty)
                   Text(
                     item.desc,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       height: 1.55,
                       color: AppColors.onSurface,
@@ -329,13 +329,13 @@ class _PlainTextCard extends StatelessWidget {
             color: AppColors.cardShadow,
             blurRadius: 10,
             spreadRadius: -4,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           height: 1.6,
           color: AppColors.onSurface,
@@ -367,12 +367,12 @@ class _DiagnosisHintCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.fact_check_outlined,
+              Icon(Icons.fact_check_outlined,
                   size: 14, color: AppColors.secondary),
-              const SizedBox(width: 4),
+              SizedBox(width: 4),
               Text(
                 name,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: AppColors.onSurface,
@@ -380,10 +380,10 @@ class _DiagnosisHintCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             diagnosis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12.5,
               height: 1.55,
               color: AppColors.onSurfaceVariant,
@@ -408,9 +408,9 @@ class _FooterNote extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_outline_rounded,
+          Icon(Icons.info_outline_rounded,
               size: 16, color: AppColors.tertiary),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           Expanded(
             child: Text(
               '本方案由 AI 综合判断生成，仅供参考。实际检测项目以接诊兽医建议为准。',

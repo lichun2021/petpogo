@@ -43,18 +43,18 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
       appBar: AppBar(
         backgroundColor: AppColors.surface, surfaceTintColor: Colors.transparent, elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded, size: 20), color: AppColors.onSurface,
+          icon: Icon(Icons.arrow_back_ios_rounded, size: 20), color: AppColors.onSurface,
           onPressed: () => Navigator.pop(context)),
         title: Text('${widget.petName} 的围栏',
-            style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 17, fontWeight: FontWeight.w700)),
+            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 17, fontWeight: FontWeight.w700)),
         centerTitle: true,
         actions: [
           if (_loading)
-            const Padding(padding: EdgeInsets.only(right: 16),
+            Padding(padding: EdgeInsets.only(right: 16),
               child: SizedBox(width: 20, height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)))
           else
-            IconButton(icon: const Icon(Icons.refresh_rounded), color: AppColors.onSurfaceVariant,
+            IconButton(icon: Icon(Icons.refresh_rounded), color: AppColors.onSurfaceVariant,
                 onPressed: _loadFences),
         ],
       ),
@@ -66,11 +66,11 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
             onPressed: () => _showAddFenceSheet(context),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.secondary,
-              minimumSize: const Size(double.infinity, 52),
+              minimumSize: Size(double.infinity, 52),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
-            icon: const Icon(Icons.add_location_alt_rounded, size: 22),
-            label: const Text('添加围栏', style: TextStyle(
+            icon: Icon(Icons.add_location_alt_rounded, size: 22),
+            label: Text('添加围栏', style: TextStyle(
                 fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w700)),
           ),
         ),
@@ -80,16 +80,16 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
 
   Widget _buildBody() {
     if (_loading && _fences.isEmpty) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5));
+      return Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5));
     }
     if (_error != null && _fences.isEmpty) {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.wifi_off_rounded, size: 64, color: AppColors.onSurfaceVariant),
-        const SizedBox(height: 16),
+        Icon(Icons.wifi_off_rounded, size: 64, color: AppColors.onSurfaceVariant),
+        SizedBox(height: 16),
         Text(_error!, textAlign: TextAlign.center,
-            style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14, color: AppColors.onSurfaceVariant)),
-        const SizedBox(height: 16),
-        OutlinedButton(onPressed: _loadFences, child: const Text('重试')),
+            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14, color: AppColors.onSurfaceVariant)),
+        SizedBox(height: 16),
+        OutlinedButton(onPressed: _loadFences, child: Text('重试')),
       ]));
     }
     if (_fences.isEmpty) return _buildEmpty();
@@ -99,7 +99,7 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
         itemCount: _fences.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        separatorBuilder: (_, __) => SizedBox(height: 12),
         itemBuilder: (_, i) => _FenceCard(
           fence: _fences[i],
           onEdit:   () => _showEditFenceSheet(context, _fences[i]),
@@ -112,11 +112,11 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
   Widget _buildEmpty() {
     return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
       Icon(Icons.fence_rounded, size: 72, color: AppColors.onSurfaceVariant.withOpacity(0.35)),
-      const SizedBox(height: 16),
-      const Text('还没有围栏', style: TextStyle(fontFamily: AppFonts.primary,
+      SizedBox(height: 16),
+      Text('还没有围栏', style: TextStyle(fontFamily: AppFonts.primary,
           fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.onSurfaceVariant)),
-      const SizedBox(height: 8),
-      const Text('添加围栏后，宠物越界会收到提醒', style: TextStyle(fontFamily: AppFonts.primary,
+      SizedBox(height: 8),
+      Text('添加围栏后，宠物越界会收到提醒', style: TextStyle(fontFamily: AppFonts.primary,
           fontSize: 13, color: AppColors.onSurfaceVariant)),
     ]));
   }
@@ -155,14 +155,14 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
       builder: (dialogCtx) => AlertDialog(
         backgroundColor: AppColors.surfaceContainerLow,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('删除围栏',
+        title: Text('删除围栏',
             style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
         content: Text('确定删除「${fence.fenceName}」围栏吗？',
-            style: const TextStyle(fontFamily: AppFonts.primary)),
+            style: TextStyle(fontFamily: AppFonts.primary)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('取消'),
+            child: Text('取消'),
           ),
           FilledButton(
             onPressed: () async {
@@ -176,7 +176,7 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
               backgroundColor: AppColors.error,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('删除'),
+            child: Text('删除'),
           ),
         ],
       ),
@@ -199,10 +199,10 @@ class _FenceCard extends StatelessWidget {
         Padding(padding: const EdgeInsets.fromLTRB(16, 16, 12, 8), child: Row(children: [
           Container(width: 44, height: 44,
               decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.fence_rounded, color: AppColors.primary, size: 22)),
-          const SizedBox(width: 12),
+              child: Icon(Icons.fence_rounded, color: AppColors.primary, size: 22)),
+          SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(fence.fenceName, style: const TextStyle(fontFamily: AppFonts.primary,
+            Text(fence.fenceName, style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
             if (fence.address.isNotEmpty)
               Text(fence.address, style: TextStyle(fontFamily: AppFonts.primary,
@@ -210,9 +210,9 @@ class _FenceCard extends StatelessWidget {
           ])),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: const Color(0xFF4ADE80).withOpacity(0.12),
+            decoration: BoxDecoration(color: Color(0xFF4ADE80).withOpacity(0.12),
                 borderRadius: BorderRadius.circular(20)),
-            child: const Text('活跃', style: TextStyle(fontFamily: AppFonts.primary,
+            child: Text('活跃', style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF16A34A))),
           ),
         ])),
@@ -221,11 +221,11 @@ class _FenceCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(color: AppColors.surfaceContainer, borderRadius: BorderRadius.circular(12)),
           child: Row(children: [
-            const Icon(Icons.radio_button_checked_rounded, size: 14, color: AppColors.primary),
-            const SizedBox(width: 6),
-            Text('半径 ${fence.displayRadius}', style: const TextStyle(fontFamily: AppFonts.primary,
+            Icon(Icons.radio_button_checked_rounded, size: 14, color: AppColors.primary),
+            SizedBox(width: 6),
+            Text('半径 ${fence.displayRadius}', style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.onSurface)),
-            const Spacer(),
+            Spacer(),
             Text('${fence.latitude}°N  ${fence.longitude}°E',
                 style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11, color: AppColors.onSurfaceVariant)),
           ]),
@@ -233,11 +233,11 @@ class _FenceCard extends StatelessWidget {
         Divider(height: 1, color: AppColors.surfaceContainerHigh),
         Row(children: [
           Expanded(child: TextButton.icon(onPressed: onEdit,
-              icon: const Icon(Icons.edit_outlined, size: 16), label: const Text('编辑'),
+              icon: Icon(Icons.edit_outlined, size: 16), label: Text('编辑'),
               style: TextButton.styleFrom(foregroundColor: AppColors.onSurfaceVariant))),
           Container(width: 1, height: 32, color: AppColors.surfaceContainerHigh),
           Expanded(child: TextButton.icon(onPressed: onDelete,
-              icon: const Icon(Icons.delete_outline_rounded, size: 16), label: const Text('删除'),
+              icon: Icon(Icons.delete_outline_rounded, size: 16), label: Text('删除'),
               style: TextButton.styleFrom(foregroundColor: AppColors.error))),
         ]),
       ]),
@@ -280,24 +280,24 @@ class _FenceFormSheetState extends State<_FenceFormSheet> {
         Center(child: Container(width: 36, height: 4,
             decoration: BoxDecoration(color: AppColors.onSurfaceVariant.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(2)))),
-        const SizedBox(height: 16),
-        Text(widget.title, style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 17, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 20),
+        SizedBox(height: 16),
+        Text(widget.title, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 17, fontWeight: FontWeight.w700)),
+        SizedBox(height: 20),
         _buildField(label: '围栏名称', controller: _nameCtrl, hint: '如：家、公司、学校'),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _buildField(label: '半径 (米)', controller: _radiusCtrl, hint: '200', inputType: TextInputType.number),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         _buildField(label: '地址描述', controller: _addressCtrl, hint: '例：上海市静安区南京西路'),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         Container(padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
             child: Row(children: [
               Icon(Icons.info_outline_rounded, size: 16, color: AppColors.secondary),
-              const SizedBox(width: 8),
-              const Expanded(child: Text('围栏中心将设为当前设备位置',
+              SizedBox(width: 8),
+              Expanded(child: Text('围栏中心将设为当前设备位置',
                   style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12, color: AppColors.secondary))),
             ])),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
         FilledButton(
           onPressed: () {
             if (_nameCtrl.text.isEmpty) return;
@@ -307,9 +307,9 @@ class _FenceFormSheetState extends State<_FenceFormSheet> {
                 _addressCtrl.text);
           },
           style: FilledButton.styleFrom(backgroundColor: AppColors.primary,
-              minimumSize: const Size(double.infinity, 50),
+              minimumSize: Size(double.infinity, 50),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-          child: const Text('保存', style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w700)),
+          child: Text('保存', style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w700)),
         ),
       ]),
     );
@@ -320,7 +320,7 @@ class _FenceFormSheetState extends State<_FenceFormSheet> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
           fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant)),
-      const SizedBox(height: 6),
+      SizedBox(height: 6),
       TextField(controller: controller, keyboardType: inputType,
           decoration: InputDecoration(
             hintText: hint,

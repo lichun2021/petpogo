@@ -9,7 +9,7 @@ class ReportDiagnosisPage extends StatelessWidget {
   final ConsultationReport report;
   final PetInfoSnapshot? petInfo;
   final String petAvatar;
-  const ReportDiagnosisPage({
+  ReportDiagnosisPage({
     super.key,
     required this.report,
     this.petInfo,
@@ -25,11 +25,11 @@ class ReportDiagnosisPage extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           color: AppColors.onSurface,
           onPressed: () => Navigator.maybePop(context),
         ),
-        title: const Text(
+        title: Text(
           '宠小伊问诊报告',
           style: TextStyle(
             fontSize: 17,
@@ -44,31 +44,31 @@ class ReportDiagnosisPage extends StatelessWidget {
           // ── 宠物信息 Hero 卡──
           if (petInfo != null) ...[
             _PetHeroCard(pet: petInfo!, avatarUrl: petAvatar),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
           ],
           _SummaryCard(report: report),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _SectionTitle(icon: Icons.description_outlined, title: '综合描述'),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _PlainCard(
             child: Text(
               report.report,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 height: 1.6,
                 color: AppColors.onSurface,
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           _SectionTitle(
             icon: Icons.local_hospital_outlined,
             title: '可能的疾病 (${report.diseaseCards.length})',
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           for (final card in report.diseaseCards) ...[
             _DiseaseCardWidget(card: card),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
           ],
           if (report.diseaseCards.isEmpty)
             _PlainCard(
@@ -82,12 +82,12 @@ class ReportDiagnosisPage extends StatelessWidget {
             ),
           // ── 诊断依据 ───────────────────────────────────────
           if (report.diagnosticBasis.isNotEmpty) ...[
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _SectionTitle(
               icon: Icons.fact_check_outlined,
               title: '诊断依据',
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _DiagnosticBasisCard(basis: report.diagnosticBasis),
           ],
         ],
@@ -106,18 +106,18 @@ class _PetHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final chips = <({String label, String value, Color color})>[
       if (pet.breed.isNotEmpty)
-        (label: '品种', value: pet.breed, color: const Color(0xFF6366F1)),
+        (label: '品种', value: pet.breed, color: Color(0xFF6366F1)),
       if (pet.age.isNotEmpty)
-        (label: '年龄', value: pet.age, color: const Color(0xFF0EA5E9)),
+        (label: '年龄', value: pet.age, color: Color(0xFF0EA5E9)),
       if (pet.weight.isNotEmpty)
-        (label: '体重', value: '${pet.weight} kg', color: const Color(0xFF10B981)),
+        (label: '体重', value: '${pet.weight} kg', color: Color(0xFF10B981)),
       if (pet.gender.isNotEmpty)
-        (label: '性别', value: _genderLabel(pet.gender), color: const Color(0xFFF59E0B)),
+        (label: '性别', value: _genderLabel(pet.gender), color: Color(0xFFF59E0B)),
     ];
 
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           colors: [Color(0xFFEDE9FE), Color(0xFFE0F2FE)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -125,10 +125,10 @@ class _PetHeroCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6366F1).withOpacity(0.12),
+            color: Color(0xFF6366F1).withOpacity(0.12),
             blurRadius: 16,
             spreadRadius: -2,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -139,7 +139,7 @@ class _PetHeroCard extends StatelessWidget {
           children: [
             // ── 头像 ───────────────────────────
             _Avatar(avatarUrl: avatarUrl, name: pet.name, gender: pet.gender),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             // ── 名字 + 信息标签 ────────────────
             Expanded(
               child: Column(
@@ -150,7 +150,7 @@ class _PetHeroCard extends StatelessWidget {
                       Flexible(
                         child: Text(
                           pet.name.isEmpty ? '宠物' : pet.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: AppFonts.primary,
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
@@ -160,15 +160,15 @@ class _PetHeroCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF6366F1).withOpacity(0.15),
+                          color: Color(0xFF6366F1).withOpacity(0.15),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Text(
+                        child: Text(
                           '问诊报告',
                           style: TextStyle(
                             fontFamily: AppFonts.primary,
@@ -180,7 +180,7 @@ class _PetHeroCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                   // 信息标签 Wrap
                   Wrap(
                     spacing: 6,
@@ -217,7 +217,7 @@ class _PetHeroCard extends StatelessWidget {
                             ),
                             TextSpan(
                               text: c.value,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: AppFonts.primary,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -282,10 +282,10 @@ class _Avatar extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6366F1).withOpacity(0.2),
+            color: Color(0xFF6366F1).withOpacity(0.2),
             blurRadius: 12,
             spreadRadius: -2,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
         border: Border.all(
@@ -313,9 +313,9 @@ class _EmojiAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF6366F1).withOpacity(0.08),
+      color: Color(0xFF6366F1).withOpacity(0.08),
       child: Center(
-        child: Text(emoji, style: const TextStyle(fontSize: 34)),
+        child: Text(emoji, style: TextStyle(fontSize: 34)),
       ),
     );
   }
@@ -344,7 +344,7 @@ class _SummaryCard extends StatelessWidget {
           BoxShadow(
             color: AppColors.secondary.withOpacity(0.25),
             blurRadius: 16,
-            offset: const Offset(0, 6),
+            offset: Offset(0, 6),
           ),
         ],
       ),
@@ -352,7 +352,7 @@ class _SummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
+            children: [
               Icon(Icons.medical_information_outlined,
                   size: 16, color: Colors.white70),
               SizedBox(width: 6),
@@ -366,10 +366,10 @@ class _SummaryCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             report.primaryDisease.isEmpty ? '—' : report.primaryDisease,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w800,
               color: Colors.white,
@@ -377,7 +377,7 @@ class _SummaryCard extends StatelessWidget {
             ),
           ),
           if (report.symptomSummary.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
@@ -386,7 +386,7 @@ class _SummaryCard extends StatelessWidget {
               ),
               child: Text(
                 report.symptomSummary,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   height: 1.5,
                   color: Colors.white,
@@ -410,10 +410,10 @@ class _SectionTitle extends StatelessWidget {
     return Row(
       children: [
         Icon(icon, size: 16, color: AppColors.secondary),
-        const SizedBox(width: 6),
+        SizedBox(width: 6),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
             color: AppColors.onSurface,
@@ -440,7 +440,7 @@ class _PlainCard extends StatelessWidget {
             color: AppColors.cardShadow,
             blurRadius: 10,
             spreadRadius: -4,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -474,7 +474,7 @@ class _DiseaseCardWidget extends StatelessWidget {
             color: AppColors.cardShadow,
             blurRadius: 10,
             spreadRadius: -4,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -491,7 +491,7 @@ class _DiseaseCardWidget extends StatelessWidget {
                   Expanded(
                     child: Text(
                       card.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: AppColors.onSurface,
@@ -517,7 +517,7 @@ class _DiseaseCardWidget extends StatelessWidget {
                 ],
               ),
               if (card.riskLevel.isNotEmpty) ...[
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   '风险等级：${card.riskLevel}',
                   style: TextStyle(
@@ -526,7 +526,7 @@ class _DiseaseCardWidget extends StatelessWidget {
                   ),
                 ),
               ],
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               ClipRRect(
                 borderRadius: BorderRadius.circular(3),
                 child: LinearProgressIndicator(
@@ -597,12 +597,12 @@ class _DiseaseField extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           // 右侧内容
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 height: 1.55,
                 color: AppColors.onSurface,
@@ -634,7 +634,7 @@ class _DiagnosticBasisCard extends StatelessWidget {
         color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: const Color(0xFF6366F1).withOpacity(0.18),
+          color: Color(0xFF6366F1).withOpacity(0.18),
           width: 1,
         ),
         boxShadow: [
@@ -642,7 +642,7 @@ class _DiagnosticBasisCard extends StatelessWidget {
             color: AppColors.cardShadow,
             blurRadius: 10,
             spreadRadius: -4,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -653,7 +653,7 @@ class _DiagnosticBasisCard extends StatelessWidget {
             // 左色条
             Container(
               width: 4,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
                   begin: Alignment.topCenter,
@@ -673,7 +673,7 @@ class _DiagnosticBasisCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     for (int i = 0; i < paragraphs.length; i++) ...[
-                      if (i > 0) const SizedBox(height: 8),
+                      if (i > 0) SizedBox(height: 8),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -683,14 +683,14 @@ class _DiagnosticBasisCard extends StatelessWidget {
                               width: 18,
                               height: 18,
                               margin: const EdgeInsets.only(top: 1, right: 8),
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 color: Color(0xFF6366F1),
                                 shape: BoxShape.circle,
                               ),
                               child: Center(
                                 child: Text(
                                   '${i + 1}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w800,
                                     color: Colors.white,
@@ -702,7 +702,7 @@ class _DiagnosticBasisCard extends StatelessWidget {
                           Expanded(
                             child: Text(
                               paragraphs[i],
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13.5,
                                 height: 1.6,
                                 color: AppColors.onSurface,

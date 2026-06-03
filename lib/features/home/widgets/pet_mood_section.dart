@@ -55,7 +55,7 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
     if (!isLoggedIn) return const SizedBox.shrink();
 
     if (petState.isLoading) {
-      return const SizedBox(
+      return SizedBox(
         height: 88,
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
@@ -71,7 +71,7 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('我的宠物',
+            Text('我的宠物',
                 style: TextStyle(
                     fontFamily: AppFonts.primary,
                     fontSize: 18,
@@ -81,7 +81,7 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
             if (lastResult != null) _EmotionBadge(result: lastResult),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
 
         // ── 全宽 PageView ────────────────────────────────
         SizedBox(
@@ -99,13 +99,13 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
 
         // ── 圆点指示（多宠物时显示）─────────────────────
         if (pets.length > 1) ...[
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
                 pets.length,
                 (i) => AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
+                      duration: Duration(milliseconds: 250),
                       margin: const EdgeInsets.symmetric(horizontal: 3),
                       width: i == _page ? 18 : 6,
                       height: 6,
@@ -122,7 +122,7 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
 
         // ── AI 情绪建议横幅 ──────────────────────────────
         if (lastResult != null) ...[
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _EmotionAdviceBanner(result: lastResult),
         ],
       ],
@@ -137,8 +137,8 @@ class _HomePetCard extends StatelessWidget {
   const _HomePetCard({required this.pet, this.result});
 
   List<Color> get _gradients => pet.type == 'cat'
-      ? [const Color(0xFF6EC6F5), const Color(0xFF4A90D9)]
-      : [const Color(0xFFFFB347), const Color(0xFFE07B39)];
+      ? [Color(0xFF6EC6F5), Color(0xFF4A90D9)]
+      : [Color(0xFFFFB347), Color(0xFFE07B39)];
 
   String _ageText() {
     if (pet.birthday.isEmpty) return '';
@@ -186,8 +186,8 @@ class _HomePetCard extends StatelessWidget {
         : isFemale
             ? '♀ 母'
             : '';
-    final gBg = isMale ? const Color(0xFFDCEEFF) : const Color(0xFFFFDCEE);
-    final gColor = isMale ? const Color(0xFF1A6BB5) : const Color(0xFFB51A6B);
+    final gBg = isMale ? Color(0xFFDCEEFF) : Color(0xFFFFDCEE);
+    final gColor = isMale ? Color(0xFF1A6BB5) : Color(0xFFB51A6B);
     final ageLabel =
         emotion != null ? '${result!.primaryEmoji} ${emotion.labelZh}' : age;
 
@@ -204,7 +204,7 @@ class _HomePetCard extends StatelessWidget {
             color: _gradients.first.withValues(alpha: 0.40),
             blurRadius: 16,
             spreadRadius: -4,
-            offset: const Offset(0, 6),
+            offset: Offset(0, 6),
           ),
         ],
       ),
@@ -248,7 +248,7 @@ class _HomePetCard extends StatelessWidget {
                       ),
                       child: Center(
                         child: Text(pet.emoji,
-                            style: const TextStyle(fontSize: 28)),
+                            style: TextStyle(fontSize: 28)),
                       ),
                     ),
                     if (result != null)
@@ -265,14 +265,14 @@ class _HomePetCard extends StatelessWidget {
                           ),
                           child: Center(
                             child: Text(result!.primaryEmoji,
-                                style: const TextStyle(fontSize: 11)),
+                                style: TextStyle(fontSize: 11)),
                           ),
                         ),
                       ),
                   ],
                 ),
 
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
 
                 // ── 右：名字 / 信息行 ────────────────────
                 Expanded(
@@ -287,14 +287,14 @@ class _HomePetCard extends StatelessWidget {
                             child: Text(pet.name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontFamily: AppFonts.primary,
                                     fontSize: 14,
                                     fontWeight: FontWeight.w900,
                                     color: Colors.white)),
                           ),
                           if (gLabel.isNotEmpty) ...[
-                            const SizedBox(width: 6),
+                            SizedBox(width: 6),
                             Padding(
                               padding: const EdgeInsets.only(right: 10),
                               child: Container(
@@ -316,23 +316,23 @@ class _HomePetCard extends StatelessWidget {
                         ],
                       ),
 
-                      const SizedBox(height: 5),
+                      SizedBox(height: 5),
 
                       // 年龄 chip + 位置（同一行）
                       Row(
                         children: [
                           if (ageLabel.isNotEmpty) ...[
                             _WChip(label: ageLabel),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                           ],
                           GestureDetector(
                             onTap: _openAmap,
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.location_on_rounded,
+                                Icon(Icons.location_on_rounded,
                                     size: 11, color: Colors.white),
-                                const SizedBox(width: 2),
+                                SizedBox(width: 2),
                                 Text('查看位置',
                                     style: TextStyle(
                                         fontFamily: AppFonts.primary,
@@ -370,7 +370,7 @@ class _WChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(label,
-            style: const TextStyle(
+            style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
@@ -394,8 +394,8 @@ class _EmotionBadge extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Text(result.primaryEmoji, style: const TextStyle(fontSize: 12)),
-        const SizedBox(width: 4),
+        Text(result.primaryEmoji, style: TextStyle(fontSize: 12)),
+        SizedBox(width: 4),
         Text(result.primaryEmotion.labelZh,
             style: TextStyle(
                 fontFamily: AppFonts.primary,
@@ -426,8 +426,8 @@ class _EmotionAdviceBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(result.primaryEmoji, style: const TextStyle(fontSize: 22)),
-          const SizedBox(width: 10),
+          Text(result.primaryEmoji, style: TextStyle(fontSize: 22)),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,14 +439,14 @@ class _EmotionAdviceBanner extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                         color: color,
                         letterSpacing: 0.3)),
-                const SizedBox(height: 3),
+                SizedBox(height: 3),
                 Text(result.advice,
                     style: TextStyle(
                         fontFamily: AppFonts.primary,
                         fontSize: 12,
                         color: AppColors.onSurfaceVariant,
                         height: 1.5)),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 ...result.top3.take(3).map((p) => Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Row(children: [
@@ -457,7 +457,7 @@ class _EmotionAdviceBanner extends StatelessWidget {
                                     fontFamily: AppFonts.primary,
                                     fontSize: 10,
                                     color: AppColors.onSurfaceVariant))),
-                        const SizedBox(width: 6),
+                        SizedBox(width: 6),
                         Expanded(
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(999),
@@ -472,7 +472,7 @@ class _EmotionAdviceBanner extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        SizedBox(width: 6),
                         Text(p.percentText,
                             style: TextStyle(
                                 fontFamily: AppFonts.primary,

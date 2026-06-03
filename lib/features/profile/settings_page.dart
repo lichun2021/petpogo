@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../core/config/app_config.dart';
 import '../../core/providers/locale_provider.dart';
+import '../../core/providers/font_provider.dart';
+import '../../core/providers/color_scheme_provider.dart';
+import '../../shared/theme/color_schemes.dart';
 import '../../app.dart' show AppL10nX;
 import '../auth/controller/auth_controller.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
@@ -25,11 +28,11 @@ class SettingsPage extends ConsumerWidget {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(l10n.settingsTitle,
-            style: const TextStyle(
+            style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontWeight: FontWeight.w700,
                 fontSize: 18)),
@@ -37,6 +40,11 @@ class SettingsPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
+          // ── 外观───────────────────────────────────────
+          _buildSectionHeader('外观'),
+          _AppearanceGroup(),
+          SizedBox(height: 20),
+
           // ── 账户（语言 + 昵称 + 密码）────────────────────
           _buildSectionHeader('账户'),
           _buildGroup([
@@ -47,7 +55,7 @@ class SettingsPage extends ConsumerWidget {
                 onTap: () => _showPasswordSheet(context, ref),
               ),
           ]),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // ── 关于 ──────────────────────────────────────
           _buildSectionHeader(l10n.settingsSectionAbout),
@@ -64,7 +72,7 @@ class SettingsPage extends ConsumerWidget {
               onTap: () {},
             ),
           ]),
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
 
           // ── 退出登录 ──────────────────────────────────
           if (auth.isLoggedIn)
@@ -72,7 +80,7 @@ class SettingsPage extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _LogoutButton(l10n: l10n, ref: ref),
             ),
-          const SizedBox(height: 40),
+          SizedBox(height: 40),
         ],
       ),
     );
@@ -84,7 +92,7 @@ class SettingsPage extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surfaceContainerLowest,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (ctx) => _PasswordSheet(ref: ref),
     );
@@ -130,7 +138,138 @@ class SettingsPage extends ConsumerWidget {
       );
 }
 
-// ── 密码 Sheet ──────────────────────────────────────────────
+// ── 外观分组（字体 + 配色）──────────────────────────
+// ignore: must_be_immutable
+class _AppearanceGroup extends ConsumerWidget {
+  const _AppearanceGroup();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentFont   = ref.watch(fontFamilyProvider);
+    final currentScheme = ref.watch(colorSchemeProvider);
+    final fontNotifier   = ref.read(fontFamilyProvider.notifier);
+    final schemeNotifier = ref.read(colorSchemeProvider.notifier);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+                color: AppColors.cardShadow,
+                blurRadius: 10,
+                spreadRadius: -4),
+          ],
+        ),
+        child: Column(
+          children: [
+            // ―― 字体 ――
+            _DropdownRow(
+              icon: Icons.text_fields_rounded,
+              label: '字体',
+              value: currentFont,
+              items: kFontOptions.map<DropdownMenuItem<String>>((o) => DropdownMenuItem<String>(
+                value: o.family,
+                child: Text(o.name,
+                    style: TextStyle(
+                        fontFamily: 'Plus Jakarta Sans', // 始终用系统字体显示选项名
+                        fontSize: 14,
+                        color: AppColors.onSurface)),
+              )).toList(),
+              onChanged: (v) { if (v != null) fontNotifier.setFont(v); },
+            ),
+            Divider(height: 1, indent: 52,
+                color: AppColors.outlineVariant.withOpacity(0.2)),
+            // ―― 配色 ――
+            _DropdownRow(
+              icon: Icons.palette_outlined,
+              label: '配色',
+              value: currentScheme,
+              items: kColorSchemes.map<DropdownMenuItem<String>>((s) => DropdownMenuItem<String>(
+                value: s.key,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(s.emoji, style: TextStyle(fontSize: 16)),
+                    SizedBox(width: 6),
+                    Text(s.name,
+                        style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 14,
+                            color: AppColors.onSurface)),
+                  ],
+                ),
+              )).toList(),
+              onChanged: (v) { if (v != null) schemeNotifier.setScheme(v); },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── 下拉行通用组件 ──────────────────────────────────────
+class _DropdownRow<T> extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final T value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
+
+  const _DropdownRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: AppColors.primary),
+          ),
+          SizedBox(width: 12),
+          Text(label,
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.onSurface)),
+          Spacer(),
+          DropdownButton<T>(
+            value: value,
+            items: items,
+            onChanged: onChanged,
+            underline: const SizedBox.shrink(),
+            icon: Icon(Icons.expand_more_rounded,
+                size: 18, color: AppColors.onSurfaceVariant),
+            style: TextStyle(
+                fontFamily: 'Plus Jakarta Sans',
+                fontSize: 14,
+                color: AppColors.onSurface),
+            dropdownColor: AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
 class _PasswordSheet extends ConsumerStatefulWidget {
   final WidgetRef ref;
   const _PasswordSheet({required this.ref});
@@ -182,7 +321,7 @@ class _PasswordSheetState extends ConsumerState<_PasswordSheet> {
         final messenger = ScaffoldMessenger.of(context);
         Navigator.pop(context);
         messenger.showSnackBar(
-          const SnackBar(
+          SnackBar(
               content: Text('密码已更新'), behavior: SnackBarBehavior.floating),
         );
       },
@@ -204,12 +343,12 @@ class _PasswordSheetState extends ConsumerState<_PasswordSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('修改密码',
+          Text('修改密码',
               style: TextStyle(
                   fontFamily: AppFonts.primary,
                   fontSize: 18,
                   fontWeight: FontWeight.w800)),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           _SheetField(
               controller: _oldCtrl,
               hint: '当前密码',
@@ -223,7 +362,7 @@ class _PasswordSheetState extends ConsumerState<_PasswordSheet> {
                       size: 18,
                       color: AppColors.onSurfaceVariant),
                   onPressed: () => setState(() => _showOld = !_showOld))),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _SheetField(
               controller: _newCtrl,
               hint: '新密码（至少6位）',
@@ -237,20 +376,20 @@ class _PasswordSheetState extends ConsumerState<_PasswordSheet> {
                       size: 18,
                       color: AppColors.onSurfaceVariant),
                   onPressed: () => setState(() => _showNew = !_showNew))),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _SheetField(
               controller: _cfmCtrl,
               hint: '确认新密码',
               icon: Icons.lock_reset_rounded,
               obscure: true),
           if (_error != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(_error!,
                 style: TextStyle(color: AppColors.error, fontSize: 13)),
           ],
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           _SheetButton(label: '确认修改', loading: _loading, onTap: _submit),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
         ],
       ),
     );
@@ -281,7 +420,7 @@ class _SheetField extends StatelessWidget {
       child: TextField(
         controller: controller,
         obscureText: obscure,
-        style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 15),
+        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(
@@ -323,13 +462,13 @@ class _SheetButton extends StatelessWidget {
           elevation: 0,
         ),
         child: loading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
                     strokeWidth: 2, color: Colors.white))
             : Text(label,
-                style: const TextStyle(
+                style: TextStyle(
                     fontFamily: AppFonts.primary,
                     fontSize: 16,
                     fontWeight: FontWeight.w700)),
@@ -377,7 +516,7 @@ class _SettingsTile extends StatelessWidget {
                       fontFamily: AppFonts.primary,
                       fontSize: 13,
                       color: AppColors.onSurfaceVariant)),
-            const SizedBox(width: 4),
+            SizedBox(width: 4),
             Icon(Icons.chevron_right_rounded,
                 color: AppColors.onSurfaceVariant, size: 20),
           ]),
@@ -436,7 +575,7 @@ class _LogoutButton extends ConsumerWidget {
       style: OutlinedButton.styleFrom(
         side: BorderSide(color: AppColors.error.withOpacity(0.3)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(48)),
-        minimumSize: const Size(double.infinity, 52),
+        minimumSize: Size(double.infinity, 52),
       ),
     );
   }

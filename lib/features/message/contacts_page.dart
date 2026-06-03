@@ -91,11 +91,11 @@ class _ContactsPageState extends ConsumerState<ContactsPage>
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           color: AppColors.onSurface,
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           '联系人',
           style: TextStyle(
             fontFamily: AppFonts.primary, fontSize: 20,
@@ -104,20 +104,20 @@ class _ContactsPageState extends ConsumerState<ContactsPage>
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.qr_code_rounded),
+            icon: Icon(Icons.qr_code_rounded),
             color: AppColors.onSurface,
             tooltip: '我的二维码',
             onPressed: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const MyQrCodePage())),
+                MaterialPageRoute(builder: (_) => MyQrCodePage())),
           ),
           IconButton(
-            icon: const Icon(Icons.qr_code_scanner_rounded),
+            icon: Icon(Icons.qr_code_scanner_rounded),
             color: AppColors.onSurface,
             tooltip: '扫码加好友',
             onPressed: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const ScanAddFriendPage())),
+                MaterialPageRoute(builder: (_) => ScanAddFriendPage())),
           ),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
         ],
         bottom: TabBar(
           controller: _tab,
@@ -127,18 +127,18 @@ class _ContactsPageState extends ConsumerState<ContactsPage>
           indicatorSize: TabBarIndicatorSize.label,
           indicatorWeight: 3,
           dividerColor: Colors.transparent,
-          labelStyle: const TextStyle(
+          labelStyle: TextStyle(
               fontFamily: AppFonts.primary, fontSize: 13,
               fontWeight: FontWeight.w700),
           tabs: [
             Tab(text: '好友${_friends.isEmpty ? '' : ' ${_friends.length}'}'),
             Tab(text: '黑名单${_blacklist.isEmpty ? '' : ' ${_blacklist.length}'}'),
-            const Tab(text: '设置'),
+            Tab(text: '设置'),
           ],
         ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(
+          ? Center(child: CircularProgressIndicator(
               color: AppColors.primary, strokeWidth: 2.5))
           : TabBarView(
               controller: _tab,
@@ -204,18 +204,18 @@ class _FriendListTabState extends ConsumerState<_FriendListTab> {
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
               child: Row(children: [
                 PetAvatar(imageUrl: f.userProfile?.faceUrl, size: 36, fallbackEmoji: '🐾'),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(child: Text(name,
-                    style: const TextStyle(fontFamily: AppFonts.primary,
+                    style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 16, fontWeight: FontWeight.w700,
                         color: AppColors.onSurface))),
               ]),
             ),
-            const Divider(height: 1, thickness: 0.5),
+            Divider(height: 1, thickness: 0.5),
             ListTile(
-              leading: const Icon(Icons.chat_bubble_outline_rounded,
+              leading: Icon(Icons.chat_bubble_outline_rounded,
                   color: AppColors.primary),
-              title: const Text('发送消息',
+              title: Text('发送消息',
                   style: TextStyle(fontFamily: AppFonts.primary,
                       fontWeight: FontWeight.w600)),
               onTap: () {
@@ -224,9 +224,9 @@ class _FriendListTabState extends ConsumerState<_FriendListTab> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.person_remove_rounded,
+              leading: Icon(Icons.person_remove_rounded,
                   color: AppColors.error),
-              title: const Text('删除好友',
+              title: Text('删除好友',
                   style: TextStyle(color: AppColors.error,
                       fontFamily: AppFonts.primary,
                       fontWeight: FontWeight.w600)),
@@ -241,7 +241,7 @@ class _FriendListTabState extends ConsumerState<_FriendListTab> {
                   setState(() => _items.removeWhere((x) => x.userID == uid));
                   PetToast.success(context, '已删除好友');
                   // ② 延迟 800ms 等 SDK 同步，再刷新父级
-                  await Future.delayed(const Duration(milliseconds: 800));
+                  await Future.delayed(Duration(milliseconds: 800));
                   if (mounted) widget.onRefresh();
                 } else {
                   PetToast.error(context, '删除失败，请重试');
@@ -249,9 +249,9 @@ class _FriendListTabState extends ConsumerState<_FriendListTab> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.block_rounded,
+              leading: Icon(Icons.block_rounded,
                   color: AppColors.onSurfaceVariant),
-              title: const Text('拉黑该用户',
+              title: Text('拉黑该用户',
                   style: TextStyle(fontFamily: AppFonts.primary,
                       fontWeight: FontWeight.w600,
                       color: AppColors.onSurface)),
@@ -266,14 +266,14 @@ class _FriendListTabState extends ConsumerState<_FriendListTab> {
                   setState(() => _items.removeWhere((x) => x.userID == uid));
                   PetToast.success(context, '已拉黑 $name');
                   // ② 延迟刷新父级（含黑名单列表）
-                  await Future.delayed(const Duration(milliseconds: 800));
+                  await Future.delayed(Duration(milliseconds: 800));
                   if (mounted) widget.onRefresh();
                 } else {
                   PetToast.error(context, '拉黑失败，请重试');
                 }
               },
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
           ]),
         ),
       ),
@@ -284,7 +284,7 @@ class _FriendListTabState extends ConsumerState<_FriendListTab> {
   @override
   Widget build(BuildContext context) {
     if (_items.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Text('🐾', style: TextStyle(fontSize: 48)),
           SizedBox(height: 12),
@@ -302,7 +302,7 @@ class _FriendListTabState extends ConsumerState<_FriendListTab> {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: _items.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, __) => SizedBox(height: 8),
       itemBuilder: (ctx, i) {
         final f    = _items[i];
         final uid  = f.userID ?? '';
@@ -330,17 +330,17 @@ class _FriendListTabState extends ConsumerState<_FriendListTab> {
             ),
             child: Row(children: [
               PetAvatar(imageUrl: face, size: 44, fallbackEmoji: '🐾'),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: const TextStyle(
+                  Text(name, style: TextStyle(
                       fontFamily: AppFonts.primary, fontSize: 14,
                       fontWeight: FontWeight.w700, color: AppColors.onSurface)),
                   if (f.userProfile?.selfSignature?.isNotEmpty == true)
                     Text(f.userProfile!.selfSignature!,
                         maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontFamily: AppFonts.primary,
+                        style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 11, color: AppColors.onSurfaceVariant)),
                 ],
               )),
@@ -363,7 +363,7 @@ class _BlacklistTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (blacklist.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Text('🛡️', style: TextStyle(fontSize: 48)),
           SizedBox(height: 12),
@@ -381,7 +381,7 @@ class _BlacklistTab extends ConsumerWidget {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: blacklist.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, __) => SizedBox(height: 8),
       itemBuilder: (ctx, i) {
         final f    = blacklist[i];
         final uid  = f.userID ?? '';
@@ -403,11 +403,11 @@ class _BlacklistTab extends ConsumerWidget {
               PetAvatar(imageUrl: face, size: 44, fallbackEmoji: '🐾'),
               Positioned.fill(child: ClipOval(
                 child: Container(color: Colors.black.withOpacity(0.35),
-                    child: const Icon(Icons.block_rounded,
+                    child: Icon(Icons.block_rounded,
                         color: Colors.white, size: 20)),
               )),
             ]),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -415,7 +415,7 @@ class _BlacklistTab extends ConsumerWidget {
                     fontFamily: AppFonts.primary, fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: AppColors.onSurface.withOpacity(0.6))),
-                const Text('已被拉黑',
+                Text('已被拉黑',
                     style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 11, color: AppColors.error)),
               ],
@@ -431,7 +431,7 @@ class _BlacklistTab extends ConsumerWidget {
                 if (success) {
                   PetToast.success(ctx, '已将 $name 移出黑名单');
                   // 延迟 800ms 再刷新，避免 SDK 竞态
-                  await Future.delayed(const Duration(milliseconds: 800));
+                  await Future.delayed(Duration(milliseconds: 800));
                   if (ctx.mounted) onRefresh();
                 } else {
                   PetToast.error(ctx, '操作失败，请重试');
@@ -444,7 +444,7 @@ class _BlacklistTab extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(10)),
                 backgroundColor: AppColors.primaryContainer.withOpacity(0.15),
               ),
-              child: const Text('移出黑名单',
+              child: Text('移出黑名单',
                   style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 12, fontWeight: FontWeight.w600)),
             ),
@@ -468,16 +468,16 @@ class _ContactSettingsTab extends StatelessWidget {
           title: '我的二维码',
           subtitle: '分享给好友，让他们扫码添加你',
           onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const MyQrCodePage())),
+              MaterialPageRoute(builder: (_) => MyQrCodePage())),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         _SettingItem(
           icon: Icons.qr_code_scanner_rounded,
-          iconColor: const Color(0xFF34C759),
+          iconColor: Color(0xFF34C759),
           title: '扫码加好友',
           subtitle: '扫描对方的二维码快速添加好友',
           onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const ScanAddFriendPage())),
+              MaterialPageRoute(builder: (_) => ScanAddFriendPage())),
         ),
       ],
     );
@@ -514,14 +514,14 @@ class _SettingItem extends StatelessWidget {
           ),
           child: Icon(icon, color: iconColor, size: 24),
         ),
-        const SizedBox(width: 14),
+        SizedBox(width: 14),
         Expanded(child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(
+            Text(title, style: TextStyle(
                 fontFamily: AppFonts.primary, fontSize: 14,
                 fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-            Text(subtitle, style: const TextStyle(
+            Text(subtitle, style: TextStyle(
                 fontFamily: AppFonts.primary, fontSize: 12,
                 color: AppColors.onSurfaceVariant)),
           ],

@@ -15,7 +15,7 @@ class MusicPlayerPage extends ConsumerStatefulWidget {
   final List<MusicItem> playlist;
   final int             initialIndex;
 
-  const MusicPlayerPage({
+  MusicPlayerPage({
     super.key,
     required this.playlist,
     this.initialIndex = 0,
@@ -44,13 +44,13 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
     // CD 旋转动画（60秒转一圈）
     _rotateCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 60),
+      duration: Duration(seconds: 60),
     );
 
     // 柱状图刷新（每 150ms）
     _vizCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 150),
+      duration: Duration(milliseconds: 150),
     )..addListener(_updateBars)
       ..repeat();
 
@@ -138,13 +138,13 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
               child: CachedNetworkImage(
                 imageUrl: _current.iconUrl!,
                 fit: BoxFit.cover,
-                errorWidget: (_, __, ___) => const SizedBox(),
+                errorWidget: (_, __, ___) => SizedBox(),
               ),
             ),
           ),
         // 遮罩
         Positioned.fill(child: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter, end: Alignment.bottomCenter,
               colors: [Color(0xCC000000), Color(0xEE000000)],
@@ -158,21 +158,21 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(children: [
               IconButton(
-                icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                icon: Icon(Icons.keyboard_arrow_down_rounded,
                     color: Colors.white, size: 32),
                 onPressed: () => Navigator.pop(context),
               ),
-              const Spacer(),
+              Spacer(),
               Text(_current.name,
-                  style: const TextStyle(fontFamily: AppFonts.primary,
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 15, fontWeight: FontWeight.w700,
                       color: Colors.white)),
-              const Spacer(),
-              const SizedBox(width: 48), // 平衡左侧
+              Spacer(),
+              SizedBox(width: 48), // 平衡左侧
             ]),
           ),
 
-          const Spacer(),
+          Spacer(),
 
           // ── CD 旋转封面 ──────────────────────────────
           AnimatedBuilder(
@@ -204,7 +204,7 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
             ),
           ),
 
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           // ── 音频柱状图 ──────────────────────────────
           SizedBox(height: 48, child: Row(
@@ -212,7 +212,7 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
             crossAxisAlignment: CrossAxisAlignment.end,
             children: List.generate(_barCount, (i) {
               return AnimatedContainer(
-                duration: const Duration(milliseconds: 120),
+                duration: Duration(milliseconds: 120),
                 width: 5, margin: const EdgeInsets.symmetric(horizontal: 3),
                 height: 8 + _bars[i] * 32,
                 decoration: BoxDecoration(
@@ -223,7 +223,7 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
             }),
           )),
 
-          const Spacer(),
+          Spacer(),
 
           // ── 歌曲信息 ─────────────────────────────────
           Padding(
@@ -231,11 +231,11 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
             child: Column(children: [
               Text(_current.name,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontFamily: AppFonts.primary,
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white),
                   maxLines: 2, overflow: TextOverflow.ellipsis),
               if (_current.artist != null && _current.artist!.isNotEmpty) ...[
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(_current.artist!,
                     style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 14, color: Colors.white.withOpacity(0.6))),
@@ -243,7 +243,7 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
             ]),
           ),
 
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
 
           // ── 进度条 ───────────────────────────────────
           Padding(
@@ -263,7 +263,7 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
                       SliderTheme(
                         data: SliderThemeData(
                           trackHeight: 3,
-                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                          thumbShape: RoundSliderThumbShape(enabledThumbRadius: 6),
                           overlayShape: SliderComponentShape.noOverlay,
                           activeTrackColor: AppColors.primary,
                           inactiveTrackColor: Colors.white24,
@@ -292,7 +292,7 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
             ),
           ),
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           // ── 控制按钮 ─────────────────────────────────
           Padding(
@@ -365,7 +365,7 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
             ),
           ),
 
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
 
           // ── 播放列表预览（当前歌曲名）─────────────────
           if (widget.playlist.length > 1)
@@ -383,13 +383,13 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
   }
 
   Widget _defaultDisc() => Container(
-    decoration: const BoxDecoration(
+    decoration: BoxDecoration(
       gradient: LinearGradient(
         colors: [Color(0xFF6C63FF), Color(0xFF48CAE4)],
         begin: Alignment.topLeft, end: Alignment.bottomRight,
       ),
     ),
-    child: const Icon(Icons.music_note_rounded, color: Colors.white, size: 80),
+    child: Icon(Icons.music_note_rounded, color: Colors.white, size: 80),
   );
 
   String _fmt(Duration d) {

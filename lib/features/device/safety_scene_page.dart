@@ -12,7 +12,7 @@ class SafetyScenePage extends StatefulWidget {
   final String petName;      // 绑定宠物名称（用于围栏页标题）
   final int    initialTab;   // 0=居家 1=外出
 
-  const SafetyScenePage({
+  SafetyScenePage({
     super.key,
     required this.deviceMac,
     required this.deviceName,
@@ -49,11 +49,11 @@ class _SafetyScenePageState extends State<SafetyScenePage>
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_rounded, size: 20),
           color: AppColors.onSurface,
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('安全场景设置',
+        title: Text('安全场景设置',
             style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 17, fontWeight: FontWeight.w700)),
         centerTitle: false,
@@ -61,14 +61,14 @@ class _SafetyScenePageState extends State<SafetyScenePage>
           controller: _tab,
           labelColor: AppColors.primary,
           unselectedLabelColor: AppColors.onSurfaceVariant,
-          labelStyle: const TextStyle(fontFamily: AppFonts.primary,
+          labelStyle: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 13, fontWeight: FontWeight.w700),
-          unselectedLabelStyle: const TextStyle(fontFamily: AppFonts.primary,
+          unselectedLabelStyle: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 13, fontWeight: FontWeight.w600),
           indicatorColor: AppColors.primary,
           indicatorWeight: 2.5,
           indicatorSize: TabBarIndicatorSize.label,
-          tabs: const [
+          tabs: [
             Tab(text: '居家场景'),
             Tab(text: '外出场景'),
           ],
@@ -78,13 +78,13 @@ class _SafetyScenePageState extends State<SafetyScenePage>
         controller: _tab,
         children: [
           _SceneContent(
-            key: const ValueKey('home'),
+            key: ValueKey('home'),
             deviceMac:  widget.deviceMac,
             petName:    widget.petName,
             scene:      _SceneType.home,
           ),
           _SceneContent(
-            key: const ValueKey('outing'),
+            key: ValueKey('outing'),
             deviceMac:  widget.deviceMac,
             petName:    widget.petName,
             scene:      _SceneType.outing,
@@ -115,17 +115,17 @@ class _SceneContent extends StatelessWidget {
       children: [
         // 安全评分卡
         _SafetyScoreCard(score: 0),
-        const SizedBox(height: 24),
+        SizedBox(height: 24),
 
         // 设置步骤标题
-        const Text('设置步骤',
+        Text('设置步骤',
             style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A))),
-        const SizedBox(height: 4),
-        const Text('完成所有步骤以激活安全保护',
+        SizedBox(height: 4),
+        Text('完成所有步骤以激活安全保护',
             style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 12, color: AppColors.onSurfaceVariant)),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
 
         // 白色步骤容器
         ClipRRect(
@@ -135,7 +135,7 @@ class _SceneContent extends StatelessWidget {
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [BoxShadow(
-                  color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                  color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: Offset(0, 2))],
             ),
             child: Column(children: [
               // ① 位置与围栏
@@ -158,7 +158,7 @@ class _SceneContent extends StatelessWidget {
                 // 居家：受信任 Wi-Fi
                 _StepItem(
                   icon: Icons.wifi_rounded,
-                  iconBg: const Color(0xFF2196F3),
+                  iconBg: Color(0xFF2196F3),
                   title: '受信任 Wi-Fi',
                   subtitle: '添加家中的 Wi-Fi 网络，配合电子围栏使用',
                   score: '+30分',
@@ -171,7 +171,7 @@ class _SceneContent extends StatelessWidget {
               // ② 警报通知
               _StepItem(
                 icon: Icons.notifications_rounded,
-                iconBg: const Color(0xFFFF9800),
+                iconBg: Color(0xFFFF9800),
                 title: '设置警报通知',
                 subtitle: '配置宠物离开安全区域的规则与提醒方式',
                 score: '+40分',
@@ -184,7 +184,7 @@ class _SceneContent extends StatelessWidget {
                 // 居家：蓝牙信标
                 _StepItem(
                   icon: Icons.bluetooth_rounded,
-                  iconBg: const Color(0xFF9C27B0),
+                  iconBg: Color(0xFF9C27B0),
                   title: '添加蓝牙信标',
                   subtitle: '绑定信标能更精确地定位您的电子围栏',
                   score: '',
@@ -209,7 +209,7 @@ class _SceneContent extends StatelessWidget {
           ),
         ),
 
-        const SizedBox(height: 24),
+        SizedBox(height: 24),
 
         // 安全提示
         Container(
@@ -225,23 +225,23 @@ class _SceneContent extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.primary, shape: BoxShape.circle,
               ),
-              child: const Center(
+              child: Center(
                 child: Text('!', style: TextStyle(
                     fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white,
                     fontFamily: AppFonts.primary)),
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('安全提示',
+              Text('安全提示',
                   style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.onSurface)),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 _isHome
                     ? '电子围栏与受信任 WiFi 结合使用，能更准确地判断宠物位置，减少误报。建议添加家中和常去地点的 WiFi 网络。'
                     : '电子围栏与受信任 WiFi 结合使用，能更准确地判断宠物位置，减少误报。建议添加家中和常去地点的 WiFi 网络。',
-                style: const TextStyle(fontFamily: AppFonts.primary,
+                style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 12, color: AppColors.onSurfaceVariant, height: 1.55),
               ),
             ])),
@@ -264,25 +264,25 @@ class _SafetyScoreCard extends StatelessWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(18),
       boxShadow: [BoxShadow(
-          color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 3))],
+          color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: Offset(0, 3))],
     ),
     child: Row(children: [
       // 左：标题 + 安全指数
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.shield_rounded, size: 16,
-              color: score == 0 ? AppColors.error : const Color(0xFF4CAF50)),
-          const SizedBox(width: 6),
-          const Text('当前安全评分',
+              color: score == 0 ? AppColors.error : Color(0xFF4CAF50)),
+          SizedBox(width: 6),
+          Text('当前安全评分',
               style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
         ]),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         Text(
           '安全指数：${score == 0 ? '低' : score < 60 ? '中' : '高'}',
           style: TextStyle(
             fontFamily: AppFonts.primary, fontSize: 12, fontWeight: FontWeight.w600,
-            color: score == 0 ? AppColors.error : score < 60 ? const Color(0xFFFF9800) : const Color(0xFF4CAF50),
+            color: score == 0 ? AppColors.error : score < 60 ? Color(0xFFFF9800) : Color(0xFF4CAF50),
           ),
         ),
       ])),
@@ -294,14 +294,14 @@ class _SafetyScoreCard extends StatelessWidget {
           border: Border.all(
               color: score == 0
                   ? AppColors.error.withOpacity(0.25)
-                  : const Color(0xFF4CAF50).withOpacity(0.25),
+                  : Color(0xFF4CAF50).withOpacity(0.25),
               width: 2.5),
         ),
         child: Center(
           child: Text('$score',
               style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 22, fontWeight: FontWeight.w900,
-                  color: score == 0 ? AppColors.error : const Color(0xFF4CAF50))),
+                  color: score == 0 ? AppColors.error : Color(0xFF4CAF50))),
         ),
       ),
     ]),
@@ -357,7 +357,7 @@ class _StepItem extends StatelessWidget {
           child: Icon(icon, size: 20,
               color: comingSoon ? Colors.grey.shade400 : iconBg),
         ),
-        const SizedBox(width: 14),
+        SizedBox(width: 14),
 
         // 文字
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -365,16 +365,16 @@ class _StepItem extends StatelessWidget {
               style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 14, fontWeight: FontWeight.w700,
                   color: comingSoon ? AppColors.onSurfaceVariant : AppColors.onSurface)),
-          const SizedBox(height: 2),
+          SizedBox(height: 2),
           Text(subtitle,
-              style: const TextStyle(fontFamily: AppFonts.primary,
+              style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 11, color: AppColors.onSurfaceVariant)),
         ])),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
 
         // 分数 / 即将上线 / 完成状态
         if (done)
-          const Icon(Icons.check_circle_rounded, size: 20, color: Color(0xFF4ADE80))
+          Icon(Icons.check_circle_rounded, size: 20, color: Color(0xFF4ADE80))
         else if (comingSoon)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -382,19 +382,19 @@ class _StepItem extends StatelessWidget {
               color: Colors.grey.withOpacity(0.08),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Text('即将上线',
+            child: Text('即将上线',
                 style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 10, fontWeight: FontWeight.w700, color: Colors.grey)),
           )
         else if (score.isNotEmpty)
           Text(score,
-              style: const TextStyle(fontFamily: AppFonts.primary,
+              style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary))
         ,
         if (!done && !comingSoon)
-          const SizedBox(width: 2),
+          SizedBox(width: 2),
         if (!done && !comingSoon)
-          const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.onSurfaceVariant),
+          Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.onSurfaceVariant),
       ]),
     ),
   );

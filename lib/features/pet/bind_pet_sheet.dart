@@ -22,7 +22,7 @@ class BindPetSheet extends ConsumerStatefulWidget {
   /// 传入表示编辑模式
   final PetInfoModel? currentPet;
 
-  const BindPetSheet({
+  BindPetSheet({
     super.key,
     required this.deviceMac,
     this.currentPet,
@@ -108,14 +108,14 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
           Container(width: 36, height: 4,
               decoration: BoxDecoration(color: AppColors.onSurfaceVariant.withOpacity(0.25),
                   borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 14),
-          const Text('选择头像来源', style: TextStyle(fontFamily: AppFonts.primary,
+          SizedBox(height: 14),
+          Text('选择头像来源', style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Row(children: [
             Expanded(child: _SourceBtn(icon: Icons.camera_alt_rounded, label: '拍照',
                 onTap: () => Navigator.pop(context, ImageSource.camera))),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(child: _SourceBtn(icon: Icons.photo_library_rounded, label: '相册',
                 onTap: () => Navigator.pop(context, ImageSource.gallery))),
           ]),
@@ -208,14 +208,14 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
           Center(child: Container(width: 36, height: 4,
               decoration: BoxDecoration(color: AppColors.onSurfaceVariant.withOpacity(0.25),
                   borderRadius: BorderRadius.circular(2)))),
-          const SizedBox(height: 18),
+          SizedBox(height: 18),
 
           Row(children: [
             Container(width: 40, height: 40,
                 decoration: BoxDecoration(color: AppColors.primaryContainer.withOpacity(0.25), shape: BoxShape.circle),
-                child: const Icon(Icons.pets_rounded, color: AppColors.primary, size: 22)),
-            const SizedBox(width: 12),
-            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                child: Icon(Icons.pets_rounded, color: AppColors.primary, size: 22)),
+            SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('绑定宠物', style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
               SizedBox(height: 2),
@@ -224,7 +224,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
                       color: AppColors.onSurfaceVariant)),
             ])),
           ]),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // ── 头像选择 ──
           Center(
@@ -242,11 +242,11 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
                     ),
                     child: ClipOval(
                       child: _avatarUploading
-                          ? const Center(child: CircularProgressIndicator(
+                          ? Center(child: CircularProgressIndicator(
                               strokeWidth: 2.5, color: AppColors.primary))
                           : _avatarFile != null
                               ? Image.file(_avatarFile!, fit: BoxFit.cover)
-                              : const Center(child: Text('🐾',
+                              : Center(child: Text('🐾',
                                   style: TextStyle(fontSize: 38))),
                     ),
                   ),
@@ -256,7 +256,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
                       width: 28, height: 28,
                       decoration: BoxDecoration(
                         color: _avatarUrl != null
-                            ? const Color(0xFF4ADE80) : AppColors.primary,
+                            ? Color(0xFF4ADE80) : AppColors.primary,
                         shape: BoxShape.circle,
                         border: Border.all(color: AppColors.surface, width: 2),
                       ),
@@ -270,38 +270,38 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
               ),
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Center(
             child: Text(
               _avatarUrl != null ? '头像已上传 ✓' : '点击选择头像（选填）',
               style: TextStyle(
                 fontFamily: AppFonts.primary, fontSize: 11,
-                color: _avatarUrl != null ? const Color(0xFF4ADE80) : AppColors.onSurfaceVariant,
+                color: _avatarUrl != null ? Color(0xFF4ADE80) : AppColors.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           _label('宠物名字 *'),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           _field(controller: _nameCtrl, hint: '例：Lucky、小饼干', icon: Icons.badge_rounded),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
 
           // ── 宠物种类（决定品种列表）──
           _label('宠物种类'),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Row(children: [
             _SpeciesChip(label: '🐱 猫', value: 'cat', current: _species,
                 onTap: (v) => setState(() { _species = v; _breedCtrl.clear(); })),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             _SpeciesChip(label: '🐶 狗', value: 'dog', current: _species,
                 onTap: (v) => setState(() { _species = v; _breedCtrl.clear(); })),
           ]),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
 
           _label('品种（选填）'),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           GestureDetector(
             onTap: () async {
               if (_species == null) {
@@ -324,7 +324,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
               ),
               child: Row(children: [
                 Icon(Icons.category_rounded, color: AppColors.primary, size: 18),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     _breedCtrl.text.isEmpty ? '点击选择品种' : _breedCtrl.text,
@@ -341,47 +341,47 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
               ]),
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
 
           Row(children: [
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               _label('年龄（岁）'),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               _field(controller: _ageCtrl, hint: '3', icon: Icons.cake_rounded,
                   inputType: TextInputType.number),
             ])),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               _label('体重（kg）'),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               _field(controller: _weightCtrl, hint: '25.5', icon: Icons.monitor_weight_rounded,
                   inputType: const TextInputType.numberWithOptions(decimal: true)),
             ])),
           ]),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
 
           _label('性别'),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
             _SexChip(label: '♂ 公',       value: 'GG',               current: _sex, onTap: (v) => setState(() => _sex = v)),
             _SexChip(label: '♀ 母',       value: 'MM',               current: _sex, onTap: (v) => setState(() => _sex = v)),
             _SexChip(label: '♂ 公(绝育)', value: 'GG_sterilization', current: _sex, onTap: (v) => setState(() => _sex = v)),
             _SexChip(label: '♀ 母(绝育)', value: 'MM_sterilization', current: _sex, onTap: (v) => setState(() => _sex = v)),
           ]),
-          const SizedBox(height: 22),
+          SizedBox(height: 22),
 
           SizedBox(width: double.infinity,
             child: FilledButton(
               onPressed: _saving ? null : _saveBind,
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                minimumSize: const Size(double.infinity, 52),
+                minimumSize: Size(double.infinity, 52),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
               child: _saving
-                  ? const SizedBox(width: 20, height: 20,
+                  ? SizedBox(width: 20, height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('绑定宠物', style: TextStyle(fontFamily: AppFonts.primary,
+                  : Text('绑定宠物', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 15, fontWeight: FontWeight.w700)),
             ),
           ),
@@ -403,37 +403,37 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
           Center(child: Container(width: 36, height: 4,
               decoration: BoxDecoration(color: AppColors.onSurfaceVariant.withOpacity(0.25),
                   borderRadius: BorderRadius.circular(2)))),
-          const SizedBox(height: 18),
+          SizedBox(height: 18),
 
           Row(children: [
             Container(width: 40, height: 40,
                 decoration: BoxDecoration(color: AppColors.primaryContainer.withOpacity(0.25), shape: BoxShape.circle),
-                child: const Icon(Icons.edit_rounded, color: AppColors.primary, size: 20)),
-            const SizedBox(width: 12),
-            const Text('编辑宠物信息', style: TextStyle(fontFamily: AppFonts.primary,
+                child: Icon(Icons.edit_rounded, color: AppColors.primary, size: 20)),
+            SizedBox(width: 12),
+            Text('编辑宠物信息', style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
           ]),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           _label('宠物名字 *'),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           _field(controller: _nameCtrl, hint: '例：Lucky', icon: Icons.badge_rounded),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
 
           // ── 宠物种类 ──
           _label('宠物种类'),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Row(children: [
             _SpeciesChip(label: '🐱 猫', value: 'cat', current: _species,
                 onTap: (v) => setState(() { _species = v; _breedCtrl.clear(); })),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             _SpeciesChip(label: '🐶 狗', value: 'dog', current: _species,
                 onTap: (v) => setState(() { _species = v; _breedCtrl.clear(); })),
           ]),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
 
           _label('品种（选填）'),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           GestureDetector(
             onTap: () async {
               if (_species == null) {
@@ -456,7 +456,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
               ),
               child: Row(children: [
                 Icon(Icons.category_rounded, color: AppColors.primary, size: 18),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     _breedCtrl.text.isEmpty ? '点击选择品种' : _breedCtrl.text,
@@ -473,47 +473,47 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
               ]),
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
 
           Row(children: [
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               _label('年龄（岁）'),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               _field(controller: _ageCtrl, hint: '3', icon: Icons.cake_rounded,
                   inputType: TextInputType.number),
             ])),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               _label('体重（kg）'),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               _field(controller: _weightCtrl, hint: '25.5', icon: Icons.monitor_weight_rounded,
                   inputType: const TextInputType.numberWithOptions(decimal: true)),
             ])),
           ]),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
 
           _label('性别'),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: [
             _SexChip(label: '♂ 公',       value: 'GG',               current: _sex, onTap: (v) => setState(() => _sex = v)),
             _SexChip(label: '♀ 母',       value: 'MM',               current: _sex, onTap: (v) => setState(() => _sex = v)),
             _SexChip(label: '♂ 公(绝育)', value: 'GG_sterilization', current: _sex, onTap: (v) => setState(() => _sex = v)),
             _SexChip(label: '♀ 母(绝育)', value: 'MM_sterilization', current: _sex, onTap: (v) => setState(() => _sex = v)),
           ]),
-          const SizedBox(height: 22),
+          SizedBox(height: 22),
 
           SizedBox(width: double.infinity,
             child: FilledButton(
               onPressed: _saving ? null : _saveEdit,
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                minimumSize: const Size(double.infinity, 52),
+                minimumSize: Size(double.infinity, 52),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
               child: _saving
-                  ? const SizedBox(width: 20, height: 20,
+                  ? SizedBox(width: 20, height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('保存修改', style: TextStyle(fontFamily: AppFonts.primary,
+                  : Text('保存修改', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 15, fontWeight: FontWeight.w700)),
             ),
           ),
@@ -530,7 +530,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
     return TextField(
       controller: controller,
       keyboardType: inputType,
-      style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14, color: AppColors.onSurface),
+      style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14, color: AppColors.onSurface),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: AppColors.onSurfaceVariant.withOpacity(0.5), fontFamily: AppFonts.primary),
@@ -561,7 +561,7 @@ class _SpeciesChip extends StatelessWidget {
     return GestureDetector(
       onTap: () { HapticFeedback.selectionClick(); onTap(value); },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
+        duration: Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
         decoration: BoxDecoration(
           color: sel ? AppColors.primary : AppColors.surfaceContainer,
@@ -595,7 +595,7 @@ class _SexChip extends StatelessWidget {
     return GestureDetector(
       onTap: () { HapticFeedback.selectionClick(); onTap(value); },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
+        duration: Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: sel ? AppColors.primary : AppColors.surfaceContainer,
@@ -654,8 +654,8 @@ class _SourceBtn extends StatelessWidget {
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, color: AppColors.primary, size: 26),
-          const SizedBox(height: 6),
-          Text(label, style: const TextStyle(fontFamily: AppFonts.primary,
+          SizedBox(height: 6),
+          Text(label, style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
         ]),
       ),

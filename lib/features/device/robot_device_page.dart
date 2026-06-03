@@ -185,8 +185,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           // state: 0=stopped 1=starting 2=decoding 3=frozen 4=failed
           // reason: 0=internal 1=localMuted 2=localUnmuted 3=remoteMuted
           //         4=remoteUnmuted 5=remoteOffline 6=noPacketReceived
-          final stateStr = const {0:'stopped',1:'starting',2:'decoding ✅',3:'frozen❄️',4:'failed❌'}[state.value] ?? 'unknown';
-          final reasonStr = const {0:'internal',1:'localMuted',2:'localUnmuted',3:'remoteMuted',4:'remoteUnmuted',5:'remoteOffline',6:'noPacketReceived'}[reason.value] ?? 'unknown';
+          final stateStr = {0:'stopped',1:'starting',2:'decoding ✅',3:'frozen❄️',4:'failed❌'}[state.value] ?? 'unknown';
+          final reasonStr = {0:'internal',1:'localMuted',2:'localUnmuted',3:'remoteMuted',4:'remoteUnmuted',5:'remoteOffline',6:'noPacketReceived'}[reason.value] ?? 'unknown';
           debugPrint('[🔊音频] → state=$stateStr  reason=$reasonStr');
         },
         // ── 音量回调（有声音时 volume > 0）──
@@ -205,7 +205,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         onAudioRoutingChanged: (routing) {
           if (!mounted) return;
           // -1=default 0=headset 1=earpiece 2=speakerphone 3=bluetooth 4=usb
-          final routeStr = const {-1:'default',0:'headset',1:'earpiece',2:'speakerphone ✅',3:'bluetooth',4:'usb_audio'}[routing] ?? 'unknown($routing)';
+          final routeStr = {-1:'default',0:'headset',1:'earpiece',2:'speakerphone ✅',3:'bluetooth',4:'usb_audio'}[routing] ?? 'unknown($routing)';
           debugPrint('[🔊音频] 音频路由变化 → $routeStr');
         },
         onError: (err, msg) {
@@ -238,7 +238,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         token: info.token,
         channelId: info.channelName,
         uid: info.userId,
-        options: const ChannelMediaOptions(
+        options: ChannelMediaOptions(
           autoSubscribeVideo: true,
           autoSubscribeAudio: true,
           publishCameraTrack: false,
@@ -335,7 +335,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     // 横屏时（进入全屏）返回纯黑，防止底层页面跟着旋转报 OVERFLOW
     final orientation = MediaQuery.of(context).orientation;
     if (orientation == Orientation.landscape) {
-      return const Scaffold(backgroundColor: Colors.black);
+      return Scaffold(backgroundColor: Colors.black);
     }
     final screenH = MediaQuery.of(context).size.height;
     return Scaffold(
@@ -347,7 +347,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            physics: const NeverScrollableScrollPhysics(),
+            physics: NeverScrollableScrollPhysics(),
             children: [
               _buildRemoteControl(),
               _buildPetPlay(),
@@ -363,7 +363,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   // ── 顶部栏（红橙渐变，与 device_detail 风格一致）────────
   Widget _buildTopBar(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.primary, AppColors.primaryContainer],
           begin: Alignment.topLeft,
@@ -378,10 +378,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             // 返回
             GestureDetector(
               onTap: () => Navigator.pop(context),
-              child: const Icon(Icons.arrow_back_ios_rounded,
+              child: Icon(Icons.arrow_back_ios_rounded,
                   size: 20, color: AppColors.onPrimary),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             // 设备名 + 下拉（Flexible 防止长名称溢出）
             Flexible(
               child: GestureDetector(
@@ -392,7 +392,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                       widget.name,
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: AppFonts.primary,
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
@@ -401,21 +401,21 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                       ),
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.keyboard_arrow_down_rounded,
+                  SizedBox(width: 4),
+                  Icon(Icons.keyboard_arrow_down_rounded,
                       color: AppColors.onPrimary, size: 22),
                 ]),
               ),
             ),
-            const Spacer(),
+            Spacer(),
             // + 添加设备
             _TopBarIcon(
               icon: Icons.add_circle_outline_rounded,
               badge: 0,
               onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const SelectDevicePage())),
+                  MaterialPageRoute(builder: (_) => SelectDevicePage())),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             // 消息
             _TopBarIcon(
               icon: Icons.notifications_outlined,
@@ -433,7 +433,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     final cameraH = (screenH * 0.27).clamp(160.0, 220.0);
     return Container(
       height: cameraH,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.primaryContainer, AppColors.surfaceContainerLow],
           begin: Alignment.topCenter,
@@ -466,10 +466,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SizedBox(width: 36, height: 36,
+                    SizedBox(width: 36, height: 36,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.5, color: AppColors.primaryContainer)),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Text('连接设备摄像头...',
                         style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 13,
@@ -486,12 +486,12 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   children: [
                     Icon(Icons.error_outline_rounded,
                         size: 40, color: AppColors.onPrimary.withOpacity(0.5)),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text('视频连接失败',
                         style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 13,
                             color: AppColors.onPrimary.withOpacity(0.6))),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     GestureDetector(
                       onTap: _startAgora,
                       child: Container(
@@ -501,7 +501,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                           color: AppColors.primary.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Text('点击重试',
+                        child: Text('点击重试',
                             style: TextStyle(fontFamily: AppFonts.primary,
                                 fontSize: 12, color: AppColors.primaryContainer)),
                       ),
@@ -518,7 +518,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   children: [
                     Icon(Icons.volume_up_rounded,
                         size: 48, color: AppColors.onPrimary.withOpacity(0.5)),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text('iOS 仅支持音频对讲',
                         style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 13,
@@ -540,7 +540,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                     Icon(Icons.videocam_rounded,
                         size: 48,
                         color: AppColors.onPrimary.withOpacity(0.35)),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text('摄像头预览',
                         style: TextStyle(
                             fontFamily: AppFonts.primary,
@@ -561,7 +561,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                       color: Colors.black54,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         SizedBox(width: 12, height: 12,
@@ -586,7 +586,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 child: Text(
                   '${_kbps.toStringAsFixed(0)}\nKB/s',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontFamily: AppFonts.primary,
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 9, color: Colors.white, height: 1.3),
                 ),
               ),
@@ -601,7 +601,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   if (_cameraOn) { _startAgora(); } else { _stopAgora(); setState(() {}); }
                 },
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
+                  duration: Duration(milliseconds: 250),
                   width: 44, height: 24,
                   decoration: BoxDecoration(
                     color: _cameraOn ? AppColors.primary : Colors.white30,
@@ -609,11 +609,11 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   ),
                   child: Stack(children: [
                     AnimatedPositioned(
-                      duration: const Duration(milliseconds: 250),
+                      duration: Duration(milliseconds: 250),
                       left: _cameraOn ? 22 : 2, top: 2,
                       child: Container(
                         width: 20, height: 20,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
                         ),
@@ -643,10 +643,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                       shape: BoxShape.circle,
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: 4),
                   Text(
                     _remoteUid != null ? '已连接' : '等待设备',
-                    style: const TextStyle(fontFamily: AppFonts.primary,
+                    style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 9, color: Colors.white),
                   ),
                 ]),
@@ -684,7 +684,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                     color: Colors.black45,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.fullscreen_rounded,
+                  child: Icon(Icons.fullscreen_rounded,
                       color: Colors.white, size: 20),
                 ),
               ),
@@ -722,7 +722,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             },
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
+                duration: Duration(milliseconds: 200),
                 width: iconSize, height: iconSize,
                 decoration: BoxDecoration(
                   color: active
@@ -733,7 +733,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                       ? [BoxShadow(
                           color: AppColors.primaryGlow,
                           blurRadius: 12,
-                          offset: const Offset(0, 4),
+                          offset: Offset(0, 4),
                         )]
                       : [],
                 ),
@@ -741,7 +741,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                     size: iconSize * 0.43,
                     color: active ? AppColors.onPrimary : AppColors.onSurfaceVariant),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(tabs[i].$2,
                   style: TextStyle(
                     fontFamily: AppFonts.primary,
@@ -775,7 +775,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
               borderRadius: BorderRadius.circular(24),
               boxShadow: [BoxShadow(
                 color: AppColors.cardShadow,
-                blurRadius: 16, offset: const Offset(0, 4),
+                blurRadius: 16, offset: Offset(0, 4),
               )],
             ),
             child: Stack(
@@ -792,20 +792,20 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   top: 14, left: 20, right: 14,
                   child: Row(
                     children: [
-                      // const Text('拖动方向盘控制机器人移动',
+                      // Text('拖动方向盘控制机器人移动',
                       //     style: TextStyle(fontFamily: AppFonts.primary,
                       //         fontSize: 11,
                       //         color: AppColors.onSurfaceVariant)),
-                      // const Spacer(),
+                      // Spacer(),
                       GestureDetector(
                         onTap: () => _showSpeedSheet(context),
                         child: Container(
                           width: 34, height: 34,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             color: AppColors.surfaceContainerLow,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.tune_rounded,
+                          child: Icon(Icons.tune_rounded,
                               size: 17, color: AppColors.primary),
                         ),
                       ),
@@ -829,7 +829,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       builder: (_) => StatefulBuilder(
         builder: (ctx2, setLocal) => Container(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.surfaceContainerLowest,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
@@ -839,15 +839,15 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   color: AppColors.surfaceContainerHigh,
                   borderRadius: BorderRadius.circular(2),
                 )),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Row(children: [
-              const Icon(Icons.speed_rounded, size: 20, color: AppColors.primary),
-              const SizedBox(width: 10),
-              const Text('移动速度',
+              Icon(Icons.speed_rounded, size: 20, color: AppColors.primary),
+              SizedBox(width: 10),
+              Text('移动速度',
                   style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 16, fontWeight: FontWeight.w800,
                       color: AppColors.onSurface)),
-              const Spacer(),
+              Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
@@ -855,12 +855,12 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text('${_moveSpeed.toInt()}%',
-                    style: const TextStyle(fontFamily: AppFonts.primary,
+                    style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 14, fontWeight: FontWeight.w800,
                         color: AppColors.primary)),
               ),
             ]),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             SliderTheme(
               data: SliderTheme.of(ctx2).copyWith(
                 activeTrackColor: AppColors.primary,
@@ -868,7 +868,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 thumbColor: AppColors.primary,
                 overlayColor: AppColors.primaryGlow,
                 trackHeight: 5,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 11),
+                thumbShape: RoundSliderThumbShape(enabledThumbRadius: 11),
               ),
               child: Slider(
                 value: _moveSpeed, min: 10, max: 100,
@@ -879,7 +879,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 },
               ),
             ),
-            // const Row(
+            // Row(
             //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
             //   children: [
             //     Text('慢速 10%', style: TextStyle(fontFamily: AppFonts.primary,
@@ -888,18 +888,18 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             //         fontSize: 12, color: AppColors.onSurfaceVariant)),
             //   ],
             // ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
 
             // ── 设备音量 ────────────────────────────────
-            const Divider(height: 28),
+            Divider(height: 28),
             Row(children: [
-              const Icon(Icons.volume_up_rounded, size: 20, color: AppColors.primary),
-              const SizedBox(width: 10),
-              const Text('设备音量',
+              Icon(Icons.volume_up_rounded, size: 20, color: AppColors.primary),
+              SizedBox(width: 10),
+              Text('设备音量',
                   style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 16, fontWeight: FontWeight.w800,
                       color: AppColors.onSurface)),
-              const Spacer(),
+              Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
@@ -907,12 +907,12 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text('${_deviceVolume.toInt()}%',
-                    style: const TextStyle(fontFamily: AppFonts.primary,
+                    style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 14, fontWeight: FontWeight.w800,
                         color: AppColors.primary)),
               ),
             ]),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             SliderTheme(
               data: SliderTheme.of(ctx2).copyWith(
                 activeTrackColor: AppColors.primary,
@@ -920,7 +920,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 thumbColor: AppColors.primary,
                 overlayColor: AppColors.primaryGlow,
                 trackHeight: 5,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 11),
+                thumbShape: RoundSliderThumbShape(enabledThumbRadius: 11),
               ),
               child: Slider(
                 value: _deviceVolume, min: 0, max: 100,
@@ -938,7 +938,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 },
               ),
             ),
-            // const Row(
+            // Row(
             //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
             //   children: [
             //     Text('静音 0%', style: TextStyle(fontFamily: AppFonts.primary,
@@ -947,7 +947,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             //         fontSize: 12, color: AppColors.onSurfaceVariant)),
             //   ],
             // ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
           ]),
         ),
       ),
@@ -982,10 +982,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         final spacing  = constraints.maxHeight < 380 ? 8.0 : 12.0;
 
         return SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: BouncingScrollPhysics(),
           padding: const EdgeInsets.all(20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('机器人动作',
+            Text('机器人动作',
                 style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 16, fontWeight: FontWeight.w800,
                     color: AppColors.onSurface)),
@@ -1000,7 +1000,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
               child: GridView.count(
                 crossAxisCount: 3,
                 shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
+                physics: NeverScrollableScrollPhysics(),
                 mainAxisSpacing: spacing,
                 crossAxisSpacing: crossSpacing,
                 childAspectRatio: ratio,   // ← 基于实际列宽，大屏不再出现巨大间距
@@ -1023,14 +1023,14 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                           borderRadius: BorderRadius.circular(btnSize * 0.28),
                           boxShadow: [BoxShadow(
                             color: a.$2.withOpacity(0.35),
-                            blurRadius: 8, offset: const Offset(0, 3),
+                            blurRadius: 8, offset: Offset(0, 3),
                           )],
                         ),
                         child: Icon(a.$4, color: Colors.white, size: iconSize),
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       Text(a.$1,
-                          style: const TextStyle(fontFamily: AppFonts.primary,
+                          style: TextStyle(fontFamily: AppFonts.primary,
                               fontSize: 12, fontWeight: FontWeight.w600,
                               color: AppColors.onSurface)),
                     ]),
@@ -1048,7 +1048,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   // ── 摄影标签 ──────────────────────────────────────────
   Widget _buildPhotography() {
     return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
+      physics: BouncingScrollPhysics(),
       padding: const EdgeInsets.all(20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -1061,7 +1061,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
               PetToast.warning(context, '拍照功能即将上线');
             },
           )),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(child: _PhotoAction(
             icon: Icons.videocam_rounded,
             label: '录像',
@@ -1072,7 +1072,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             },
           )),
         ]),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         GestureDetector(
           onTap: () {
             HapticFeedback.selectionClick();
@@ -1085,7 +1085,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
               borderRadius: BorderRadius.circular(18),
               boxShadow: [BoxShadow(
                 color: AppColors.primaryGlow,
-                blurRadius: 12, offset: const Offset(0, 4),
+                blurRadius: 12, offset: Offset(0, 4),
               )],
             ),
             child: Row(children: [
@@ -1095,13 +1095,13 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.perm_media_rounded,
+                child: Icon(Icons.perm_media_rounded,
                     color: AppColors.onPrimary, size: 26),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: 14),
               Expanded(child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('媒体文件',
+                Text('媒体文件',
                     style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 15, fontWeight: FontWeight.w800,
                         color: AppColors.onPrimary)),
@@ -1110,7 +1110,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                         fontSize: 12,
                         color: AppColors.onPrimary.withOpacity(0.8))),
               ])),
-              const Icon(Icons.arrow_forward_rounded,
+              Icon(Icons.arrow_forward_rounded,
                   color: AppColors.onPrimary, size: 20),
             ]),
           ),
@@ -1129,7 +1129,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         final gap1 = h < 350 ? 10.0 : 20.0;
         final gap2 = h < 350 ? 16.0 : 32.0;
         return SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
+          physics: ClampingScrollPhysics(),
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: h),
             child: IntrinsicHeight(
@@ -1138,11 +1138,11 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 children: [
                   // 麦克风图标（麦开时变绿）
                   AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
+                    duration: Duration(milliseconds: 200),
                     width: micSize, height: micSize,
                     decoration: BoxDecoration(
                       gradient: _micOn
-                          ? const LinearGradient(
+                          ? LinearGradient(
                               colors: [Color(0xFF43A047), Color(0xFF66BB6A)],
                               begin: Alignment.topLeft, end: Alignment.bottomRight)
                           : AppColors.primaryGradient,
@@ -1162,14 +1162,14 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   SizedBox(height: gap1),
                   Text(
                     isReady ? (_micOn ? '对讲中...' : '连接已建立') : '连接设备中...',
-                    style: const TextStyle(fontFamily: AppFonts.primary,
+                    style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 18, fontWeight: FontWeight.w800,
                         color: AppColors.onSurface),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     isReady ? '点击按钮开启/关闭对讲' : '请稍候...',
-                    style: const TextStyle(fontFamily: AppFonts.primary,
+                    style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 14, color: AppColors.onSurfaceVariant),
                   ),
                   SizedBox(height: gap2),
@@ -1177,12 +1177,12 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   GestureDetector(
                     onTap: isReady ? _toggleMic : null,
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
+                      duration: Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
                       decoration: BoxDecoration(
                         gradient: isReady
                             ? (_micOn
-                                ? const LinearGradient(
+                                ? LinearGradient(
                                     colors: [Color(0xFF43A047), Color(0xFF66BB6A)])
                                 : AppColors.primaryGradient)
                             : null,
@@ -1192,7 +1192,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                           color: _micOn
                               ? Colors.green.withOpacity(0.4)
                               : AppColors.primaryGlow,
-                          blurRadius: 16, offset: const Offset(0, 6),
+                          blurRadius: 16, offset: Offset(0, 6),
                         )] : [],
                       ),
                       child: Text(
@@ -1207,11 +1207,11 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   ),
                   // 错误信息
                   if (_agoraError != null) ...[
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Text(_agoraError!,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontFamily: AppFonts.primary,
                               fontSize: 11, color: Colors.redAccent),
                           textAlign: TextAlign.center),
@@ -1249,7 +1249,7 @@ class _DeviceSwitcherSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -1258,22 +1258,22 @@ class _DeviceSwitcherSheet extends StatelessWidget {
         Container(width: 40, height: 4,
             decoration: BoxDecoration(color: AppColors.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(2))),
-        const SizedBox(height: 20),
-        const Align(
+        SizedBox(height: 20),
+        Align(
           alignment: Alignment.centerLeft,
           child: Text('切换设备',
               style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 18, fontWeight: FontWeight.w800,
                   color: AppColors.onSurface)),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         ...devices.map((d) {
           final isSelected = d.mac == currentMac;
           final isRobot    = _isRobot(d);
           return GestureDetector(
             onTap: () => onSelect(d),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
+              duration: Duration(milliseconds: 180),
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
@@ -1304,25 +1304,25 @@ class _DeviceSwitcherSheet extends StatelessWidget {
                     color: AppColors.onPrimary, size: 22,
                   ),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 Expanded(child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(d.displayName,
                       style: TextStyle(fontFamily: AppFonts.primary,
                           fontSize: 14, fontWeight: FontWeight.w700,
                           color: isSelected ? AppColors.primary : AppColors.onSurface)),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Row(children: [
                     Text(isRobot ? '智能宠物机器人' : '智能项圈',
-                        style: const TextStyle(fontFamily: AppFonts.primary,
+                        style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 11, color: AppColors.onSurfaceVariant)),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Container(width: 6, height: 6,
                         decoration: BoxDecoration(
                           color: d.isOnline ? AppColors.success : AppColors.onSurfaceVariant,
                           shape: BoxShape.circle,
                         )),
-                    const SizedBox(width: 4),
+                    SizedBox(width: 4),
                     Text(d.isOnline ? '在线' : '离线',
                         style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 11,
@@ -1330,7 +1330,7 @@ class _DeviceSwitcherSheet extends StatelessWidget {
                   ]),
                 ])),
                 if (isSelected)
-                  const Icon(Icons.check_circle_rounded,
+                  Icon(Icons.check_circle_rounded,
                       color: AppColors.primary, size: 20),
               ]),
             ),
@@ -1367,11 +1367,11 @@ class _TopBarIcon extends StatelessWidget {
             top: -2, right: -2,
             child: Container(
               width: 16, height: 16,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.error, shape: BoxShape.circle,
               ),
               child: Center(child: Text(badge.toString(),
-                  style: const TextStyle(fontSize: 9, color: Colors.white,
+                  style: TextStyle(fontSize: 9, color: Colors.white,
                       fontWeight: FontWeight.w800))),
             ),
           ),
@@ -1482,7 +1482,7 @@ class _JoystickPadState extends State<_JoystickPad> {
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.35),
-                        blurRadius: 20, offset: const Offset(0, 6),
+                        blurRadius: 20, offset: Offset(0, 6),
                       ),
                     ],
                   ),
@@ -1500,7 +1500,7 @@ class _JoystickPadState extends State<_JoystickPad> {
               ),
               boxShadow: widget.transparent ? [] : [BoxShadow(
                 color: AppColors.cardShadow,
-                blurRadius: 12, offset: const Offset(0, 4),
+                blurRadius: 12, offset: Offset(0, 4),
               )],
             ),
           ),
@@ -1529,7 +1529,7 @@ class _JoystickPadState extends State<_JoystickPad> {
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                       child: AnimatedContainer(
-                        duration: _active ? Duration.zero : const Duration(milliseconds: 200),
+                        duration: _active ? Duration.zero : Duration(milliseconds: 200),
                         curve: Curves.easeOut,
                         width: _thumbR * 2, height: _thumbR * 2,
                         decoration: BoxDecoration(
@@ -1555,7 +1555,7 @@ class _JoystickPadState extends State<_JoystickPad> {
                     ),
                   )
                 : AnimatedContainer(
-                    duration: _active ? Duration.zero : const Duration(milliseconds: 200),
+                    duration: _active ? Duration.zero : Duration(milliseconds: 200),
                     curve: Curves.easeOut,
                     width: _thumbR * 2, height: _thumbR * 2,
                     decoration: BoxDecoration(
@@ -1570,7 +1570,7 @@ class _JoystickPadState extends State<_JoystickPad> {
                       boxShadow: [BoxShadow(
                         color: AppColors.primary.withOpacity(_active ? 0.6 : 0.35),
                         blurRadius: _active ? 18 : 10,
-                        offset: const Offset(0, 4),
+                        offset: Offset(0, 4),
                       )],
                     ),
                     child: Icon(Icons.pets_rounded,
@@ -1663,7 +1663,7 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
               ),
             )
           else
-            const Center(child: Icon(Icons.videocam_off_rounded,
+            Center(child: Icon(Icons.videocam_off_rounded,
                 size: 64, color: Colors.white24)),
 
           // ── 右上：麦克风 + 扬声器 + 退出全屏（横排，同等大小）──────
@@ -1677,7 +1677,7 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
                   active: _micOn,
                   onTap: _toggleMic,
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 _GlassBtn(
                   icon: _speakerOn
                       ? Icons.volume_up_rounded
@@ -1688,7 +1688,7 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
                     await widget.engine.setEnableSpeakerphone(_speakerOn);
                   },
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 _GlassBtn(
                   icon: Icons.fullscreen_exit_rounded,
                   onTap: () => Navigator.pop(context),
@@ -1725,13 +1725,13 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
 
           // ── 互动展开面板（从屏幕顶部中间向下弹出）───────────────────
           AnimatedPositioned(
-            duration: const Duration(milliseconds: 300),
+            duration: Duration(milliseconds: 300),
             curve: Curves.easeOutCubic,
             top: _interactOpen ? safe.top + 60.0 : -140.0,
             left: 0,
             right: 0,
             child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 220),
+              duration: Duration(milliseconds: 220),
               opacity: _interactOpen ? 1.0 : 0.0,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1749,9 +1749,9 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
                             // TODO: 接入互动 API
                           },
                         ),
-                        const SizedBox(height: 6),
+                        SizedBox(height: 6),
                         Text(item.$2,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontFamily: AppFonts.primary,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -1807,7 +1807,7 @@ class _GlassBtn extends StatelessWidget {
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.30),
-                  blurRadius: 12, offset: const Offset(0, 4),
+                  blurRadius: 12, offset: Offset(0, 4),
                 ),
               ],
             ),
@@ -1844,7 +1844,7 @@ class _QuickBtn extends StatelessWidget {
           ),
           child: Icon(icon, color: color, size: 22),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(label, style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 10, fontWeight: FontWeight.w600, color: color)),
       ]),
@@ -1871,7 +1871,7 @@ class _PhotoAction extends StatelessWidget {
           color: AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(18),
           boxShadow: [BoxShadow(color: AppColors.cardShadow,
-              blurRadius: 12, offset: const Offset(0, 3))],
+              blurRadius: 12, offset: Offset(0, 3))],
         ),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Container(
@@ -1882,7 +1882,7 @@ class _PhotoAction extends StatelessWidget {
             ),
             child: Icon(icon, size: 28, color: color),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Text(label, style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 14, fontWeight: FontWeight.w700, color: color)),
         ]),

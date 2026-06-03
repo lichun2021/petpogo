@@ -183,7 +183,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       if (_scrollCtrl.hasClients) {
         _scrollCtrl.animateTo(
           _scrollCtrl.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
+          duration: Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
       }
@@ -205,16 +205,16 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_rounded, size: 20),
           color: AppColors.onSurface,
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Row(children: [
           PetAvatar(imageUrl: null, size: 36, fallbackEmoji: '🐾'),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(child: Text(
             _peerName.isNotEmpty ? _peerName : widget.userId,
-            style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 16,
+            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 16,
                 fontWeight: FontWeight.w700, color: AppColors.onSurface),
             overflow: TextOverflow.ellipsis,
           )),
@@ -229,7 +229,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       body: Column(children: [
         Expanded(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator(
+              ? Center(child: CircularProgressIndicator(
                   color: AppColors.primary, strokeWidth: 2.5))
               : _messages.isEmpty
                   ? _buildEmpty()
@@ -267,7 +267,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     );
   }
 
-  Widget _buildEmpty() => const Center(
+  Widget _buildEmpty() => Center(
     child: Column(mainAxisSize: MainAxisSize.min, children: [
       Text('🐾', style: TextStyle(fontSize: 48)),
       SizedBox(height: 12),
@@ -287,7 +287,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           color: AppColors.errorContainer.withOpacity(0.15),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: const Text(
+        child: Text(
           '⚠️ 对方已将你移除或拉黑，消息将无法送达',
           textAlign: TextAlign.center,
           style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
@@ -321,9 +321,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       fontSize: 11, color: AppColors.onSurfaceVariant)),
             ],
           )),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           _checkingFriend
-              ? const SizedBox(width: 20, height: 20,
+              ? SizedBox(width: 20, height: 20,
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: AppColors.primary))
               : _requestSent
@@ -334,7 +334,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                         color: AppColors.surfaceContainerHigh,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text('申请已发送',
+                      child: Text('申请已发送',
                           style: TextStyle(fontFamily: AppFonts.primary,
                               fontSize: 13, fontWeight: FontWeight.w700,
                               color: AppColors.primary)),
@@ -342,7 +342,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                   : GestureDetector(
                       onTap: _addingFriend ? null : _sendFriendRequest,
                       child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
+                        duration: Duration(milliseconds: 200),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 20, vertical: 10),
                         decoration: BoxDecoration(
@@ -352,14 +352,14 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: _addingFriend ? null : [
                             BoxShadow(color: AppColors.primaryGlow,
-                                blurRadius: 8, offset: const Offset(0, 3)),
+                                blurRadius: 8, offset: Offset(0, 3)),
                           ],
                         ),
                         child: _addingFriend
-                            ? const SizedBox(width: 14, height: 14,
+                            ? SizedBox(width: 14, height: 14,
                                 child: CircularProgressIndicator(
                                     strokeWidth: 2, color: AppColors.primary))
-                            : const Text('加好友',
+                            : Text('加好友',
                                 style: TextStyle(fontFamily: AppFonts.primary,
                                     fontSize: 13, fontWeight: FontWeight.w700,
                                     color: Colors.white)),
@@ -407,7 +407,7 @@ class _MessageBubble extends StatelessWidget {
                 ),
                 child: Text(label,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontFamily: AppFonts.primary, fontSize: 12,
                         color: AppColors.primary, fontWeight: FontWeight.w600)),
               ),
@@ -451,12 +451,12 @@ class _MessageBubble extends StatelessWidget {
           placeholder: (_, __) => Container(
             width: 180, height: 120,
             color: Colors.grey.withOpacity(0.15),
-            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
           ),
           errorWidget: (_, __, ___) => Container(
             width: 120, height: 80,
             color: Colors.grey.withOpacity(0.1),
-            child: const Icon(Icons.broken_image_rounded, color: Colors.grey),
+            child: Icon(Icons.broken_image_rounded, color: Colors.grey),
           ),
         ),
       );
@@ -475,7 +475,7 @@ class _MessageBubble extends StatelessWidget {
         children: [
           if (!isSelf) ...[
             PetAvatar(imageUrl: null, size: 32, fallbackEmoji: '🐾'),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
           ],
           Flexible(child: Column(
             crossAxisAlignment:
@@ -503,14 +503,14 @@ class _MessageBubble extends StatelessWidget {
                 )
               else
                 content,
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(_fmt(message.timestamp),
-                style: const TextStyle(fontFamily: AppFonts.primary,
+                style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 10, color: AppColors.onSurfaceVariant)),
             ],
           )),
           if (isSelf) ...[
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             PetAvatar(imageUrl: myAvatarUrl, size: 32, fallbackEmoji: '😊'),
           ],
         ],
@@ -557,7 +557,7 @@ class _VoiceBubbleState extends State<_VoiceBubble> {
       await _player.play();
       await _player.processingStateStream
           .firstWhere((s) => s == ProcessingState.completed)
-          .timeout(const Duration(seconds: 120),
+          .timeout(Duration(seconds: 120),
               onTimeout: () => ProcessingState.idle);
     } catch (_) {}
     if (mounted) setState(() => _playing = false);
@@ -586,7 +586,7 @@ class _VoiceBubbleState extends State<_VoiceBubble> {
             color: widget.isSelf ? Colors.white : AppColors.primary,
             size: 20,
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           Text('${widget.duration}"',
             style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13,
                 color: widget.isSelf ? Colors.white : AppColors.onSurface)),
@@ -682,14 +682,14 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20)),
         title: Row(children: [
-          Icon(icon, color: const Color(0xFFFF6B6B)),
-          const SizedBox(width: 8),
+          Icon(icon, color: Color(0xFFFF6B6B)),
+          SizedBox(width: 8),
           Flexible(child: Text(title,
-            style: const TextStyle(fontFamily: AppFonts.primary,
+            style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 17, fontWeight: FontWeight.w700))),
         ]),
         content: Text(reason,
-          style: const TextStyle(fontFamily: AppFonts.primary,
+          style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 14, height: 1.6),
         ),
         actions: [
@@ -708,7 +708,7 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
               Navigator.pop(context);
               openAppSettings();
             },
-            child: const Text('去设置',
+            child: Text('去设置',
               style: TextStyle(color: Colors.white,
                   fontFamily: AppFonts.primary,
                   fontWeight: FontWeight.w700)),
@@ -726,12 +726,12 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
     final path =
         '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.aac';
     await _recorder.start(
-        const RecordConfig(encoder: AudioEncoder.aacLc, numChannels: 1),
+        RecordConfig(encoder: AudioEncoder.aacLc, numChannels: 1),
         path: path);
     _recSecs  = 0;
     _cancelZone = false;
     _cancelNotifier.value = false;
-    _recTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+    _recTimer = Timer.periodic(Duration(seconds: 1), (_) {
       if (mounted) setState(() {
         _recSecs++;
         if (_recSecs >= 30) {
@@ -745,7 +745,7 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
 
     // 订阅实时音量，80ms 更新一次声波条
     _ampSub = _recorder.onAmplitudeChanged(
-      const Duration(milliseconds: 80),
+      Duration(milliseconds: 80),
     ).listen((amp) {
       // 用 -40dBFS 作为基准（比 -60 更灵敏，正常说话可到 50%+ 量程）
       final v = ((amp.current + 40) / 40).clamp(0.0, 1.0);
@@ -806,7 +806,7 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
       _showEmoji = false;
     });
     if (_isVoiceMode) _focus.unfocus();
-    else Future.delayed(const Duration(milliseconds: 100), () => _focus.requestFocus());
+    else Future.delayed(Duration(milliseconds: 100), () => _focus.requestFocus());
   }
 
   void _showRecordingOverlay() {
@@ -842,7 +842,7 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
         : MediaQuery.of(context).padding.bottom;
 
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      const Divider(height: 1, thickness: 0.5, color: Color(0x10000000)),
+      Divider(height: 1, thickness: 0.5, color: Color(0x10000000)),
 
       // ── 输入栏（微信风格）──────────────────────────────────────────────
       Container(
@@ -853,7 +853,7 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
           GestureDetector(
             onTap: _toggleVoiceMode,
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
+              duration: Duration(milliseconds: 200),
               child: Icon(
                 key: ValueKey(_isVoiceMode),
                 _isVoiceMode ? Icons.keyboard_rounded : Icons.mic_none_rounded,
@@ -862,7 +862,7 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
 
           // ── 中：文字输入框 或「按住 说话」按钮 ──
           Expanded(
@@ -872,7 +872,7 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
                   onLongPressEnd:        (_) => _stopRecord(cancel: _cancelZone),
                   onLongPressMoveUpdate: (d) => _onRecordDrag(d.localOffsetFromOrigin),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
+                    duration: Duration(milliseconds: 150),
                     height: 40,
                     decoration: BoxDecoration(
                       color: _isRecording
@@ -911,9 +911,9 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
                     minLines: 1, maxLines: 4,
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => widget.onSend(),
-                    style: const TextStyle(fontFamily: AppFonts.primary,
+                    style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 15, color: AppColors.onSurface),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       border: InputBorder.none,
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(
@@ -928,14 +928,14 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
                   ),
                 ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
 
           // ── 右：图片 + 表情（或发送按钮）──
           if (_hasText && !_isVoiceMode)
             GestureDetector(
               onTap: widget.isSending ? null : widget.onSend,
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
+                duration: Duration(milliseconds: 180),
                 width: 36, height: 36,
                 decoration: BoxDecoration(
                   gradient: widget.isSending ? null : AppColors.primaryGradient,
@@ -946,7 +946,7 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
                     ? Center(child: SizedBox(width: 15, height: 15,
                         child: CircularProgressIndicator(strokeWidth: 2,
                             color: AppColors.primary.withOpacity(0.5))))
-                    : const Icon(Icons.arrow_upward_rounded,
+                    : Icon(Icons.arrow_upward_rounded,
                         color: Colors.white, size: 17),
               ),
             )
@@ -958,7 +958,7 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
               padding: EdgeInsets.zero,
               visualDensity: VisualDensity.compact,
             ),
-            const SizedBox(width: 2),
+            SizedBox(width: 2),
             IconButton(
               onPressed: _toggleEmoji,
               icon: Icon(
@@ -998,7 +998,7 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
                 indicatorColor: AppColors.primary,
                 iconColor: AppColors.onSurfaceVariant,
               ),
-              bottomActionBarConfig: const BottomActionBarConfig(
+              bottomActionBarConfig: BottomActionBarConfig(
                 backgroundColor: Colors.transparent,
                 buttonColor: Colors.transparent,
                 buttonIconColor: Colors.transparent,
@@ -1063,7 +1063,7 @@ class _RecordingOverlayState extends State<_RecordingOverlay> {
 
         // ② 中心声波气泡（品牌主色圆角矩形 + 尾巴）
         Align(
-          alignment: const Alignment(0, -0.15), // 略偏上，让底部面板不遮挡
+          alignment: Alignment(0, -0.15), // 略偏上，让底部面板不遮挡
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             // 气泡主体
             Container(
@@ -1074,7 +1074,7 @@ class _RecordingOverlayState extends State<_RecordingOverlay> {
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.primary.withOpacity(0.4),
-                    blurRadius: 24, offset: const Offset(0, 8),
+                    blurRadius: 24, offset: Offset(0, 8),
                   ),
                 ],
               ),
@@ -1087,7 +1087,7 @@ class _RecordingOverlayState extends State<_RecordingOverlay> {
             ),
             // 小三角尾巴
             CustomPaint(
-              size: const Size(20, 11),
+              size: Size(20, 11),
               painter: _BubbleTailPainter(color: AppColors.primary),
             ),
           ]),
@@ -1098,7 +1098,7 @@ class _RecordingOverlayState extends State<_RecordingOverlay> {
           bottom: 130 + safeBot + 12, // 弧形面板顶部 + 12px 间距
           left: -12,                  // 向屏幕外延伸，左边直边不可见
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
+            duration: Duration(milliseconds: 160),
             width: 130, height: 56,
             decoration: BoxDecoration(
               color: isCancel
@@ -1160,7 +1160,7 @@ class _RecordingOverlayState extends State<_RecordingOverlay> {
                         Icon(Icons.expand_less_rounded,
                           size: 18,
                           color: AppColors.onSurfaceVariant.withOpacity(0.4)),
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Text(
                           isCancel ? '< 滑回来发送' : '松开  发送',
                           style: TextStyle(
@@ -1210,7 +1210,7 @@ class _WaveformMeterState extends State<_WaveformMeter>
     super.initState();
     _jitter = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 250),
+      duration: Duration(milliseconds: 250),
     )..repeat(reverse: true);
   }
 
@@ -1241,7 +1241,7 @@ class _WaveformMeterState extends State<_WaveformMeter>
             final h      = minH + (maxH - minH) * level;
 
             return AnimatedContainer(
-              duration: const Duration(milliseconds: 80),
+              duration: Duration(milliseconds: 80),
               width: 4,
               height: h,
               margin: const EdgeInsets.symmetric(horizontal: 2),

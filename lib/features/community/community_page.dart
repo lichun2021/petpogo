@@ -59,7 +59,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
   Future<void> _openPublish() async {
     HapticFeedback.mediumImpact();
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const PublishPage()),
+      MaterialPageRoute(builder: (_) => PublishPage()),
     );
   }
 
@@ -70,7 +70,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
       context: context,
       barrierDismissible: false,
       barrierColor: Colors.black,
-      transitionDuration: const Duration(milliseconds: 220),
+      transitionDuration: Duration(milliseconds: 220),
       transitionBuilder: (_, anim, __, child) =>
           FadeTransition(opacity: anim, child: child),
       pageBuilder: (_, __, ___) => PostViewerPage(posts: posts, initialIndex: index),
@@ -116,9 +116,9 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                   child: SizedBox(
                     height: 56,
                     child: Row(children: [
-                      const SizedBox(width: 16),
+                      SizedBox(width: 16),
                       Icon(Icons.pets_rounded, color: AppColors.primary, size: 22),
-                      const Spacer(),
+                      Spacer(),
                       IconButton(
                         icon: Icon(Icons.search_rounded, color: AppColors.onSurfaceVariant),
                         onPressed: () {},
@@ -130,7 +130,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                             color: AppColors.primary,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                          child: Icon(Icons.add_rounded, color: Colors.white, size: 18),
                         ),
                         onPressed: _openPublish,
                       ),
@@ -153,8 +153,8 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                   indicatorSize: TabBarIndicatorSize.label,
                   indicatorWeight: 3,
                   dividerColor: Colors.transparent,
-                  labelStyle: const TextStyle(fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w700),
-                  unselectedLabelStyle: const TextStyle(fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w500),
+                  labelStyle: TextStyle(fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w700),
+                  unselectedLabelStyle: TextStyle(fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w500),
                   tabs: [
                     Tab(text: l10n.communityTabFollowing),
                     Tab(text: l10n.communityTabDiscover),
@@ -166,7 +166,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     itemCount: categories.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    separatorBuilder: (_, __) => SizedBox(width: 8),
                     itemBuilder: (_, i) => _CategoryChip(
                       label: categories[i],
                       selected: _selectedCategory == i,
@@ -174,7 +174,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                     ),
                   ),
                 ),
-                const Divider(height: 1, thickness: 0.5, color: Color(0x18000000)),
+                Divider(height: 1, thickness: 0.5, color: Color(0x18000000)),
               ],
             ),
           ),
@@ -206,12 +206,12 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.onSurfaceVariant),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text('加载失败，下拉重试', style: TextStyle(color: AppColors.onSurfaceVariant)),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           TextButton(
             onPressed: () => ref.read(feedControllerProvider.notifier).refresh(),
-            child: const Text('重新加载'),
+            child: Text('重新加载'),
           ),
         ]),
       );
@@ -220,7 +220,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
     final posts = feedState.posts;
 
     if (posts.isEmpty) {
-      return const Center(
+      return Center(
         child: Text('还没有动态，来发第一条吧 🐾',
           style: TextStyle(fontFamily: AppFonts.primary, color: AppColors.onSurfaceVariant)),
       );
@@ -234,7 +234,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
       onRefresh: () => ref.read(feedControllerProvider.notifier).refresh(),
       child: CustomScrollView(
         controller: scrollCtrl,
-        physics: const AlwaysScrollableScrollPhysics(),
+        physics: AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
@@ -259,13 +259,13 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
           // 加载更多指示
           SliverToBoxAdapter(
             child: feedState.isLoadingMore
-                ? const Padding(
+                ? Padding(
                     padding: EdgeInsets.all(24),
                     child: Center(child: CircularProgressIndicator()),
                   )
                 : feedState.hasMore
-                    ? const SizedBox(height: 40)
-                    : const Padding(
+                    ? SizedBox(height: 40)
+                    : Padding(
                         padding: EdgeInsets.all(24),
                         child: Center(child: Text('没有更多了～', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13))),
                       ),
@@ -320,13 +320,13 @@ class _PostCard extends StatelessWidget {
                     onTap: onAvatarTap,
                     child: _SmallAvatar(url: post.userAvatar, name: post.nickname),
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: 6),
                   Expanded(
                     child: GestureDetector(
                       onTap: onAvatarTap,
                       child: Text(post.nickname,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontFamily: AppFonts.primary,
+                        style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
                     ),
                   ),
@@ -343,7 +343,7 @@ class _PostCard extends StatelessWidget {
                                 : AppColors.onSurfaceVariant.withOpacity(0.5),
                         size: 16,
                       ),
-                      const SizedBox(width: 2),
+                      SizedBox(width: 2),
                       Text('${post.likeCount}',
                         style: TextStyle(
                           fontSize: 11,
@@ -356,7 +356,7 @@ class _PostCard extends StatelessWidget {
                 ]),
 
                 if (post.content.isNotEmpty) ...[
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   Text(post.content,
                     maxLines: 2, overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
@@ -391,7 +391,7 @@ class _Thumbnail extends StatelessWidget {
             placeholder: (_, __) => Container(color: AppColors.surfaceContainerHigh),
             errorWidget: (_, __, ___) => Container(
               color: AppColors.surfaceContainerHigh,
-              child: const Center(
+              child: Center(
                 child: Icon(Icons.broken_image_outlined, color: AppColors.onSurfaceVariant, size: 32),
               ),
             ),
@@ -406,7 +406,7 @@ class _Thumbnail extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white.withOpacity(0.7), width: 2),
             ),
-            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
+            child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
           ),
         // ── 视频标签（右上角小标）────────────────────
         if (isVideo)
@@ -418,7 +418,7 @@ class _Thumbnail extends StatelessWidget {
                 color: Colors.black.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.videocam_rounded, color: Colors.white, size: 11),
                 SizedBox(width: 2),
                 Text('视频', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600)),
@@ -445,7 +445,7 @@ class _SmallAvatar extends StatelessWidget {
       radius: 12,
       backgroundColor: AppColors.primaryContainer,
       child: Text(name.isNotEmpty ? name[0] : '?',
-        style: const TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.w700)),
+        style: TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.w700)),
     );
   }
 }
@@ -485,13 +485,13 @@ class _CategoryChip extends StatelessWidget {
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+      duration: Duration(milliseconds: 200),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
       decoration: BoxDecoration(
         color: selected ? AppColors.primary : AppColors.surfaceContainerLow,
         borderRadius: BorderRadius.circular(999),
         boxShadow: selected
-            ? [BoxShadow(color: AppColors.primaryGlow, blurRadius: 12, offset: const Offset(0, 4))]
+            ? [BoxShadow(color: AppColors.primaryGlow, blurRadius: 12, offset: Offset(0, 4))]
             : null,
       ),
       child: Text(label, style: TextStyle(
@@ -572,7 +572,7 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
                 Row(children: [
                   Icon(Icons.person_add_rounded,
                       color: AppColors.primary, size: 20),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(child: Text(
                     '向 $postNick 发送好友申请',
                     style: TextStyle(
@@ -583,7 +583,7 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
                     overflow: TextOverflow.ellipsis,
                   )),
                 ]),
-                const SizedBox(height: 14),
+                SizedBox(height: 14),
                 // 输入框（计数器内嵌在框内右下角）
                 StatefulBuilder(
                   builder: (_, setSelf) => TextField(
@@ -614,11 +614,11 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
                           borderSide: BorderSide.none),
                       contentPadding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
                     ),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontFamily: AppFonts.primary, fontSize: 13),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 // 按钮行
                 Row(mainAxisAlignment: MainAxisAlignment.end, children: [
                   TextButton(
@@ -628,11 +628,11 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
                           horizontal: 16, vertical: 8),
                     ),
                     onPressed: () => Navigator.pop(ctx, false),
-                    child: const Text('取消',
+                    child: Text('取消',
                         style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 13)),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   FilledButton(
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.primary,
@@ -640,13 +640,13 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
                           horizontal: 20, vertical: 10),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
-                      textStyle: const TextStyle(
+                      textStyle: TextStyle(
                         fontFamily: AppFonts.primary,
                         fontSize: 13, fontWeight: FontWeight.w700,
                       ),
                     ),
                     onPressed: () => Navigator.pop(ctx, true),
-                    child: const Text('发送'),
+                    child: Text('发送'),
                   ),
                 ]),
               ]),
@@ -684,7 +684,7 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(color: Colors.black.withOpacity(0.14),
-                blurRadius: 48, spreadRadius: -4, offset: const Offset(0, 8)),
+                blurRadius: 48, spreadRadius: -4, offset: Offset(0, 8)),
           ],
         ),
         padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
@@ -699,21 +699,21 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
               radius: 42,
               backgroundColor: AppColors.primaryContainer,
               child: Text(post.nickname.isNotEmpty ? post.nickname[0] : '?',
-                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800,
+                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800,
                       color: AppColors.primary)),
             ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
 
           // ── 昵称 ─────────────────────────────────────────────
           Text(post.nickname,
-              style: const TextStyle(fontFamily: AppFonts.primary,
+              style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 17, fontWeight: FontWeight.w800,
                   color: AppColors.onSurface)),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text('UID ${post.userId}',
               style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 11, color: AppColors.onSurfaceVariant)),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
 
           // ── 动作按钮（单按钮状态机）──────────────────────────
           _buildActionBtn(context, post),
@@ -793,14 +793,14 @@ class _GradientBtn extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: AppColors.primary.withOpacity(0.45),
-            blurRadius: 18, offset: const Offset(0, 6),
+            blurRadius: 18, offset: Offset(0, 6),
           ),
         ],
       ),
       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(icon, color: Colors.white, size: 20),
-        const SizedBox(width: 8),
-        Text(label, style: const TextStyle(
+        SizedBox(width: 8),
+        Text(label, style: TextStyle(
           fontFamily: AppFonts.primary, fontSize: 15,
           fontWeight: FontWeight.w800, color: Colors.white,
           letterSpacing: 0.3,
@@ -826,7 +826,7 @@ class _PendingBtnState extends State<_PendingBtn>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1400))
+      vsync: this, duration: Duration(milliseconds: 1400))
       ..repeat(reverse: true);
     _pulse = Tween(begin: 0.7, end: 1.0).animate(
         CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
@@ -852,7 +852,7 @@ class _PendingBtnState extends State<_PendingBtn>
       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(Icons.schedule_rounded,
             color: AppColors.primary.withOpacity(_pulse.value), size: 19),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Text('申请已发送，等待对方同意',
           style: TextStyle(
             fontFamily: AppFonts.primary, fontSize: 14,
@@ -881,7 +881,7 @@ class _SolidBtn extends StatelessWidget {
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+      duration: Duration(milliseconds: 200),
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 15),
       decoration: BoxDecoration(
@@ -889,12 +889,12 @@ class _SolidBtn extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: glow
             ? [BoxShadow(color: AppColors.primaryGlow,
-                blurRadius: 16, offset: const Offset(0, 4))]
+                blurRadius: 16, offset: Offset(0, 4))]
             : null,
       ),
       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(icon, color: textColor, size: 19),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Text(label, style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 15, fontWeight: FontWeight.w700, color: textColor)),
       ]),

@@ -77,25 +77,25 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Color(0xFFF5F5F5),
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent, elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_rounded, size: 20),
           color: AppColors.onSurface,
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(widget.playlist != null ? '歌单' : '分类',
-            style: const TextStyle(fontFamily: AppFonts.primary,
+            style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 17, fontWeight: FontWeight.w700)),
         actions: [
-          IconButton(icon: const Icon(Icons.volume_up_outlined),
+          IconButton(icon: Icon(Icons.volume_up_outlined),
               color: AppColors.onSurface, onPressed: () {}),
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? Center(child: CircularProgressIndicator(color: AppColors.primary))
           : CustomScrollView(slivers: [
               // ── 歌单头部 ──
               SliverToBoxAdapter(child: _buildHeader()),
@@ -113,7 +113,7 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
                   childCount: _songs.length,
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 80)),
+              SliverToBoxAdapter(child: SizedBox(height: 80)),
             ]),
       bottomSheet: const _MiniPlayer(),
     );
@@ -133,16 +133,16 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
                   fit: BoxFit.cover, errorWidget: (_, __, ___) => _defaultCover())
               : _defaultCover(),
         ),
-        const SizedBox(width: 14),
+        SizedBox(width: 14),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_title, style: const TextStyle(fontFamily: AppFonts.primary,
+          Text(_title, style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.onSurface)),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             widget.category != null
                 ? '${_songs.length} 首放松心情的精选曲目，专为毛孩子定制'
                 : (widget.playlist != null ? '${widget.playlist!.songCount} 首' : ''),
-            style: const TextStyle(fontFamily: AppFonts.primary,
+            style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 12, color: AppColors.onSurfaceVariant),
             maxLines: 3,
           ),
@@ -159,29 +159,29 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
         onTap: _playAll,
         child: Container(
           width: 32, height: 32,
-          decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-          child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
+          decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+          child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
         ),
       ),
-      const SizedBox(width: 12),
-      Text('全部播放', style: const TextStyle(fontFamily: AppFonts.primary,
+      SizedBox(width: 12),
+      Text('全部播放', style: TextStyle(fontFamily: AppFonts.primary,
           fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-      const SizedBox(width: 8),
+      SizedBox(width: 8),
       Text('共 ${_songs.length} 首  ${'  '}$_totalDurationText',
-          style: const TextStyle(fontFamily: AppFonts.primary,
+          style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 11, color: AppColors.onSurfaceVariant)),
     ]),
   );
 
   Widget _defaultCover() => Container(
     width: 80, height: 80,
-    decoration: const BoxDecoration(
+    decoration: BoxDecoration(
       gradient: LinearGradient(
         colors: [Color(0xFF6C63FF), Color(0xFF48CAE4)],
         begin: Alignment.topLeft, end: Alignment.bottomRight,
       ),
     ),
-    child: const Icon(Icons.music_note_rounded, color: Colors.white, size: 36),
+    child: Icon(Icons.music_note_rounded, color: Colors.white, size: 36),
   );
 
   Future<void> _addToPlaylist(MusicItem song) async {
@@ -238,10 +238,10 @@ class _SongRow extends ConsumerWidget {
                       color: AppColors.primary.withOpacity(0.6),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.pause_rounded, color: Colors.white, size: 20),
+                    child: Icon(Icons.pause_rounded, color: Colors.white, size: 20),
                   ),
               ]),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               // 名称+艺人
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(song.name,
@@ -251,16 +251,16 @@ class _SongRow extends ConsumerWidget {
                     maxLines: 1, overflow: TextOverflow.ellipsis),
                 if (song.artist != null && song.artist!.isNotEmpty)
                   Text(song.artist!,
-                      style: const TextStyle(fontFamily: AppFonts.primary,
+                      style: TextStyle(fontFamily: AppFonts.primary,
                           fontSize: 11, color: AppColors.onSurfaceVariant)),
               ])),
               // 播放/更多
               if (onAddToPlaylist != null)
                 IconButton(
-                  icon: const Icon(Icons.more_horiz_rounded, size: 20,
+                  icon: Icon(Icons.more_horiz_rounded, size: 20,
                       color: AppColors.onSurfaceVariant),
                   onPressed: onAddToPlaylist, padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  constraints: BoxConstraints(minWidth: 32, minHeight: 32),
                 )
               else
                 Icon(
@@ -271,7 +271,7 @@ class _SongRow extends ConsumerWidget {
             ]),
           ),
         ),
-        const Divider(height: 1, indent: 72),
+        Divider(height: 1, indent: 72),
       ]),
     );
   }
@@ -279,7 +279,7 @@ class _SongRow extends ConsumerWidget {
   Widget _emptyThumb() => Container(
     width: 44, height: 44,
     color: AppColors.primary.withOpacity(0.08),
-    child: const Icon(Icons.music_note_rounded, color: AppColors.primary, size: 20),
+    child: Icon(Icons.music_note_rounded, color: AppColors.primary, size: 20),
   );
 }
 
@@ -299,10 +299,10 @@ class _MiniPlayer extends ConsumerWidget {
       ),
       child: SafeArea(top: false,
         child: Row(children: [
-          const SizedBox(width: 16),
-          const Icon(Icons.music_note_rounded, color: Colors.white, size: 18),
-          const SizedBox(width: 10),
-          const Expanded(child: Text('正在播放',
+          SizedBox(width: 16),
+          Icon(Icons.music_note_rounded, color: Colors.white, size: 18),
+          SizedBox(width: 10),
+          Expanded(child: Text('正在播放',
               style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white))),
           StreamBuilder<bool>(
@@ -317,14 +317,14 @@ class _MiniPlayer extends ConsumerWidget {
                   padding: EdgeInsets.zero,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.stop_rounded, color: Colors.white, size: 22),
+                  icon: Icon(Icons.stop_rounded, color: Colors.white, size: 22),
                   onPressed: () {
                     player.stop();
                     ref.read(playingIdProvider.notifier).state = null;
                   },
                   padding: EdgeInsets.zero,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
               ]);
             },
           ),

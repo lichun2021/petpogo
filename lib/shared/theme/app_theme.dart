@@ -15,7 +15,7 @@ class AppTheme {
 
   static ThemeData get light => ThemeData(
         useMaterial3: true,
-        colorScheme: const ColorScheme(
+        colorScheme: ColorScheme(
           brightness: Brightness.light,
           // Primary
           primary:          AppColors.primary,
@@ -197,7 +197,7 @@ class AppTheme {
 
         // ── BottomNavigationBar ────────────────────────
         // 玻璃态效果在 app.dart 中用 ClipRRect + BackdropFilter 实现
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
           backgroundColor: Colors.transparent,
           selectedItemColor: AppColors.primary,
           unselectedItemColor: AppColors.onSurfaceVariant,
@@ -233,7 +233,7 @@ class AppTheme {
         ),
 
         // ── FloatingActionButton ───────────────────────
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        floatingActionButtonTheme: FloatingActionButtonThemeData(
           backgroundColor: AppColors.secondaryContainer,
           foregroundColor: AppColors.onSecondaryContainer,
           elevation: 0,
@@ -241,11 +241,11 @@ class AppTheme {
         ),
 
         // ── Icon ──────────────────────────────────────
-        iconTheme: const IconThemeData(
+        iconTheme: IconThemeData(
           color: AppColors.onSurface,
           size: 24,
         ),
-        primaryIconTheme: const IconThemeData(
+        primaryIconTheme: IconThemeData(
           color: AppColors.primary,
           size: 24,
         ),

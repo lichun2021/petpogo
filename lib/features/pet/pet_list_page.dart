@@ -83,22 +83,22 @@ class _PetListPageState extends ConsumerState<PetListPage> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_rounded, size: 20),
           color: AppColors.onSurface,
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('我的宠物',
+        title: Text('我的宠物',
             style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 17, fontWeight: FontWeight.w700)),
         centerTitle: true,
         actions: [
           if (_loading)
-            const Padding(padding: EdgeInsets.only(right: 16),
+            Padding(padding: EdgeInsets.only(right: 16),
               child: SizedBox(width: 18, height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)))
           else
             IconButton(
-              icon: const Icon(Icons.refresh_rounded),
+              icon: Icon(Icons.refresh_rounded),
               color: AppColors.onSurfaceVariant,
               onPressed: _refresh,
             ),
@@ -110,21 +110,21 @@ class _PetListPageState extends ConsumerState<PetListPage> {
 
   Widget _buildBody(BuildContext context) {
     if (_loading) {
-      return const Center(
+      return Center(
           child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5));
     }
     if (_error != null) {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.cloud_off_rounded, size: 48, color: AppColors.onSurfaceVariant),
-        const SizedBox(height: 12),
+        Icon(Icons.cloud_off_rounded, size: 48, color: AppColors.onSurfaceVariant),
+        SizedBox(height: 12),
         Text('加载失败', style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(_error!, style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
             textAlign: TextAlign.center),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
         FilledButton(onPressed: _load,
-            child: const Text('重试', style: TextStyle(fontFamily: AppFonts.primary,
+            child: Text('重试', style: TextStyle(fontFamily: AppFonts.primary,
                 fontWeight: FontWeight.w700))),
       ]));
     }
@@ -137,7 +137,7 @@ class _PetListPageState extends ConsumerState<PetListPage> {
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
         itemCount: _pets.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 14),
+        separatorBuilder: (_, __) => SizedBox(height: 14),
         itemBuilder: (_, i) => _PetCard(data: _pets[i], onRefresh: _refresh),
       ),
     );
@@ -149,14 +149,14 @@ class _PetListPageState extends ConsumerState<PetListPage> {
     return Center(child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 40),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Text('🐾', style: TextStyle(fontSize: 72)),
-        const SizedBox(height: 20),
+        Text('🐾', style: TextStyle(fontSize: 72)),
+        SizedBox(height: 20),
         Text(
           hasDevices ? '设备还没有绑定宠物' : '还没有绑定任何设备',
-          style: const TextStyle(fontFamily: AppFonts.primary,
+          style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.onSurface),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           hasDevices
               ? '点击设备卡片上的「绑定宠物」给设备绑定宠物'
@@ -165,17 +165,17 @@ class _PetListPageState extends ConsumerState<PetListPage> {
               color: AppColors.onSurfaceVariant),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 32),
+        SizedBox(height: 32),
         FilledButton.icon(
           onPressed: () {
             HapticFeedback.mediumImpact();
             Navigator.pushReplacement(context, MaterialPageRoute(
-              builder: (_) => const DeviceListPage(),
+              builder: (_) => DeviceListPage(),
             ));
           },
-          icon: const Icon(Icons.devices_rounded),
+          icon: Icon(Icons.devices_rounded),
           label: Text(hasDevices ? '去绑定宠物' : '去添加设备',
-              style: const TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
+              style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.primary,
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
@@ -209,7 +209,7 @@ class _PetCard extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surfaceContainerLowest,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (_) => PetEditSheet(pet: petModel),
     ).then((saved) { if (saved == true) onRefresh(); });
@@ -223,13 +223,13 @@ class _PetCard extends ConsumerWidget {
     final isMale   = pet.sex == 'GG' || pet.sex == 'GG_sterilization';
     final isFemale = pet.sex == 'MM' || pet.sex == 'MM_sterilization';
     final gLabel   = isMale ? '♂ 公' : isFemale ? '♀ 母' : '';
-    final gColor   = isMale ? const Color(0xFF1565C0) : const Color(0xFFC2185B);
-    final gBg      = isMale ? const Color(0xFFDCEEFF)  : const Color(0xFFFFDCEE);
+    final gColor   = isMale ? Color(0xFF1565C0) : Color(0xFFC2185B);
+    final gBg      = isMale ? Color(0xFFDCEEFF)  : Color(0xFFFFDCEE);
 
     final isCat = pet.breed.contains('猫') || pet.breed.toLowerCase().contains('cat');
     final gradient = isCat
-        ? [const Color(0xFF6EC6F5), const Color(0xFF4A90D9)]
-        : [const Color(0xFFFFB347), const Color(0xFFE07B39)];
+        ? [Color(0xFF6EC6F5), Color(0xFF4A90D9)]
+        : [Color(0xFFFFB347), Color(0xFFE07B39)];
 
     return Container(
       decoration: BoxDecoration(
@@ -237,7 +237,7 @@ class _PetCard extends ConsumerWidget {
             begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(22),
         boxShadow: [BoxShadow(color: gradient.first.withOpacity(0.35),
-            blurRadius: 20, spreadRadius: -4, offset: const Offset(0, 6))],
+            blurRadius: 20, spreadRadius: -4, offset: Offset(0, 6))],
       ),
       child: Stack(children: [
         Positioned(right: -20, top: -20,
@@ -261,9 +261,9 @@ class _PetCard extends ConsumerWidget {
                     child: ClipOval(
                       child: pet.avatar.isNotEmpty
                           ? CachedNetworkImage(imageUrl: pet.avatar, fit: BoxFit.cover,
-                              errorWidget: (_, __, ___) => const Center(
+                              errorWidget: (_, __, ___) => Center(
                                   child: Text('🐾', style: TextStyle(fontSize: 26))))
-                          : const Center(child: Text('🐾', style: TextStyle(fontSize: 26))),
+                          : Center(child: Text('🐾', style: TextStyle(fontSize: 26))),
                     ),
                   ),
                   Container(
@@ -276,11 +276,11 @@ class _PetCard extends ConsumerWidget {
                   ),
                 ]),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: 14),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
                   Expanded(child: Text(pet.petName,
-                      style: const TextStyle(fontFamily: AppFonts.primary,
+                      style: TextStyle(fontFamily: AppFonts.primary,
                           fontSize: 18, fontWeight: FontWeight.w800,
                           color: Colors.white, letterSpacing: -0.3))),
                   if (gLabel.isNotEmpty)
@@ -291,7 +291,7 @@ class _PetCard extends ConsumerWidget {
                           fontSize: 11, fontWeight: FontWeight.w800, color: gColor)),
                     ),
                   // 编辑按钮（右上角）
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   GestureDetector(
                     onTap: () => _openEdit(context),
                     child: Container(
@@ -300,18 +300,18 @@ class _PetCard extends ConsumerWidget {
                         color: Colors.white.withOpacity(0.18),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.edit_rounded, size: 14, color: Colors.white),
+                      child: Icon(Icons.edit_rounded, size: 14, color: Colors.white),
                     ),
                   ),
                 ]),
                 if (pet.breed.isNotEmpty) ...[
-                  const SizedBox(height: 3),
+                  SizedBox(height: 3),
                   Text(pet.breed, style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 12, color: Colors.white.withOpacity(0.8))),
                 ],
               ])),
             ]),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             Wrap(spacing: 8, runSpacing: 4, children: [
               if (pet.age > 0)    _Chip(Icons.cake_rounded, '${pet.age}岁'),
@@ -320,17 +320,17 @@ class _PetCard extends ConsumerWidget {
                 _Chip(Icons.pets_rounded, pet.sexDisplay),
             ]),
 
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20)),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.router_rounded, size: 12, color: Colors.white70),
-                const SizedBox(width: 5),
+                Icon(Icons.router_rounded, size: 12, color: Colors.white70),
+                SizedBox(width: 5),
                 Text(device.displayName,
-                    style: const TextStyle(fontFamily: AppFonts.primary,
+                    style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w600)),
               ]),
             ),
@@ -353,8 +353,8 @@ class _Chip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20)),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(icon, size: 10, color: Colors.white),
-      const SizedBox(width: 4),
-      Text(label, style: const TextStyle(fontFamily: AppFonts.primary,
+      SizedBox(width: 4),
+      Text(label, style: TextStyle(fontFamily: AppFonts.primary,
           fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
     ]),
   );

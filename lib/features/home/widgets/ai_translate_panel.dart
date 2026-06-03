@@ -36,7 +36,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
     super.initState();
     _pulseCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: Duration(milliseconds: 900),
     )..repeat(reverse: true);
   }
 
@@ -68,7 +68,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
         '${dir.path}/pet_voice_${DateTime.now().millisecondsSinceEpoch}.wav';
 
     await _recorder.start(
-      const RecordConfig(encoder: AudioEncoder.wav),
+      RecordConfig(encoder: AudioEncoder.wav),
       path: _recordPath!,
     );
 
@@ -81,7 +81,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
 
     // 计时
     Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 1));
+      await Future.delayed(Duration(seconds: 1));
       if (!_isRecording || !mounted) return false;
       setState(() => _recordSecs++);
       return true;
@@ -118,7 +118,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        duration: const Duration(seconds: 3),
+        duration: Duration(seconds: 3),
       ),
     );
   }
@@ -153,7 +153,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
             color: AppColors.cardShadow,
             blurRadius: 18,
             spreadRadius: -10,
-            offset: const Offset(0, 8),
+            offset: Offset(0, 8),
           ),
         ],
       ),
@@ -168,14 +168,14 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
                 color: AppColors.primary.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.graphic_eq_rounded,
                 color: AppColors.primary,
                 size: 19,
               ),
             ),
-            const SizedBox(width: 10),
-            const Expanded(
+            SizedBox(width: 10),
+            Expanded(
               child: Text('听懂宠物语言',
                   style: TextStyle(
                     fontFamily: AppFonts.primary,
@@ -188,7 +188,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
             if (state.result != null || state.phase == AiPhase.notPet) ...[
               TextButton(
                 onPressed: _reset,
-                child: const Text('再试一次',
+                child: Text('再试一次',
                     style: TextStyle(
                       fontFamily: AppFonts.primary,
                       fontSize: 12,
@@ -197,17 +197,17 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
               ),
             ],
           ]),
-          const SizedBox(height: 18),
+          SizedBox(height: 18),
 
           // 内容区（固定最小高度，防止切换阶段时外框跳动）
           ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 190),
+            constraints: BoxConstraints(minHeight: 190),
             child: Center(
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
+                duration: Duration(milliseconds: 300),
                 child: switch (state.phase) {
                   AiPhase.idle => _IdleView(
-                      key: const ValueKey('idle'),
+                      key: ValueKey('idle'),
                       isRecording: _isRecording,
                       recordSecs: _recordSecs,
                       onPressDown: _startRecording,
@@ -215,7 +215,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
                       pulseCtrl: _pulseCtrl,
                     ),
                   AiPhase.uploading => _ProgressView(
-                      key: const ValueKey('upload'),
+                      key: ValueKey('upload'),
                       label: '上传音频中…',
                       progress: state.uploadProgress,
                       icon: '☁️',
@@ -226,16 +226,16 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
                       icon: '🧠',
                     ),
                   AiPhase.result => _ResultView(
-                      key: const ValueKey('result'),
+                      key: ValueKey('result'),
                       result: state.result!,
                     ),
                   AiPhase.notPet => _NotPetView(
-                      key: const ValueKey('notPet'),
+                      key: ValueKey('notPet'),
                       reason: state.notPetReason ?? '未检测到宠物',
                       onRetry: _reset,
                     ),
                   AiPhase.error => _ErrorView(
-                      key: const ValueKey('error'),
+                      key: ValueKey('error'),
                       message: state.errorMessage ?? '分析失败',
                       onRetry: _reset,
                     ),
@@ -280,7 +280,7 @@ class _IdleView extends StatelessWidget {
             fontWeight: isRecording ? FontWeight.w700 : FontWeight.w400,
           ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
         Listener(
           onPointerDown: (_) => onPressDown(),
           onPointerUp: (_) => onPressUp(),
@@ -316,11 +316,11 @@ class _IdleView extends StatelessWidget {
             },
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         if (isRecording)
           Text(
             '录音中  ${recordSecs}s',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppFonts.primary,
               fontSize: 12,
               color: AppColors.primary,
@@ -328,7 +328,7 @@ class _IdleView extends StatelessWidget {
             ),
           )
         else
-          const Text(
+          Text(
             '按住即可录音',
             style: TextStyle(
               fontFamily: AppFonts.primary,
@@ -356,15 +356,15 @@ class _ProgressView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(icon, style: const TextStyle(fontSize: 40)),
-        const SizedBox(height: 12),
+        Text(icon, style: TextStyle(fontSize: 40)),
+        SizedBox(height: 12),
         Text(label,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppFonts.primary,
               fontSize: 14,
               color: AppColors.onSurfaceVariant,
             )),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
@@ -374,9 +374,9 @@ class _ProgressView extends StatelessWidget {
             minHeight: 6,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text('${(progress * 100).toInt()}%',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppFonts.primary,
               fontSize: 11,
               color: AppColors.onSurfaceVariant,
@@ -396,18 +396,18 @@ class _SpinnerView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(icon, style: const TextStyle(fontSize: 40))
+        Text(icon, style: TextStyle(fontSize: 40))
             .animate(onPlay: (c) => c.repeat())
             .rotate(duration: 3.seconds),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Text(label,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppFonts.primary,
               fontSize: 14,
               color: AppColors.onSurfaceVariant,
             )),
-        const SizedBox(height: 12),
-        const CircularProgressIndicator(
+        SizedBox(height: 12),
+        CircularProgressIndicator(
             color: AppColors.primary, strokeWidth: 2.5),
       ],
     );
@@ -435,8 +435,8 @@ class _ResultView extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(children: [
-            Text(result.primaryEmoji, style: const TextStyle(fontSize: 36)),
-            const SizedBox(width: 14),
+            Text(result.primaryEmoji, style: TextStyle(fontSize: 36)),
+            SizedBox(width: 14),
             Expanded(
                 child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -459,31 +459,31 @@ class _ResultView extends StatelessWidget {
           ]),
         ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2),
 
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
 
         // Top-3
         if (result.top3.length > 1) ...[
-          const Text('情绪分布',
+          Text('情绪分布',
               style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: AppColors.onSurfaceVariant,
               )),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           ...result.top3.take(3).map((e) => Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Row(children: [
                   SizedBox(
                     width: 60,
                     child: Text(e.labelZh,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: AppFonts.primary,
                           fontSize: 12,
                           color: AppColors.onSurface,
                         )),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                       child: ClipRRect(
                     borderRadius: BorderRadius.circular(3),
@@ -494,16 +494,16 @@ class _ResultView extends StatelessWidget {
                       minHeight: 6,
                     ),
                   )),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Text(e.percentText,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: AppFonts.primary,
                         fontSize: 11,
                         color: AppColors.onSurfaceVariant,
                       )),
                 ]),
               )),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
         ],
 
         // 建议
@@ -517,11 +517,11 @@ class _ResultView extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('💡', style: TextStyle(fontSize: 16)),
-                const SizedBox(width: 8),
+                Text('💡', style: TextStyle(fontSize: 16)),
+                SizedBox(width: 8),
                 Expanded(
                     child: Text(result.advice,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: AppFonts.primary,
                           fontSize: 12,
                           color: AppColors.onSurface,
@@ -530,7 +530,7 @@ class _ResultView extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
         ],
 
         // 配额剩余
@@ -544,12 +544,12 @@ class _ResultView extends StatelessWidget {
               size: 14,
               color: AppColors.onSurfaceVariant,
             ),
-            const SizedBox(width: 4),
+            SizedBox(width: 4),
             Text(
               result.quota.isUnlimited
                   ? 'VIP 无限次'
                   : '今日剩余 ${result.quota.remaining} 次',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontSize: 11,
                 color: AppColors.onSurfaceVariant,
@@ -572,23 +572,23 @@ class _ErrorView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Text('😓', style: TextStyle(fontSize: 40)),
-        const SizedBox(height: 12),
+        Text('😓', style: TextStyle(fontSize: 40)),
+        SizedBox(height: 12),
         Text(message,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppFonts.primary,
               fontSize: 13,
               color: AppColors.onSurfaceVariant,
             )),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         ElevatedButton(
           onPressed: onRetry,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
           ),
-          child: const Text('重试'),
+          child: Text('重试'),
         ),
       ],
     );
@@ -605,18 +605,18 @@ class _NotPetView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Text('🤔', style: TextStyle(fontSize: 40)),
-        const SizedBox(height: 12),
+        Text('🤔', style: TextStyle(fontSize: 40)),
+        SizedBox(height: 12),
         Text(reason,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: AppFonts.primary,
               fontSize: 14,
               color: AppColors.onSurface,
               fontWeight: FontWeight.w600,
             )),
-        const SizedBox(height: 6),
-        const Text(
+        SizedBox(height: 6),
+        Text(
           '请对着宠物录音再试试',
           style: TextStyle(
             fontFamily: AppFonts.primary,
@@ -624,11 +624,11 @@ class _NotPetView extends StatelessWidget {
             color: AppColors.onSurfaceVariant,
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         OutlinedButton.icon(
           onPressed: onRetry,
-          icon: const Icon(Icons.refresh_rounded, size: 16),
-          label: const Text('重新录音'),
+          icon: Icon(Icons.refresh_rounded, size: 16),
+          label: Text('重新录音'),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary,
             side: BorderSide(color: AppColors.primary),

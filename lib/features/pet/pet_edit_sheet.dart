@@ -88,14 +88,14 @@ class _PetEditSheetState extends ConsumerState<PetEditSheet> {
         Center(child: Container(width: 40, height: 4,
             decoration: BoxDecoration(color: AppColors.outlineVariant,
                 borderRadius: BorderRadius.circular(999)))),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
 
         // 标题
-        const Align(alignment: Alignment.centerLeft,
+        Align(alignment: Alignment.centerLeft,
             child: Text('编辑宠物信息',
                 style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 18, fontWeight: FontWeight.w800))),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
 
         // 头像选择
         Center(
@@ -111,12 +111,12 @@ class _PetEditSheetState extends ConsumerState<PetEditSheet> {
                   boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12)],
                 ),
                 child: ClipOval(child: _uploadingAvatar
-                    ? const Center(child: CircularProgressIndicator(strokeWidth: 2.5))
+                    ? Center(child: CircularProgressIndicator(strokeWidth: 2.5))
                     : _avatarUrl.isNotEmpty
                         ? CachedNetworkImage(imageUrl: _avatarUrl, fit: BoxFit.cover,
                             errorWidget: (_, __, ___) =>
-                                const Center(child: Text('🐾', style: TextStyle(fontSize: 42))))
-                        : const Center(child: Text('🐾', style: TextStyle(fontSize: 42)))),
+                                Center(child: Text('🐾', style: TextStyle(fontSize: 42))))
+                        : Center(child: Text('🐾', style: TextStyle(fontSize: 42)))),
               ),
               if (!_uploadingAvatar)
                 Container(
@@ -125,27 +125,27 @@ class _PetEditSheetState extends ConsumerState<PetEditSheet> {
                     color: AppColors.primary, shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
                   ),
-                  child: const Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
+                  child: Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
                 ),
             ]),
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         Text('点击更换头像', style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 12, color: AppColors.onSurfaceVariant)),
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
 
         // 名字输入
         _Field(controller: _nameCtrl, hint: '宠物名字', icon: Icons.pets_rounded),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         // 品种输入
         _Field(controller: _breedCtrl, hint: '品种（选填）', icon: Icons.category_rounded),
 
         if (_error != null) ...[
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(_error!, style: TextStyle(color: AppColors.error, fontSize: 13)),
         ],
-        const SizedBox(height: 20),
+        SizedBox(height: 20),
 
         // 保存按钮
         SizedBox(
@@ -159,9 +159,9 @@ class _PetEditSheetState extends ConsumerState<PetEditSheet> {
               elevation: 0,
             ),
             child: _saving
-                ? const SizedBox(width: 20, height: 20,
+                ? SizedBox(width: 20, height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Text('保存', style: TextStyle(fontFamily: AppFonts.primary,
+                : Text('保存', style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 16, fontWeight: FontWeight.w700)),
           ),
         ),
@@ -182,7 +182,7 @@ class _Field extends StatelessWidget {
         borderRadius: BorderRadius.circular(14)),
     child: TextField(
       controller: controller,
-      style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 15),
+      style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: AppColors.onSurfaceVariant,

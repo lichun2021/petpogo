@@ -30,11 +30,11 @@ class ReportCarePage extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           color: AppColors.onSurface,
           onPressed: () => Navigator.maybePop(context),
         ),
-        title: const Text(
+        title: Text(
           '治疗养护建议',
           style: TextStyle(
             fontSize: 17,
@@ -47,19 +47,19 @@ class ReportCarePage extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
           _AssistantHeader(symptom: report.symptomSummary),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           if (report.report.isNotEmpty) ...[
             const _SectionLabel(icon: Icons.spa_outlined, text: '综合养护建议'),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _ChatBubble(text: report.report),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
           ],
           if (careItems.isNotEmpty) ...[
             const _SectionLabel(
                 icon: Icons.checklist_rounded, text: '家长可以这样做'),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _CareList(items: careItems),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
           ],
           _FooterNote(),
         ],
@@ -88,7 +88,7 @@ class ReportCarePage extends StatelessWidget {
   ///   - 单段大白话 → 按句号/分号拆
   static List<String> _splitBullets(String text) {
     final raw = text.trim();
-    if (raw.isEmpty) return const [];
+    if (raw.isEmpty) return [];
 
     final lines = raw.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty);
     final bulleted = lines
@@ -120,9 +120,9 @@ class _AssistantHeader extends StatelessWidget {
         CircleAvatar(
           radius: 22,
           backgroundColor: AppColors.secondaryContainer,
-          backgroundImage: const AssetImage('assets/images/chongxiaoyi.png'),
+          backgroundImage: AssetImage('assets/images/chongxiaoyi.png'),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10),
         Expanded(
           child: Container(
             padding: const EdgeInsets.all(14),
@@ -138,7 +138,7 @@ class _AssistantHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   '我是宠小伊 🐾',
                   style: TextStyle(
                     fontSize: 13,
@@ -146,12 +146,12 @@ class _AssistantHeader extends StatelessWidget {
                     color: AppColors.secondary,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   symptom.isEmpty
                       ? '根据您和我的多轮交流，我整理了一些在家护理的建议，希望对你和它都有帮助。'
                       : '根据「$symptom」的情况，下面是几条在家可以做起来的护理建议。',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     height: 1.5,
                     color: AppColors.onSurface,
@@ -175,10 +175,10 @@ class _SectionLabel extends StatelessWidget {
     return Row(
       children: [
         Icon(icon, size: 16, color: AppColors.secondary),
-        const SizedBox(width: 6),
+        SizedBox(width: 6),
         Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
             color: AppColors.onSurface,
@@ -204,13 +204,13 @@ class _ChatBubble extends StatelessWidget {
             color: AppColors.cardShadow,
             blurRadius: 10,
             spreadRadius: -4,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 14,
           height: 1.6,
           color: AppColors.onSurface,
@@ -236,7 +236,7 @@ class _CareList extends StatelessWidget {
       children: [
         for (var i = 0; i < items.length; i++) ...[
           _DiseaseCareCard(item: items[i]),
-          if (i < items.length - 1) const SizedBox(height: 10),
+          if (i < items.length - 1) SizedBox(height: 10),
         ],
       ],
     );
@@ -258,7 +258,7 @@ class _DiseaseCareCard extends StatelessWidget {
             color: AppColors.cardShadow,
             blurRadius: 10,
             spreadRadius: -4,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -276,7 +276,7 @@ class _DiseaseCareCard extends StatelessWidget {
                 ),
                 child: Text(
                   item.disease,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: AppColors.onSecondaryContainer,
@@ -285,7 +285,7 @@ class _DiseaseCareCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           for (final b in item.bullets) _BulletLine(text: b),
         ],
       ),
@@ -308,17 +308,17 @@ class _BulletLine extends StatelessWidget {
             child: Container(
               width: 5,
               height: 5,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.secondary,
                 shape: BoxShape.circle,
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13.5,
                 height: 1.55,
                 color: AppColors.onSurface,
@@ -344,9 +344,9 @@ class _FooterNote extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_outline_rounded,
+          Icon(Icons.info_outline_rounded,
               size: 16, color: AppColors.tertiary),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           Expanded(
             child: Text(
               '本页内容仅供参考，若症状持续或加重，请尽快前往线下宠物医院进一步检查。',

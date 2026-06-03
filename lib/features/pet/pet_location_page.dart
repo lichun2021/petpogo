@@ -26,7 +26,7 @@ Future<String> _reverseGeocode(double lat, double lng) async {
         'accept-language': 'zh-CN,zh',
         'zoom': 18,
       },
-    ).timeout(const Duration(seconds: 8));
+    ).timeout(Duration(seconds: 8));
     final data = resp.data;
     if (data is Map) {
       final display = data['display_name']?.toString() ?? '';
@@ -52,7 +52,7 @@ class PetLocationPage extends ConsumerStatefulWidget {
   final String deviceMac;
   final String petAvatar;
 
-  const PetLocationPage({
+  PetLocationPage({
     super.key,
     required this.petName,
     required this.deviceMac,
@@ -165,11 +165,11 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
           child: FlutterMap(
             mapController: _mapCtrl,
             options: MapOptions(
-              initialCenter: _gcjLatLng ?? const LatLng(39.9042, 116.4074),
+              initialCenter: _gcjLatLng ?? LatLng(39.9042, 116.4074),
               initialZoom: hasLoc ? 16 : 12,
               minZoom: 4,
               maxZoom: 18,
-              interactionOptions: const InteractionOptions(
+              interactionOptions: InteractionOptions(
                 flags: InteractiveFlag.all,
               ),
             ),
@@ -177,7 +177,7 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
               // 高德矢量瓦片（中文标注）
               TileLayer(
                 urlTemplate: _amapTileUrl,
-                subdomains: const ['1', '2', '3', '4'],
+                subdomains: ['1', '2', '3', '4'],
                 userAgentPackageName: 'com.junxin.petpogo_and',
                 maxZoom: 18,
               ),
@@ -189,8 +189,8 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
                     point: _gcjLatLng!,
                     radius: 80,
                     useRadiusInMeter: true,
-                    color: const Color(0xFF3EBD6D).withValues(alpha: 0.15),
-                    borderColor: const Color(0xFF3EBD6D).withValues(alpha: 0.5),
+                    color: Color(0xFF3EBD6D).withValues(alpha: 0.15),
+                    borderColor: Color(0xFF3EBD6D).withValues(alpha: 0.5),
                     borderStrokeWidth: 1.5,
                   ),
                 ]),
@@ -211,12 +211,12 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
                           shape: BoxShape.circle,
                           color: Colors.white,
                           border: Border.all(
-                              color: const Color(0xFF3EBD6D), width: 3),
+                              color: Color(0xFF3EBD6D), width: 3),
                           boxShadow: [
                             BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.2),
                                 blurRadius: 10,
-                                offset: const Offset(0, 3)),
+                                offset: Offset(0, 3)),
                           ],
                         ),
                         child: ClipOval(
@@ -224,17 +224,17 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
                               ? CachedNetworkImage(
                                   imageUrl: widget.petAvatar,
                                   fit: BoxFit.cover,
-                                  errorWidget: (_, __, ___) => const Center(
+                                  errorWidget: (_, __, ___) => Center(
                                       child: Text('🐾',
                                           style: TextStyle(fontSize: 24))))
-                              : const Center(
+                              : Center(
                                   child: Text('🐾',
                                       style: TextStyle(fontSize: 24))),
                         ),
                       ),
                       // 三角箭头
                       CustomPaint(
-                          painter: _PinTailPainter(), size: const Size(14, 9)),
+                          painter: _PinTailPainter(), size: Size(14, 9)),
                     ]),
                   ),
                 ]),
@@ -263,14 +263,14 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
               Material(
                 color: Colors.transparent,
                 child: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_rounded, size: 20),
+                  icon: Icon(Icons.arrow_back_ios_rounded, size: 20),
                   color: AppColors.onSurface,
                   onPressed: () => Navigator.pop(context),
                 ),
               ),
-              const Spacer(),
+              Spacer(),
               if (_isRefreshing)
-                const Padding(
+                Padding(
                     padding: EdgeInsets.only(right: 16),
                     child: SizedBox(
                         width: 20,
@@ -281,7 +281,7 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
                 Material(
                   color: Colors.transparent,
                   child: IconButton(
-                    icon: const Icon(Icons.refresh_rounded),
+                    icon: Icon(Icons.refresh_rounded),
                     color: AppColors.onSurface,
                     onPressed: _load,
                   ),
@@ -358,7 +358,7 @@ class _BottomCard extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.fromLTRB(20, 18, 20, 18 + safeBottom),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
@@ -377,43 +377,43 @@ class _BottomCard extends StatelessWidget {
                     decoration: BoxDecoration(
                         color: Colors.black12,
                         borderRadius: BorderRadius.circular(99)))),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             Row(children: [
               Container(
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFFF0F0EE),
+                    color: Color(0xFFF0F0EE),
                     border:
-                        Border.all(color: const Color(0xFF3EBD6D), width: 2.5)),
+                        Border.all(color: Color(0xFF3EBD6D), width: 2.5)),
                 child: ClipOval(
                     child: petAvatar.isNotEmpty
                         ? CachedNetworkImage(
                             imageUrl: petAvatar,
                             fit: BoxFit.cover,
-                            errorWidget: (_, __, ___) => const Center(
+                            errorWidget: (_, __, ___) => Center(
                                 child:
                                     Text('🐾', style: TextStyle(fontSize: 22))))
-                        : const Center(
+                        : Center(
                             child: Text('🐾', style: TextStyle(fontSize: 22)))),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                     Text(petName,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontFamily: AppFonts.primary,
                             fontSize: 17,
                             fontWeight: FontWeight.w800,
                             color: Color(0xFF1A1A1A))),
-                    const SizedBox(height: 3),
+                    SizedBox(height: 3),
                     Row(children: [
-                      const Icon(Icons.shield_rounded,
+                      Icon(Icons.shield_rounded,
                           size: 14, color: Color(0xFF3EBD6D)),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       Text(
                         !hasLoc ? '定位中...' : (inFence ? '安全守护中' : '已离开围栏'),
                         style: TextStyle(
@@ -421,58 +421,58 @@ class _BottomCard extends StatelessWidget {
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: (!hasLoc || inFence)
-                                ? const Color(0xFF3EBD6D)
+                                ? Color(0xFF3EBD6D)
                                 : AppColors.error),
                       ),
                     ]),
                   ])),
             ]),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             Row(children: [
               _StatBadge(
                 icon: Icons.radio_button_checked_rounded,
                 label: inFence ? '范围内' : '范围外',
-                color: inFence ? const Color(0xFF3EBD6D) : Colors.grey,
+                color: inFence ? Color(0xFF3EBD6D) : Colors.grey,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               _StatBadge(
                 icon: Icons.gps_fixed_rounded,
                 label: hasLoc ? 'GPS' : 'GPS 无信号',
-                color: hasLoc ? const Color(0xFF3EBD6D) : Colors.grey,
+                color: hasLoc ? Color(0xFF3EBD6D) : Colors.grey,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               _StatBadge(
                 icon: Icons.access_time_rounded,
                 label: updateTime,
                 color: Colors.grey.shade600,
               ),
             ]),
-            const SizedBox(height: 14),
-            const Divider(height: 1, color: Color(0xFFF0F0EE)),
-            const SizedBox(height: 12),
+            SizedBox(height: 14),
+            Divider(height: 1, color: Color(0xFFF0F0EE)),
+            SizedBox(height: 12),
             if (error != null)
               Row(children: [
-                const Icon(Icons.error_outline_rounded,
+                Icon(Icons.error_outline_rounded,
                     size: 16, color: AppColors.error),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Expanded(
                     child: Text(error!,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontFamily: AppFonts.primary,
                             fontSize: 12,
                             color: AppColors.error))),
               ])
             else
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Icon(Icons.location_on_rounded,
+                Icon(Icons.location_on_rounded,
                     size: 16, color: AppColors.primary),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Expanded(
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                       if (!hasLoc)
-                        const Text('等待设备上报位置...',
+                        Text('等待设备上报位置...',
                             style: TextStyle(
                                 fontFamily: AppFonts.primary,
                                 fontSize: 14,
@@ -480,7 +480,7 @@ class _BottomCard extends StatelessWidget {
                                 color: Color(0xFF1A1A1A)))
                       else if (geocoding)
                         // 正在解析地址
-                        Row(children: const [
+                        Row(children: [
                           SizedBox(
                               width: 12,
                               height: 12,
@@ -497,7 +497,7 @@ class _BottomCard extends StatelessWidget {
                         // 地址（纬度, 经度）
                         RichText(
                           text: TextSpan(
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontFamily: AppFonts.primary,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -511,7 +511,7 @@ class _BottomCard extends StatelessWidget {
                                 TextSpan(
                                   text:
                                       '  (${position!.latitude}, ${position!.longitude})',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: AppFonts.primary,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w400,
@@ -522,9 +522,9 @@ class _BottomCard extends StatelessWidget {
                           ),
                         ),
                       if (hasLoc) ...[
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Text('更新于 $updateTime',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontFamily: AppFonts.primary,
                                 fontSize: 11,
                                 color: Color(0xFF999999))),
@@ -554,7 +554,7 @@ class _StatBadge extends StatelessWidget {
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
           Text(label,
               style: TextStyle(
                   fontFamily: AppFonts.primary,
@@ -593,7 +593,7 @@ class _MapBtn extends StatelessWidget {
             BoxShadow(
                 color: Colors.black.withValues(alpha: 0.14),
                 blurRadius: 10,
-                offset: const Offset(0, 2))
+                offset: Offset(0, 2))
           ],
         ),
         child: Icon(icon, size: 22, color: iconColor),
@@ -611,7 +611,7 @@ class _PinTailPainter extends CustomPainter {
       ..lineTo(size.width / 2, size.height)
       ..lineTo(size.width, 0)
       ..close();
-    canvas.drawPath(path, ui.Paint()..color = const Color(0xFF3EBD6D));
+    canvas.drawPath(path, ui.Paint()..color = Color(0xFF3EBD6D));
   }
 
   @override

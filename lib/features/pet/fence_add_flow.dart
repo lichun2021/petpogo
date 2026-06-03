@@ -28,7 +28,7 @@ Future<String> _amapRegeocode(LatLng pos) async {
         'accept-language': 'zh-CN,zh',
         'zoom':            18,
       },
-    ).timeout(const Duration(seconds: 8));
+    ).timeout(Duration(seconds: 8));
 
     final data = resp.data;
     debugPrint('[Geocode] Nominatim response: $data');
@@ -69,7 +69,7 @@ class FenceMapPickerPage extends StatefulWidget {
 class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
   final _mapController = MapController();
 
-  LatLng _center    = const LatLng(31.2304, 121.4737); // 默认上海
+  LatLng _center    = LatLng(31.2304, 121.4737); // 默认上海
   double  _radius   = 300.0; // 预览半径（米）
   bool    _locating = false;
   String  _address  = '正在获取位置...';
@@ -94,8 +94,8 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high)
-      ).timeout(const Duration(seconds: 8));
+          locationSettings: LocationSettings(accuracy: LocationAccuracy.high)
+      ).timeout(Duration(seconds: 8));
 
       // WGS-84 → GCJ-02（火星坐标），解决高德地图偏移
       final gcj = CoordTransform.wgs84ToGcj02(pos.latitude, pos.longitude);
@@ -146,7 +146,7 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
           children: [
             TileLayer(
               urlTemplate: _amapTileUrl,
-              subdomains: const ['1', '2', '3', '4'],
+              subdomains: ['1', '2', '3', '4'],
               userAgentPackageName: 'com.junxin.petpogo_and',
             ),
             // 围栏圆形预览
@@ -164,7 +164,7 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
         ),
 
         // ── 中心 Pin（固定，地图在其下移动）──
-        const Center(
+        Center(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.location_on_rounded, color: AppColors.primary, size: 42, shadows: [
               Shadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3)),
@@ -182,18 +182,18 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
                 icon: Icons.arrow_back_ios_rounded,
                 onTap: () => Navigator.pop(context),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.92),
                     borderRadius: BorderRadius.circular(14),
-                    boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
+                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)],
                   ),
                   child: Row(children: [
-                    const Icon(Icons.search_rounded, size: 18, color: AppColors.onSurfaceVariant),
-                    const SizedBox(width: 8),
+                    Icon(Icons.search_rounded, size: 18, color: AppColors.onSurfaceVariant),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         '位置信息与电子围栏',
@@ -238,7 +238,7 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
                   Center(child: Container(width: 36, height: 4,
                       decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3),
                           borderRadius: BorderRadius.circular(2)))),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
 
                   // 当前地址
                   Row(children: [
@@ -248,18 +248,18 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
                         color: AppColors.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.location_on_rounded, color: AppColors.primary, size: 20),
+                      child: Icon(Icons.location_on_rounded, color: AppColors.primary, size: 20),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Text('当前选点', style: TextStyle(fontFamily: AppFonts.primary,
+                      Text('当前选点', style: TextStyle(fontFamily: AppFonts.primary,
                           fontSize: 11, color: AppColors.onSurfaceVariant)),
-                      const SizedBox(height: 2),
-                      Text(_address, style: const TextStyle(fontFamily: AppFonts.primary,
+                      SizedBox(height: 2),
+                      Text(_address, style: TextStyle(fontFamily: AppFonts.primary,
                           fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.onSurface)),
                     ])),
                   ]),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
 
                   // 下一步按钮
                   FilledButton(
@@ -275,10 +275,10 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
                     },
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      minimumSize: const Size(double.infinity, 52),
+                      minimumSize: Size(double.infinity, 52),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
-                    child: const Text('下一步', style: TextStyle(fontFamily: AppFonts.primary,
+                    child: Text('下一步', style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 15, fontWeight: FontWeight.w700)),
                   ),
                 ]),
@@ -301,7 +301,7 @@ class FenceConfigPage extends ConsumerStatefulWidget {
   final LatLng   pickedCenter;
   final String   pickedAddress;
 
-  const FenceConfigPage({
+  FenceConfigPage({
     super.key,
     required this.deviceMac,
     required this.pickedCenter,
@@ -342,7 +342,7 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
       if (!mounted) return;
       // 成功：弹提示并弹出两层（选点页 + 配置页）回到围栏列表
       PetToast.success(context, '围栏已添加 ✅');
-      await Future.delayed(const Duration(milliseconds: 600));
+      await Future.delayed(Duration(milliseconds: 600));
       if (!mounted) return;
       Navigator.pop(context, true); // 回到地图选点页
       Navigator.pop(context, true); // 回到围栏管理页，触发刷新
@@ -363,11 +363,11 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_rounded, size: 20),
           color: AppColors.onSurface,
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('设置围栏', style: TextStyle(fontFamily: AppFonts.primary,
+        title: Text('设置围栏', style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 17, fontWeight: FontWeight.w700)),
         centerTitle: false,
       ),
@@ -384,14 +384,14 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
                 options: MapOptions(
                   initialCenter: widget.pickedCenter,
                   initialZoom:   15,
-                  interactionOptions: const InteractionOptions(
+                  interactionOptions: InteractionOptions(
                     flags: InteractiveFlag.none, // 配置页地图不可交互
                   ),
                 ),
                 children: [
                   TileLayer(
                     urlTemplate: _amapTileUrl,
-                    subdomains: const ['1', '2', '3', '4'],
+                    subdomains: ['1', '2', '3', '4'],
                     userAgentPackageName: 'com.junxin.petpogo_and',
                   ),
                   CircleLayer(circles: [
@@ -407,7 +407,7 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
                   MarkerLayer(markers: [
                     Marker(
                       point: widget.pickedCenter,
-                      child: const Icon(Icons.location_on_rounded,
+                      child: Icon(Icons.location_on_rounded,
                           color: AppColors.primary, size: 32),
                     ),
                   ]),
@@ -415,11 +415,11 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // ── 围栏名称 ──
           _SectionLabel('围栏名称'),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           TextField(
             controller: _nameCtrl,
             decoration: InputDecoration(
@@ -432,21 +432,21 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
                   borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
-            style: const TextStyle(fontFamily: AppFonts.primary,
+            style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 15, fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // ── 快捷半径选择 ──
           _SectionLabel('搜索范围'),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Row(children: _quickRadii.map((r) {
             final active = _radius == r;
             return Expanded(
               child: GestureDetector(
                 onTap: () { HapticFeedback.selectionClick(); setState(() { _radius = r; }); },
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
+                  duration: Duration(milliseconds: 180),
                   margin: const EdgeInsets.only(right: 8),
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
@@ -468,7 +468,7 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
               ),
             );
           }).toList()),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
 
           // ── 精细滑块 ──
           Row(children: [
@@ -497,15 +497,15 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
               ),
               child: Text('${_radius.toInt()}m',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontFamily: AppFonts.primary,
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
             ),
           ]),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // ── 位置信息 ──
           _SectionLabel('位置信息'),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -513,18 +513,18 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
               borderRadius: BorderRadius.circular(14),
             ),
             child: Row(children: [
-              const Icon(Icons.location_on_outlined, size: 18, color: AppColors.primary),
-              const SizedBox(width: 10),
+              Icon(Icons.location_on_outlined, size: 18, color: AppColors.primary),
+              SizedBox(width: 10),
               Expanded(child: Text(widget.pickedAddress,
-                  style: const TextStyle(fontFamily: AppFonts.primary,
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 13, color: AppColors.onSurface))),
             ]),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // ── 警报通知入口（准备按钮，不跳转）──
           _SectionLabel('警报通知'),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           GestureDetector(
             onTap: () => PetToast.warning(context, '警报通知即将上线'),
             child: Container(
@@ -537,15 +537,15 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
                 Container(
                   width: 36, height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF9800).withOpacity(0.12),
+                    color: Color(0xFFFF9800).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.notifications_rounded,
+                  child: Icon(Icons.notifications_rounded,
                       color: Color(0xFFFF9800), size: 20),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('设置警报通知', style: TextStyle(fontFamily: AppFonts.primary,
+                  Text('设置警报通知', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
                   Text('即将上线', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 11, color: AppColors.onSurfaceVariant)),
@@ -556,13 +556,13 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
                     color: Colors.grey.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text('即将上线', style: TextStyle(fontFamily: AppFonts.primary,
+                  child: Text('即将上线', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 10, fontWeight: FontWeight.w700, color: Colors.grey)),
                 ),
               ]),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
 
           // ── 警报声音入口（准备按钮，不跳转）──
           GestureDetector(
@@ -580,11 +580,11 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
                     color: AppColors.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.volume_up_rounded, color: AppColors.primary, size: 20),
+                  child: Icon(Icons.volume_up_rounded, color: AppColors.primary, size: 20),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('选择警报声音', style: TextStyle(fontFamily: AppFonts.primary,
+                  Text('选择警报声音', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
                   Text('设置宠物越界时的提醒声音', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 11, color: AppColors.onSurfaceVariant)),
@@ -595,7 +595,7 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
                     color: Colors.grey.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text('即将上线', style: TextStyle(fontFamily: AppFonts.primary,
+                  child: Text('即将上线', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 10, fontWeight: FontWeight.w700, color: Colors.grey)),
                 ),
               ]),
@@ -612,13 +612,13 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
             onPressed: _saving ? null : _save,
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.primary,
-              minimumSize: const Size(double.infinity, 52),
+              minimumSize: Size(double.infinity, 52),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
             child: _saving
-                ? const SizedBox(width: 22, height: 22,
+                ? SizedBox(width: 22, height: 22,
                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                : const Text('保存围栏', style: TextStyle(fontFamily: AppFonts.primary,
+                : Text('保存围栏', style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 15, fontWeight: FontWeight.w700)),
           ),
         ),
@@ -638,7 +638,7 @@ class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);
   @override
   Widget build(BuildContext context) => Text(text,
-      style: const TextStyle(fontFamily: AppFonts.primary,
+      style: TextStyle(fontFamily: AppFonts.primary,
           fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.onSurface));
 }
 
@@ -656,10 +656,10 @@ class _GlassButton extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.92),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)],
       ),
       child: loading
-          ? const Center(child: SizedBox(width: 18, height: 18,
+          ? Center(child: SizedBox(width: 18, height: 18,
               child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)))
           : Icon(icon, size: 20, color: AppColors.onSurface),
     ),

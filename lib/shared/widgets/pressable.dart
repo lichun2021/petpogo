@@ -13,7 +13,7 @@ class PressableButton extends StatefulWidget {
   final BorderRadius? borderRadius;
   final bool haptic;
 
-  const PressableButton({
+  PressableButton({
     super.key,
     required this.child,
     this.onTap,
@@ -77,7 +77,7 @@ class AnimatedCard extends StatefulWidget {
   final BorderRadius borderRadius;
   final List<BoxShadow>? shadow;
 
-  const AnimatedCard({
+  AnimatedCard({
     super.key,
     required this.child,
     this.onTap,
@@ -101,7 +101,7 @@ class _AnimatedCardState extends State<AnimatedCard>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 120),
+      duration: Duration(milliseconds: 120),
     );
     _scale = Tween<double>(begin: 1.0, end: 0.97).animate(
       CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
@@ -166,7 +166,7 @@ class PrimaryButton extends StatelessWidget {
   final bool isLoading;
   final double? width;
 
-  const PrimaryButton({
+  PrimaryButton({
     super.key,
     required this.label,
     this.onPressed,
@@ -196,14 +196,14 @@ class PrimaryButton extends StatelessWidget {
                   BoxShadow(
                     color: AppColors.primary.withOpacity(0.3),
                     blurRadius: 16,
-                    offset: const Offset(0, 6),
+                    offset: Offset(0, 6),
                   )
                 ]
               : [],
         ),
         child: Center(
           child: isLoading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 22,
                   height: 22,
                   child: CircularProgressIndicator(
@@ -216,11 +216,11 @@ class PrimaryButton extends StatelessWidget {
                   children: [
                     if (icon != null) ...[
                       Icon(icon, color: Colors.white, size: 18),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                     ],
                     Text(
                       label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: AppFonts.primary,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,

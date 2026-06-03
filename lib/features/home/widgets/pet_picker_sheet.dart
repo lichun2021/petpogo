@@ -63,7 +63,7 @@ class PetPickerSheet extends ConsumerStatefulWidget {
       while (
           ref.read(deviceListProvider).isLoading &&
           DateTime.now().isBefore(deadline)) {
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future.delayed(Duration(milliseconds: 200));
       }
       deviceState = ref.read(deviceListProvider);
     }
@@ -124,7 +124,7 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
         final deadline = DateTime.now().add(maxWait);
         while (ref.read(deviceListProvider).isLoading &&
             DateTime.now().isBefore(deadline)) {
-          await Future.delayed(const Duration(milliseconds: 200));
+          await Future.delayed(Duration(milliseconds: 200));
         }
         deviceState = ref.read(deviceListProvider);
       }
@@ -174,7 +174,7 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
     return Container(
       // 最大高度限制，内容不足时自动收缩
       constraints: BoxConstraints(maxHeight: screenH * 0.55),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -191,8 +191,8 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(height: 14),
-          const Text(
+          SizedBox(height: 14),
+          Text(
             '选择要咨询的宠物',
             style: TextStyle(
               fontSize: 16,
@@ -200,7 +200,7 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
               color: AppColors.onSurface,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             '宠小伊会基于该宠物的档案进行问诊',
             style: TextStyle(
@@ -208,11 +208,11 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
               color: AppColors.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           // 内容区：自适应，但最多撑到父 constraints 上限
           Flexible(
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
+              duration: Duration(milliseconds: 200),
               switchInCurve: Curves.easeOut,
               switchOutCurve: Curves.easeIn,
               child: _buildContent(),
@@ -227,7 +227,7 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
 
   Widget _buildContent() {
     if (_loading) {
-      return const SizedBox(
+      return SizedBox(
         key: ValueKey('loading'),
         width: double.infinity,
         child: Padding(
@@ -242,7 +242,7 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
       );
     }
     if (_error != null) {
-      return _ErrorState(key: const ValueKey('error'), message: _error!, onRetry: _load);
+      return _ErrorState(key: ValueKey('error'), message: _error!, onRetry: _load);
     }
     if (_pets.isEmpty) {
       return const _EmptyState(key: ValueKey('empty'));
@@ -258,12 +258,12 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
     final listH    = padV + visibleN * tileH + (visibleN - 1) * sepH;
 
     return SizedBox(
-      key: const ValueKey('list'),
+      key: ValueKey('list'),
       height: listH,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
         itemCount: _pets.length,
-        separatorBuilder: (_, __) => const SizedBox(height: sepH),
+        separatorBuilder: (_, __) => SizedBox(height: sepH),
         itemBuilder: (context, i) {
           final pw = _pets[i];
           return _PetTile(
@@ -312,7 +312,7 @@ class _PetTile extends StatelessWidget {
               color: AppColors.cardShadow,
               blurRadius: 10,
               spreadRadius: -4,
-              offset: const Offset(0, 2),
+              offset: Offset(0, 2),
             ),
           ],
         ),
@@ -321,22 +321,22 @@ class _PetTile extends StatelessWidget {
             CircleAvatar(
               radius: 24,
               backgroundColor: AppColors.secondaryContainer,
-              child: const Text('🐾', style: TextStyle(fontSize: 22)),
+              child: Text('🐾', style: TextStyle(fontSize: 22)),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     pet.petName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: AppColors.onSurface,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  SizedBox(height: 3),
                   Text(
                     [
                       if (pet.breed.isNotEmpty) pet.breed,
@@ -348,7 +348,7 @@ class _PetTile extends StatelessWidget {
                       color: AppColors.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     '来自 ${device.displayName}',
                     style: TextStyle(
@@ -359,7 +359,7 @@ class _PetTile extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
+            Icon(
               Icons.chevron_right_rounded,
               color: AppColors.secondary,
               size: 22,
@@ -389,12 +389,12 @@ class _EmptyState extends StatelessWidget {
               color: AppColors.secondaryContainer.withOpacity(0.3),
               shape: BoxShape.circle,
             ),
-            child: const Center(
+            child: Center(
               child: Text('🔒', style: TextStyle(fontSize: 32)),
             ),
           ),
-          const SizedBox(height: 14),
-          const Text(
+          SizedBox(height: 14),
+          Text(
             '问诊功能暂不可用',
             style: TextStyle(
               fontSize: 15,
@@ -402,7 +402,7 @@ class _EmptyState extends StatelessWidget {
               color: AppColors.onSurface,
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             '请先绑定设备并完善宠物档案\n才能使用 AI 问诊功能',
             textAlign: TextAlign.center,
@@ -412,7 +412,7 @@ class _EmptyState extends StatelessWidget {
               color: AppColors.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -420,8 +420,8 @@ class _EmptyState extends StatelessWidget {
                 Navigator.of(context).pop(); // 关闭 sheet
                 context.push(AppRoutes.bindDevice);
               },
-              icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-              label: const Text('去绑定设备'),
+              icon: Icon(Icons.add_circle_outline_rounded, size: 18),
+              label: Text('去绑定设备'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.secondary,
                 foregroundColor: Colors.white,
@@ -455,7 +455,7 @@ class _ErrorState extends StatelessWidget {
             size: 36,
             color: AppColors.error.withOpacity(0.8),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           Text(
             '加载失败：$message',
             textAlign: TextAlign.center,
@@ -464,8 +464,8 @@ class _ErrorState extends StatelessWidget {
               color: AppColors.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 12),
-          TextButton(onPressed: onRetry, child: const Text('重试')),
+          SizedBox(height: 12),
+          TextButton(onPressed: onRetry, child: Text('重试')),
         ],
       ),
     );
