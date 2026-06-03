@@ -5,6 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/widgets/pet_toast.dart';
 import '../controller/im_controller.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 
 /// 扫码加好友页
@@ -116,7 +117,7 @@ class _ScanAddFriendPageState extends ConsumerState<ScanAddFriendPage> {
                       '扫码加好友',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans', fontSize: 18,
+                        fontFamily: AppFonts.primary, fontSize: 18,
                         fontWeight: FontWeight.w700, color: Colors.white,
                       ),
                     ),
@@ -150,7 +151,7 @@ class _ScanAddFriendPageState extends ConsumerState<ScanAddFriendPage> {
                     child: const Text(
                       '将对方的 PetPogo 二维码对准扫描框',
                       style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+                        fontFamily: AppFonts.primary, fontSize: 13,
                         color: Colors.white, fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -306,7 +307,7 @@ class _AddFriendDialogState extends State<_AddFriendDialog> {
             const Text(
               '添加好友',
               style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 20,
+                fontFamily: AppFonts.primary, fontSize: 20,
                 fontWeight: FontWeight.w800, color: AppColors.onSurface,
               ),
             ),
@@ -314,7 +315,7 @@ class _AddFriendDialogState extends State<_AddFriendDialog> {
             Text(
               '用户 ID: ${widget.userId}',
               style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                fontFamily: AppFonts.primary, fontSize: 12,
                 color: AppColors.onSurfaceVariant,
               ),
             ),
@@ -323,10 +324,10 @@ class _AddFriendDialogState extends State<_AddFriendDialog> {
             TextField(
               controller: _ctrl,
               maxLength: 50,
-              style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14),
+              style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14),
               decoration: InputDecoration(
                 labelText: '验证消息',
-                labelStyle: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13),
+                labelStyle: const TextStyle(fontFamily: AppFonts.primary, fontSize: 13),
                 filled: true,
                 fillColor: AppColors.surfaceContainerLow,
                 border: OutlineInputBorder(
@@ -353,7 +354,7 @@ class _AddFriendDialogState extends State<_AddFriendDialog> {
                       ),
                     ),
                     child: const Text('取消',
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600)),
+                      style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w600)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -379,7 +380,7 @@ class _AddFriendDialogState extends State<_AddFriendDialog> {
                           )
                         : const Text('发送申请',
                             style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
+                              fontFamily: AppFonts.primary,
                               fontWeight: FontWeight.w700, fontSize: 14,
                             )),
                   ),

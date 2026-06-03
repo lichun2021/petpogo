@@ -17,6 +17,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/api/result.dart';
 import '../data/auth_repository.dart';
 import '../data/models/auth_model.dart';
 import '../../message/controller/im_controller.dart';
@@ -26,11 +27,11 @@ import '../../profile/data/user_stats_provider.dart';
 
 // ── 认证状态枚举 ────────────────────────────────────────────
 enum AuthStatus {
-  restoring,  // 启动时从存储恢复（短暂的中间态）
-  guest,      // 游客（未登录）
-  loading,    // 登录请求进行中
-  loggedIn,   // 已登录
-  error,      // 登录失败
+  restoring, // 启动时从存储恢复（短暂的中间态）
+  guest, // 游客（未登录）
+  loading, // 登录请求进行中
+  loggedIn, // 已登录
+  error, // 登录失败
 }
 
 // ── 认证状态类 ──────────────────────────────────────────────
@@ -46,10 +47,10 @@ class AuthState {
   });
 
   /// 便捷判断
-  bool get isGuest      => status == AuthStatus.guest;
-  bool get isLoggedIn   => status == AuthStatus.loggedIn;
-  bool get isLoading    => status == AuthStatus.loading;
-  bool get isRestoring  => status == AuthStatus.restoring;
+  bool get isGuest => status == AuthStatus.guest;
+  bool get isLoggedIn => status == AuthStatus.loggedIn;
+  bool get isLoading => status == AuthStatus.loading;
+  bool get isRestoring => status == AuthStatus.restoring;
 
   /// 当前用户名（未登录时为空字符串）
   String get displayName => user?.name ?? '';
@@ -58,15 +59,16 @@ class AuthState {
     AuthStatus? status,
     UserInfo? user,
     String? errorMessage,
-  }) => AuthState(
-    status:       status       ?? this.status,
-    user:         user         ?? this.user,
-    errorMessage: errorMessage,   // 允许置 null
-  );
+  }) =>
+      AuthState(
+        status: status ?? this.status,
+        user: user ?? this.user,
+        errorMessage: errorMessage, // 允许置 null
+      );
 
   // 工厂方法（语义清晰）
   const AuthState.restoring() : this(status: AuthStatus.restoring);
-  const AuthState.guest()     : this(status: AuthStatus.guest);
+  const AuthState.guest() : this(status: AuthStatus.guest);
 }
 
 // ── Controller ──────────────────────────────────────────────
@@ -74,8 +76,7 @@ class AuthController extends StateNotifier<AuthState> {
   final AuthRepository _repo;
   final Ref _ref;
 
-  AuthController(this._repo, this._ref)
-      : super(const AuthState.restoring()) {
+  AuthController(this._repo, this._ref) : super(const AuthState.restoring()) {
     // App 启动时自动恢复会话
     _restoreSession();
   }
@@ -99,7 +100,8 @@ class AuthController extends StateNotifier<AuthState> {
     required String code,
     String nationNum = '86',
   }) async {
-    debugPrint('[AuthCtrl] [状态] → loading (phone=$phone, nationNum=$nationNum, type=sms)');
+    debugPrint(
+        '[AuthCtrl] [状态] → loading (phone=$phone, nationNum=$nationNum, type=sms)');
     state = state.copyWith(status: AuthStatus.loading);
 
     final result = await _repo.loginWithSms(
@@ -126,7 +128,8 @@ class AuthController extends StateNotifier<AuthState> {
     required String password,
     String nationNum = '86',
   }) async {
-    debugPrint('[AuthCtrl] [状态] → loading (phone=$phone, nationNum=$nationNum, type=pwd)');
+    debugPrint(
+        '[AuthCtrl] [状态] → loading (phone=$phone, nationNum=$nationNum, type=pwd)');
     state = state.copyWith(status: AuthStatus.loading);
 
     final result = await _repo.loginWithPwd(
@@ -190,6 +193,17 @@ class AuthController extends StateNotifier<AuthState> {
     );
   }
 
+  // ── 修改登录密码 ───────────────────────────────────────
+  Future<Result<bool>> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) {
+    return _repo.changePassword(
+      oldPassword: oldPassword,
+      newPassword: newPassword,
+    );
+  }
+
   // ── 退出登录 ───────────────────────────────────────────
   Future<void> logout() async {
     debugPrint('[AuthCtrl] [状态] loggedIn → guest (退出登录)');
@@ -222,7 +236,8 @@ class AuthController extends StateNotifier<AuthState> {
     final updated = state.user!.copyWith(aiQuota: quota);
     state = state.copyWith(user: updated);
     _repo.saveAiQuota(quota); // 持久化到 SecureStorage
-    debugPrint('[AuthCtrl] AI 配额已更新: used=${quota.used} remaining=${quota.remaining}');
+    debugPrint(
+        '[AuthCtrl] AI 配额已更新: used=${quota.used} remaining=${quota.remaining}');
   }
 
   // ── 登录后触发数据加载 ─────────────────────────────────
@@ -232,13 +247,13 @@ class AuthController extends StateNotifier<AuthState> {
     if (user == null) return;
 
     // ① IM 登录
-    final imUserId  = user.id.isNotEmpty ? user.id : user.merchantId.toString();
+    final imUserId = user.id.isNotEmpty ? user.id : user.merchantId.toString();
     final imUserSig = user.imUserSig;
     if (imUserSig.isNotEmpty) {
       _ref.read(imControllerProvider.notifier).loginIm(
-        userId:  imUserId,
-        userSig: imUserSig,
-      );
+            userId: imUserId,
+            userSig: imUserSig,
+          );
       debugPrint('[AuthCtrl] 触发 IM 登录 (userId=$imUserId)');
     } else {
       debugPrint('[AuthCtrl] ⚠️ imUserSig 为空，跳过 IM 登录');

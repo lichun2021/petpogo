@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/theme/app_colors.dart';
 import 'data/music_models.dart';
 import 'music_category_page.dart'; // globalPlayerProvider / playingIdProvider
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ═══════════════════════════════════════════════════════════
 // 全屏播放器页
@@ -163,7 +164,7 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
               ),
               const Spacer(),
               Text(_current.name,
-                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: const TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 15, fontWeight: FontWeight.w700,
                       color: Colors.white)),
               const Spacer(),
@@ -230,13 +231,13 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
             child: Column(children: [
               Text(_current.name,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: const TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white),
                   maxLines: 2, overflow: TextOverflow.ellipsis),
               if (_current.artist != null && _current.artist!.isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Text(_current.artist!,
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 14, color: Colors.white.withOpacity(0.6))),
               ],
             ]),
@@ -277,10 +278,10 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(_fmt(pos), style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+                              fontFamily: AppFonts.primary, fontSize: 11,
                               color: Colors.white.withOpacity(0.5))),
                           Text(_fmt(dur), style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+                              fontFamily: AppFonts.primary, fontSize: 11,
                               color: Colors.white.withOpacity(0.5))),
                         ],
                       ),
@@ -372,7 +373,7 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
               padding: const EdgeInsets.only(bottom: 16),
               child: Text(
                 '${_index + 1} / ${widget.playlist.length}',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 12, color: Colors.white.withOpacity(0.4)),
               ),
             ),

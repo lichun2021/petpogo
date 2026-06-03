@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  PetToast — 顶部滑入通知
@@ -217,7 +218,7 @@ class _ToastBannerState extends State<_ToastBanner>
                 Expanded(child: Text(
                   widget.message,
                   style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
+                    fontFamily: AppFonts.primary,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: Colors.white.withOpacity(0.92),

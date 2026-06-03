@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../core/config/shop_config.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 /// 附近门店页（商城的子页面）
 /// 数据源由 ShopConfig.nearbySource 控制
@@ -71,7 +72,7 @@ class _NearbyStoresPageState extends State<NearbyStoresPage> {
               child: Text(
                 _dataSourceLabel,
                 style: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: AppFonts.primary,
                   fontSize: 11,
                   color: AppColors.primary,
                   fontWeight: FontWeight.w700,
@@ -110,7 +111,7 @@ class _NearbyStoresPageState extends State<NearbyStoresPage> {
                           Text(
                             _sortOptions[i],
                             style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
+                              fontFamily: AppFonts.primary,
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: isSelected ? AppColors.onPrimary : AppColors.onSurfaceVariant,
@@ -150,7 +151,7 @@ class _NearbyStoresPageState extends State<NearbyStoresPage> {
                         child: Text(
                           '门店加载完毕',
                           style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
+                            fontFamily: AppFonts.primary,
                             color: AppColors.onSurfaceVariant,
                             fontSize: 13,
                           ),
@@ -225,7 +226,7 @@ class _StoreCard extends StatelessWidget {
                       Text(
                         store['name'] as String,
                         style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
+                          fontFamily: AppFonts.primary,
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: AppColors.onSurface,
@@ -247,7 +248,7 @@ class _StoreCard extends StatelessWidget {
                           Text(
                             '已售$sales',
                             style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
+                              fontFamily: AppFonts.primary,
                               fontSize: 12,
                               color: AppColors.onSurfaceVariant,
                             ),
@@ -266,7 +267,7 @@ class _StoreCard extends StatelessWidget {
                             child: Text(
                               store['type'] as String,
                               style: TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
+                                fontFamily: AppFonts.primary,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.secondary,
@@ -278,7 +279,7 @@ class _StoreCard extends StatelessWidget {
                             child: Text(
                               store['address'] as String,
                               style: TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
+                                fontFamily: AppFonts.primary,
                                 fontSize: 11,
                                 color: AppColors.onSurfaceVariant,
                               ),
@@ -289,7 +290,7 @@ class _StoreCard extends StatelessWidget {
                           Text(
                             store['distance'] as String,
                             style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
+                              fontFamily: AppFonts.primary,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               color: AppColors.primary,

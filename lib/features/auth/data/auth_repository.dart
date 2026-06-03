@@ -26,15 +26,15 @@ import '../../../../core/api/result.dart';
 import 'models/auth_model.dart';
 
 // ── Storage 键名常量 ─────────────────────────────────────────
-const _kToken         = 'auth_token';
-const _kId            = 'auth_id';
-const _kAccount       = 'auth_account';      // phone
-const _kName          = 'auth_name';         // nickname
-const _kAvatar        = 'auth_avatar';
-const _kMerchantId    = 'auth_merchant_id';
-const _kImUserSig     = 'auth_im_user_sig';
-const _kIsVip         = 'auth_is_vip';
-const _kVipExpireAt   = 'auth_vip_expire_at';
+const _kToken = 'auth_token';
+const _kId = 'auth_id';
+const _kAccount = 'auth_account'; // phone
+const _kName = 'auth_name'; // nickname
+const _kAvatar = 'auth_avatar';
+const _kMerchantId = 'auth_merchant_id';
+const _kImUserSig = 'auth_im_user_sig';
+const _kIsVip = 'auth_is_vip';
+const _kVipExpireAt = 'auth_vip_expire_at';
 const _kPeerGatewayUrl = 'auth_peer_gateway_url'; // iPet 硬件网关地址（登录来，持久化）
 
 class AuthRepository {
@@ -87,7 +87,8 @@ class AuthRepository {
     return loginWithPwd(phone: account, password: password);
   }
 
-  Future<Result<UserInfo>> _doLogin(String path, Map<String, dynamic> data) async {
+  Future<Result<UserInfo>> _doLogin(
+      String path, Map<String, dynamic> data) async {
     try {
       final res = await _client.post<Map<String, dynamic>>(path, data: data);
       final loginResp = LoginResponse.fromJson(res);
@@ -135,6 +136,33 @@ class AuthRepository {
     }
   }
 
+  // ── 修改登录密码 ───────────────────────────────────────
+  Future<Result<bool>> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await _client.put<Map<String, dynamic>>(
+        '/sdkapi/user/password',
+        data: {
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+        },
+      );
+      debugPrint('[AuthRepo] ✅ 密码已更新');
+      return const Success(true);
+    } on DioException catch (e) {
+      final ex = e.error is ApiException
+          ? e.error as ApiException
+          : ApiException(message: e.message ?? '网络错误');
+      debugPrint('[AuthRepo] ✗ 修改密码失败: ${ex.message}');
+      return Failure(ex);
+    } catch (e) {
+      debugPrint('[AuthRepo] ✗ 修改密码意外错误: $e');
+      return Failure(ApiException(message: '修改密码失败，请重试'));
+    }
+  }
+
   // ── 启动恢复（App 冷启动自动登录）────────────────────────
   /// 从 SecureStorage 读取已保存的 UserInfo
   /// 返回 null → 从未登录过，进入游客模式
@@ -150,15 +178,15 @@ class AuthRepository {
     }
 
     final user = UserInfo.fromStorageMap({
-      'token':          token,
-      'id':             await _storage.read(key: _kId),
-      'account':        await _storage.read(key: _kAccount),
-      'name':           await _storage.read(key: _kName),
-      'avatar':         await _storage.read(key: _kAvatar),
-      'merchantId':     await _storage.read(key: _kMerchantId),
-      'imUserSig':      await _storage.read(key: _kImUserSig),
-      'isVip':          await _storage.read(key: _kIsVip),
-      'vipExpireAt':    await _storage.read(key: _kVipExpireAt),
+      'token': token,
+      'id': await _storage.read(key: _kId),
+      'account': await _storage.read(key: _kAccount),
+      'name': await _storage.read(key: _kName),
+      'avatar': await _storage.read(key: _kAvatar),
+      'merchantId': await _storage.read(key: _kMerchantId),
+      'imUserSig': await _storage.read(key: _kImUserSig),
+      'isVip': await _storage.read(key: _kIsVip),
+      'vipExpireAt': await _storage.read(key: _kVipExpireAt),
       'peerGatewayUrl': await _storage.read(key: _kPeerGatewayUrl),
     });
 
@@ -177,17 +205,21 @@ class AuthRepository {
   // ── 获取最新用户资料（改昵称后刷新）──────────────────────
   Future<UserInfo?> fetchProfile() async {
     try {
-      final res = await _client.get<Map<String, dynamic>>('/sdkapi/user/profile');
+      final res =
+          await _client.get<Map<String, dynamic>>('/sdkapi/user/profile');
       final current = await restoreSession();
       if (current == null) return null;
       // 用新工厂方法，同时同步 VIP 状态
       final updated = UserInfo.fromProfileJson(current, res);
-      await _storage.write(key: _kName,        value: updated.name);
-      await _storage.write(key: _kAvatar,      value: updated.avatar);
-      await _storage.write(key: _kIsVip,       value: updated.isVip ? '1' : '0');
-      await _storage.write(key: _kVipExpireAt, value: updated.vipExpireAt ?? '');
+      await _storage.write(key: _kName, value: updated.name);
+      await _storage.write(key: _kAvatar, value: updated.avatar);
+      await _storage.write(key: _kIsVip, value: updated.isVip ? '1' : '0');
+      await _storage.write(
+          key: _kVipExpireAt, value: updated.vipExpireAt ?? '');
       return updated;
-    } catch (_) { return null; }
+    } catch (_) {
+      return null;
+    }
   }
 
   // ── 更新头像 ─────────────────────────────────────────────
@@ -210,31 +242,33 @@ class AuthRepository {
   Future<void> _persist(UserInfo user) async {
     final q = user.aiQuota;
     await Future.wait([
-      _storage.write(key: _kToken,          value: user.token),
-      _storage.write(key: _kId,             value: user.id),
-      _storage.write(key: _kAccount,        value: user.account),
-      _storage.write(key: _kName,           value: user.name),
-      _storage.write(key: _kAvatar,         value: user.avatar),
-      _storage.write(key: _kMerchantId,     value: user.merchantId.toString()),
-      _storage.write(key: _kImUserSig,      value: user.imUserSig),
-      _storage.write(key: _kIsVip,          value: user.isVip ? '1' : '0'),
-      _storage.write(key: _kVipExpireAt,    value: user.vipExpireAt ?? ''),
-      _storage.write(key: 'aiQuota_used',      value: q.used.toString()),
-      _storage.write(key: 'aiQuota_limit',     value: q.limit.toString()),
+      _storage.write(key: _kToken, value: user.token),
+      _storage.write(key: _kId, value: user.id),
+      _storage.write(key: _kAccount, value: user.account),
+      _storage.write(key: _kName, value: user.name),
+      _storage.write(key: _kAvatar, value: user.avatar),
+      _storage.write(key: _kMerchantId, value: user.merchantId.toString()),
+      _storage.write(key: _kImUserSig, value: user.imUserSig),
+      _storage.write(key: _kIsVip, value: user.isVip ? '1' : '0'),
+      _storage.write(key: _kVipExpireAt, value: user.vipExpireAt ?? ''),
+      _storage.write(key: 'aiQuota_used', value: q.used.toString()),
+      _storage.write(key: 'aiQuota_limit', value: q.limit.toString()),
       _storage.write(key: 'aiQuota_remaining', value: q.remaining.toString()),
       // peerGatewayUrl: 登录时下发，非空时才覆写（不用旧地址覆盖新地址）
       if (user.peerGatewayUrl.isNotEmpty)
         _storage.write(key: _kPeerGatewayUrl, value: user.peerGatewayUrl),
     ]);
-    debugPrint('[AuthRepo] 会话已持久化 (VIP=${user.isVip}, AI剩余=${q.remaining}, peer=${user.peerGatewayUrl})');
+    debugPrint(
+        '[AuthRepo] 会话已持久化 (VIP=${user.isVip}, AI剩余=${q.remaining}, peer=${user.peerGatewayUrl})');
   }
 
   // ── 仅更新 AI 配额（分析完成后快速写入）──────────────────────────────────
   Future<void> saveAiQuota(AiQuota quota) => Future.wait([
-    _storage.write(key: 'aiQuota_used',      value: quota.used.toString()),
-    _storage.write(key: 'aiQuota_limit',     value: quota.limit.toString()),
-    _storage.write(key: 'aiQuota_remaining', value: quota.remaining.toString()),
-  ]);
+        _storage.write(key: 'aiQuota_used', value: quota.used.toString()),
+        _storage.write(key: 'aiQuota_limit', value: quota.limit.toString()),
+        _storage.write(
+            key: 'aiQuota_remaining', value: quota.remaining.toString()),
+      ]);
 }
 
 // ── Riverpod Provider ─────────────────────────────────────

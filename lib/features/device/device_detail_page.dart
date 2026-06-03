@@ -14,6 +14,7 @@ import '../pet/bind_pet_sheet.dart';
 import 'safety_scene_page.dart';
 import 'robot_device_page.dart';
 import '../bind_device/select_device_page.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 设备详情页 ────────────────────────────────────────────
 class DeviceDetailPage extends ConsumerStatefulWidget {
@@ -108,7 +109,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
       const Icon(Icons.error_outline_rounded, size: 64, color: AppColors.onSurfaceVariant),
       const SizedBox(height: 16),
       Text(_error!, textAlign: TextAlign.center,
-          style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14, color: AppColors.onSurfaceVariant)),
+          style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14, color: AppColors.onSurfaceVariant)),
       const SizedBox(height: 16),
       OutlinedButton(onPressed: _loadAll, child: const Text('重试')),
     ]));
@@ -135,7 +136,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                 _detail?.displayName ?? widget.name,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: AppFonts.primary,
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                 ),
@@ -232,7 +233,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
               Flexible(
                 child: Text(deviceName,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: const TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 18, fontWeight: FontWeight.w800,
                         color: Colors.white, letterSpacing: -0.3)),
               ),
@@ -254,7 +255,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                   shape: BoxShape.circle)),
               const SizedBox(width: 5),
               Text(online ? '在线' : '离线',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                  style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: online ? const Color(0xFF4ADE80) : Colors.white60)),
             ]),
@@ -268,7 +269,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                 border: Border.all(color: Colors.white.withOpacity(0.15)),
               ),
               child: Text(widget.mac,
-                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: const TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 10, fontWeight: FontWeight.w600,
                       color: Colors.white70, letterSpacing: 0.5)),
             ),
@@ -283,7 +284,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                   const SizedBox(width: 4),
                   Text(
                     _detail?.lastOnlineDisplay ?? '-',
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: const TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 10, color: Colors.white70),
                   ),
                 ])),
@@ -316,10 +317,10 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                 child: const Icon(Icons.add_rounded, color: AppColors.primary, size: 26)),
             const SizedBox(width: 14),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('绑定宠物', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              const Text('绑定宠物', style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primary)),
               Text('点此添加宠物信息，开始跟踪位置、管理围栏',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                  style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
                       color: AppColors.onSurfaceVariant)),
             ])),
             const Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 20),
@@ -331,7 +332,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     final pet = _petInfo!;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        const Text('绑定的宠物', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+        const Text('绑定的宠物', style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
         Row(children: [
           _SmallAction(icon: Icons.edit_rounded, label: '编辑', onTap: () async {
@@ -366,14 +367,14 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                     : const Icon(Icons.pets_rounded, color: AppColors.primary, size: 24)),
             const SizedBox(width: 14),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(pet.petName, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+              Text(pet.petName, style: const TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
               Text(
                 [if (pet.breed.isNotEmpty) pet.breed,
                  if (pet.age > 0) '${pet.age}岁',
                  if (pet.weight.isNotEmpty) '${pet.weight}kg',
                  if (pet.sex.isNotEmpty) pet.sexDisplay].join(' · '),
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
                     color: AppColors.onSurfaceVariant),
               ),
             ])),
@@ -382,7 +383,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(20)),
-                child: const Text('查看位置', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                child: const Text('查看位置', style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.secondary)),
               ),
               const SizedBox(width: 6),
@@ -398,9 +399,9 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     showDialog(context: context, builder: (ctx) => AlertDialog(
       backgroundColor: AppColors.surfaceContainerLow,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('删除宠物', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700)),
+      title: const Text('删除宠物', style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
       content: Text('确定要删除「${pet.petName}」吗？删除后数据不可恢复。',
-          style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
+          style: const TextStyle(fontFamily: AppFonts.primary)),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
         FilledButton(
@@ -437,9 +438,9 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         const Icon(Icons.system_update_rounded, color: AppColors.tertiary, size: 22),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('有新版本可升级', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+          const Text('有新版本可升级', style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.tertiary)),
-          Text(_otaInfo?.msg ?? '', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+          Text(_otaInfo?.msg ?? '', style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 11, color: AppColors.onSurfaceVariant)),
         ])),
         TextButton(onPressed: () {}, child: const Text('升级', style: TextStyle(color: AppColors.tertiary))),
@@ -452,11 +453,11 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         const Expanded(child: Text('今日安全概览',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 15, fontWeight: FontWeight.w800))),
         GestureDetector(
           onTap: () => PetToast.warning(context, '更多功能即将上线'),
-          child: const Text('更多', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+          child: const Text('更多', style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
         ),
       ]),
@@ -484,7 +485,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
               ),
               const SizedBox(width: 10),
               const Text('宠物行为活跃，安心守护中',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
             ]),
           ),
@@ -492,16 +493,16 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
           // 统计数字
           Row(children: [
             Expanded(child: Column(children: [
-              const Text('0', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              const Text('0', style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.onSurface)),
-              const Text('预警提醒', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              const Text('预警提醒', style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 12, color: AppColors.onSurfaceVariant)),
             ])),
             Container(width: 1, height: 36, color: AppColors.outlineVariant),
             Expanded(child: Column(children: const [
-              Text('0', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              Text('0', style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.onSurface)),
-              Text('越界提醒', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              Text('越界提醒', style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 12, color: AppColors.onSurfaceVariant)),
             ])),
           ]),
@@ -517,7 +518,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
               ),
               child: Row(children: [
                 const Expanded(child: Text('实时动态',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 13, fontWeight: FontWeight.w700))),
                 const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.onSurfaceVariant),
               ]),
@@ -529,11 +530,11 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                 decoration: const BoxDecoration(color: Color(0xFF4ADE80), shape: BoxShape.circle)),
             const SizedBox(width: 8),
             const Expanded(child: Text('在安全区域内',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.onSurface))),
             Text(
               () { final n = DateTime.now(); return '${n.hour.toString().padLeft(2,'0')}:${n.minute.toString().padLeft(2,'0')}'; }(),
-              style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+              style: const TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 12, color: AppColors.onSurfaceVariant),
             ),
           ]),
@@ -541,7 +542,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
           const Padding(
             padding: EdgeInsets.only(left: 16),
             child: Text('宠物当前在围栏内，安心活动',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 11, color: AppColors.onSurfaceVariant)),
           ),
         ]),
@@ -552,7 +553,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   // ── 安全场景 ─────────────────────────────────────────────
   Widget _buildSafetyScenes(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('安全场景', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+      const Text('安全场景', style: TextStyle(fontFamily: AppFonts.primary,
           fontSize: 15, fontWeight: FontWeight.w800)),
       const SizedBox(height: 12),
       _SceneCard(
@@ -599,7 +600,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     final hasPet    = _petInfo != null && _petInfo!.petName.isNotEmpty;
     final isOnline  = _detail?.onlineStatus == true;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('互动', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+      const Text('互动', style: TextStyle(fontFamily: AppFonts.primary,
           fontSize: 15, fontWeight: FontWeight.w800)),
       const SizedBox(height: 12),
       GridView.count(
@@ -653,7 +654,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   Widget _buildSafetySettings(BuildContext context) {
     final hasPet = _petInfo != null && _petInfo!.petName.isNotEmpty;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('安全设置', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+      const Text('安全设置', style: TextStyle(fontFamily: AppFonts.primary,
           fontSize: 15, fontWeight: FontWeight.w800)),
       const SizedBox(height: 12),
       GridView.count(
@@ -745,7 +746,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     showDialog(context: context, builder: (ctx) => AlertDialog(
       backgroundColor: AppColors.surfaceContainerLow,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('设备备注', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700)),
+      title: const Text('设备备注', style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
       content: TextField(controller: ctrl, decoration: InputDecoration(
           hintText: '输入备注内容', filled: true, fillColor: AppColors.surfaceContainer,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
@@ -772,9 +773,9 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     showDialog(context: context, builder: (ctx) => AlertDialog(
       backgroundColor: AppColors.surfaceContainerLow,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('解绑设备', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700)),
+      title: const Text('解绑设备', style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
       content: Text('确定要解绑「${widget.name}」吗？解绑后宠物数据将停止同步。',
-          style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
+          style: const TextStyle(fontFamily: AppFonts.primary)),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
         FilledButton(
@@ -810,7 +811,7 @@ class _SmallAction extends StatelessWidget {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 13, color: c),
           const SizedBox(width: 4),
-          Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+          Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11,
               fontWeight: FontWeight.w700, color: c)),
         ]),
       ),
@@ -837,7 +838,7 @@ class _ActionButton extends StatelessWidget {
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(icon, color: c, size: 20),
           const SizedBox(width: 8),
-          Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+          Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
               fontWeight: FontWeight.w700, color: c)),
         ]),
       ),
@@ -873,10 +874,10 @@ class _SceneCard extends StatelessWidget {
         ),
         const SizedBox(width: 14),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+          Text(title, style: const TextStyle(fontFamily: AppFonts.primary,
               fontSize: 14, fontWeight: FontWeight.w800)),
           const SizedBox(height: 3),
-          Text(subtitle, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+          Text(subtitle, style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 11, color: Colors.black.withOpacity(0.5))),
         ])),
         const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.black38),
@@ -934,7 +935,7 @@ class _InteractTile extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(child: Text(label,
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 12, fontWeight: FontWeight.w700,
                   color: dimmed ? Colors.grey : AppColors.onSurface))),
         ]),
@@ -984,7 +985,7 @@ class _DeviceSwitcherSheet extends StatelessWidget {
         const Align(
           alignment: Alignment.centerLeft,
           child: Text('切换设备',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1A1A2E))),
         ),
         const SizedBox(height: 16),
@@ -1033,14 +1034,14 @@ class _DeviceSwitcherSheet extends StatelessWidget {
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(d.displayName,
                       style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.primary,
                         fontSize: 14, fontWeight: FontWeight.w700,
                         color: isSelected ? AppColors.primary : AppColors.onSurface,
                       )),
                   const SizedBox(height: 2),
                   Row(children: [
                     Text(isRobot ? '智能宠物机器人' : '智能项圈',
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 11, color: AppColors.onSurfaceVariant)),
                     const SizedBox(width: 8),
                     Container(width: 6, height: 6,
@@ -1052,7 +1053,7 @@ class _DeviceSwitcherSheet extends StatelessWidget {
                         )),
                     const SizedBox(width: 4),
                     Text(d.isOnline ? '在线' : '离线',
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 11, color: AppColors.onSurfaceVariant)),
                   ]),
                 ])),

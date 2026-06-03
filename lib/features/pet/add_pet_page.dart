@@ -11,6 +11,7 @@ import '../../app.dart' show AppL10nX;
 import '../community/data/post_repository.dart';
 import '../pet/breed_picker_page.dart';
 import '../pet/controller/pet_controller.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 
 /// 添加宠物页 — 三步流程：选类型 → 填信息 → 完成
@@ -79,7 +80,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
         setState(() => _avatarRequired = true);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('请先选择宠物头像 🐾',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
+              style: TextStyle(fontFamily: AppFonts.primary)),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ));
@@ -115,7 +116,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
       if (mounted) {
         setState(() => _avatarUploading = false);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('上传失败：$e', style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
+          content: Text('上传失败：$e', style: const TextStyle(fontFamily: AppFonts.primary)),
           backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating,
         ));
       }
@@ -141,7 +142,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
                   borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 16),
           const Text('选择头像来源',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
           const SizedBox(height: 20),
           Row(children: [
@@ -198,7 +199,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('添加失败：$e',
-              style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
+              style: const TextStyle(fontFamily: AppFonts.primary)),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -230,7 +231,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
             _step == 0 ? '选择宠物类型' : _step == 1 ? '宠物信息' : '添加成功',
             key: ValueKey(_step),
             style: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: AppFonts.primary,
               fontWeight: FontWeight.w700,
               fontSize: 18,
             ),
@@ -272,11 +273,11 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('你的宠物是哪种？',
-                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 24,
+                  style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 24,
                       fontWeight: FontWeight.w800, color: AppColors.onSurface, letterSpacing: -0.5)),
               const SizedBox(height: 4),
               Text('目前支持猫和狗的健康监测与AI分析',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+                  style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13,
                       color: AppColors.onSurfaceVariant)),
             ],
           ),
@@ -335,7 +336,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
                             const SizedBox(height: 10),
                             Text(t['label']!,
                                 style: TextStyle(
-                                  fontFamily: 'Plus Jakarta Sans', fontSize: 16,
+                                  fontFamily: AppFonts.primary, fontSize: 16,
                                   fontWeight: FontWeight.w800,
                                   color: selected ? AppColors.primary : AppColors.onSurface,
                                 )),
@@ -347,7 +348,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    fontFamily: 'Plus Jakarta Sans', fontSize: 10,
+                                    fontFamily: AppFonts.primary, fontSize: 10,
                                     color: AppColors.onSurfaceVariant, height: 1.5,
                                   )),
                             ),
@@ -363,7 +364,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                                 child: const Text('✓ 已选择',
-                                    style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                                    style: TextStyle(fontFamily: AppFonts.primary,
                                         fontSize: 10, fontWeight: FontWeight.w700,
                                         color: Colors.white)),
                               ),
@@ -450,7 +451,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
             const Padding(
               padding: EdgeInsets.only(top: 6),
               child: Text('头像是必选项',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 11, color: AppColors.error),
                   textAlign: TextAlign.center),
             ),
@@ -493,7 +494,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
                     child: Text(
                       _breedCtrl.text.isEmpty ? '点击选择品种' : _breedCtrl.text,
                       style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.primary,
                         fontSize: 15,
                         color: _breedCtrl.text.isEmpty
                             ? AppColors.onSurfaceVariant
@@ -527,7 +528,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
                     boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 8, spreadRadius: -4)],
                   ),
                   child: Text(g == '公' ? '♂ 公' : '♀ 母',
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                      style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: sel ? Colors.white : AppColors.onSurfaceVariant)),
                 ),
@@ -561,7 +562,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
                   Icon(Icons.cake_rounded, color: AppColors.primary, size: 20),
                   const SizedBox(width: 12),
                   Text(_birthday ?? '选择生日',
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15,
+                      style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
                           color: _birthday != null ? AppColors.onSurface : AppColors.onSurfaceVariant)),
                   const Spacer(),
                   Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant, size: 20),
@@ -614,12 +615,12 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
             ),
             const SizedBox(height: 32),
             Text('${_nameCtrl.text} 已添加！',
-                style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 28,
+                style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 28,
                     fontWeight: FontWeight.w800, color: AppColors.onSurface, letterSpacing: -0.5)),
             const SizedBox(height: 12),
             Text('在「我的」页面可以查看和管理你的宠物',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15,
+                style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
                     color: AppColors.onSurfaceVariant, height: 1.5)),
             const SizedBox(height: 40),
 
@@ -637,7 +638,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
                   children: [
                     Icon(Icons.sensors_rounded, color: Colors.white, size: 20),
                     SizedBox(width: 8),
-                    Text('绑定定位设备', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 16,
+                    Text('绑定定位设备', style: TextStyle(fontFamily: AppFonts.primary, fontSize: 16,
                         fontWeight: FontWeight.w700, color: Colors.white)),
                   ],
                 ),
@@ -647,7 +648,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
             TextButton(
               onPressed: () => context.go('/profile'),
               child: Text('稍后再说', style: TextStyle(color: AppColors.onSurfaceVariant,
-                  fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600)),
+                  fontFamily: AppFonts.primary, fontWeight: FontWeight.w600)),
             ),
           ],
         ),
@@ -698,10 +699,10 @@ class _InputField extends StatelessWidget {
       ),
       child: TextField(
         controller: controller,
-        style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15, color: AppColors.onSurface),
+        style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 15, color: AppColors.onSurface),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: AppColors.onSurfaceVariant, fontFamily: 'Plus Jakarta Sans'),
+          hintStyle: TextStyle(color: AppColors.onSurfaceVariant, fontFamily: AppFonts.primary),
           prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -717,7 +718,7 @@ class _FieldLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(text, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+    return Text(text, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13,
         fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant));
   }
 }
@@ -741,7 +742,7 @@ class _SourceOption extends StatelessWidget {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, color: AppColors.primary, size: 28),
           const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+          Text(label, style: const TextStyle(fontFamily: AppFonts.primary,
               fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
         ]),
       ),

@@ -10,6 +10,7 @@ import '../pet/data/repository/pet_peer_repository.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/models/pet_model.dart';
 import '../pet/pet_edit_sheet.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ════════════════════════════════════════════════════════════
 //  宠物列表页 — 宠物依附于设备（PeerApi）
@@ -87,7 +88,7 @@ class _PetListPageState extends ConsumerState<PetListPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text('我的宠物',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 17, fontWeight: FontWeight.w700)),
         centerTitle: true,
         actions: [
@@ -116,14 +117,14 @@ class _PetListPageState extends ConsumerState<PetListPage> {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
         const Icon(Icons.cloud_off_rounded, size: 48, color: AppColors.onSurfaceVariant),
         const SizedBox(height: 12),
-        Text('加载失败', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+        Text('加载失败', style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
         const SizedBox(height: 8),
         Text(_error!, style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
             textAlign: TextAlign.center),
         const SizedBox(height: 20),
         FilledButton(onPressed: _load,
-            child: const Text('重试', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            child: const Text('重试', style: TextStyle(fontFamily: AppFonts.primary,
                 fontWeight: FontWeight.w700))),
       ]));
     }
@@ -152,7 +153,7 @@ class _PetListPageState extends ConsumerState<PetListPage> {
         const SizedBox(height: 20),
         Text(
           hasDevices ? '设备还没有绑定宠物' : '还没有绑定任何设备',
-          style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+          style: const TextStyle(fontFamily: AppFonts.primary,
               fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.onSurface),
         ),
         const SizedBox(height: 8),
@@ -160,7 +161,7 @@ class _PetListPageState extends ConsumerState<PetListPage> {
           hasDevices
               ? '点击设备卡片上的「绑定宠物」给设备绑定宠物'
               : '先绑定智能项圈或机器人，再为宠物建档',
-          style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+          style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13,
               color: AppColors.onSurfaceVariant),
           textAlign: TextAlign.center,
         ),
@@ -174,7 +175,7 @@ class _PetListPageState extends ConsumerState<PetListPage> {
           },
           icon: const Icon(Icons.devices_rounded),
           label: Text(hasDevices ? '去绑定宠物' : '去添加设备',
-              style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700)),
+              style: const TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.primary,
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
@@ -279,14 +280,14 @@ class _PetCard extends ConsumerWidget {
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
                   Expanded(child: Text(pet.petName,
-                      style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      style: const TextStyle(fontFamily: AppFonts.primary,
                           fontSize: 18, fontWeight: FontWeight.w800,
                           color: Colors.white, letterSpacing: -0.3))),
                   if (gLabel.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                       decoration: BoxDecoration(color: gBg, borderRadius: BorderRadius.circular(12)),
-                      child: Text(gLabel, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      child: Text(gLabel, style: TextStyle(fontFamily: AppFonts.primary,
                           fontSize: 11, fontWeight: FontWeight.w800, color: gColor)),
                     ),
                   // 编辑按钮（右上角）
@@ -305,7 +306,7 @@ class _PetCard extends ConsumerWidget {
                 ]),
                 if (pet.breed.isNotEmpty) ...[
                   const SizedBox(height: 3),
-                  Text(pet.breed, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  Text(pet.breed, style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 12, color: Colors.white.withOpacity(0.8))),
                 ],
               ])),
@@ -329,7 +330,7 @@ class _PetCard extends ConsumerWidget {
                 const Icon(Icons.router_rounded, size: 12, color: Colors.white70),
                 const SizedBox(width: 5),
                 Text(device.displayName,
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: const TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w600)),
               ]),
             ),
@@ -353,7 +354,7 @@ class _Chip extends StatelessWidget {
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(icon, size: 10, color: Colors.white),
       const SizedBox(width: 4),
-      Text(label, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+      Text(label, style: const TextStyle(fontFamily: AppFonts.primary,
           fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
     ]),
   );

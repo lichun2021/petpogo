@@ -6,6 +6,7 @@ import '../../shared/utils/image_pick_helper.dart';
 import '../community/data/post_repository.dart';
 import 'controller/pet_controller.dart';
 import 'data/models/pet_model.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 /// 宠物编辑底部弹窗：支持修改头像 / 名字 / 品种
 class PetEditSheet extends ConsumerStatefulWidget {
@@ -92,7 +93,7 @@ class _PetEditSheetState extends ConsumerState<PetEditSheet> {
         // 标题
         const Align(alignment: Alignment.centerLeft,
             child: Text('编辑宠物信息',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 18, fontWeight: FontWeight.w800))),
         const SizedBox(height: 20),
 
@@ -130,7 +131,7 @@ class _PetEditSheetState extends ConsumerState<PetEditSheet> {
           ),
         ),
         const SizedBox(height: 6),
-        Text('点击更换头像', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+        Text('点击更换头像', style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 12, color: AppColors.onSurfaceVariant)),
         const SizedBox(height: 20),
 
@@ -160,7 +161,7 @@ class _PetEditSheetState extends ConsumerState<PetEditSheet> {
             child: _saving
                 ? const SizedBox(width: 20, height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Text('保存', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                : const Text('保存', style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 16, fontWeight: FontWeight.w700)),
           ),
         ),
@@ -181,11 +182,11 @@ class _Field extends StatelessWidget {
         borderRadius: BorderRadius.circular(14)),
     child: TextField(
       controller: controller,
-      style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15),
+      style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 15),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: AppColors.onSurfaceVariant,
-            fontFamily: 'Plus Jakarta Sans', fontSize: 14),
+            fontFamily: AppFonts.primary, fontSize: 14),
         prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
         border: InputBorder.none,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

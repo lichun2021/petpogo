@@ -9,6 +9,7 @@ import '../community/data/post_repository.dart';
 import 'breed_picker_page.dart';
 import 'data/repository/pet_peer_repository.dart';
 import 'data/models/pet_peer_models.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ════════════════════════════════════════════════════════════
 //  绑定宠物 Sheet
@@ -108,7 +109,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
               decoration: BoxDecoration(color: AppColors.onSurfaceVariant.withOpacity(0.25),
                   borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 14),
-          const Text('选择头像来源', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+          const Text('选择头像来源', style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
           const SizedBox(height: 16),
           Row(children: [
@@ -215,11 +216,11 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
                 child: const Icon(Icons.pets_rounded, color: AppColors.primary, size: 22)),
             const SizedBox(width: 12),
             const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('绑定宠物', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              Text('绑定宠物', style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
               SizedBox(height: 2),
               Text('填写宠物信息并绑定到此设备',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                  style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
                       color: AppColors.onSurfaceVariant)),
             ])),
           ]),
@@ -274,7 +275,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
             child: Text(
               _avatarUrl != null ? '头像已上传 ✓' : '点击选择头像（选填）',
               style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+                fontFamily: AppFonts.primary, fontSize: 11,
                 color: _avatarUrl != null ? const Color(0xFF4ADE80) : AppColors.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
               ),
@@ -328,7 +329,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
                   child: Text(
                     _breedCtrl.text.isEmpty ? '点击选择品种' : _breedCtrl.text,
                     style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                      fontFamily: AppFonts.primary, fontSize: 14,
                       color: _breedCtrl.text.isEmpty
                           ? AppColors.onSurfaceVariant.withOpacity(0.5)
                           : AppColors.onSurface,
@@ -380,7 +381,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
               child: _saving
                   ? const SizedBox(width: 20, height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('绑定宠物', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  : const Text('绑定宠物', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 15, fontWeight: FontWeight.w700)),
             ),
           ),
@@ -409,7 +410,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
                 decoration: BoxDecoration(color: AppColors.primaryContainer.withOpacity(0.25), shape: BoxShape.circle),
                 child: const Icon(Icons.edit_rounded, color: AppColors.primary, size: 20)),
             const SizedBox(width: 12),
-            const Text('编辑宠物信息', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            const Text('编辑宠物信息', style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
           ]),
           const SizedBox(height: 20),
@@ -460,7 +461,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
                   child: Text(
                     _breedCtrl.text.isEmpty ? '点击选择品种' : _breedCtrl.text,
                     style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                      fontFamily: AppFonts.primary, fontSize: 14,
                       color: _breedCtrl.text.isEmpty
                           ? AppColors.onSurfaceVariant.withOpacity(0.5)
                           : AppColors.onSurface,
@@ -512,7 +513,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
               child: _saving
                   ? const SizedBox(width: 20, height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('保存修改', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  : const Text('保存修改', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 15, fontWeight: FontWeight.w700)),
             ),
           ),
@@ -521,7 +522,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
     );
   }
 
-  Widget _label(String text) => Text(text, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+  Widget _label(String text) => Text(text, style: TextStyle(fontFamily: AppFonts.primary,
       fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant));
 
   Widget _field({required TextEditingController controller, required String hint,
@@ -529,10 +530,10 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
     return TextField(
       controller: controller,
       keyboardType: inputType,
-      style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14, color: AppColors.onSurface),
+      style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14, color: AppColors.onSurface),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: AppColors.onSurfaceVariant.withOpacity(0.5), fontFamily: 'Plus Jakarta Sans'),
+        hintStyle: TextStyle(color: AppColors.onSurfaceVariant.withOpacity(0.5), fontFamily: AppFonts.primary),
         prefixIcon: Icon(icon, color: AppColors.primary, size: 18),
         filled: true, fillColor: AppColors.surfaceContainer,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
@@ -571,7 +572,7 @@ class _SpeciesChip extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: AppFonts.primary,
             fontSize: 13,
             fontWeight: FontWeight.w700,
             color: sel ? Colors.white : AppColors.onSurfaceVariant,
@@ -600,7 +601,7 @@ class _SexChip extends StatelessWidget {
           color: sel ? AppColors.primary : AppColors.surfaceContainer,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+        child: Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
             fontWeight: FontWeight.w700, color: sel ? Colors.white : AppColors.onSurfaceVariant)),
       ),
     );
@@ -654,7 +655,7 @@ class _SourceBtn extends StatelessWidget {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, color: AppColors.primary, size: 26),
           const SizedBox(height: 6),
-          Text(label, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+          Text(label, style: const TextStyle(fontFamily: AppFonts.primary,
               fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
         ]),
       ),

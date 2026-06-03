@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../app.dart' show AppL10nX;
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 class MallPage extends StatelessWidget {
   const MallPage({super.key});
@@ -54,10 +55,10 @@ class MallPage extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(l10n.mallCategories,
-                        style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 24,
+                        style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 24,
                             fontWeight: FontWeight.w800, letterSpacing: -0.4, color: AppColors.onSurface)),
                     Text(l10n.mallViewAll,
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+                        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13,
                             fontWeight: FontWeight.w700, color: AppColors.primary)),
                   ],
                 ),
@@ -71,7 +72,7 @@ class MallPage extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(l10n.mallTrending,
-                        style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 24,
+                        style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 24,
                             fontWeight: FontWeight.w800, letterSpacing: -0.4, color: AppColors.onSurface)),
                     Container(
                       padding: const EdgeInsets.all(8),
@@ -90,7 +91,7 @@ class MallPage extends StatelessWidget {
                 const SizedBox(height: 16),
 
                 Text(l10n.mallNearbyStores,
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 24,
+                    style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 24,
                         fontWeight: FontWeight.w800, letterSpacing: -0.4, color: AppColors.onSurface)),
 
                 const SizedBox(height: 16),
@@ -142,23 +143,23 @@ class _HeroBanner extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(color: AppColors.tertiaryContainer, borderRadius: BorderRadius.circular(999)),
                   child: Text(l10n.mallComingSoon,
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 9, fontWeight: FontWeight.w900,
+                      style: TextStyle(fontFamily: AppFonts.primary, fontSize: 9, fontWeight: FontWeight.w900,
                           letterSpacing: 1.5, color: AppColors.onTertiaryFixed)),
                 ),
                 const SizedBox(height: 10),
                 Text(l10n.mallHeroBannerTitle,
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 26, fontWeight: FontWeight.w800,
+                    style: TextStyle(fontFamily: AppFonts.primary, fontSize: 26, fontWeight: FontWeight.w800,
                         letterSpacing: -0.8, color: AppColors.onPrimary, height: 1.15)),
                 const SizedBox(height: 8),
                 Text(l10n.mallHeroBannerDesc,
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+                    style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11,
                         color: AppColors.onPrimary.withOpacity(0.8), height: 1.4)),
                 const SizedBox(height: 14),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(color: AppColors.surfaceContainerLowest, borderRadius: BorderRadius.circular(999)),
                   child: Text(l10n.mallPreorder,
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                      style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
                           fontWeight: FontWeight.w700, color: AppColors.primary)),
                 ),
               ],
@@ -213,9 +214,9 @@ class _CategoryCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 20,
+                  Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 20,
                       fontWeight: FontWeight.w900, letterSpacing: -0.3, color: AppColors.onSurface)),
-                  Text(count, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11, color: AppColors.onSurfaceVariant)),
+                  Text(count, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11, color: AppColors.onSurfaceVariant)),
                 ],
               ),
               Icon(icon, color: iconColor, size: 32),
@@ -260,7 +261,7 @@ class _ProductCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(product.name,
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15,
+                    style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
                         fontWeight: FontWeight.w700, color: AppColors.onSurface), maxLines: 2),
                 const SizedBox(height: 6),
                 Row(
@@ -268,10 +269,10 @@ class _ProductCard extends StatelessWidget {
                     Icon(Icons.star_rounded, color: AppColors.tertiaryFixed, size: 14),
                     const SizedBox(width: 3),
                     Text(product.rating.toString(),
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
                             fontWeight: FontWeight.w700, color: AppColors.onSurface)),
                     Text(' (${l10n.mallReviews(product.reviews)})',
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11, color: AppColors.onSurfaceVariant)),
+                        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11, color: AppColors.onSurfaceVariant)),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -279,7 +280,7 @@ class _ProductCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(product.price,
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 18,
+                        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 18,
                             fontWeight: FontWeight.w800, color: AppColors.primary)),
                     Container(
                       padding: const EdgeInsets.all(8),
@@ -355,7 +356,7 @@ class _StoreCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(999)),
                     child: Text('$distance 外',
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 10,
+                        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 10,
                             fontWeight: FontWeight.w700, color: AppColors.secondary)),
                   ),
                 ),
@@ -372,19 +373,19 @@ class _StoreCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(child: Text(name,
-                          style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15,
+                          style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
                               fontWeight: FontWeight.w800, color: textColor))),
                       Row(children: [
                         Icon(Icons.star_rounded, size: 12, color: AppColors.tertiary),
                         const SizedBox(width: 2),
-                        Text(rating, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+                        Text(rating, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11,
                             fontWeight: FontWeight.w700, color: textColor)),
                       ]),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(desc, maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+                      style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11,
                           color: textColor.withOpacity(0.75), height: 1.5)),
                   const SizedBox(height: 8),
                   Row(
@@ -392,7 +393,7 @@ class _StoreCard extends StatelessWidget {
                       margin: const EdgeInsets.only(right: 6),
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(color: Colors.white.withOpacity(0.4), borderRadius: BorderRadius.circular(999)),
-                      child: Text(t, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 9,
+                      child: Text(t, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 9,
                           fontWeight: FontWeight.w700, letterSpacing: 0.8, color: textColor)),
                     )).toList(),
                   ),

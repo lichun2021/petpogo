@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 /// 统一选图 + 裁剪工具
 /// 所有头像选取场景都走这个方法，保证裁剪体验一致
@@ -76,13 +77,13 @@ class _SourceSheet extends StatelessWidget {
         ListTile(
           leading: const Icon(Icons.camera_alt_rounded),
           title: const Text('拍照',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600)),
+              style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w600)),
           onTap: () => Navigator.pop(context, ImageSource.camera),
         ),
         ListTile(
           leading: const Icon(Icons.photo_library_rounded),
           title: const Text('从相册选择',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600)),
+              style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w600)),
           onTap: () => Navigator.pop(context, ImageSource.gallery),
         ),
         const SizedBox(height: 8),

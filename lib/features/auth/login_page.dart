@@ -17,6 +17,7 @@ import '../../../shared/widgets/pet_toast.dart';
 import 'data/models/country_model.dart';
 import 'data/country_repository.dart';
 import 'controller/auth_controller.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -141,7 +142,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('该手机号未注册，请先用验证码登录/注册',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans')),
+                  style: TextStyle(fontFamily: AppFonts.primary)),
               action: SnackBarAction(
                 label: '切换验证码',
                 onPressed: () => setState(() => _isSmsLogin = true),
@@ -167,7 +168,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 Icon(Icons.pets_rounded, color: AppColors.primary, size: 36),
                 const SizedBox(width: 10),
                 const Text('萌宠智伴',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 28, fontWeight: FontWeight.w800,
                         color: AppColors.primary)),
               ]),
@@ -176,7 +177,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
               // ── 标题 ─────────────────────────────────────
               const Text('欢迎回来 👋',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 28, fontWeight: FontWeight.w800,
                       color: AppColors.onSurface)),
               const SizedBox(height: 20),
@@ -214,7 +215,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.next,
                 autofillHints: const [],
-                style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                style: const TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 15, color: AppColors.onSurface),
                 decoration: _inputDecorationWithCountry(
                   hint: '请输入手机号',
@@ -238,7 +239,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         keyboardType: TextInputType.number,
                         textInputAction: TextInputAction.done,
                         onSubmitted: (_) => _submit(),
-                        style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        style: const TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 15, color: AppColors.onSurface),
                         decoration: _inputDecoration(
                           hint: '请输入验证码',
@@ -292,7 +293,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   obscureText: _obscure,
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _submit(),
-                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: const TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 15, color: AppColors.onSurface),
                   decoration: _inputDecoration(
                     hint: '请输入密码',
@@ -312,7 +313,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       size: 13, color: AppColors.onSurfaceVariant),
                   const SizedBox(width: 4),
                   Text('首次登录初始密码为 123456，建议登录后修改',
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      style: TextStyle(fontFamily: AppFonts.primary,
                           fontSize: 11, color: AppColors.onSurfaceVariant)),
                 ]),
               ],
@@ -340,7 +341,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               color: Colors.white, strokeWidth: 2.5),
                         )
                       : const Text('登录 / 注册',
-                          style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                          style: TextStyle(fontFamily: AppFonts.primary,
                               fontSize: 16, fontWeight: FontWeight.w700)),
                 ),
               ),
@@ -358,7 +359,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }) =>
       InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(fontFamily: 'Plus Jakarta Sans',
+        hintStyle: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 14, color: AppColors.onSurfaceVariant.withOpacity(0.6)),
         prefixIcon: GestureDetector(
           onTap: onCountryTap,
@@ -397,7 +398,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }) =>
       InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(fontFamily: 'Plus Jakarta Sans',
+        hintStyle: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 14, color: AppColors.onSurfaceVariant.withOpacity(0.6)),
         prefixIcon: Icon(prefixIcon, size: 20, color: AppColors.onSurfaceVariant),
         suffixIcon: suffix,
@@ -486,7 +487,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Text('选择国家/地区',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 16, fontWeight: FontWeight.w700,
                     color: AppColors.onSurface)),
           ),
@@ -497,10 +498,10 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
             child: TextField(
               controller: widget.searchCtrl,
               autofocus: true,
-              style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14),
+              style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14),
               decoration: InputDecoration(
                 hintText: '搜索国家名称或区号',
-                hintStyle: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                hintStyle: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 14, color: Colors.grey.shade400),
                 prefixIcon: const Icon(Icons.search_rounded, size: 20),
                 filled: true,
@@ -520,7 +521,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                 ? Center(
                     child: Text('未找到相关国家',
                         style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
+                            fontFamily: AppFonts.primary,
                             color: Colors.grey.shade400)),
                   )
                 : ListView.builder(
@@ -533,7 +534,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                             style: const TextStyle(fontSize: 22)),
                         title: Text(c.country,
                             style: TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
+                                fontFamily: AppFonts.primary,
                                 fontSize: 15,
                                 fontWeight: isSelected
                                     ? FontWeight.w700
@@ -543,13 +544,13 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                                     : AppColors.onSurface)),
                         subtitle: Text(c.countryEn,
                             style: TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
+                                fontFamily: AppFonts.primary,
                                 fontSize: 12,
                                 color: Colors.grey.shade500)),
                         trailing: Text(
                           c.phoneId,
                           style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
+                              fontFamily: AppFonts.primary,
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                               color: isSelected
@@ -576,7 +577,7 @@ class _FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(text,
-        style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+        style: const TextStyle(fontFamily: AppFonts.primary,
             fontSize: 13, fontWeight: FontWeight.w700,
             color: AppColors.onSurface));
   }

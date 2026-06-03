@@ -5,6 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_toast.dart';
 import '../device/data/repository/device_repository.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 扫码绑定页 ────────────────────────────────────────────
 class ScanQrPage extends ConsumerStatefulWidget {
@@ -169,7 +170,7 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
         ),
         Expanded(
           child: Text('扫码绑定设备', textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontFamily: 'Plus Jakarta Sans',
+              style: const TextStyle(color: Colors.white, fontFamily: AppFonts.primary,
                   fontSize: 17, fontWeight: FontWeight.w700)),
         ),
         // 手电筒
@@ -241,11 +242,11 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
       case _ScanState.scanning:
         return Column(mainAxisSize: MainAxisSize.min, children: [
           const Text('将设备背面二维码对准扫描框',
-              style: TextStyle(color: Colors.white, fontFamily: 'Plus Jakarta Sans',
+              style: TextStyle(color: Colors.white, fontFamily: AppFonts.primary,
                   fontSize: 15, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
           const SizedBox(height: 6),
           const Text('支持 QR 码 / MAC 地址条码',
-              style: TextStyle(color: Colors.white54, fontFamily: 'Plus Jakarta Sans',
+              style: TextStyle(color: Colors.white54, fontFamily: AppFonts.primary,
                   fontSize: 13), textAlign: TextAlign.center),
           const SizedBox(height: 24),
           // 手动输入入口
@@ -258,7 +259,7 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Text('手动输入 MAC 地址',
-                  style: TextStyle(color: Colors.white70, fontFamily: 'Plus Jakarta Sans',
+                  style: TextStyle(color: Colors.white70, fontFamily: AppFonts.primary,
                       fontSize: 14), textAlign: TextAlign.center),
             ),
           ),
@@ -267,11 +268,11 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
       case _ScanState.found:
         return Column(mainAxisSize: MainAxisSize.min, children: [
           const Text('已识别设备', style: TextStyle(color: Colors.white,
-              fontFamily: 'Plus Jakarta Sans', fontSize: 16, fontWeight: FontWeight.w700),
+              fontFamily: AppFonts.primary, fontSize: 16, fontWeight: FontWeight.w700),
               textAlign: TextAlign.center),
           const SizedBox(height: 4),
           Text(_scannedMac ?? '', style: const TextStyle(color: Colors.white60,
-              fontFamily: 'Plus Jakarta Sans', fontSize: 13), textAlign: TextAlign.center),
+              fontFamily: AppFonts.primary, fontSize: 13), textAlign: TextAlign.center),
           const SizedBox(height: 20),
           SizedBox(width: double.infinity,
             child: FilledButton(
@@ -281,30 +282,30 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
                 minimumSize: const Size(double.infinity, 52),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text('确认绑定', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              child: const Text('确认绑定', style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 15, fontWeight: FontWeight.w700)),
             ),
           ),
           const SizedBox(height: 10),
           TextButton(onPressed: _retry,
               child: const Text('重新扫描', style: TextStyle(color: Colors.white70,
-                  fontFamily: 'Plus Jakarta Sans'))),
+                  fontFamily: AppFonts.primary))),
         ]);
 
       case _ScanState.binding:
         return const Column(mainAxisSize: MainAxisSize.min, children: [
           Text('正在绑定设备...', style: TextStyle(color: Colors.white,
-              fontFamily: 'Plus Jakarta Sans', fontSize: 15), textAlign: TextAlign.center),
+              fontFamily: AppFonts.primary, fontSize: 15), textAlign: TextAlign.center),
         ]);
 
       case _ScanState.success:
         return Column(mainAxisSize: MainAxisSize.min, children: [
           const Text('绑定成功 🎉', style: TextStyle(color: Color(0xFF4ADE80),
-              fontFamily: 'Plus Jakarta Sans', fontSize: 18, fontWeight: FontWeight.w700),
+              fontFamily: AppFonts.primary, fontSize: 18, fontWeight: FontWeight.w700),
               textAlign: TextAlign.center),
           const SizedBox(height: 6),
           Text(_scannedMac ?? '', style: const TextStyle(color: Colors.white54,
-              fontFamily: 'Plus Jakarta Sans', fontSize: 13), textAlign: TextAlign.center),
+              fontFamily: AppFonts.primary, fontSize: 13), textAlign: TextAlign.center),
           const SizedBox(height: 24),
           SizedBox(width: double.infinity,
             child: FilledButton(
@@ -317,7 +318,7 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
                 minimumSize: const Size(double.infinity, 52),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text('完成', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              child: const Text('完成', style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 15, fontWeight: FontWeight.w700)),
             ),
           ),
@@ -326,7 +327,7 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
       case _ScanState.error:
         return Column(mainAxisSize: MainAxisSize.min, children: [
           Text(_errorMsg ?? '绑定失败', style: const TextStyle(color: Color(0xFFFC8181),
-              fontFamily: 'Plus Jakarta Sans', fontSize: 14), textAlign: TextAlign.center),
+              fontFamily: AppFonts.primary, fontSize: 14), textAlign: TextAlign.center),
           const SizedBox(height: 20),
           Row(children: [
             Expanded(child: OutlinedButton(
@@ -374,7 +375,7 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
                 decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 20),
             const Text('手动输入设备 MAC', style: TextStyle(color: Colors.white,
-                fontFamily: 'Plus Jakarta Sans', fontSize: 17, fontWeight: FontWeight.w700)),
+                fontFamily: AppFonts.primary, fontSize: 17, fontWeight: FontWeight.w700)),
             const SizedBox(height: 16),
             TextField(
               controller: ctrl,
@@ -400,7 +401,7 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
                 minimumSize: const Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('确认', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700)),
+              child: const Text('确认', style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
             ),
           ]),
         );

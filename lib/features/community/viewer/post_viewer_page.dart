@@ -9,6 +9,7 @@ import '../../auth/controller/auth_controller.dart';
 import '../data/models/post_model.dart';
 import '../data/post_repository.dart';
 import '../controller/feed_controller.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 
 class PostViewerPage extends ConsumerStatefulWidget {
@@ -326,7 +327,7 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
           _Avatar(url: post.userAvatar, name: post.nickname, size: 32),
           const SizedBox(width: 10),
           Text(post.nickname, style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+            fontFamily: AppFonts.primary, fontSize: 14,
             fontWeight: FontWeight.w700, color: Colors.white,
           )),
         ]),
@@ -335,7 +336,7 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
           Text(post.content,
             maxLines: 2, overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+              fontFamily: AppFonts.primary, fontSize: 13,
               color: Colors.white.withOpacity(0.85), height: 1.5,
             ),
           ),
@@ -500,7 +501,7 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
           width: 40, height: 4,
           decoration: BoxDecoration(color: AppColors.outline, borderRadius: BorderRadius.circular(2))),
 
-        const Text('评论', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+        const Text('评论', style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
 
         const Divider(),
@@ -527,7 +528,7 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
             Expanded(
               child: TextField(
                 controller: _ctrl,
-                style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14),
+                style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: '说点什么…',
                   hintStyle: TextStyle(color: AppColors.onSurfaceVariant.withOpacity(0.5), fontSize: 14),
@@ -565,10 +566,10 @@ class _CommentItem extends StatelessWidget {
       const SizedBox(width: 10),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(comment.nickname, style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans', fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+          fontFamily: AppFonts.primary, fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
         const SizedBox(height: 4),
         Text(comment.content, style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans', fontSize: 14, color: AppColors.onSurface, height: 1.4)),
+          fontFamily: AppFonts.primary, fontSize: 14, color: AppColors.onSurface, height: 1.4)),
       ])),
     ]);
   }

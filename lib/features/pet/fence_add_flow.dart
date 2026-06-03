@@ -9,6 +9,7 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/utils/coord_transform.dart';
 import '../../shared/widgets/pet_toast.dart';
 import 'data/repository/pet_peer_repository.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 逆地理编码（OSM Nominatim，免费无需 Key）────────────────
 // 高德 REST API 需单独申请「Web 服务」类型 Key（Android Key 不适用）
@@ -196,7 +197,7 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
                     Expanded(
                       child: Text(
                         '位置信息与电子围栏',
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 14, fontWeight: FontWeight.w700,
                             color: AppColors.onSurface),
                       ),
@@ -251,10 +252,10 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Text('当前选点', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      const Text('当前选点', style: TextStyle(fontFamily: AppFonts.primary,
                           fontSize: 11, color: AppColors.onSurfaceVariant)),
                       const SizedBox(height: 2),
-                      Text(_address, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      Text(_address, style: const TextStyle(fontFamily: AppFonts.primary,
                           fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.onSurface)),
                     ])),
                   ]),
@@ -277,7 +278,7 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
                       minimumSize: const Size(double.infinity, 52),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
-                    child: const Text('下一步', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    child: const Text('下一步', style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 15, fontWeight: FontWeight.w700)),
                   ),
                 ]),
@@ -366,7 +367,7 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
           color: AppColors.onSurface,
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('设置围栏', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+        title: const Text('设置围栏', style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 17, fontWeight: FontWeight.w700)),
         centerTitle: false,
       ),
@@ -424,14 +425,14 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
             decoration: InputDecoration(
               hintText: '如：家、公园、公司',
               hintStyle: TextStyle(color: AppColors.onSurfaceVariant.withOpacity(0.5),
-                  fontFamily: 'Plus Jakarta Sans'),
+                  fontFamily: AppFonts.primary),
               filled: true,
               fillColor: Colors.white,
               border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
-            style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+            style: const TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 15, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 20),
@@ -457,10 +458,10 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
                   ),
                   child: Column(children: [
                     Text(_radiusLabel(r),
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 13, fontWeight: FontWeight.w700,
                             color: active ? Colors.white : AppColors.onSurface)),
-                    Text('米', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    Text('米', style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 10, color: active ? Colors.white70 : AppColors.onSurfaceVariant)),
                   ]),
                 ),
@@ -496,7 +497,7 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
               ),
               child: Text('${_radius.toInt()}m',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: const TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
             ),
           ]),
@@ -515,7 +516,7 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
               const Icon(Icons.location_on_outlined, size: 18, color: AppColors.primary),
               const SizedBox(width: 10),
               Expanded(child: Text(widget.pickedAddress,
-                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: const TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 13, color: AppColors.onSurface))),
             ]),
           ),
@@ -544,9 +545,9 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('设置警报通知', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  const Text('设置警报通知', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-                  Text('即将上线', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  Text('即将上线', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 11, color: AppColors.onSurfaceVariant)),
                 ])),
                 Container(
@@ -555,7 +556,7 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
                     color: Colors.grey.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text('即将上线', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  child: const Text('即将上线', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 10, fontWeight: FontWeight.w700, color: Colors.grey)),
                 ),
               ]),
@@ -583,9 +584,9 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('选择警报声音', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  const Text('选择警报声音', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-                  Text('设置宠物越界时的提醒声音', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  Text('设置宠物越界时的提醒声音', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 11, color: AppColors.onSurfaceVariant)),
                 ])),
                 Container(
@@ -594,7 +595,7 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
                     color: Colors.grey.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text('即将上线', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  child: const Text('即将上线', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 10, fontWeight: FontWeight.w700, color: Colors.grey)),
                 ),
               ]),
@@ -617,7 +618,7 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
             child: _saving
                 ? const SizedBox(width: 22, height: 22,
                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                : const Text('保存围栏', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                : const Text('保存围栏', style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 15, fontWeight: FontWeight.w700)),
           ),
         ),
@@ -637,7 +638,7 @@ class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);
   @override
   Widget build(BuildContext context) => Text(text,
-      style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+      style: const TextStyle(fontFamily: AppFonts.primary,
           fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.onSurface));
 }
 

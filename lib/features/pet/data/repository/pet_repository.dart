@@ -15,11 +15,13 @@
 ///    ❌ 不知道 Riverpod（只接受 ApiClient 依赖注入）
 /// ════════════════════════════════════════════════════════════
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/api/result.dart';
 import '../models/pet_model.dart';
+
 
 class PetRepository {
   /// 通过构造函数注入 ApiClient（依赖注入，方便单元测试时 mock）
@@ -35,8 +37,38 @@ class PetRepository {
   ///   - Success → 宠物列表（可能为空列表 []）
   ///   - Failure → ApiException（网络错误、401等）
   Future<Result<List<PetModel>>> fetchPets() => guardResult(() async {
-    final data = await _client.get<List<dynamic>>('/sdkapi/pet/list');
-    return data
+    const path = '/sdkapi/pet/list';
+    debugPrint('[🐾宠物] fetchPets → GET $path');
+    dynamic rawData;
+    try {
+      rawData = await _client.get<dynamic>(path);
+    } catch (e) {
+      debugPrint('[🐾宠物] ❌ 请求失败: $e');
+      rethrow;
+    }
+    debugPrint('[🐾宠物] 原始响应类型: ${rawData.runtimeType}');
+    debugPrint('[🐾宠物] 原始响应内容: $rawData');
+
+    List<dynamic> list;
+    if (rawData is List) {
+      list = rawData;
+    } else if (rawData is Map) {
+      // 服务端返回 {code, info: [...]} 包装格式
+      final info = rawData['info'] ?? rawData['data'] ?? rawData['list'];
+      debugPrint('[🐾宠物] 检测到 Map 格式，info=$info');
+      if (info is List) {
+        list = info;
+      } else {
+        debugPrint('[🐾宠物] ❌ info 字段不是 List: ${info?.runtimeType}');
+        list = [];
+      }
+    } else {
+      debugPrint('[🐾宠物] ❌ 未知响应格式: ${rawData.runtimeType}');
+      list = [];
+    }
+
+    debugPrint('[🐾宠物] 解析到 ${list.length} 只宠物');
+    return list
         .map((e) => PetModel.fromJson(e as Map<String, dynamic>))
         .toList();
   });

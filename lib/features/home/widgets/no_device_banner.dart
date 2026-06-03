@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/theme/app_colors.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 class NoDeviceBanner extends StatelessWidget {
   const NoDeviceBanner({super.key});
@@ -23,7 +24,7 @@ class NoDeviceBanner extends StatelessWidget {
           side: BorderSide(color: AppColors.primary.withOpacity(0.30), width: 1.5),
           padding: const EdgeInsets.symmetric(vertical: 16),
           textStyle: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: AppFonts.primary,
             fontSize: 15,
             fontWeight: FontWeight.w700,
           ),

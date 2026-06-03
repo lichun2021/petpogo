@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pressable.dart';
 import 'scan_qr_page.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 class SelectDevicePage extends StatelessWidget {
   const SelectDevicePage({super.key});
@@ -21,7 +22,7 @@ class SelectDevicePage extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text('绑定设备',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700, fontSize: 18)),
+            style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700, fontSize: 18)),
         centerTitle: true,
       ),
       body: Padding(
@@ -30,11 +31,11 @@ class SelectDevicePage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('选择设备类型',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 26,
+                style: TextStyle(fontFamily: AppFonts.primary, fontSize: 26,
                     fontWeight: FontWeight.w800, letterSpacing: -0.5, color: AppColors.onSurface)),
             const SizedBox(height: 6),
             Text('选择要添加的智能设备，按设备底部二维码扫码绑定',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
                     color: AppColors.onSurfaceVariant)),
             const SizedBox(height: 28),
 
@@ -96,7 +97,7 @@ class SelectDevicePage extends StatelessWidget {
                 const Icon(Icons.info_outline_rounded, size: 18, color: AppColors.primary),
                 const SizedBox(width: 10),
                 Expanded(child: Text('扫描设备包装盒或设备背面的二维码完成绑定',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+                    style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13,
                         color: AppColors.onSurfaceVariant, height: 1.5))),
               ]),
             ).animate().fadeIn(delay: 200.ms),
@@ -142,11 +143,11 @@ class _DeviceCard extends StatelessWidget {
               Row(children: [
                 Text(emoji, style: const TextStyle(fontSize: 18)),
                 const SizedBox(width: 6),
-                Text(name, style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 18,
+                Text(name, style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 18,
                     fontWeight: FontWeight.w800, color: AppColors.onSurface)),
               ]),
               const SizedBox(height: 4),
-              Text(desc, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+              Text(desc, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
                   color: AppColors.onSurfaceVariant, height: 1.4)),
             ])),
             const Icon(Icons.arrow_forward_ios_rounded, size: 15, color: AppColors.onSurfaceVariant),
@@ -158,7 +159,7 @@ class _DeviceCard extends StatelessWidget {
               color: Colors.white.withOpacity(0.55),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: Text(f, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+            child: Text(f, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11,
                 fontWeight: FontWeight.w600, color: AppColors.onSurface)),
           )).toList()),
         ]),

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pressable.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 /// 绑定成功页 — 庆祝动画 + 后续操作引导
 class BindSuccessPage extends StatefulWidget {
@@ -85,12 +86,12 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                   children: [
                     Text('${widget.deviceType} 绑定成功！',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 28,
+                        style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 28,
                             fontWeight: FontWeight.w800, color: AppColors.onSurface, letterSpacing: -0.6)),
                     const SizedBox(height: 12),
                     Text('你的设备已与账号关联\n可以在首页查看实时状态',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15,
+                        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
                             color: AppColors.onSurfaceVariant, height: 1.6)),
                   ],
                 ),
@@ -144,7 +145,7 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                     TextButton(
                       onPressed: () => context.go('/bind-device'),
                       child: Text('继续添加设备',
-                          style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600,
+                          style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w600,
                               color: AppColors.primary)),
                     ),
                   ],
@@ -173,7 +174,7 @@ class _FeatureRow extends StatelessWidget {
           decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
           child: Icon(icon, color: color, size: 18)),
       const SizedBox(width: 14),
-      Text(label, style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+      Text(label, style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
           fontWeight: FontWeight.w600, color: AppColors.onSurface)),
       const Spacer(),
       Icon(Icons.check_rounded, color: color, size: 18),

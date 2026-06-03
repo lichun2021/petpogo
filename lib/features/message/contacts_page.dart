@@ -11,6 +11,7 @@ import 'controller/im_controller.dart';
 import 'data/repository/im_repository.dart';
 import 'qr/my_qr_page.dart';
 import 'qr/scan_add_friend_page.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 联系人全屏页（替代 BottomSheet）──────────────────────────
 class ContactsPage extends ConsumerStatefulWidget {
@@ -97,7 +98,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage>
         title: const Text(
           '联系人',
           style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 20,
+            fontFamily: AppFonts.primary, fontSize: 20,
             fontWeight: FontWeight.w800, color: AppColors.onSurface,
           ),
         ),
@@ -127,7 +128,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage>
           indicatorWeight: 3,
           dividerColor: Colors.transparent,
           labelStyle: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+              fontFamily: AppFonts.primary, fontSize: 13,
               fontWeight: FontWeight.w700),
           tabs: [
             Tab(text: '好友${_friends.isEmpty ? '' : ' ${_friends.length}'}'),
@@ -205,7 +206,7 @@ class _FriendListTabState extends ConsumerState<_FriendListTab> {
                 PetAvatar(imageUrl: f.userProfile?.faceUrl, size: 36, fallbackEmoji: '🐾'),
                 const SizedBox(width: 10),
                 Expanded(child: Text(name,
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: const TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 16, fontWeight: FontWeight.w700,
                         color: AppColors.onSurface))),
               ]),
@@ -215,7 +216,7 @@ class _FriendListTabState extends ConsumerState<_FriendListTab> {
               leading: const Icon(Icons.chat_bubble_outline_rounded,
                   color: AppColors.primary),
               title: const Text('发送消息',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontWeight: FontWeight.w600)),
               onTap: () {
                 Navigator.pop(context);
@@ -227,7 +228,7 @@ class _FriendListTabState extends ConsumerState<_FriendListTab> {
                   color: AppColors.error),
               title: const Text('删除好友',
                   style: TextStyle(color: AppColors.error,
-                      fontFamily: 'Plus Jakarta Sans',
+                      fontFamily: AppFonts.primary,
                       fontWeight: FontWeight.w600)),
               onTap: () async {
                 Navigator.pop(context);
@@ -251,7 +252,7 @@ class _FriendListTabState extends ConsumerState<_FriendListTab> {
               leading: const Icon(Icons.block_rounded,
                   color: AppColors.onSurfaceVariant),
               title: const Text('拉黑该用户',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontWeight: FontWeight.w600,
                       color: AppColors.onSurface)),
               onTap: () async {
@@ -288,11 +289,11 @@ class _FriendListTabState extends ConsumerState<_FriendListTab> {
           Text('🐾', style: TextStyle(fontSize: 48)),
           SizedBox(height: 12),
           Text('还没有好友',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 16,
+              style: TextStyle(fontFamily: AppFonts.primary, fontSize: 16,
                   fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant)),
           SizedBox(height: 4),
           Text('在社区认识新朋友，加他们为好友吧～',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+              style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
                   color: AppColors.onSurfaceVariant)),
         ]),
       );
@@ -334,12 +335,12 @@ class _FriendListTabState extends ConsumerState<_FriendListTab> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(name, style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                      fontFamily: AppFonts.primary, fontSize: 14,
                       fontWeight: FontWeight.w700, color: AppColors.onSurface)),
                   if (f.userProfile?.selfSignature?.isNotEmpty == true)
                     Text(f.userProfile!.selfSignature!,
                         maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        style: const TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 11, color: AppColors.onSurfaceVariant)),
                 ],
               )),
@@ -367,11 +368,11 @@ class _BlacklistTab extends ConsumerWidget {
           Text('🛡️', style: TextStyle(fontSize: 48)),
           SizedBox(height: 12),
           Text('黑名单为空',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 16,
+              style: TextStyle(fontFamily: AppFonts.primary, fontSize: 16,
                   fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant)),
           SizedBox(height: 4),
           Text('被拉黑的用户将无法向你发送消息',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+              style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
                   color: AppColors.onSurfaceVariant)),
         ]),
       );
@@ -411,11 +412,11 @@ class _BlacklistTab extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(name, style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                    fontFamily: AppFonts.primary, fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: AppColors.onSurface.withOpacity(0.6))),
                 const Text('已被拉黑',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 11, color: AppColors.error)),
               ],
             )),
@@ -444,7 +445,7 @@ class _BlacklistTab extends ConsumerWidget {
                 backgroundColor: AppColors.primaryContainer.withOpacity(0.15),
               ),
               child: const Text('移出黑名单',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 12, fontWeight: FontWeight.w600)),
             ),
           ]),
@@ -518,10 +519,10 @@ class _SettingItem extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title, style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                fontFamily: AppFonts.primary, fontSize: 14,
                 fontWeight: FontWeight.w700, color: AppColors.onSurface)),
             Text(subtitle, style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                fontFamily: AppFonts.primary, fontSize: 12,
                 color: AppColors.onSurfaceVariant)),
           ],
         )),

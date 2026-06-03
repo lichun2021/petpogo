@@ -15,6 +15,7 @@ import '../music/pet_music_page.dart';
 import 'data/user_stats_provider.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/api/api_client.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -103,7 +104,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     },
                     icon: Icon(Icons.logout_rounded, color: AppColors.error, size: 18),
                     label: Text(l10n.profileLogout,
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15,
+                        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
                             fontWeight: FontWeight.w700, color: AppColors.error, letterSpacing: 0.2)),
                   ),
                 ),
@@ -257,7 +258,7 @@ class _UserInfoCardState extends ConsumerState<_UserInfoCard> {
                     children: [
                       Text(nickname,
                           style: const TextStyle(
-                              fontFamily: 'Plus Jakarta Sans', fontSize: 20,
+                              fontFamily: AppFonts.primary, fontSize: 20,
                               fontWeight: FontWeight.w800, letterSpacing: -0.4,
                               color: AppColors.onSurface)),
                       const SizedBox(width: 4),
@@ -269,7 +270,7 @@ class _UserInfoCardState extends ConsumerState<_UserInfoCard> {
                   const SizedBox(height: 2),
                   Text(maskedPhone,
                       style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                          fontFamily: AppFonts.primary, fontSize: 12,
                           color: AppColors.onSurfaceVariant)),
                 ],
                 const SizedBox(height: 12),
@@ -325,13 +326,13 @@ class _AiQuotaChip extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         Text('AI 分析', style: TextStyle(
-          fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+          fontFamily: AppFonts.primary, fontSize: 12,
           fontWeight: FontWeight.w700, color: accent,
         )),
         const SizedBox(width: 8),
         if (isUnlimited)
           Text('VIP 无限 ✨', style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+            fontFamily: AppFonts.primary, fontSize: 11,
             fontWeight: FontWeight.w600, color: accent,
           ))
         else ...[
@@ -349,7 +350,7 @@ class _AiQuotaChip extends StatelessWidget {
           const SizedBox(width: 7),
           RichText(text: TextSpan(
             style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+              fontFamily: AppFonts.primary, fontSize: 12,
               fontWeight: FontWeight.w800, color: accent,
             ),
             children: [
@@ -378,9 +379,9 @@ class _StatCol extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(value, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 17,
+        Text(value, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 17,
             fontWeight: FontWeight.w800, color: AppColors.primary)),
-        Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 9,
+        Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 9,
             fontWeight: FontWeight.w700, letterSpacing: 1.0, color: AppColors.onSurfaceVariant)),
       ],
     );
@@ -602,7 +603,7 @@ class _PetCard extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                    fontFamily: 'Plus Jakarta Sans',
+                                    fontFamily: AppFonts.primary,
                                     fontSize: 14,
                                     fontWeight: FontWeight.w900,
                                     color: Colors.white,
@@ -621,7 +622,7 @@ class _PetCard extends StatelessWidget {
                                 ),
                                 child: Text(gLabel,
                                     style: TextStyle(
-                                        fontFamily: 'Plus Jakarta Sans',
+                                        fontFamily: AppFonts.primary,
                                         fontSize: 11,
                                         fontWeight: FontWeight.w800,
                                         color: gColor)),
@@ -638,7 +639,7 @@ class _PetCard extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
+                                fontFamily: AppFonts.primary,
                                 fontSize: 12,
                                 color: Colors.white.withOpacity(0.80))),
                       ],
@@ -691,7 +692,7 @@ class _WhiteChip extends StatelessWidget {
       const SizedBox(width: 4),
       Text(label,
           style: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: AppFonts.primary,
               fontSize: 11,
               fontWeight: FontWeight.w700,
               color: Colors.white)),
@@ -757,7 +758,7 @@ class _MenuItemRow extends StatelessWidget {
                 ),
                 const SizedBox(width: 16),
                 Expanded(child: Text(data.label,
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15,
+                    style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
                         fontWeight: FontWeight.w600, color: AppColors.onSurface))),
                 Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant, size: 20),
               ],
@@ -786,11 +787,11 @@ class _GuestProfileView extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(l10n.profileGuestMode,
-                style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 20,
+                style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 20,
                     fontWeight: FontWeight.w700, color: AppColors.onSurface)),
             const SizedBox(height: 8),
             Text(l10n.profileGuestSubtitle,
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14, color: AppColors.onSurfaceVariant)),
+                style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14, color: AppColors.onSurfaceVariant)),
             const SizedBox(height: 28),
             ElevatedButton(
                 onPressed: () => context.push(AppRoutes.login),
@@ -845,7 +846,7 @@ class _NicknameInlineSheetState extends ConsumerState<_NicknameInlineSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('修改昵称', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+          const Text('修改昵称', style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 18, fontWeight: FontWeight.w800)),
           const SizedBox(height: 20),
           Container(
@@ -854,11 +855,11 @@ class _NicknameInlineSheetState extends ConsumerState<_NicknameInlineSheet> {
             child: TextField(
               controller: widget.ctrl,
               autofocus: true,
-              style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15),
+              style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 15),
               decoration: InputDecoration(
                 hintText: '输入新昵称',
                 hintStyle: TextStyle(color: AppColors.onSurfaceVariant,
-                    fontFamily: 'Plus Jakarta Sans', fontSize: 14),
+                    fontFamily: AppFonts.primary, fontSize: 14),
                 prefixIcon: const Icon(Icons.person_rounded, color: AppColors.primary, size: 20),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -883,7 +884,7 @@ class _NicknameInlineSheetState extends ConsumerState<_NicknameInlineSheet> {
               child: _loading
                   ? const SizedBox(width: 20, height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('保存', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  : const Text('保存', style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 16, fontWeight: FontWeight.w700)),
             ),
           ),

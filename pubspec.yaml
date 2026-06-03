@@ -87,3 +87,9 @@ flutter:
     - assets/animations/
     - assets/icons/
     - assets/fonts/pet_breeds.json
+
+  fonts:
+    - family: AZhuBubble
+      fonts:
+        - asset: assets/fonts/AZhuBubble.ttf
+          weight: 500

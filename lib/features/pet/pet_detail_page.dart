@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../shared/theme/app_colors.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 /// 宠物详情页 — 健康卡、AI识别历史、设备关联
 class PetDetailPage extends StatelessWidget {
@@ -65,7 +66,7 @@ class PetDetailPage extends StatelessWidget {
                           ),
                           const SizedBox(height: 10),
                           const Text('Doudou',
-                              style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 28,
+                              style: TextStyle(fontFamily: AppFonts.primary, fontSize: 28,
                                   fontWeight: FontWeight.w800, color: Colors.white)),
                           Row(children: [
                             _Badge('CAT', Colors.white.withOpacity(0.25), Colors.white),
@@ -166,7 +167,7 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
-      child: Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+      child: Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11,
           fontWeight: FontWeight.w700, color: text)),
     );
   }
@@ -178,7 +179,7 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(title, style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 18,
+    return Text(title, style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 18,
         fontWeight: FontWeight.w700, color: AppColors.onSurface, letterSpacing: -0.3));
   }
 }
@@ -212,10 +213,10 @@ class _InfoRow extends StatelessWidget {
         children: [
           Icon(icon, color: AppColors.primary, size: 20),
           const SizedBox(width: 12),
-          Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+          Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
               color: AppColors.onSurfaceVariant)),
           const Spacer(),
-          Text(value, style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+          Text(value, style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
               fontWeight: FontWeight.w600, color: AppColors.onSurface)),
         ],
       ),
@@ -248,10 +249,10 @@ class _HealthCard extends StatelessWidget {
         children: [
           Text(emoji, style: const TextStyle(fontSize: 28)),
           const SizedBox(height: 6),
-          Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+          Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
               fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant)),
           const SizedBox(height: 4),
-          Text(status, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+          Text(status, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
               fontWeight: FontWeight.w700, color: color)),
         ],
       ),
@@ -279,7 +280,7 @@ class _TranslateHistoryCard extends StatelessWidget {
             Text(emoji, style: const TextStyle(fontSize: 20)),
             const SizedBox(width: 8),
             Expanded(child: Text(content, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+                style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 13,
                     color: AppColors.onSurface, height: 1.4))),
           ]),
           const SizedBox(height: 8),
@@ -290,11 +291,11 @@ class _TranslateHistoryCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(color: AppColors.primaryContainer.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(999)),
-                child: Text(e, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 10,
+                child: Text(e, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 10,
                     fontWeight: FontWeight.w700, color: AppColors.primary)),
               )),
               const Spacer(),
-              Text(time, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 10,
+              Text(time, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 10,
                   color: AppColors.onSurfaceVariant)),
             ],
           ),
@@ -326,16 +327,16 @@ class _LinkedDeviceCard extends StatelessWidget {
             child: Icon(icon, color: iconColor, size: 24)),
         const SizedBox(width: 14),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(name, style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+          Text(name, style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
           Row(children: [
             Container(width: 6, height: 6, decoration: BoxDecoration(color: AppColors.online, shape: BoxShape.circle)),
             const SizedBox(width: 5),
-            Text(status, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.secondary)),
-            Text('  ·  $location', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11, color: AppColors.onSurfaceVariant)),
+            Text(status, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.secondary)),
+            Text('  ·  $location', style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11, color: AppColors.onSurfaceVariant)),
           ]),
         ])),
         Column(children: [
-          Text('$battery%', style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+          Text('$battery%', style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
           Icon(Icons.battery_5_bar_rounded, size: 18, color: AppColors.onSurfaceVariant),
         ]),
       ]),

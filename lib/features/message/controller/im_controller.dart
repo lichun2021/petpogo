@@ -25,6 +25,7 @@ import '../data/repository/im_repository.dart';
 import '../data/debug_user_sig.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../../app.dart' show globalNavigatorKey;
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 系统通知模型（点赞 / 评论 / 好友申请）────────────────────
 class ImSystemNotice {
@@ -245,7 +246,7 @@ class ImController extends StateNotifier<ImState> {
                   const SizedBox(height: 16),
                   const Text('账号已在其他设备登录',
                     style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
+                      fontFamily: AppFonts.primary,
                       fontSize: 16, fontWeight: FontWeight.w700,
                       color: Colors.white,
                     ),
@@ -255,7 +256,7 @@ class ImController extends StateNotifier<ImState> {
                   Text(
                     '当前设备已自动退出登录。\n如非本人操作，请尽快修改密码。',
                     style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
+                      fontFamily: AppFonts.primary,
                       fontSize: 13, color: Colors.white.withOpacity(0.55),
                       height: 1.6,
                     ),
@@ -274,7 +275,7 @@ class ImController extends StateNotifier<ImState> {
                       ),
                       onPressed: () => Navigator.of(_).pop(),
                       child: const Text('我知道了',
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        style: TextStyle(fontFamily: AppFonts.primary,
                             fontWeight: FontWeight.w700, fontSize: 14)),
                     ),
                   ),

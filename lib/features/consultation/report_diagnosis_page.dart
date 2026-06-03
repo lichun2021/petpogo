@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../shared/theme/app_colors.dart';
 import 'data/models/consultation_models.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 class ReportDiagnosisPage extends StatelessWidget {
   final ConsultationReport report;
@@ -150,7 +151,7 @@ class _PetHeroCard extends StatelessWidget {
                         child: Text(
                           pet.name.isEmpty ? '宠物' : pet.name,
                           style: const TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
+                            fontFamily: AppFonts.primary,
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
                             color: Color(0xFF1E1B4B),
@@ -170,7 +171,7 @@ class _PetHeroCard extends StatelessWidget {
                         child: const Text(
                           '问诊报告',
                           style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
+                            fontFamily: AppFonts.primary,
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF6366F1),
@@ -208,7 +209,7 @@ class _PetHeroCard extends StatelessWidget {
                             TextSpan(
                               text: '${c.label} ',
                               style: TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
+                                fontFamily: AppFonts.primary,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
                                 color: c.color,
@@ -217,7 +218,7 @@ class _PetHeroCard extends StatelessWidget {
                             TextSpan(
                               text: c.value,
                               style: const TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
+                                fontFamily: AppFonts.primary,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 color: Color(0xFF1E1B4B),

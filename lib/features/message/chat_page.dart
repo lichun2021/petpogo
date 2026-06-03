@@ -19,6 +19,7 @@ import '../../shared/widgets/pet_avatar.dart';
 import '../../shared/widgets/pet_toast.dart';
 import 'controller/im_controller.dart';
 import 'data/repository/im_repository.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -213,7 +214,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           const SizedBox(width: 10),
           Expanded(child: Text(
             _peerName.isNotEmpty ? _peerName : widget.userId,
-            style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 16,
+            style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 16,
                 fontWeight: FontWeight.w700, color: AppColors.onSurface),
             overflow: TextOverflow.ellipsis,
           )),
@@ -271,7 +272,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       Text('🐾', style: TextStyle(fontSize: 48)),
       SizedBox(height: 12),
       Text('发送第一条消息，开始聊天吧！',
-        style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
             color: AppColors.onSurfaceVariant)),
     ]),
   );
@@ -289,7 +290,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         child: const Text(
           '⚠️ 对方已将你移除或拉黑，消息将无法送达',
           textAlign: TextAlign.center,
-          style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+          style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
               color: AppColors.onSurfaceVariant),
         ),
       ),
@@ -312,11 +313,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('还不是好友',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 13, fontWeight: FontWeight.w700,
                       color: AppColors.onSurfaceVariant)),
               Text('成为好友后才能发送私信',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 11, color: AppColors.onSurfaceVariant)),
             ],
           )),
@@ -334,7 +335,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text('申请已发送',
-                          style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                          style: TextStyle(fontFamily: AppFonts.primary,
                               fontSize: 13, fontWeight: FontWeight.w700,
                               color: AppColors.primary)),
                     )
@@ -359,7 +360,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                                 child: CircularProgressIndicator(
                                     strokeWidth: 2, color: AppColors.primary))
                             : const Text('加好友',
-                                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                                style: TextStyle(fontFamily: AppFonts.primary,
                                     fontSize: 13, fontWeight: FontWeight.w700,
                                     color: Colors.white)),
                       ),
@@ -407,7 +408,7 @@ class _MessageBubble extends StatelessWidget {
                 child: Text(label,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                        fontFamily: AppFonts.primary, fontSize: 12,
                         color: AppColors.primary, fontWeight: FontWeight.w600)),
               ),
             ),
@@ -427,7 +428,7 @@ class _MessageBubble extends StatelessWidget {
                 child: Text(label,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                        fontFamily: AppFonts.primary, fontSize: 12,
                         color: AppColors.onSurfaceVariant,
                         fontWeight: FontWeight.w500)),
               ),
@@ -461,7 +462,7 @@ class _MessageBubble extends StatelessWidget {
       );
     } else {
       content = Text(text ?? '[消息]',
-        style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
             color: isSelf ? Colors.white : AppColors.onSurface));
     }
 
@@ -504,7 +505,7 @@ class _MessageBubble extends StatelessWidget {
                 content,
               const SizedBox(height: 4),
               Text(_fmt(message.timestamp),
-                style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                style: const TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 10, color: AppColors.onSurfaceVariant)),
             ],
           )),
@@ -587,7 +588,7 @@ class _VoiceBubbleState extends State<_VoiceBubble> {
           ),
           const SizedBox(width: 6),
           Text('${widget.duration}"',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13,
                 color: widget.isSelf ? Colors.white : AppColors.onSurface)),
         ]),
       ),
@@ -684,11 +685,11 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
           Icon(icon, color: const Color(0xFFFF6B6B)),
           const SizedBox(width: 8),
           Flexible(child: Text(title,
-            style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+            style: const TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 17, fontWeight: FontWeight.w700))),
         ]),
         content: Text(reason,
-          style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+          style: const TextStyle(fontFamily: AppFonts.primary,
               fontSize: 14, height: 1.6),
         ),
         actions: [
@@ -709,7 +710,7 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
             },
             child: const Text('去设置',
               style: TextStyle(color: Colors.white,
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: AppFonts.primary,
                   fontWeight: FontWeight.w700)),
           ),
         ],
@@ -889,7 +890,7 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
                     child: Text(
                       _isRecording ? '正在录音…' : '按住 说话',
                       style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.primary,
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: _isRecording
@@ -910,7 +911,7 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
                     minLines: 1, maxLines: 4,
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => widget.onSend(),
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: const TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 15, color: AppColors.onSurface),
                     decoration: const InputDecoration(
                       border: InputBorder.none,
@@ -919,7 +920,7 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
                           horizontal: 10, vertical: 9),
                       hintText: '发条消息…',
                       hintStyle: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.primary,
                         fontSize: 15,
                         color: AppColors.onSurfaceVariant,
                       ),
@@ -1115,7 +1116,7 @@ class _RecordingOverlayState extends State<_RecordingOverlay> {
               child: Center(
                 child: Text('取消',
                   style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
+                    fontFamily: AppFonts.primary,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: isCancel ? AppColors.error : AppColors.onSurfaceVariant,
@@ -1163,7 +1164,7 @@ class _RecordingOverlayState extends State<_RecordingOverlay> {
                         Text(
                           isCancel ? '< 滑回来发送' : '松开  发送',
                           style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
+                            fontFamily: AppFonts.primary,
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
                             color: isCancel

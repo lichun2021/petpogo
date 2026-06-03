@@ -6,6 +6,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/widgets/pet_toast.dart';
 import '../../auth/controller/auth_controller.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 
 /// 我的二维码名片页
@@ -34,7 +35,7 @@ class MyQrCodePage extends ConsumerWidget {
         title: const Text(
           '我的二维码',
           style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 18,
+            fontFamily: AppFonts.primary, fontSize: 18,
             fontWeight: FontWeight.w700, color: AppColors.onSurface,
           ),
         ),
@@ -87,7 +88,7 @@ class MyQrCodePage extends ConsumerWidget {
                     //   child: const Center(
                     //     child: Text('🐾 PetPogo',
                     //       style: TextStyle(
-                    //         fontFamily: 'Plus Jakarta Sans', fontSize: 20,
+                    //         fontFamily: AppFonts.primary, fontSize: 20,
                     //         fontWeight: FontWeight.w800, color: Colors.white,
                     //         letterSpacing: -0.5,
                     //       ),
@@ -105,7 +106,7 @@ class MyQrCodePage extends ConsumerWidget {
                           Text(
                             nickname,
                             style: const TextStyle(
-                              fontFamily: 'Plus Jakarta Sans', fontSize: 18,
+                              fontFamily: AppFonts.primary, fontSize: 18,
                               fontWeight: FontWeight.w700, color: AppColors.onSurface,
                             ),
                           ),
@@ -113,7 +114,7 @@ class MyQrCodePage extends ConsumerWidget {
                           Text(
                             'PetPogo 宠物主人',
                             style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+                              fontFamily: AppFonts.primary, fontSize: 13,
                               color: AppColors.onSurfaceVariant,
                             ),
                           ),
@@ -163,7 +164,7 @@ class MyQrCodePage extends ConsumerWidget {
                           '扫描上方二维码，添加我为好友',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                            fontFamily: AppFonts.primary, fontSize: 12,
                             color: AppColors.onSurfaceVariant,
                           ),
                         ),

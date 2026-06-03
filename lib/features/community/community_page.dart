@@ -16,6 +16,7 @@ import 'controller/feed_controller.dart';
 import 'data/models/post_model.dart';
 import 'publish/publish_page.dart';
 import 'viewer/post_viewer_page.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 class CommunityPage extends ConsumerStatefulWidget {
   const CommunityPage({super.key});
@@ -152,8 +153,8 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                   indicatorSize: TabBarIndicatorSize.label,
                   indicatorWeight: 3,
                   dividerColor: Colors.transparent,
-                  labelStyle: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15, fontWeight: FontWeight.w700),
-                  unselectedLabelStyle: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15, fontWeight: FontWeight.w500),
+                  labelStyle: const TextStyle(fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w700),
+                  unselectedLabelStyle: const TextStyle(fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w500),
                   tabs: [
                     Tab(text: l10n.communityTabFollowing),
                     Tab(text: l10n.communityTabDiscover),
@@ -221,7 +222,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
     if (posts.isEmpty) {
       return const Center(
         child: Text('还没有动态，来发第一条吧 🐾',
-          style: TextStyle(fontFamily: 'Plus Jakarta Sans', color: AppColors.onSurfaceVariant)),
+          style: TextStyle(fontFamily: AppFonts.primary, color: AppColors.onSurfaceVariant)),
       );
     }
 
@@ -325,7 +326,7 @@ class _PostCard extends StatelessWidget {
                       onTap: onAvatarTap,
                       child: Text(post.nickname,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        style: const TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
                     ),
                   ),
@@ -358,7 +359,7 @@ class _PostCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(post.content,
                     maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                    style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
                         color: AppColors.onSurfaceVariant, height: 1.4)),
                 ],
               ]),
@@ -494,7 +495,7 @@ class _CategoryChip extends StatelessWidget {
             : null,
       ),
       child: Text(label, style: TextStyle(
-        fontFamily: 'Plus Jakarta Sans', fontSize: 13, fontWeight: FontWeight.w700,
+        fontFamily: AppFonts.primary, fontSize: 13, fontWeight: FontWeight.w700,
         color: selected ? AppColors.onPrimary : AppColors.onSurfaceVariant,
       )),
     ),
@@ -575,7 +576,7 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
                   Expanded(child: Text(
                     '向 $postNick 发送好友申请',
                     style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
+                      fontFamily: AppFonts.primary,
                       fontSize: 14, fontWeight: FontWeight.w700,
                       color: AppColors.onSurface,
                     ),
@@ -605,7 +606,7 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
                       hintText: '写一句话介绍自己…',
                       hintStyle: TextStyle(
                           color: AppColors.onSurfaceVariant,
-                          fontFamily: 'Plus Jakarta Sans', fontSize: 13),
+                          fontFamily: AppFonts.primary, fontSize: 13),
                       filled: true,
                       fillColor: AppColors.surfaceContainerLow,
                       border: OutlineInputBorder(
@@ -614,7 +615,7 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
                       contentPadding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
                     ),
                     style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans', fontSize: 13),
+                        fontFamily: AppFonts.primary, fontSize: 13),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -628,7 +629,7 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
                     ),
                     onPressed: () => Navigator.pop(ctx, false),
                     child: const Text('取消',
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 13)),
                   ),
                   const SizedBox(width: 8),
@@ -640,7 +641,7 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                       textStyle: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.primary,
                         fontSize: 13, fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -705,12 +706,12 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
 
           // ── 昵称 ─────────────────────────────────────────────
           Text(post.nickname,
-              style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+              style: const TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 17, fontWeight: FontWeight.w800,
                   color: AppColors.onSurface)),
           const SizedBox(height: 4),
           Text('UID ${post.userId}',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 11, color: AppColors.onSurfaceVariant)),
           const SizedBox(height: 24),
 
@@ -800,7 +801,7 @@ class _GradientBtn extends StatelessWidget {
         Icon(icon, color: Colors.white, size: 20),
         const SizedBox(width: 8),
         Text(label, style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans', fontSize: 15,
+          fontFamily: AppFonts.primary, fontSize: 15,
           fontWeight: FontWeight.w800, color: Colors.white,
           letterSpacing: 0.3,
         )),
@@ -854,7 +855,7 @@ class _PendingBtnState extends State<_PendingBtn>
         const SizedBox(width: 8),
         Text('申请已发送，等待对方同意',
           style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+            fontFamily: AppFonts.primary, fontSize: 14,
             fontWeight: FontWeight.w700,
             color: AppColors.primary.withOpacity(_pulse.value),
           )),
@@ -894,7 +895,7 @@ class _SolidBtn extends StatelessWidget {
       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(icon, color: textColor, size: 19),
         const SizedBox(width: 8),
-        Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+        Text(label, style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 15, fontWeight: FontWeight.w700, color: textColor)),
       ]),
     ),

@@ -10,6 +10,7 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/utils/coord_transform.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 逆地理编码（Nominatim，WGS84 坐标）───────────────────────
 Future<String> _reverseGeocode(double lat, double lng) async {
@@ -64,13 +65,15 @@ class PetLocationPage extends ConsumerStatefulWidget {
 
 class _PetLocationPageState extends ConsumerState<PetLocationPage> {
   PetPositionModel? _position;
+
   /// WGS84 → GCJ02 转换后的坐标，用于在高德地图上标点
   LatLng? _gcjLatLng;
-  /// 逆地理编码得到的文字地址（空 = 未获取或失败）
-  String  _address    = '';
-  bool    _geocoding  = false;
 
-  bool  _isRefreshing = false;
+  /// 逆地理编码得到的文字地址（空 = 未获取或失败）
+  String _address = '';
+  bool _geocoding = false;
+
+  bool _isRefreshing = false;
   String? _error;
 
   late final MapController _mapCtrl;
@@ -89,10 +92,13 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _isRefreshing = true; _error = null; });
+    setState(() {
+      _isRefreshing = true;
+      _error = null;
+    });
     try {
       final repo = ref.read(petPeerRepositoryProvider);
-      final pos  = await repo.fetchPosition(mac: widget.deviceMac);
+      final pos = await repo.fetchPosition(mac: widget.deviceMac);
 
       // API 返回的 latitude/longitude 是 WGS84，
       // 高德地图瓦片使用 GCJ02（火星坐标），必须转换否则偏移 ~500m
@@ -105,11 +111,13 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
 
       if (mounted) {
         setState(() {
-          _position     = pos;
-          _gcjLatLng    = gcj;
+          _position = pos;
+          _gcjLatLng = gcj;
           _isRefreshing = false;
-          _address      = pos.address; // 若 API 本身带了地址直接用
-          if (pos.address.isEmpty) _geocoding = true;
+          _address = pos.address; // 若 API 本身带了地址直接用
+          if (pos.address.isEmpty) {
+            _geocoding = true;
+          }
         });
         if (gcj != null) {
           _mapCtrl.move(gcj, 16);
@@ -117,12 +125,22 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
         // API 没带地址 → 用 Nominatim 逆地理编码（WGS84 查询）
         if (pos.hasLocation && pos.address.isEmpty) {
           _reverseGeocode(pos.lat, pos.lng).then((addr) {
-            if (mounted) setState(() { _address = addr; _geocoding = false; });
+            if (mounted) {
+              setState(() {
+                _address = addr;
+                _geocoding = false;
+              });
+            }
           });
         }
       }
     } catch (e) {
-      if (mounted) setState(() { _isRefreshing = false; _error = e.toString(); });
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+          _error = e.toString();
+        });
+      }
     }
   }
 
@@ -136,23 +154,21 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
 
   @override
   Widget build(BuildContext context) {
-    final safeTop    = MediaQuery.of(context).padding.top;
+    final safeTop = MediaQuery.of(context).padding.top;
     final safeBottom = MediaQuery.of(context).padding.bottom;
-    final hasLoc     = _gcjLatLng != null;
+    final hasLoc = _gcjLatLng != null;
 
     return Scaffold(
       body: Stack(children: [
-
         // ── 1. 高德地图（GCJ02 瓦片）──────────────────────────
         Positioned.fill(
-          bottom: 290,
           child: FlutterMap(
             mapController: _mapCtrl,
             options: MapOptions(
               initialCenter: _gcjLatLng ?? const LatLng(39.9042, 116.4074),
-              initialZoom:   hasLoc ? 16 : 12,
-              minZoom:  4,
-              maxZoom:  18,
+              initialZoom: hasLoc ? 16 : 12,
+              minZoom: 4,
+              maxZoom: 18,
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all,
               ),
@@ -170,11 +186,11 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
               if (hasLoc)
                 CircleLayer(circles: [
                   CircleMarker(
-                    point:  _gcjLatLng!,
+                    point: _gcjLatLng!,
                     radius: 80,
                     useRadiusInMeter: true,
-                    color:             const Color(0xFF3EBD6D).withOpacity(0.15),
-                    borderColor:       const Color(0xFF3EBD6D).withOpacity(0.5),
+                    color: const Color(0xFF3EBD6D).withValues(alpha: 0.15),
+                    borderColor: const Color(0xFF3EBD6D).withValues(alpha: 0.5),
                     borderStrokeWidth: 1.5,
                   ),
                 ]),
@@ -183,34 +199,42 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
               if (hasLoc)
                 MarkerLayer(markers: [
                   Marker(
-                    point:     _gcjLatLng!,
-                    width:     64,
-                    height:    74,
+                    point: _gcjLatLng!,
+                    width: 64,
+                    height: 74,
                     alignment: Alignment.topCenter,
                     child: Column(mainAxisSize: MainAxisSize.min, children: [
                       Container(
-                        width: 56, height: 56,
+                        width: 56,
+                        height: 56,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: Colors.white,
-                          border: Border.all(color: const Color(0xFF3EBD6D), width: 3),
+                          border: Border.all(
+                              color: const Color(0xFF3EBD6D), width: 3),
                           boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.2),
-                                blurRadius: 10, offset: const Offset(0, 3)),
+                            BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3)),
                           ],
                         ),
                         child: ClipOval(
                           child: widget.petAvatar.isNotEmpty
                               ? CachedNetworkImage(
-                                  imageUrl:    widget.petAvatar,
-                                  fit:         BoxFit.cover,
-                                  errorWidget: (_, __, ___) =>
-                                      const Center(child: Text('🐾', style: TextStyle(fontSize: 24))))
-                              : const Center(child: Text('🐾', style: TextStyle(fontSize: 24))),
+                                  imageUrl: widget.petAvatar,
+                                  fit: BoxFit.cover,
+                                  errorWidget: (_, __, ___) => const Center(
+                                      child: Text('🐾',
+                                          style: TextStyle(fontSize: 24))))
+                              : const Center(
+                                  child: Text('🐾',
+                                      style: TextStyle(fontSize: 24))),
                         ),
                       ),
                       // 三角箭头
-                      CustomPaint(painter: _PinTailPainter(), size: const Size(14, 9)),
+                      CustomPaint(
+                          painter: _PinTailPainter(), size: const Size(14, 9)),
                     ]),
                   ),
                 ]),
@@ -220,33 +244,45 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
 
         // ── 2. 顶部透明 AppBar ─────────────────────────────
         Positioned(
-          top: 0, left: 0, right: 0,
+          top: 0,
+          left: 0,
+          right: 0,
           child: Container(
             padding: EdgeInsets.fromLTRB(8, safeTop + 4, 8, 8),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.white.withOpacity(0.92), Colors.white.withOpacity(0)],
-                begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white.withValues(alpha: 0.92),
+                  Colors.white.withValues(alpha: 0)
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
               ),
             ),
             child: Row(children: [
-              Material(color: Colors.transparent,
+              Material(
+                color: Colors.transparent,
                 child: IconButton(
-                  icon:      const Icon(Icons.arrow_back_ios_rounded, size: 20),
-                  color:     AppColors.onSurface,
+                  icon: const Icon(Icons.arrow_back_ios_rounded, size: 20),
+                  color: AppColors.onSurface,
                   onPressed: () => Navigator.pop(context),
                 ),
               ),
               const Spacer(),
               if (_isRefreshing)
-                const Padding(padding: EdgeInsets.only(right: 16),
-                    child: SizedBox(width: 20, height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primary)))
+                const Padding(
+                    padding: EdgeInsets.only(right: 16),
+                    child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2.5, color: AppColors.primary)))
               else
-                Material(color: Colors.transparent,
+                Material(
+                  color: Colors.transparent,
                   child: IconButton(
-                    icon:      const Icon(Icons.refresh_rounded),
-                    color:     AppColors.onSurface,
+                    icon: const Icon(Icons.refresh_rounded),
+                    color: AppColors.onSurface,
                     onPressed: _load,
                   ),
                 ),
@@ -254,32 +290,37 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
           ),
         ),
 
-        // ── 3. 右侧工具按钮 ──────────────────────────────────
+        // ── 3. 右侧工具按鈕 ──────────────────────────────
         Positioned(
-          right: 14, bottom: 290 + 20,
+          right: 16,
+          bottom: safeBottom + 224,
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            _MapBtn(icon: Icons.refresh_rounded, onTap: _load),
-            const SizedBox(height: 8),
-            _MapBtn(icon: Icons.my_location_rounded, onTap: () {
-              HapticFeedback.lightImpact();
-              if (_gcjLatLng != null) {
-                _mapCtrl.move(_gcjLatLng!, 16);
-              }
-            }),
+            _MapBtn(
+              icon: Icons.my_location_rounded,
+              color: AppColors.primary,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                if (_gcjLatLng != null) {
+                  _mapCtrl.move(_gcjLatLng!, 16);
+                }
+              },
+            ),
           ]),
         ),
 
         // ── 4. 底部宠物信息卡片 ──────────────────────────────
         Positioned(
-          left: 0, right: 0, bottom: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           child: _BottomCard(
-            petName:    widget.petName,
-            petAvatar:  widget.petAvatar,
-            position:   _position,
-            address:    _address,
-            geocoding:  _geocoding,
-            inFence:    _inFence,
-            error:      _error,
+            petName: widget.petName,
+            petAvatar: widget.petAvatar,
+            position: _position,
+            address: _address,
+            geocoding: _geocoding,
+            inFence: _inFence,
+            error: _error,
             updateTime: _updateTime,
             safeBottom: safeBottom,
           ),
@@ -291,13 +332,13 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
 
 // ── 底部信息卡片 ─────────────────────────────────────────
 class _BottomCard extends StatelessWidget {
-  final String            petName, petAvatar, updateTime;
-  final String            address;    // 逆地理编码结果（可能为空）
-  final bool              geocoding;  // 正在解析地址中
+  final String petName, petAvatar, updateTime;
+  final String address; // 逆地理编码结果（可能为空）
+  final bool geocoding; // 正在解析地址中
   final PetPositionModel? position;
-  final bool              inFence;
-  final String?           error;
-  final double            safeBottom;
+  final bool inFence;
+  final String? error;
+  final double safeBottom;
 
   const _BottomCard({
     required this.petName,
@@ -320,121 +361,177 @@ class _BottomCard extends StatelessWidget {
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, -4))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black12, blurRadius: 20, offset: Offset(0, -4))
+        ],
       ),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Center(child: Container(width: 36, height: 4,
-            decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(99)))),
-        const SizedBox(height: 14),
-
-        Row(children: [
-          Container(
-            width: 52, height: 52,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFF0F0EE),
-                border: Border.all(color: const Color(0xFF3EBD6D), width: 2.5)),
-            child: ClipOval(child: petAvatar.isNotEmpty
-                ? CachedNetworkImage(imageUrl: petAvatar, fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => const Center(child: Text('🐾', style: TextStyle(fontSize: 22))))
-                : const Center(child: Text('🐾', style: TextStyle(fontSize: 22)))),
-          ),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(petName, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A))),
-            const SizedBox(height: 3),
+      child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+                child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                        color: Colors.black12,
+                        borderRadius: BorderRadius.circular(99)))),
+            const SizedBox(height: 14),
             Row(children: [
-              const Icon(Icons.shield_rounded, size: 14, color: Color(0xFF3EBD6D)),
-              const SizedBox(width: 4),
-              Text(
-                !hasLoc ? '定位中...' : (inFence ? '安全守护中' : '已离开围栏'),
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: (!hasLoc || inFence) ? const Color(0xFF3EBD6D) : AppColors.error),
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFFF0F0EE),
+                    border:
+                        Border.all(color: const Color(0xFF3EBD6D), width: 2.5)),
+                child: ClipOval(
+                    child: petAvatar.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: petAvatar,
+                            fit: BoxFit.cover,
+                            errorWidget: (_, __, ___) => const Center(
+                                child:
+                                    Text('🐾', style: TextStyle(fontSize: 22))))
+                        : const Center(
+                            child: Text('🐾', style: TextStyle(fontSize: 22)))),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text(petName,
+                        style: const TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1A1A1A))),
+                    const SizedBox(height: 3),
+                    Row(children: [
+                      const Icon(Icons.shield_rounded,
+                          size: 14, color: Color(0xFF3EBD6D)),
+                      const SizedBox(width: 4),
+                      Text(
+                        !hasLoc ? '定位中...' : (inFence ? '安全守护中' : '已离开围栏'),
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: (!hasLoc || inFence)
+                                ? const Color(0xFF3EBD6D)
+                                : AppColors.error),
+                      ),
+                    ]),
+                  ])),
+            ]),
+            const SizedBox(height: 14),
+            Row(children: [
+              _StatBadge(
+                icon: Icons.radio_button_checked_rounded,
+                label: inFence ? '范围内' : '范围外',
+                color: inFence ? const Color(0xFF3EBD6D) : Colors.grey,
+              ),
+              const SizedBox(width: 8),
+              _StatBadge(
+                icon: Icons.gps_fixed_rounded,
+                label: hasLoc ? 'GPS' : 'GPS 无信号',
+                color: hasLoc ? const Color(0xFF3EBD6D) : Colors.grey,
+              ),
+              const SizedBox(width: 8),
+              _StatBadge(
+                icon: Icons.access_time_rounded,
+                label: updateTime,
+                color: Colors.grey.shade600,
               ),
             ]),
-          ])),
-        ]),
-
-        const SizedBox(height: 14),
-
-        Row(children: [
-          _StatBadge(
-            icon:  Icons.radio_button_checked_rounded,
-            label: inFence ? '范围内' : '范围外',
-            color: inFence ? const Color(0xFF3EBD6D) : Colors.grey,
-          ),
-          const SizedBox(width: 8),
-          _StatBadge(
-            icon:  Icons.gps_fixed_rounded,
-            label: hasLoc ? 'GPS' : 'GPS 无信号',
-            color: hasLoc ? const Color(0xFF3EBD6D) : Colors.grey,
-          ),
-          const SizedBox(width: 8),
-          _StatBadge(
-            icon:  Icons.access_time_rounded,
-            label: updateTime,
-            color: Colors.grey.shade600,
-          ),
-        ]),
-
-        const SizedBox(height: 14),
-        const Divider(height: 1, color: Color(0xFFF0F0EE)),
-        const SizedBox(height: 12),
-
-        if (error != null)
-          Row(children: [
-            const Icon(Icons.error_outline_rounded, size: 16, color: AppColors.error),
-            const SizedBox(width: 6),
-            Expanded(child: Text(error!, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                fontSize: 12, color: AppColors.error))),
-          ])
-        else
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Icon(Icons.location_on_rounded, size: 16, color: AppColors.primary),
-            const SizedBox(width: 6),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              if (!hasLoc)
-                const Text('等待设备上报位置...',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A)))
-              else if (geocoding)
-                // 正在解析地址
-                Row(children: const [
-                  SizedBox(width: 12, height: 12,
-                      child: CircularProgressIndicator(strokeWidth: 1.8, color: AppColors.primary)),
-                  SizedBox(width: 6),
-                  Text('正在解析地址...',
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                          fontSize: 13, color: AppColors.onSurfaceVariant)),
-                ])
-              else
-                // 地址（纬度, 经度）
-                RichText(
-                  text: TextSpan(
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
-                        fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A)),
-                    children: [
-                      TextSpan(text: address.isNotEmpty ? address : '${position!.latitude}, ${position!.longitude}'),
-                      if (address.isNotEmpty)
-                        TextSpan(
-                          text: '  (${position!.latitude}, ${position!.longitude})',
-                          style: const TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
-                            fontSize: 11,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0xFF999999),
+            const SizedBox(height: 14),
+            const Divider(height: 1, color: Color(0xFFF0F0EE)),
+            const SizedBox(height: 12),
+            if (error != null)
+              Row(children: [
+                const Icon(Icons.error_outline_rounded,
+                    size: 16, color: AppColors.error),
+                const SizedBox(width: 6),
+                Expanded(
+                    child: Text(error!,
+                        style: const TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 12,
+                            color: AppColors.error))),
+              ])
+            else
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Icon(Icons.location_on_rounded,
+                    size: 16, color: AppColors.primary),
+                const SizedBox(width: 6),
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      if (!hasLoc)
+                        const Text('等待设备上报位置...',
+                            style: TextStyle(
+                                fontFamily: AppFonts.primary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1A1A1A)))
+                      else if (geocoding)
+                        // 正在解析地址
+                        Row(children: const [
+                          SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 1.8, color: AppColors.primary)),
+                          SizedBox(width: 6),
+                          Text('正在解析地址...',
+                              style: TextStyle(
+                                  fontFamily: AppFonts.primary,
+                                  fontSize: 13,
+                                  color: AppColors.onSurfaceVariant)),
+                        ])
+                      else
+                        // 地址（纬度, 经度）
+                        RichText(
+                          text: TextSpan(
+                            style: const TextStyle(
+                                fontFamily: AppFonts.primary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1A1A1A)),
+                            children: [
+                              TextSpan(
+                                  text: address.isNotEmpty
+                                      ? address
+                                      : '${position!.latitude}, ${position!.longitude}'),
+                              if (address.isNotEmpty)
+                                TextSpan(
+                                  text:
+                                      '  (${position!.latitude}, ${position!.longitude})',
+                                  style: const TextStyle(
+                                    fontFamily: AppFonts.primary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w400,
+                                    color: Color(0xFF999999),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
-                    ],
-                  ),
-                ),
-              if (hasLoc) ...[const SizedBox(height: 2),
-                Text('更新于 $updateTime', style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 11, color: Color(0xFF999999))),
-              ],
-            ])),
+                      if (hasLoc) ...[
+                        const SizedBox(height: 2),
+                        Text('更新于 $updateTime',
+                            style: const TextStyle(
+                                fontFamily: AppFonts.primary,
+                                fontSize: 11,
+                                color: Color(0xFF999999))),
+                      ],
+                    ])),
+              ]),
           ]),
-      ]),
     );
   }
 }
@@ -442,47 +539,67 @@ class _BottomCard extends StatelessWidget {
 // ── 状态徽章 ─────────────────────────────────────────────
 class _StatBadge extends StatelessWidget {
   final IconData icon;
-  final String   label;
-  final Color    color;
-  const _StatBadge({required this.icon, required this.label, required this.color});
+  final String label;
+  final Color color;
+  const _StatBadge(
+      {required this.icon, required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-    decoration: BoxDecoration(
-      color:        color.withOpacity(0.08),
-      borderRadius: BorderRadius.circular(20),
-      border:       Border.all(color: color.withOpacity(0.2)),
-    ),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 12, color: color),
-      const SizedBox(width: 4),
-      Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-          fontSize: 12, fontWeight: FontWeight.w700, color: color)),
-    ]),
-  );
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(label,
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: color)),
+        ]),
+      );
 }
 
-// ── 右侧地图按钮 ─────────────────────────────────────────
+// ── 右侧地图按鈕 ───────────────────────────────
 class _MapBtn extends StatelessWidget {
-  final IconData      icon;
-  final VoidCallback  onTap;
-  const _MapBtn({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color? color; // null = 默认灰色，传入则显示主题色
+  const _MapBtn({required this.icon, required this.onTap, this.color});
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 40, height: 40,
-      decoration: BoxDecoration(
-        color:  Colors.white,
-        shape:  BoxShape.circle,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12),
-            blurRadius: 8, offset: const Offset(0, 2))],
+  Widget build(BuildContext context) {
+    final iconColor = color ?? AppColors.onSurface;
+    final bgColor = color != null
+        ? color!.withValues(alpha: 0.12)
+        : Colors.white;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: bgColor,
+          shape: BoxShape.circle,
+          border: color != null
+              ? Border.all(color: color!.withValues(alpha: 0.3), width: 1.5)
+              : null,
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.14),
+                blurRadius: 10,
+                offset: const Offset(0, 2))
+          ],
+        ),
+        child: Icon(icon, size: 22, color: iconColor),
       ),
-      child: Icon(icon, size: 20, color: AppColors.onSurface),
-    ),
-  );
+    );
+  }
 }
 
 // ── Pin 三角尖 ───────────────────────────────────────────

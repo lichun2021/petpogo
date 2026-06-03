@@ -7,6 +7,7 @@ import '../../shared/widgets/pet_toast.dart';
 import 'data/music_models.dart';
 import 'data/music_repository.dart';
 import 'music_category_page.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 分类卡片颜色 ──────────────────────────────────────────
 const _cardColors = [
@@ -102,7 +103,7 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
               onPressed: () => Navigator.pop(context),
             ),
             title: const Text('宠物音乐',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 17, fontWeight: FontWeight.w800)),
             centerTitle: false,
             actions: [
@@ -112,10 +113,10 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
             bottom: TabBar(
               controller: _mainTab,
               indicatorColor: AppColors.primary, indicatorWeight: 3,
-              labelStyle: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+              labelStyle: const TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 14, fontWeight: FontWeight.w700),
               unselectedLabelStyle: const TextStyle(
-                  fontFamily: 'Plus Jakarta Sans', fontSize: 14),
+                  fontFamily: AppFonts.primary, fontSize: 14),
               labelColor: AppColors.primary,
               unselectedLabelColor: AppColors.onSurfaceVariant,
               tabs: const [Tab(text: '推荐'), Tab(text: '限免')],
@@ -163,7 +164,7 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
                   '已筛选：共 ${_displayCategories.fold(0, (s, c) => s + c.songs.length)} 首'
                       '（${_petType == 1 ? "狗狗" : "猫咪"}专属 + 通用）',
                   style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
+                    fontFamily: AppFonts.primary,
                     fontSize: 11,
                     color: AppColors.primary.withOpacity(0.8),
                   ),
@@ -216,7 +217,7 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
       Icon(Icons.lock_open_rounded, size: 64,
           color: AppColors.onSurfaceVariant.withOpacity(0.3)),
       const SizedBox(height: 16),
-      const Text('限免专区即将上线', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+      const Text('限免专区即将上线', style: TextStyle(fontFamily: AppFonts.primary,
           fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.onSurfaceVariant)),
     ]),
   );
@@ -227,7 +228,7 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
       Icon(Icons.music_off_rounded, size: 64,
           color: AppColors.onSurfaceVariant.withOpacity(0.3)),
       const SizedBox(height: 12),
-      const Text('暂无音乐内容', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+      const Text('暂无音乐内容', style: TextStyle(fontFamily: AppFonts.primary,
           fontSize: 14, color: AppColors.onSurfaceVariant)),
     ])),
   );
@@ -248,7 +249,7 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
                 decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(2)))),
             const SizedBox(height: 16),
-            const Text('新建歌单', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            const Text('新建歌单', style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 17, fontWeight: FontWeight.w700)),
             const SizedBox(height: 16),
             TextField(
@@ -278,7 +279,7 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
                 minimumSize: const Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text('创建', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              child: const Text('创建', style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 15, fontWeight: FontWeight.w700)),
             ),
           ]),
@@ -321,11 +322,11 @@ class _Banner extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center, children: [
               const Text('安抚  疗愈  欢乐',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
               const SizedBox(height: 4),
               Text('为毛孩子开启音乐魔力',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 12, color: Colors.white.withOpacity(0.85))),
             ]),
           ),
@@ -363,7 +364,7 @@ class _PetTypeBar extends StatelessWidget {
                 color: active ? AppColors.primary : Colors.grey.withOpacity(0.2)),
           ),
           child: Text(e.value,
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 13, fontWeight: FontWeight.w700,
                   color: active ? Colors.white : AppColors.onSurfaceVariant)),
         ),
@@ -415,7 +416,7 @@ class _CategoryCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(14, 14, 48, 14),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(category.name,
-                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: const TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 15, fontWeight: FontWeight.w800,
                       color: Colors.white,
                       shadows: [Shadow(blurRadius: 4, color: Colors.black38)])),
@@ -427,7 +428,7 @@ class _CategoryCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text('${category.songs.length} 首',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 12, fontWeight: FontWeight.w700,
                         color: Colors.white.withOpacity(0.95))),
               ),
@@ -464,7 +465,7 @@ class _MyPlaylists extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        const Text('我的歌单', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+        const Text('我的歌单', style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 15, fontWeight: FontWeight.w800)),
         const Spacer(),
         // NEW 标签
@@ -472,7 +473,7 @@ class _MyPlaylists extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(color: AppColors.primary,
               borderRadius: BorderRadius.circular(4)),
-          child: const Text('NEW', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+          child: const Text('NEW', style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white)),
         ),
         const SizedBox(width: 8),
@@ -502,7 +503,7 @@ class _MyPlaylists extends StatelessWidget {
               Icon(Icons.add_circle_outline_rounded, size: 28,
                   color: AppColors.primary.withOpacity(0.5)),
               const SizedBox(height: 4),
-              const Text('新建歌单', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              const Text('新建歌单', style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 12, color: AppColors.onSurfaceVariant)),
             ])),
           ),
@@ -543,10 +544,10 @@ class _PlaylistCard extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(playlist.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+            style: const TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 11, fontWeight: FontWeight.w600)),
         Text('${playlist.songCount}首', style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 10, color: AppColors.onSurfaceVariant)),
+            fontFamily: AppFonts.primary, fontSize: 10, color: AppColors.onSurfaceVariant)),
       ]),
     ),
   );

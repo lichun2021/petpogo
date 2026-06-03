@@ -14,6 +14,7 @@ import '../device/data/models/device_model.dart';
 import '../device/data/repository/device_repository.dart';
 import 'device_detail_page.dart';
 import '../bind_device/select_device_page.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 机器人设备详情页 ─────────────────────────────────────
 class RobotDevicePage extends ConsumerStatefulWidget {
@@ -64,7 +65,21 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   void dispose() {
     _tabController.dispose();
     _statsTimer?.cancel();
-    _stopAgora();
+    // 取出引擎引用后立即置 null（dispose 不能 await，用 fire-and-forget）
+    final engine = _engine;
+    _engine = null;
+    _agoraJoined = false;
+    _remoteUid = null;
+    if (engine != null) {
+      // 先禁用音量回调（interval=0），再离开频道、释放引擎
+      engine
+          .enableAudioVolumeIndication(interval: 0, smooth: 3, reportVad: false)
+          .then((_) => engine.leaveChannel())
+          .then((_) => engine.release())
+          .catchError((e) {
+        debugPrint('[Agora] dispose 清理异常（可忽略）: $e');
+      });
+    }
     super.dispose();
   }
 
@@ -149,21 +164,20 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           debugPrint('[🔊音频] 远端用户离线 uid=$uid');
         },
         onRtcStats: (_, stats) {
-          if (mounted) {
-            setState(() {
-              _kbps = stats.rxVideoKBitRate?.toDouble() ?? 0;
-            });
-            // 音频码率诊断（不 setState，仅打印）
-            final rxAudio = stats.rxAudioKBitRate ?? 0;
-            final txAudio = stats.txAudioKBitRate ?? 0;
-            if (rxAudio > 0 || txAudio > 0) {
-              debugPrint('[🔊音频] Stats → rxAudio=${rxAudio}kbps txAudio=${txAudio}kbps '
-                  'rxVideo=${stats.rxVideoKBitRate ?? 0}kbps');
-            } else {
-              debugPrint('[🔊音频] ⚠️ Stats → rxAudio=0 txAudio=0（未收到音频数据！）');
-            }
+          if (!mounted) return;
+          setState(() {
+            _kbps = stats.rxVideoKBitRate?.toDouble() ?? 0;
+          });
+          final rxAudio = stats.rxAudioKBitRate ?? 0;
+          final txAudio = stats.txAudioKBitRate ?? 0;
+          if (rxAudio > 0 || txAudio > 0) {
+            debugPrint('[🔊音频] Stats → rxAudio=${rxAudio}kbps txAudio=${txAudio}kbps '
+                'rxVideo=${stats.rxVideoKBitRate ?? 0}kbps');
+          } else {
+            debugPrint('[🔊音频] ⚠️ Stats → rxAudio=0 txAudio=0（未收到音频数据！）');
           }
         },
+
         // ── 远端音频状态变化（关键诊断事件）──
         onRemoteAudioStateChanged: (_, uid, state, reason, __) {
           debugPrint('[🔊音频] 远端音频状态变化 uid=$uid '
@@ -177,6 +191,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         },
         // ── 音量回调（有声音时 volume > 0）──
         onAudioVolumeIndication: (_, speakers, __, totalVolume) {
+          if (!mounted) return;  // 页面已销毁，不处理
           for (final s in speakers) {
             if ((s.volume ?? 0) > 0) {
               debugPrint('[🔊音频] 音量回调 uid=${s.uid} volume=${s.volume}');
@@ -188,6 +203,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         },
         // ── 音频路由变化（扬声器/听筒/耳机）──
         onAudioRoutingChanged: (routing) {
+          if (!mounted) return;
           // -1=default 0=headset 1=earpiece 2=speakerphone 3=bluetooth 4=usb
           final routeStr = const {-1:'default',0:'headset',1:'earpiece',2:'speakerphone ✅',3:'bluetooth',4:'usb_audio'}[routing] ?? 'unknown($routing)';
           debugPrint('[🔊音频] 音频路由变化 → $routeStr');
@@ -377,7 +393,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                       style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.primary,
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: AppColors.onPrimary,
@@ -455,7 +471,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                         strokeWidth: 2.5, color: AppColors.primaryContainer)),
                     const SizedBox(height: 12),
                     Text('连接设备摄像头...',
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 13,
                             color: AppColors.onPrimary.withOpacity(0.6))),
                   ],
@@ -472,7 +488,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                         size: 40, color: AppColors.onPrimary.withOpacity(0.5)),
                     const SizedBox(height: 8),
                     Text('视频连接失败',
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 13,
                             color: AppColors.onPrimary.withOpacity(0.6))),
                     const SizedBox(height: 4),
@@ -486,7 +502,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Text('点击重试',
-                            style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                            style: TextStyle(fontFamily: AppFonts.primary,
                                 fontSize: 12, color: AppColors.primaryContainer)),
                       ),
                     ),
@@ -504,11 +520,11 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                         size: 48, color: AppColors.onPrimary.withOpacity(0.5)),
                     const SizedBox(height: 8),
                     Text('iOS 仅支持音频对讲',
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 13,
                             color: AppColors.onPrimary.withOpacity(0.6))),
                     Text('ESP32 H.264 升级后可支持 iOS 视频',
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 11,
                             color: AppColors.onPrimary.withOpacity(0.4))),
                   ],
@@ -527,7 +543,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                     const SizedBox(height: 8),
                     Text('摄像头预览',
                         style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
+                            fontFamily: AppFonts.primary,
                             fontSize: 13,
                             color: AppColors.onPrimary.withOpacity(0.45))),
                   ],
@@ -570,7 +586,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 child: Text(
                   '${_kbps.toStringAsFixed(0)}\nKB/s',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: const TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 9, color: Colors.white, height: 1.3),
                 ),
               ),
@@ -630,7 +646,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   const SizedBox(width: 4),
                   Text(
                     _remoteUid != null ? '已连接' : '等待设备',
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: const TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 9, color: Colors.white),
                   ),
                 ]),
@@ -728,7 +744,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
               const SizedBox(height: 4),
               Text(tabs[i].$2,
                   style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
+                    fontFamily: AppFonts.primary,
                     fontSize: screenH < 700 ? 11 : 12,
                     fontWeight: FontWeight.w600,
                     color: active ? AppColors.primary : AppColors.onSurfaceVariant,
@@ -777,7 +793,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   child: Row(
                     children: [
                       // const Text('拖动方向盘控制机器人移动',
-                      //     style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      //     style: TextStyle(fontFamily: AppFonts.primary,
                       //         fontSize: 11,
                       //         color: AppColors.onSurfaceVariant)),
                       // const Spacer(),
@@ -828,7 +844,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
               const Icon(Icons.speed_rounded, size: 20, color: AppColors.primary),
               const SizedBox(width: 10),
               const Text('移动速度',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 16, fontWeight: FontWeight.w800,
                       color: AppColors.onSurface)),
               const Spacer(),
@@ -839,7 +855,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text('${_moveSpeed.toInt()}%',
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: const TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 14, fontWeight: FontWeight.w800,
                         color: AppColors.primary)),
               ),
@@ -866,9 +882,9 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             // const Row(
             //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
             //   children: [
-            //     Text('慢速 10%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            //     Text('慢速 10%', style: TextStyle(fontFamily: AppFonts.primary,
             //         fontSize: 12, color: AppColors.onSurfaceVariant)),
-            //     Text('快速 100%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            //     Text('快速 100%', style: TextStyle(fontFamily: AppFonts.primary,
             //         fontSize: 12, color: AppColors.onSurfaceVariant)),
             //   ],
             // ),
@@ -880,7 +896,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
               const Icon(Icons.volume_up_rounded, size: 20, color: AppColors.primary),
               const SizedBox(width: 10),
               const Text('设备音量',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 16, fontWeight: FontWeight.w800,
                       color: AppColors.onSurface)),
               const Spacer(),
@@ -891,7 +907,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text('${_deviceVolume.toInt()}%',
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: const TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 14, fontWeight: FontWeight.w800,
                         color: AppColors.primary)),
               ),
@@ -925,9 +941,9 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             // const Row(
             //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
             //   children: [
-            //     Text('静音 0%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            //     Text('静音 0%', style: TextStyle(fontFamily: AppFonts.primary,
             //         fontSize: 12, color: AppColors.onSurfaceVariant)),
-            //     Text('最大 100%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            //     Text('最大 100%', style: TextStyle(fontFamily: AppFonts.primary,
             //         fontSize: 12, color: AppColors.onSurfaceVariant)),
             //   ],
             // ),
@@ -970,7 +986,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           padding: const EdgeInsets.all(20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('机器人动作',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 16, fontWeight: FontWeight.w800,
                     color: AppColors.onSurface)),
             SizedBox(height: spacing),
@@ -1014,7 +1030,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                       ),
                       const SizedBox(height: 6),
                       Text(a.$1,
-                          style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                          style: const TextStyle(fontFamily: AppFonts.primary,
                               fontSize: 12, fontWeight: FontWeight.w600,
                               color: AppColors.onSurface)),
                     ]),
@@ -1086,11 +1102,11 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
               Expanded(child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('媒体文件',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 15, fontWeight: FontWeight.w800,
                         color: AppColors.onPrimary)),
                 Text('查看拍照和录像',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 12,
                         color: AppColors.onPrimary.withOpacity(0.8))),
               ])),
@@ -1146,14 +1162,14 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   SizedBox(height: gap1),
                   Text(
                     isReady ? (_micOn ? '对讲中...' : '连接已建立') : '连接设备中...',
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: const TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 18, fontWeight: FontWeight.w800,
                         color: AppColors.onSurface),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     isReady ? '点击按钮开启/关闭对讲' : '请稍候...',
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: const TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 14, color: AppColors.onSurfaceVariant),
                   ),
                   SizedBox(height: gap2),
@@ -1182,7 +1198,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                       child: Text(
                         isReady ? (_micOn ? '关闭对讲' : '开启对讲') : '连接中...',
                         style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
+                          fontFamily: AppFonts.primary,
                           fontSize: 16, fontWeight: FontWeight.w800,
                           color: isReady ? AppColors.onPrimary : AppColors.onSurfaceVariant,
                         ),
@@ -1196,7 +1212,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Text(_agoraError!,
                           style: const TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
+                              fontFamily: AppFonts.primary,
                               fontSize: 11, color: Colors.redAccent),
                           textAlign: TextAlign.center),
                     ),
@@ -1246,7 +1262,7 @@ class _DeviceSwitcherSheet extends StatelessWidget {
         const Align(
           alignment: Alignment.centerLeft,
           child: Text('切换设备',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 18, fontWeight: FontWeight.w800,
                   color: AppColors.onSurface)),
         ),
@@ -1292,13 +1308,13 @@ class _DeviceSwitcherSheet extends StatelessWidget {
                 Expanded(child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(d.displayName,
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      style: TextStyle(fontFamily: AppFonts.primary,
                           fontSize: 14, fontWeight: FontWeight.w700,
                           color: isSelected ? AppColors.primary : AppColors.onSurface)),
                   const SizedBox(height: 2),
                   Row(children: [
                     Text(isRobot ? '智能宠物机器人' : '智能项圈',
-                        style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        style: const TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 11, color: AppColors.onSurfaceVariant)),
                     const SizedBox(width: 8),
                     Container(width: 6, height: 6,
@@ -1308,7 +1324,7 @@ class _DeviceSwitcherSheet extends StatelessWidget {
                         )),
                     const SizedBox(width: 4),
                     Text(d.isOnline ? '在线' : '离线',
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        style: TextStyle(fontFamily: AppFonts.primary,
                             fontSize: 11,
                             color: d.isOnline ? AppColors.secondary : AppColors.onSurfaceVariant)),
                   ]),
@@ -1736,7 +1752,7 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
                         const SizedBox(height: 6),
                         Text(item.$2,
                             style: const TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
+                                fontFamily: AppFonts.primary,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white70)),
@@ -1829,7 +1845,7 @@ class _QuickBtn extends StatelessWidget {
           child: Icon(icon, color: color, size: 22),
         ),
         const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+        Text(label, style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 10, fontWeight: FontWeight.w600, color: color)),
       ]),
     );
@@ -1867,7 +1883,7 @@ class _PhotoAction extends StatelessWidget {
             child: Icon(icon, size: 28, color: color),
           ),
           const SizedBox(height: 10),
-          Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+          Text(label, style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 14, fontWeight: FontWeight.w700, color: color)),
         ]),
       ),

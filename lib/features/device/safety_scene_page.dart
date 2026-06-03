@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_toast.dart';
 import '../pet/fence_manage_page.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 安全场景设置页 ─────────────────────────────────────────
 // 居家场景 / 外出场景 Tab 切换，展示安全设置步骤
@@ -53,16 +54,16 @@ class _SafetyScenePageState extends State<SafetyScenePage>
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text('安全场景设置',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 17, fontWeight: FontWeight.w700)),
         centerTitle: false,
         bottom: TabBar(
           controller: _tab,
           labelColor: AppColors.primary,
           unselectedLabelColor: AppColors.onSurfaceVariant,
-          labelStyle: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+          labelStyle: const TextStyle(fontFamily: AppFonts.primary,
               fontSize: 13, fontWeight: FontWeight.w700),
-          unselectedLabelStyle: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+          unselectedLabelStyle: const TextStyle(fontFamily: AppFonts.primary,
               fontSize: 13, fontWeight: FontWeight.w600),
           indicatorColor: AppColors.primary,
           indicatorWeight: 2.5,
@@ -118,11 +119,11 @@ class _SceneContent extends StatelessWidget {
 
         // 设置步骤标题
         const Text('设置步骤',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A))),
         const SizedBox(height: 4),
         const Text('完成所有步骤以激活安全保护',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 12, color: AppColors.onSurfaceVariant)),
         const SizedBox(height: 16),
 
@@ -227,20 +228,20 @@ class _SceneContent extends StatelessWidget {
               child: const Center(
                 child: Text('!', style: TextStyle(
                     fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white,
-                    fontFamily: 'Plus Jakarta Sans')),
+                    fontFamily: AppFonts.primary)),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('安全提示',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.onSurface)),
               const SizedBox(height: 4),
               Text(
                 _isHome
                     ? '电子围栏与受信任 WiFi 结合使用，能更准确地判断宠物位置，减少误报。建议添加家中和常去地点的 WiFi 网络。'
                     : '电子围栏与受信任 WiFi 结合使用，能更准确地判断宠物位置，减少误报。建议添加家中和常去地点的 WiFi 网络。',
-                style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                style: const TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 12, color: AppColors.onSurfaceVariant, height: 1.55),
               ),
             ])),
@@ -273,14 +274,14 @@ class _SafetyScoreCard extends StatelessWidget {
               color: score == 0 ? AppColors.error : const Color(0xFF4CAF50)),
           const SizedBox(width: 6),
           const Text('当前安全评分',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
         ]),
         const SizedBox(height: 6),
         Text(
           '安全指数：${score == 0 ? '低' : score < 60 ? '中' : '高'}',
           style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 12, fontWeight: FontWeight.w600,
+            fontFamily: AppFonts.primary, fontSize: 12, fontWeight: FontWeight.w600,
             color: score == 0 ? AppColors.error : score < 60 ? const Color(0xFFFF9800) : const Color(0xFF4CAF50),
           ),
         ),
@@ -298,7 +299,7 @@ class _SafetyScoreCard extends StatelessWidget {
         ),
         child: Center(
           child: Text('$score',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 22, fontWeight: FontWeight.w900,
                   color: score == 0 ? AppColors.error : const Color(0xFF4CAF50))),
         ),
@@ -361,12 +362,12 @@ class _StepItem extends StatelessWidget {
         // 文字
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(title,
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 14, fontWeight: FontWeight.w700,
                   color: comingSoon ? AppColors.onSurfaceVariant : AppColors.onSurface)),
           const SizedBox(height: 2),
           Text(subtitle,
-              style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+              style: const TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 11, color: AppColors.onSurfaceVariant)),
         ])),
         const SizedBox(width: 8),
@@ -382,12 +383,12 @@ class _StepItem extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Text('即将上线',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 10, fontWeight: FontWeight.w700, color: Colors.grey)),
           )
         else if (score.isNotEmpty)
           Text(score,
-              style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+              style: const TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary))
         ,
         if (!done && !comingSoon)

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'shared/theme/app_theme.dart';
+import 'shared/theme/app_fonts.dart';
 import 'core/providers/locale_provider.dart';
 import 'core/router/app_router.dart';
 import 'l10n/app_localizations.dart';
@@ -42,6 +43,13 @@ class PetPogoApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       locale: locale,
+
+      // ── 全局字体配置：字体由 AppFonts.primary 统一控制 ──
+      // 换字体：改 AppFonts.primary；字号缩放见 app_theme.dart TextTheme
+      builder: (context, child) => DefaultTextStyle.merge(
+        style: TextStyle(fontFamilyFallback: AppFonts.fallback),
+        child: child!,
+      ),
 
       // ── 多语言代理 ─────────────────────────────────────────
       localizationsDelegates: const [

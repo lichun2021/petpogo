@@ -11,6 +11,7 @@ import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
 import '../pet/bind_pet_sheet.dart';
 import '../bind_device/select_device_page.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 设备列表页 ────────────────────────────────────────────
 class DeviceListPage extends ConsumerWidget {
@@ -31,7 +32,7 @@ class DeviceListPage extends ConsumerWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text('我的设备',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 17, fontWeight: FontWeight.w700)),
+            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 17, fontWeight: FontWeight.w700)),
         centerTitle: true,
         actions: [
           // 右上角刷新（加载中显示 loading）
@@ -89,11 +90,11 @@ class DeviceListPage extends ConsumerWidget {
     return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
       Icon(Icons.devices_other_rounded, size: 80, color: AppColors.onSurfaceVariant.withOpacity(0.3)),
       const SizedBox(height: 20),
-      const Text('还没有绑定设备', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+      const Text('还没有绑定设备', style: TextStyle(fontFamily: AppFonts.primary,
           fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
       const SizedBox(height: 8),
       Text('选择类型，扫码绑定智能项圈或宠物机器人',
-          style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+          style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13,
               color: AppColors.onSurfaceVariant), textAlign: TextAlign.center),
       const SizedBox(height: 32),
       FilledButton.icon(
@@ -104,7 +105,7 @@ class DeviceListPage extends ConsumerWidget {
           ref.read(deviceListProvider.notifier).load();
         },
         icon: const Icon(Icons.add_rounded),
-        label: const Text('添加设备', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700)),
+        label: const Text('添加设备', style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.primary,
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
@@ -120,7 +121,7 @@ class DeviceListPage extends ConsumerWidget {
         const Icon(Icons.wifi_off_rounded, size: 64, color: AppColors.onSurfaceVariant),
         const SizedBox(height: 16),
         Text(msg, textAlign: TextAlign.center,
-            style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+            style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
                 color: AppColors.onSurfaceVariant)),
         const SizedBox(height: 16),
         OutlinedButton(
@@ -202,11 +203,11 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
               const SizedBox(width: 14),
               // 设备名称 + 状态
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(device.displayName, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                Text(device.displayName, style: const TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
                 const SizedBox(height: 4),
                 Row(children: [
-                  Text(deviceType.label, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                  Text(deviceType.label, style: TextStyle(fontFamily: AppFonts.primary,
                       fontSize: 11, fontWeight: FontWeight.w600,
                       color: Colors.white.withOpacity(0.45))),
                   const SizedBox(width: 8),
@@ -214,7 +215,7 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
                       color: Colors.white.withOpacity(0.25), shape: BoxShape.circle)),
                   const SizedBox(width: 8),
                   Text('MAC: ${device.mac.length > 14 ? '...${device.mac.substring(device.mac.length - 10)}' : device.mac}',
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 10,
+                      style: TextStyle(fontFamily: AppFonts.primary, fontSize: 10,
                           color: Colors.white.withOpacity(0.35))),
                 ]),
               ])),
@@ -235,7 +236,7 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
                       )),
                   const SizedBox(width: 5),
                   Text(device.isOnline ? '在线' : '离线',
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+                      style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: device.isOnline ? const Color(0xFF4ADE80) : Colors.white38)),
                 ]),
@@ -296,13 +297,13 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
         ),
         const SizedBox(width: 10),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(pet.petName, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+          Text(pet.petName, style: const TextStyle(fontFamily: AppFonts.primary,
               fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
           Text(
             [if (pet.breed.isNotEmpty) pet.breed,
              if (pet.age > 0) '${pet.age}岁',
              if (pet.sex.isNotEmpty) pet.sexDisplay].join(' · '),
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 10,
+            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 10,
                 color: Colors.white.withOpacity(0.4)),
           ),
         ])),
@@ -325,7 +326,7 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
               border: Border.all(color: Colors.white.withOpacity(0.12))),
           child: const Icon(Icons.add_rounded, color: Colors.white38, size: 20)),
         const SizedBox(width: 10),
-        Text('点击绑定宠物', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+        Text('点击绑定宠物', style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white38)),
         const Spacer(),
         Container(
@@ -334,7 +335,7 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
             color: AppColors.primary.withOpacity(0.15),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Text('绑定', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+          child: Text('绑定', style: TextStyle(fontFamily: AppFonts.primary,
               fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary.withOpacity(0.8))),
         ),
       ]),

@@ -10,6 +10,7 @@ import '../../../shared/widgets/pet_toast.dart';
 import '../controller/feed_controller.dart';
 import '../controller/publish_controller.dart';
 import '../data/models/post_model.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 
 class PublishPage extends ConsumerStatefulWidget {
@@ -92,12 +93,12 @@ class _PublishPageState extends ConsumerState<PublishPage>
               Icon(Icons.no_photography_rounded, color: Color(0xFFFF6B6B)),
               SizedBox(width: 8),
               Flexible(child: Text('需要相机权限',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 17, fontWeight: FontWeight.w700))),
             ]),
             content: const Text(
               '拍照或视频通话需要使用相机。\n请在「设置 → PetPogo」中开启相机权限。',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 14, height: 1.6),
             ),
             actions: [
@@ -118,7 +119,7 @@ class _PublishPageState extends ConsumerState<PublishPage>
                 },
                 child: const Text('去设置',
                   style: TextStyle(color: Colors.white,
-                      fontFamily: 'Plus Jakarta Sans',
+                      fontFamily: AppFonts.primary,
                       fontWeight: FontWeight.w700)),
               ),
             ],
@@ -346,7 +347,7 @@ class _GradientHeader extends StatelessWidget {
             child: Text('发布动态',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 17,
+                fontFamily: AppFonts.primary, fontSize: 17,
                 fontWeight: FontWeight.w700, color: Colors.white,
               )),
           ),
@@ -370,7 +371,7 @@ class _GradientHeader extends StatelessWidget {
                       ),
                       child: Text('发 布',
                         style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w800,
+                          fontFamily: AppFonts.primary, fontWeight: FontWeight.w800,
                           fontSize: 14,
                           color: canPublish ? const Color(0xFFa83206) : Colors.white.withOpacity(0.5),
                         )),
@@ -404,7 +405,7 @@ class _TextCard extends StatelessWidget {
             minLines: 4,
             maxLength: 500,
             style: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans', fontSize: 16, color: AppColors.onSurface),
+              fontFamily: AppFonts.primary, fontSize: 16, color: AppColors.onSurface),
             decoration: InputDecoration(
               hintText: '分享你的宠物日常… 🐾',
               hintStyle: TextStyle(color: AppColors.onSurfaceVariant.withOpacity(0.5), fontSize: 15),
@@ -467,7 +468,7 @@ class _AddMediaCard extends StatelessWidget {
               children: [
                 const Text('添加图片 / 视频',
                   style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700,
+                    fontFamily: AppFonts.primary, fontWeight: FontWeight.w700,
                     fontSize: 15, color: AppColors.primary,
                   )),
                 const SizedBox(width: 5),
@@ -478,7 +479,7 @@ class _AddMediaCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: const Text('必选',
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 10,
+                    style: TextStyle(fontFamily: AppFonts.primary, fontSize: 10,
                         fontWeight: FontWeight.w700, color: AppColors.primary)),
                 ),
               ],
@@ -622,7 +623,7 @@ class _MediaPickerSheet extends StatelessWidget {
             decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 20),
           const Text('选择媒体',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w800, fontSize: 17, color: AppColors.onSurface)),
+            style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w800, fontSize: 17, color: AppColors.onSurface)),
           const SizedBox(height: 20),
           Row(children: [
             _SheetOption(
@@ -657,7 +658,7 @@ class _MediaPickerSheet extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
               ),
               child: const Text('取消', textAlign: TextAlign.center,
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600, fontSize: 15, color: AppColors.onSurfaceVariant)),
+                style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w600, fontSize: 15, color: AppColors.onSurfaceVariant)),
             ),
           ),
         ],
@@ -690,7 +691,7 @@ class _SheetOption extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(label, style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w600,
+            fontFamily: AppFonts.primary, fontWeight: FontWeight.w600,
             fontSize: 13, color: AppColors.onSurface)),
         ]),
       ),

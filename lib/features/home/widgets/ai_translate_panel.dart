@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../controller/ai_controller.dart';
 import '../data/models/ai_result_model.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 /// AI 宠物语音识别面板
 ///
@@ -52,7 +52,9 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
     final ctrl = ref.read(aiVoiceControllerProvider);
     if (ctrl.phase != AiPhase.idle &&
         ctrl.phase != AiPhase.error &&
-        ctrl.phase != AiPhase.notPet) return;
+        ctrl.phase != AiPhase.notPet) {
+      return;
+    }
 
     final hasPermission = await _recorder.hasPermission();
     if (!hasPermission) {
@@ -62,7 +64,8 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
 
     HapticFeedback.mediumImpact();
     final dir = await getTemporaryDirectory();
-    _recordPath = '${dir.path}/pet_voice_${DateTime.now().millisecondsSinceEpoch}.wav';
+    _recordPath =
+        '${dir.path}/pet_voice_${DateTime.now().millisecondsSinceEpoch}.wav';
 
     await _recorder.start(
       const RecordConfig(encoder: AudioEncoder.wav),
@@ -72,7 +75,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
     if (!mounted) return;
     setState(() {
       _isRecording = true;
-      _recordSecs  = 0;
+      _recordSecs = 0;
     });
     _pulseCtrl.repeat(reverse: true);
 
@@ -138,44 +141,72 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
       }
     });
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 20, spreadRadius: -4)],
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: AppColors.outlineVariant.withValues(alpha: 0.14),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.cardShadow,
+            blurRadius: 18,
+            spreadRadius: -10,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 标题
           Row(children: [
-            const Text('🎤', style: TextStyle(fontSize: 22)),
-            const SizedBox(width: 8),
-            const Text('听懂宠物语言', style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans', fontSize: 16,
-              fontWeight: FontWeight.w800, color: AppColors.onSurface,
-            )),
-            const Spacer(),
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.graphic_eq_rounded,
+                color: AppColors.primary,
+                size: 19,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text('听懂宠物语言',
+                  style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.onSurface,
+                    height: 1.15,
+                  )),
+            ),
             if (state.result != null || state.phase == AiPhase.notPet) ...[
               TextButton(
                 onPressed: _reset,
-                child: const Text('再试一次', style: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                  color: AppColors.primary,
-                )),
+                child: const Text('再试一次',
+                    style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 12,
+                      color: AppColors.primary,
+                    )),
               ),
             ],
           ]),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
 
           // 内容区（固定最小高度，防止切换阶段时外框跳动）
           ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 220),
+            constraints: const BoxConstraints(minHeight: 190),
             child: Center(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
                 child: switch (state.phase) {
-                  AiPhase.idle      => _IdleView(
+                  AiPhase.idle => _IdleView(
                       key: const ValueKey('idle'),
                       isRecording: _isRecording,
                       recordSecs: _recordSecs,
@@ -194,16 +225,16 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
                       label: 'AI 正在聆听中…',
                       icon: '🧠',
                     ),
-                  AiPhase.result    => _ResultView(
+                  AiPhase.result => _ResultView(
                       key: const ValueKey('result'),
                       result: state.result!,
                     ),
-                  AiPhase.notPet    => _NotPetView(
+                  AiPhase.notPet => _NotPetView(
                       key: const ValueKey('notPet'),
                       reason: state.notPetReason ?? '未检测到宠物',
                       onRetry: _reset,
                     ),
-                  AiPhase.error     => _ErrorView(
+                  AiPhase.error => _ErrorView(
                       key: const ValueKey('error'),
                       message: state.errorMessage ?? '分析失败',
                       onRetry: _reset,
@@ -243,7 +274,8 @@ class _IdleView extends StatelessWidget {
         Text(
           isRecording ? '松开完成录音' : '按住对宠物录音',
           style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+            fontFamily: AppFonts.primary,
+            fontSize: 13,
             color: isRecording ? AppColors.primary : AppColors.onSurfaceVariant,
             fontWeight: isRecording ? FontWeight.w700 : FontWeight.w400,
           ),
@@ -251,23 +283,24 @@ class _IdleView extends StatelessWidget {
         const SizedBox(height: 20),
         Listener(
           onPointerDown: (_) => onPressDown(),
-          onPointerUp:   (_) => onPressUp(),
+          onPointerUp: (_) => onPressUp(),
           onPointerCancel: (_) => onPressUp(),
           child: AnimatedBuilder(
             animation: pulseCtrl,
             builder: (_, __) {
               final scale = isRecording ? (1.0 + pulseCtrl.value * 0.12) : 1.0;
-              final glow  = isRecording ? pulseCtrl.value * 0.4 : 0.0;
+              final glow = isRecording ? pulseCtrl.value * 0.4 : 0.0;
               return Transform.scale(
                 scale: scale,
                 child: Container(
-                  width: 88, height: 88,
+                  width: 88,
+                  height: 88,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: AppColors.primaryGradient,
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withOpacity(0.35 + glow),
+                        color: AppColors.primary.withValues(alpha: 0.35 + glow),
                         blurRadius: 20 + glow * 20,
                         spreadRadius: -2 + glow * 6,
                       ),
@@ -288,15 +321,18 @@ class _IdleView extends StatelessWidget {
           Text(
             '录音中  ${recordSecs}s',
             style: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-              color: AppColors.primary, fontWeight: FontWeight.w700,
+              fontFamily: AppFonts.primary,
+              fontSize: 12,
+              color: AppColors.primary,
+              fontWeight: FontWeight.w700,
             ),
           )
         else
           const Text(
             '按住即可录音',
             style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+              fontFamily: AppFonts.primary,
+              fontSize: 11,
               color: AppColors.onSurfaceVariant,
             ),
           ),
@@ -310,7 +346,11 @@ class _ProgressView extends StatelessWidget {
   final String label;
   final double progress;
   final String icon;
-  const _ProgressView({super.key, required this.label, required this.progress, required this.icon});
+  const _ProgressView(
+      {super.key,
+      required this.label,
+      required this.progress,
+      required this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -318,10 +358,12 @@ class _ProgressView extends StatelessWidget {
       children: [
         Text(icon, style: const TextStyle(fontSize: 40)),
         const SizedBox(height: 12),
-        Text(label, style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans', fontSize: 14,
-          color: AppColors.onSurfaceVariant,
-        )),
+        Text(label,
+            style: const TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 14,
+              color: AppColors.onSurfaceVariant,
+            )),
         const SizedBox(height: 12),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
@@ -333,10 +375,12 @@ class _ProgressView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Text('${(progress * 100).toInt()}%', style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans', fontSize: 11,
-          color: AppColors.onSurfaceVariant,
-        )),
+        Text('${(progress * 100).toInt()}%',
+            style: const TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 11,
+              color: AppColors.onSurfaceVariant,
+            )),
       ],
     );
   }
@@ -356,12 +400,15 @@ class _SpinnerView extends StatelessWidget {
             .animate(onPlay: (c) => c.repeat())
             .rotate(duration: 3.seconds),
         const SizedBox(height: 12),
-        Text(label, style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans', fontSize: 14,
-          color: AppColors.onSurfaceVariant,
-        )),
+        Text(label,
+            style: const TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 14,
+              color: AppColors.onSurfaceVariant,
+            )),
         const SizedBox(height: 12),
-        const CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5),
+        const CircularProgressIndicator(
+            color: AppColors.primary, strokeWidth: 2.5),
       ],
     );
   }
@@ -375,7 +422,7 @@ class _ResultView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final emotion = result.primaryEmotion;
-    final color   = Color(result.primaryColorHex);
+    final color = Color(result.primaryColorHex);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -384,23 +431,29 @@ class _ResultView extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(children: [
             Text(result.primaryEmoji, style: const TextStyle(fontSize: 36)),
             const SizedBox(width: 14),
-            Expanded(child: Column(
+            Expanded(
+                child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(emotion.labelZh, style: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans', fontSize: 18,
-                  fontWeight: FontWeight.w800, color: color,
-                )),
-                Text('置信度 ${emotion.percentText}', style: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                  color: color.withOpacity(0.7),
-                )),
+                Text(emotion.labelZh,
+                    style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: color,
+                    )),
+                Text('置信度 ${emotion.percentText}',
+                    style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 12,
+                      color: color.withValues(alpha: 0.7),
+                    )),
               ],
             )),
           ]),
@@ -410,38 +463,46 @@ class _ResultView extends StatelessWidget {
 
         // Top-3
         if (result.top3.length > 1) ...[
-          const Text('情绪分布', style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-            fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant,
-          )),
-          const SizedBox(height: 8),
-          ...result.top3.take(3).map((e) => Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Row(children: [
-              SizedBox(
-                width: 60,
-                child: Text(e.labelZh, style: const TextStyle(
-                  fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                  color: AppColors.onSurface,
-                )),
-              ),
-              const SizedBox(width: 8),
-              Expanded(child: ClipRRect(
-                borderRadius: BorderRadius.circular(3),
-                child: LinearProgressIndicator(
-                  value: e.confidence,
-                  backgroundColor: AppColors.surfaceContainerHighest,
-                  color: color,
-                  minHeight: 6,
-                ),
-              )),
-              const SizedBox(width: 8),
-              Text(e.percentText, style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+          const Text('情绪分布',
+              style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
                 color: AppColors.onSurfaceVariant,
               )),
-            ]),
-          )),
+          const SizedBox(height: 8),
+          ...result.top3.take(3).map((e) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(children: [
+                  SizedBox(
+                    width: 60,
+                    child: Text(e.labelZh,
+                        style: const TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 12,
+                          color: AppColors.onSurface,
+                        )),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: e.confidence,
+                      backgroundColor: AppColors.surfaceContainerHighest,
+                      color: color,
+                      minHeight: 6,
+                    ),
+                  )),
+                  const SizedBox(width: 8),
+                  Text(e.percentText,
+                      style: const TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 11,
+                        color: AppColors.onSurfaceVariant,
+                      )),
+                ]),
+              )),
           const SizedBox(height: 8),
         ],
 
@@ -450,7 +511,7 @@ class _ResultView extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.primaryContainer.withOpacity(0.15),
+              color: AppColors.primaryContainer.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -458,10 +519,14 @@ class _ResultView extends StatelessWidget {
               children: [
                 const Text('💡', style: TextStyle(fontSize: 16)),
                 const SizedBox(width: 8),
-                Expanded(child: Text(result.advice, style: const TextStyle(
-                  fontFamily: 'Plus Jakarta Sans', fontSize: 12,
-                  color: AppColors.onSurface, height: 1.5,
-                ))),
+                Expanded(
+                    child: Text(result.advice,
+                        style: const TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 12,
+                          color: AppColors.onSurface,
+                          height: 1.5,
+                        ))),
               ],
             ),
           ),
@@ -473,8 +538,11 @@ class _ResultView extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             Icon(
-              result.quota.isUnlimited ? Icons.all_inclusive_rounded : Icons.bolt_rounded,
-              size: 14, color: AppColors.onSurfaceVariant,
+              result.quota.isUnlimited
+                  ? Icons.all_inclusive_rounded
+                  : Icons.bolt_rounded,
+              size: 14,
+              color: AppColors.onSurfaceVariant,
             ),
             const SizedBox(width: 4),
             Text(
@@ -482,7 +550,8 @@ class _ResultView extends StatelessWidget {
                   ? 'VIP 无限次'
                   : '今日剩余 ${result.quota.remaining} 次',
               style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+                fontFamily: AppFonts.primary,
+                fontSize: 11,
                 color: AppColors.onSurfaceVariant,
               ),
             ),
@@ -505,10 +574,13 @@ class _ErrorView extends StatelessWidget {
       children: [
         const Text('😓', style: TextStyle(fontSize: 40)),
         const SizedBox(height: 12),
-        Text(message, textAlign: TextAlign.center, style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans', fontSize: 13,
-          color: AppColors.onSurfaceVariant,
-        )),
+        Text(message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 13,
+              color: AppColors.onSurfaceVariant,
+            )),
         const SizedBox(height: 16),
         ElevatedButton(
           onPressed: onRetry,
@@ -521,7 +593,8 @@ class _ErrorView extends StatelessWidget {
       ],
     );
   }
-}// ── 配额徽章 ──────────────────────────────────────────────
+} // ── 配额徽章 ──────────────────────────────────────────────
+
 // ── 非宠物提示 ────────────────────────────────────────────────
 class _NotPetView extends StatelessWidget {
   final String reason;
@@ -534,15 +607,20 @@ class _NotPetView extends StatelessWidget {
       children: [
         const Text('🤔', style: TextStyle(fontSize: 40)),
         const SizedBox(height: 12),
-        Text(reason, textAlign: TextAlign.center, style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans', fontSize: 14,
-          color: AppColors.onSurface,
-          fontWeight: FontWeight.w600,
-        )),
+        Text(reason,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 14,
+              color: AppColors.onSurface,
+              fontWeight: FontWeight.w600,
+            )),
         const SizedBox(height: 6),
-        const Text('请对着宠物录音再试试',
+        const Text(
+          '请对着宠物录音再试试',
           style: TextStyle(
-            fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+            fontFamily: AppFonts.primary,
+            fontSize: 12,
             color: AppColors.onSurfaceVariant,
           ),
         ),
@@ -560,4 +638,3 @@ class _NotPetView extends StatelessWidget {
     );
   }
 }
-

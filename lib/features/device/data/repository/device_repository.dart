@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/peer_api_client.dart';
 import '../models/device_model.dart';
@@ -49,7 +51,8 @@ class DeviceRepository {
   }
 
   /// POST /user/device/bind — 绑定设备
-  Future<DeviceModel> bindDevice({required String mac, String nickname = ''}) async {
+  Future<DeviceModel> bindDevice(
+      {required String mac, String nickname = ''}) async {
     final res = await _peer.post<DeviceModel>(
       '/user/device/bind',
       params: {
@@ -74,14 +77,16 @@ class DeviceRepository {
   /// POST /device/shadow/update — 设备影子控制
   /// [mac]  设备 MAC
   /// [data] 键值对，如 {'led_r': 'true'} 或 {'ring_tone': '1'}
-  Future<void> shadowUpdate({required String mac, required Map<String, String> data}) async {
-    final jsonData = '{${data.entries.map((e) => '"${e.key}":"${e.value}"').join(",")}}';
-    await _peer.post('/device/shadow/update', params: {'mac': mac, 'data': jsonData});
+  Future<void> shadowUpdate(
+      {required String mac, required Map<String, String> data}) async {
+    final jsonData = jsonEncode(data);
+    await _peer
+        .post('/device/shadow/update', params: {'mac': mac, 'data': jsonData});
   }
 
   /// POST /device/shadow/update — 机器人电机控制 (PeerApiSpeed 接口)
   /// motor_0 = 左轮，motor_1 = 右轮
-  /// direction: 1=正转(前进方向), 0=反转(后退方向)
+  /// direction: 0=停止, 1=正转(前进方向), 2=反转(后退方向)
   /// speed: 0~100 (速度百分比)
   Future<void> motorControl({
     required String mac,
@@ -90,10 +95,35 @@ class DeviceRepository {
     required int motor1Direction,
     required int motor1Speed,
   }) async {
-    final data =
-        '{"motor_0":{"direction":$motor0Direction,"speed":$motor0Speed},'
-        '"motor_1":{"direction":$motor1Direction,"speed":$motor1Speed}}';
-    await _peer.post('/device/shadow/update', params: {'mac': mac, 'data': data});
+    _validateMotorDirection('motor0Direction', motor0Direction);
+    _validateMotorDirection('motor1Direction', motor1Direction);
+    _validateMotorSpeed('motor0Speed', motor0Speed);
+    _validateMotorSpeed('motor1Speed', motor1Speed);
+
+    final data = jsonEncode({
+      'motor_0': {
+        'direction': motor0Direction,
+        'speed': motor0Speed,
+      },
+      'motor_1': {
+        'direction': motor1Direction,
+        'speed': motor1Speed,
+      },
+    });
+    await _peer
+        .post('/device/shadow/update', params: {'mac': mac, 'data': data});
+  }
+
+  void _validateMotorDirection(String name, int value) {
+    if (value < 0 || value > 2) {
+      throw ArgumentError.value(value, name, 'must be 0, 1, or 2');
+    }
+  }
+
+  void _validateMotorSpeed(String name, int value) {
+    if (value < 0 || value > 100) {
+      throw RangeError.range(value, 0, 100, name);
+    }
   }
 
   /// POST /pet/agora/getToken — 获取 Agora RTC Token（同时触发 ESP32 加入频道）
@@ -116,7 +146,7 @@ class AgoraTokenInfo {
   final String appId;
   final String channelName;
   final String token;
-  final int    userId;
+  final int userId;
 
   const AgoraTokenInfo({
     required this.appId,
@@ -128,14 +158,13 @@ class AgoraTokenInfo {
   factory AgoraTokenInfo.fromJson(Map<String, dynamic> json) {
     // userId 可能是 int(10003) 或 String("10003")，兼容两种格式
     final rawId = json['userId'];
-    final userId = rawId is int
-        ? rawId
-        : int.tryParse(rawId?.toString() ?? '') ?? 10001;
+    final userId =
+        rawId is int ? rawId : int.tryParse(rawId?.toString() ?? '') ?? 10001;
     return AgoraTokenInfo(
-      appId:       json['appId']       as String,
+      appId: json['appId'] as String,
       channelName: json['channelName'] as String,
-      token:       json['token']       as String,
-      userId:      userId,
+      token: json['token'] as String,
+      userId: userId,
     );
   }
 }
@@ -150,12 +179,16 @@ class DeviceListState {
   final List<DeviceModel> devices;
   final bool isLoading;
   final String? errorMessage;
-  const DeviceListState({this.devices = const [], this.isLoading = false, this.errorMessage});
+  const DeviceListState(
+      {this.devices = const [], this.isLoading = false, this.errorMessage});
 
-  DeviceListState copyWith({List<DeviceModel>? devices, bool? isLoading, String? errorMessage}) =>
+  DeviceListState copyWith(
+          {List<DeviceModel>? devices,
+          bool? isLoading,
+          String? errorMessage}) =>
       DeviceListState(
-        devices:      devices      ?? this.devices,
-        isLoading:    isLoading    ?? this.isLoading,
+        devices: devices ?? this.devices,
+        isLoading: isLoading ?? this.isLoading,
         errorMessage: errorMessage,
       );
 }

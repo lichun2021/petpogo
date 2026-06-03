@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../shared/theme/app_colors.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../app.dart' show AppL10nX;
-import '../device/data/repository/device_repository.dart';
-import '../device/device_list_page.dart';
-import '../device/device_detail_page.dart';
-import '../device/robot_device_page.dart';
+import '../../core/router/app_routes.dart';
+import '../../shared/theme/app_colors.dart';
+import '../auth/controller/auth_controller.dart';
 import '../bind_device/select_device_page.dart';
-import 'widgets/ai_translate_panel.dart';
+import '../device/data/models/device_model.dart';
+import '../device/data/repository/device_repository.dart';
+import '../device/device_detail_page.dart';
+import '../device/device_list_page.dart';
+import '../device/robot_device_page.dart';
+import '../pet/controller/pet_controller.dart';
 import 'widgets/ai_image_panel.dart';
-import 'widgets/ai_consultation_banner.dart';
-import 'widgets/no_device_banner.dart';
+import 'widgets/ai_translate_panel.dart';
 import 'widgets/pet_mood_section.dart';
+import 'widgets/pet_picker_sheet.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -22,95 +28,62 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  final _voiceKey = GlobalKey();
+  final _imageKey = GlobalKey();
+
+  void _scrollTo(GlobalKey key) {
+    final target = key.currentContext;
+    if (target == null) return;
+    HapticFeedback.selectionClick();
+    Scrollable.ensureVisible(
+      target,
+      duration: const Duration(milliseconds: 480),
+      curve: Curves.easeOutCubic,
+      alignment: 0.08,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: CustomScrollView(
         slivers: [
-          // ── AppBar 固定顶部 ──────────────────────────
-          SliverAppBar(
-            pinned: true,
-            floating: false,
-            backgroundColor: AppColors.surface.withOpacity(0.95),
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            shadowColor: Colors.transparent,
-            automaticallyImplyLeading: false,
-            title: const SizedBox.shrink(), // 隐藏标题
-            leading: Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: _ScanButton(),
-            ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.surfaceContainerHighest,
-                  child: Icon(Icons.person_rounded,
-                      color: AppColors.onSurfaceVariant, size: 20),
-                ),
+          SliverSafeArea(
+            bottom: false,
+            sliver: SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 120),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  const _HomeTopBar(),
+                  const SizedBox(height: 14),
+                  _HomeHero(
+                    onConsult: () => _openConsultation(context, ref),
+                  ),
+                  const SizedBox(height: 14),
+                  _ActionDock(
+                    onConsult: () => _openConsultation(context, ref),
+                    onVoice: () => _scrollTo(_voiceKey),
+                    onImage: () => _scrollTo(_imageKey),
+                  ),
+                  const _MaybePetMoodSection(),
+                  const _SectionHeader(
+                    title: 'AI 解析',
+                  ),
+                  const SizedBox(height: 12),
+                  KeyedSubtree(
+                    key: _voiceKey,
+                    child: const AiTranslatePanel(),
+                  ),
+                  const SizedBox(height: 16),
+                  KeyedSubtree(
+                    key: _imageKey,
+                    child: const AiImagePanel(),
+                  ),
+                  const SizedBox(height: 28),
+                  const _HomeDeviceSection(),
+                ]),
               ),
-            ],
-          ),
-
-          // ── 主内容 ──────────────────────────────────
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-
-                // ── 问候语 ─────────────────────────────
-                Text(
-                  l10n.homeGreeting,
-                  style: const TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 30,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.6,
-                    color: AppColors.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  l10n.homeSubtitle,
-                  style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 14,
-                    color: AppColors.onSurfaceVariant,
-                    height: 1.5,
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // ── AI 语音识别面板 ─────────────────────
-                const AiTranslatePanel(),
-
-                const SizedBox(height: 16),
-
-                // ── AI 图像情绪识别面板 ─────────────────
-                const AiImagePanel(),
-
-                const SizedBox(height: 16),
-
-                // ── 宠小伊 AI 问诊入口 ─────────────────
-                const AiConsultationBanner(),
-
-                const SizedBox(height: 28),
-
-                // ── 宠物情绪卡片 ────────────────────────
-                const PetMoodSection(),
-
-                const SizedBox(height: 28),
-
-                // ── 设备区（真实数据）────────────────────
-                _HomeDeviceSection(),
-
-              ]),
             ),
           ),
         ],
@@ -119,129 +92,1118 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 }
 
-// ── 首页设备区 ────────────────────────────────────────────
-class _HomeDeviceSection extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(deviceListProvider);
-    final l10n  = context.l10n;
-    final onlineCount = state.devices.where((d) => d.isOnline).length;
-
-    if (state.isLoading && state.devices.isEmpty) {
-      return const Center(
-        heightFactor: 1,
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 24),
-          child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5),
-        ),
-      );
-    }
-
-    if (state.devices.isEmpty) {
-      return const NoDeviceBanner();
-    }
-
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(l10n.homeConnectedDevices,
-            style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 20,
-                fontWeight: FontWeight.w700, letterSpacing: -0.3, color: AppColors.onSurface)),
-        GestureDetector(
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeviceListPage())),
-          child: Text(l10n.homeDevicesActive(onlineCount),
-              style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
-                  fontWeight: FontWeight.w700, color: AppColors.primary)),
-        ),
-      ]),
-      const SizedBox(height: 14),
-      ...state.devices.take(3).expand((d) => [
-        _HomeDeviceCard(device: d),
-        const SizedBox(height: 12),
-      ]),
-      if (state.devices.length > 3)
-        GestureDetector(
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeviceListPage())),
-          child: Center(child: Text('查看全部 ${state.devices.length} 台设备',
-              style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
-                  fontWeight: FontWeight.w600, color: AppColors.primary))),
-        ),
-    ]);
-  }
-}
-
-// ── 首页设备小卡片 ─────────────────────────────────────────
-class _HomeDeviceCard extends StatelessWidget {
-  final dynamic device; // DeviceModel
-  const _HomeDeviceCard({required this.device});
+class _HomeTopBar extends StatelessWidget {
+  const _HomeTopBar();
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        final key  = (device.productKey as String? ?? '').toLowerCase();
-        final name = (device.displayName as String? ?? '').toLowerCase();
-        final isRobot = key.contains('robot') || name.contains('机器人') ||
-            name.contains('robot') || key.contains('bot') || name.contains('bot');
-        Navigator.push(context, MaterialPageRoute(
-          builder: (_) => isRobot
-              ? RobotDevicePage(mac: device.mac, name: device.displayName)
-              : DeviceDetailPage(mac: device.mac, name: device.displayName),
-        ));
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 16, spreadRadius: -4, offset: const Offset(0, 4))],
+    return Row(
+      children: [
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            // children: [
+            //   Text(
+            //     'PetPogo',
+            //     style: TextStyle(
+            //       fontSize: 12,
+            //       fontWeight: FontWeight.w900,
+            //       color: AppColors.secondary,
+            //       height: 1.1,
+            //     ),
+            //   ),
+            //   SizedBox(height: 4),
+            //   Text(
+            //     '今日照看',
+            //     style: TextStyle(
+            //       fontFamily: AppFonts.primary,
+            //       fontSize: 21,
+            //       fontWeight: FontWeight.w900,
+            //       color: AppColors.onSurface,
+            //       height: 1.15,
+            //     ),
+            //   ),
+            // ],
+          ),
         ),
-        child: Row(children: [
-          Container(width: 44, height: 44,
-              decoration: BoxDecoration(
-                color: device.isOnline ? AppColors.primary.withOpacity(0.12) : Colors.black12,
-                shape: BoxShape.circle,
+        const _ScanButton(),
+        const SizedBox(width: 8),
+        _TopIconButton(
+          icon: Icons.person_rounded,
+          onTap: () => context.go(AppRoutes.profile),
+        ),
+      ],
+    );
+  }
+}
+
+void _openConsultation(BuildContext context, WidgetRef ref) async {
+  HapticFeedback.lightImpact();
+  final deviceState = ref.read(deviceListProvider);
+
+  if (!deviceState.isLoading && deviceState.devices.isEmpty) {
+    _showNoDeviceDialog(context);
+    return;
+  }
+
+  await PetPickerSheet.show(
+    context,
+    ref: ref,
+    onPicked: (petId) {
+      Future.delayed(const Duration(milliseconds: 60), () {
+        if (context.mounted) {
+          context.push(AppRoutes.consultation, extra: petId);
+        }
+      });
+    },
+  );
+}
+
+void _showNoDeviceDialog(BuildContext context) {
+  showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: AppColors.surfaceContainerLowest,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      title: const Text(
+        '需要绑定设备',
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          color: AppColors.onSurface,
+        ),
+      ),
+      content: const Text(
+        '绑定设备并完善宠物档案后，就可以开启 AI 问诊。',
+        style: TextStyle(
+          fontSize: 14,
+          height: 1.5,
+          color: AppColors.onSurfaceVariant,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: Text(
+            '稍后',
+            style: TextStyle(color: AppColors.onSurfaceVariant),
+          ),
+        ),
+        TextButton(
+          onPressed: () {
+            Navigator.of(ctx).pop();
+            context.push(AppRoutes.bindDevice);
+          },
+          child: const Text(
+            '去绑定',
+            style: TextStyle(
+              color: AppColors.secondary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _HomeHero extends ConsumerWidget {
+  final VoidCallback onConsult;
+
+  const _HomeHero({required this.onConsult});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final auth = ref.watch(authControllerProvider);
+    final deviceState = ref.watch(deviceListProvider);
+    final petState = ref.watch(petControllerProvider);
+
+    final name = auth.user?.name.trim();
+    final displayName = name == null || name.isEmpty ? '铲屎官' : name;
+    final onlineCount = deviceState.devices.where((d) => d.isOnline).length;
+    final pets = petState.pets;
+    final primaryPet = pets.isEmpty ? null : pets.first;
+    final primaryPetName = primaryPet?.name.trim();
+    final primaryPetTitle = primaryPetName == null || primaryPetName.isEmpty
+        ? '宠物档案'
+        : primaryPetName;
+    final petLine = petState.isLoading
+        ? '正在同步你的宠物档案和设备状态。'
+        : pets.isEmpty
+            ? l10n.homeSubtitle
+            : '今天先看看 $primaryPetTitle 的状态。';
+    final quota = auth.user?.aiQuota;
+    final quotaText = quota == null
+        ? '--'
+        : quota.isUnlimited
+            ? '不限'
+            : quota.remaining.toString();
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFFFFCFA),
+            Color(0xFFFFE7E1),
+            Color(0xFFE8F8F4),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.11),
+            blurRadius: 26,
+            spreadRadius: -10,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '你好，$displayName',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 25,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.onSurface,
+                        height: 1.10,
+                      ),
+                    ),
+                    const SizedBox(height: 9),
+                    Text(
+                      petLine,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 13.5,
+                        height: 1.42,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _HeroButton(onTap: onConsult),
+                  ],
+                ),
               ),
-              child: Icon(Icons.router_rounded, size: 22,
-                  color: device.isOnline ? AppColors.primary : AppColors.onSurfaceVariant)),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(device.displayName, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-            Row(children: [
-              Container(width: 6, height: 6,
-                  decoration: BoxDecoration(
-                    color: device.isOnline ? const Color(0xFF4ADE80) : AppColors.onSurfaceVariant,
-                    shape: BoxShape.circle,
-                  )),
-              const SizedBox(width: 5),
-              Text(device.isOnline ? '在线' : '离线',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11,
-                      fontWeight: FontWeight.w700, color: device.isOnline ? AppColors.secondary : AppColors.onSurfaceVariant)),
-            ]),
-          ])),
-          Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant, size: 20),
-        ]),
+              const SizedBox(width: 14),
+              const _AssistantImageCard(),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _HeroMetricStrip(
+            items: [
+              _HeroMetricData(
+                label: '在线设备',
+                value: onlineCount.toString(),
+                icon: Icons.sensors_rounded,
+                color: AppColors.secondary,
+              ),
+              _HeroMetricData(
+                label: 'AI 次数',
+                value: quotaText,
+                icon: Icons.auto_awesome_rounded,
+                color: AppColors.tertiary,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
-// ── 左上角扫描按钮 ────────────────────────────────────────
-class _ScanButton extends ConsumerWidget {
+class _AssistantImageCard extends StatelessWidget {
+  const _AssistantImageCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 104,
+      height: 108,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.68),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.62),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            blurRadius: 18,
+            spreadRadius: -10,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Image.asset(
+          'assets/images/chongxiaoyi.png',
+          fit: BoxFit.cover,
+          alignment: Alignment.topCenter,
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _HeroButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 42,
+      child: ElevatedButton.icon(
+        onPressed: onTap,
+        icon: const Icon(Icons.medical_services_rounded, size: 17),
+        label: const Text('问问宠小伊'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.secondary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 15),
+          textStyle: TextStyle(
+            fontFamily: AppFonts.primary,
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroMetricData {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _HeroMetricData({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+}
+
+class _HeroMetricStrip extends StatelessWidget {
+  final List<_HeroMetricData> items;
+
+  const _HeroMetricStrip({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.74),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            Expanded(child: _HeroMetricCell(data: items[i])),
+            if (i != items.length - 1) const _MetricDivider(),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroMetricCell extends StatelessWidget {
+  final _HeroMetricData data;
+
+  const _HeroMetricCell({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(data.icon, size: 17, color: data.color),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  data.value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.onSurface,
+                    height: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  data.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.onSurfaceVariant,
+                    height: 1.0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetricDivider extends StatelessWidget {
+  const _MetricDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 32,
+      color: AppColors.outlineVariant.withValues(alpha: 0.22),
+    );
+  }
+}
+
+class _ActionDock extends StatelessWidget {
+  final VoidCallback onConsult;
+  final VoidCallback onVoice;
+  final VoidCallback onImage;
+
+  const _ActionDock({
+    required this.onConsult,
+    required this.onVoice,
+    required this.onImage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _ActionTile(
+            icon: Icons.health_and_safety_rounded,
+            title: '问诊',
+            color: AppColors.secondary,
+            onTap: onConsult,
+          ),
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: _ActionTile(
+            icon: Icons.graphic_eq_rounded,
+            title: '听懂',
+            color: AppColors.primary,
+            onTap: onVoice,
+          ),
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: _ActionTile(
+            icon: Icons.add_photo_alternate_rounded,
+            title: '表情',
+            color: AppColors.tertiary,
+            onTap: onImage,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionTile extends StatefulWidget {
+  final IconData icon;
+  final String title;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActionTile({
+    required this.icon,
+    required this.title,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  State<_ActionTile> createState() => _ActionTileState();
+}
+
+class _ActionTileState extends State<_ActionTile> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (_pressed == value) return;
+    setState(() => _pressed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bgColor = Color.lerp(
+      AppColors.surfaceContainerLowest,
+      widget.color,
+      _pressed ? 0.18 : 0.09,
+    )!;
+    final borderColor = widget.color.withValues(alpha: _pressed ? 0.34 : 0.22);
+
+    return AnimatedScale(
+      scale: _pressed ? 0.97 : 1,
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOutCubic,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+        height: 58,
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(color: borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: widget.color.withValues(alpha: _pressed ? 0.06 : 0.14),
+              blurRadius: _pressed ? 7 : 14,
+              spreadRadius: -10,
+              offset: Offset(0, _pressed ? 2 : 7),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(17),
+          child: InkWell(
+            onTapDown: (_) => _setPressed(true),
+            onTapCancel: () => _setPressed(false),
+            onTap: () {
+              _setPressed(false);
+              HapticFeedback.selectionClick();
+              widget.onTap();
+            },
+            splashColor: widget.color.withValues(alpha: 0.14),
+            highlightColor: widget.color.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(17),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(11, 0, 10, 0),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: widget.color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: Icon(
+                      widget.icon,
+                      color: widget.color,
+                      size: 17,
+                    ),
+                  ),
+                  const SizedBox(width: 9),
+                  Text(
+                    widget.title,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: const TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.onSurface,
+                      height: 1.0,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    color: widget.color,
+                    size: 18,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MaybePetMoodSection extends ConsumerStatefulWidget {
+  const _MaybePetMoodSection();
+
+  @override
+  ConsumerState<_MaybePetMoodSection> createState() =>
+      _MaybePetMoodSectionState();
+}
+
+class _MaybePetMoodSectionState extends ConsumerState<_MaybePetMoodSection> {
+  String? _requestedForUserId;
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = ref.watch(authControllerProvider);
+    final petState = ref.watch(petControllerProvider);
+
+    if (!auth.isLoggedIn) {
+      _requestedForUserId = null;
+      return const SizedBox(height: 12);
+    }
+
+    final userId = auth.user?.id ?? '';
+    if (_requestedForUserId != userId &&
+        !petState.isLoading &&
+        petState.pets.isEmpty) {
+      _requestedForUserId = userId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.read(petControllerProvider.notifier).loadPets();
+        }
+      });
+    }
+
+    if (petState.isLoading && petState.pets.isEmpty) {
+      return const _PetMoodLoadingShell();
+    }
+
+    if (petState.pets.isEmpty) {
+      return const SizedBox(height: 12);
+    }
+
+    return const Column(
+      children: [
+        SizedBox(height: 22),
+        PetMoodSection(),
+        SizedBox(height: 24),
+      ],
+    );
+  }
+}
+
+class _PetMoodLoadingShell extends StatelessWidget {
+  const _PetMoodLoadingShell();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      children: [
+        SizedBox(height: 22),
+        SizedBox(
+          height: 88,
+          child: Center(
+            child: CircularProgressIndicator(
+              color: AppColors.primary,
+              strokeWidth: 2,
+            ),
+          ),
+        ),
+        SizedBox(height: 24),
+      ],
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  const _SectionHeader({
+    required this.title,
+    this.subtitle,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.onSurface,
+                  height: 1.15,
+                ),
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 3),
+                Text(
+                  subtitle!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (actionLabel != null && onAction != null)
+          TextButton(
+            onPressed: onAction,
+            child: Text(
+              actionLabel!,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _HomeDeviceSection extends ConsumerWidget {
+  const _HomeDeviceSection();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return IconButton(
-      icon: const Icon(Icons.qr_code_scanner_rounded),
-      color: AppColors.primary,
-      iconSize: 26,
-      onPressed: () async {
+    final state = ref.watch(deviceListProvider);
+    final l10n = context.l10n;
+    final onlineCount = state.devices.where((d) => d.isOnline).length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(
+          title: l10n.homeConnectedDevices,
+          subtitle: state.devices.isEmpty
+              ? '还没有绑定设备'
+              : l10n.homeDevicesActive(onlineCount),
+          actionLabel: state.devices.isEmpty ? null : '全部',
+          onAction: state.devices.isEmpty
+              ? null
+              : () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DeviceListPage()),
+                  ),
+        ),
+        const SizedBox(height: 12),
+        if (state.isLoading && state.devices.isEmpty)
+          const _DeviceLoadingPanel()
+        else if (state.devices.isEmpty)
+          const _EmptyDevicePanel()
+        else ...[
+          ...state.devices.take(3).map(
+                (device) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _HomeDeviceCard(device: device),
+                ),
+              ),
+          if (state.devices.length > 3)
+            Center(
+              child: TextButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const DeviceListPage()),
+                ),
+                child: Text(
+                  '查看全部 ${state.devices.length} 台设备',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+class _DeviceLoadingPanel extends StatelessWidget {
+  const _DeviceLoadingPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 96,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: const CircularProgressIndicator(
+        color: AppColors.primary,
+        strokeWidth: 2.5,
+      ),
+    );
+  }
+}
+
+class _EmptyDevicePanel extends StatelessWidget {
+  const _EmptyDevicePanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.cardShadow,
+            blurRadius: 18,
+            spreadRadius: -8,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.add_link_rounded,
+              color: AppColors.primary,
+              size: 25,
+            ),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '添加第一台设备',
+                  style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '连接后可查看宠物位置、状态和设备控制。',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.35,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          IconButton.filled(
+            onPressed: () => context.push(AppRoutes.bindDevice),
+            icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+            style: IconButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeDeviceCard extends StatelessWidget {
+  final DeviceModel device;
+
+  const _HomeDeviceCard({required this.device});
+
+  @override
+  Widget build(BuildContext context) {
+    final isRobot = _isRobotDevice(device);
+    final accent = device.isOnline ? AppColors.secondary : AppColors.outline;
+
+    return Material(
+      color: AppColors.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => isRobot
+                  ? RobotDevicePage(mac: device.mac, name: device.displayName)
+                  : DeviceDetailPage(mac: device.mac, name: device.displayName),
+            ),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.cardShadow,
+                blurRadius: 18,
+                spreadRadius: -8,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  isRobot ? Icons.smart_toy_rounded : Icons.location_on_rounded,
+                  size: 23,
+                  color: accent,
+                ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      device.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        _StatusDot(color: accent),
+                        const SizedBox(width: 6),
+                        Text(
+                          device.isOnline ? '在线守护中' : '暂时离线',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: device.isOnline
+                                ? AppColors.secondary
+                                : AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  device.isOwner ? '主人' : '共享',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.onSurfaceVariant,
+                size: 21,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusDot extends StatelessWidget {
+  final Color color;
+
+  const _StatusDot({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 7,
+      height: 7,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+class _ScanButton extends ConsumerWidget {
+  const _ScanButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return _TopPillButton(
+      icon: Icons.qr_code_scanner_rounded,
+      label: '扫码',
+      onTap: () async {
         HapticFeedback.mediumImpact();
-        await Navigator.push(context, MaterialPageRoute(
-          builder: (_) => const SelectDevicePage(),
-        ));
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SelectDevicePage()),
+        );
         ref.read(deviceListProvider.notifier).load();
       },
     );
   }
+}
+
+class _TopPillButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _TopPillButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: SizedBox(
+          height: 40,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  color: AppColors.primary,
+                  size: 19,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TopIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _TopIconButton({
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Icon(
+            icon,
+            color: AppColors.primary,
+            size: 21,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+bool _isRobotDevice(DeviceModel device) {
+  final key = device.productKey.toLowerCase();
+  final name = device.displayName.toLowerCase();
+  return key.contains('robot') ||
+      key.contains('bot') ||
+      name.contains('机器人') ||
+      name.contains('robot') ||
+      name.contains('bot');
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_colors.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 /// ── PressableButton ────────────────────────────────────────
 /// 带 scale + 触觉反馈的按钮包装器，适用于任何子 Widget
@@ -220,7 +221,7 @@ class PrimaryButton extends StatelessWidget {
                     Text(
                       label,
                       style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.primary,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,

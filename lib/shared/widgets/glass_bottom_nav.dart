@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 玻璃态底部导航栏 ──────────────────────────────────────
 /// 底部导航栏 UI 组件
@@ -141,7 +142,7 @@ class _NavButtonState extends State<NavButton>
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
+                fontFamily: AppFonts.primary,
                 fontSize: 10,
                 fontWeight:
                     widget.selected ? FontWeight.w700 : FontWeight.w500,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../app.dart' show AppL10nX;
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 设备类型枚举 ──────────────────────────────────────────
 /// 支持的设备类型，替代原来的字符串 magic value
@@ -64,7 +65,7 @@ class DeviceCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(deviceName,
-                        style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 17,
+                        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 17,
                             fontWeight: FontWeight.w700, color: AppColors.onSurface)),
                     const SizedBox(height: 4),
                     Row(
@@ -80,7 +81,7 @@ class DeviceCard extends StatelessWidget {
                         Text(
                           isOnline ? l10n.deviceOnline : l10n.deviceOffline,
                           style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+                            fontFamily: AppFonts.primary, fontSize: 11,
                             fontWeight: FontWeight.w700, letterSpacing: 0.8,
                             color: isOnline ? AppColors.secondary : AppColors.onSurfaceVariant,
                           ),
@@ -93,7 +94,7 @@ class DeviceCard extends StatelessWidget {
               Row(
                 children: [
                   Text('$battery%',
-                      style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                      style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
                           fontWeight: FontWeight.w700, color: AppColors.onSurface)),
                   const SizedBox(width: 4),
                   Icon(_batteryIcon(battery), color: AppColors.onSurfaceVariant, size: 20),
@@ -120,11 +121,11 @@ class DeviceCard extends StatelessWidget {
                       children: [
                         Text(
                           l10n.deviceNowPlaying,
-                          style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 9,
+                          style: TextStyle(fontFamily: AppFonts.primary, fontSize: 9,
                               fontWeight: FontWeight.w800, letterSpacing: 1.2, color: AppColors.primary),
                         ),
                         Text(nowPlaying!,
-                            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+                            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13,
                                 fontWeight: FontWeight.w500, color: AppColors.onSurface)),
                       ],
                     ),

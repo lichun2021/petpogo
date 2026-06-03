@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../shared/theme/app_colors.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 class BreedPickerPage extends StatefulWidget {
   /// 'cat' 或 'dog'
@@ -121,7 +122,7 @@ class _BreedPickerPageState extends State<BreedPickerPage> {
         title: Text(
           widget.species == 'cat' ? '选择猫品种' : '选择狗品种',
           style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: AppFonts.primary,
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: AppColors.onSurface,
@@ -147,7 +148,7 @@ class _BreedPickerPageState extends State<BreedPickerPage> {
                 controller: _searchCtrl,
                 onChanged: (v) => setState(() => _query = v),
                 style: const TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
+                  fontFamily: AppFonts.primary,
                   fontSize: 14,
                   color: AppColors.onSurface,
                 ),
@@ -155,7 +156,7 @@ class _BreedPickerPageState extends State<BreedPickerPage> {
                   hintText: '搜索品种名称…',
                   hintStyle: TextStyle(
                     color: AppColors.onSurfaceVariant,
-                    fontFamily: 'Plus Jakarta Sans',
+                    fontFamily: AppFonts.primary,
                     fontSize: 14,
                   ),
                   prefixIcon: Icon(
@@ -245,7 +246,7 @@ class _SectionHeader extends StatelessWidget {
       child: Text(
         letter,
         style: const TextStyle(
-          fontFamily: 'Plus Jakarta Sans',
+          fontFamily: AppFonts.primary,
           fontSize: 12,
           fontWeight: FontWeight.w800,
           color: AppColors.secondary,
@@ -287,7 +288,7 @@ class _BreedTile extends StatelessWidget {
             Text(
               breed,
               style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
+                fontFamily: AppFonts.primary,
                 fontSize: 15,
                 color: AppColors.onSurface,
               ),
@@ -342,7 +343,7 @@ class _SideIndex extends StatelessWidget {
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                           color: AppColors.secondary,
-                          fontFamily: 'Plus Jakarta Sans',
+                          fontFamily: AppFonts.primary,
                         ),
                       ),
                     ),
@@ -373,7 +374,7 @@ class _EmptySearch extends StatelessWidget {
           Text(
             '没有找到「$query」',
             style: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
+              fontFamily: AppFonts.primary,
               fontSize: 15,
               color: AppColors.onSurfaceVariant,
             ),

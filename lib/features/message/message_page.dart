@@ -14,6 +14,7 @@ import '../../core/router/app_routes.dart';
 import 'controller/im_controller.dart';
 import 'data/repository/im_repository.dart';
 import 'contacts_page.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 class MessagePage extends ConsumerStatefulWidget {
   const MessagePage({super.key});
@@ -76,7 +77,7 @@ class _MessagePageState extends ConsumerState<MessagePage> {
             title: Text(
               l10n.messageTitle,
               style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 22,
+                fontFamily: AppFonts.primary, fontSize: 22,
                 fontWeight: FontWeight.w800, letterSpacing: -0.4,
                 color: AppColors.onSurface,
               ),
@@ -115,7 +116,7 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                   ),
                   child: TextField(
                     controller: _searchCtrl,
-                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14),
+                    style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14),
                     decoration: InputDecoration(
                       border: InputBorder.none, isDense: true,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -137,7 +138,7 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                 Text(
                   l10n.messageDirectMessages,
                   style: const TextStyle(
-                    fontFamily: 'Plus Jakarta Sans', fontSize: 16,
+                    fontFamily: AppFonts.primary, fontSize: 16,
                     fontWeight: FontWeight.w700, color: AppColors.onSurface,
                     letterSpacing: -0.2,
                   ),
@@ -161,7 +162,7 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                         const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 40),
                         const SizedBox(height: 8),
                         Text(state.errorMessage!,
-                            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 13, color: AppColors.error)),
+                            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13, color: AppColors.error)),
                         const SizedBox(height: 12),
                         TextButton(
                           onPressed: () => ref.read(imControllerProvider.notifier).loadConversations(),
@@ -207,14 +208,14 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                             Text('💬', style: TextStyle(fontSize: 48)),
                             SizedBox(height: 12),
                             Text('暂无私信', style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans', fontSize: 16,
+                              fontFamily: AppFonts.primary, fontSize: 16,
                               fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant,
                             )),
                             SizedBox(height: 4),
                             Text('在社区认识新朋友后，可以发起私信聊天',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                                  fontFamily: AppFonts.primary, fontSize: 12,
                                   color: AppColors.onSurfaceVariant,
                                 )),
                           ]),
@@ -283,7 +284,7 @@ class _MessagePageState extends ConsumerState<MessagePage> {
             ),
             const SizedBox(height: 20),
             const Text('请先登录账号',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 18,
+                style: TextStyle(fontFamily: AppFonts.primary, fontSize: 18,
                     fontWeight: FontWeight.w700, color: AppColors.onSurface)),
           ],
         ),
@@ -425,7 +426,7 @@ class _InteractSheet extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(24, 12, 16, 8),
             child: Row(children: [
               const Text('互动通知', style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 20,
+                fontFamily: AppFonts.primary, fontSize: 20,
                 fontWeight: FontWeight.w800, color: AppColors.onSurface,
               )),
               const Spacer(),
@@ -447,12 +448,12 @@ class _InteractSheet extends StatelessWidget {
                   Text('❤️', style: TextStyle(fontSize: 40)),
                   SizedBox(height: 12),
                   Text('暂无互动通知', style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans', fontSize: 15,
+                    fontFamily: AppFonts.primary, fontSize: 15,
                     fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant,
                   )),
                   SizedBox(height: 4),
                   Text('当有人点赞或评论你的帖子时，通知会在这里显示', style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                    fontFamily: AppFonts.primary, fontSize: 12,
                     color: AppColors.onSurfaceVariant,
                   )),
                 ]),
@@ -532,14 +533,14 @@ class _InteractNoticeItem extends StatelessWidget {
             Text(
               notice.content,
               style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+                fontFamily: AppFonts.primary, fontSize: 13,
                 fontWeight: FontWeight.w600, color: AppColors.onSurface,
                 height: 1.45,
               ),
             ),
             const SizedBox(height: 3),
             Text(timeStr, style: const TextStyle(
-              fontFamily: 'Plus Jakarta Sans', fontSize: 11,
+              fontFamily: AppFonts.primary, fontSize: 11,
               color: AppColors.onSurfaceVariant,
             )),
           ]),
@@ -582,9 +583,9 @@ class _NotificationItem extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                  Text(title, style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
                       fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-                  Text(subtitle, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                  Text(subtitle, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
                       color: AppColors.onSurfaceVariant)),
                 ],
               ),
@@ -594,7 +595,7 @@ class _NotificationItem extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   if (time.isNotEmpty)
-                    Text(time, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 10,
+                    Text(time, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 10,
                         color: AppColors.onSurfaceVariant)),
                   if (hasUnread) ...[
                     const SizedBox(height: 4),
@@ -696,15 +697,15 @@ class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
             onPressed: () => Navigator.pop(context),
           ),
           title: const Text('好友申请',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 17, fontWeight: FontWeight.w700)),
           centerTitle: true,
           bottom: TabBar(
             labelStyle: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700,
+                fontFamily: AppFonts.primary, fontWeight: FontWeight.w700,
                 fontSize: 13),
             unselectedLabelStyle: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 13),
+                fontFamily: AppFonts.primary, fontSize: 13),
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.onSurfaceVariant,
             indicatorColor: AppColors.primary,
@@ -740,7 +741,7 @@ class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 6)),
                           child: const Text('拒绝', style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
+                              fontFamily: AppFonts.primary,
                               fontWeight: FontWeight.w600)),
                         ),
                         ElevatedButton(
@@ -754,7 +755,7 @@ class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
                             elevation: 0,
                           ),
                           child: const Text('同意', style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans', fontSize: 13,
+                              fontFamily: AppFonts.primary, fontSize: 13,
                               fontWeight: FontWeight.w700, color: Colors.white)),
                         ),
                       ]),
@@ -813,7 +814,7 @@ class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
                     child: Text(
                       isRejected ? '已拒绝 ❌' : '已同意 ✅',
                       style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                        fontFamily: AppFonts.primary,
                         fontSize: 12, fontWeight: FontWeight.w600,
                         color: isRejected ? AppColors.error : AppColors.primary,
                       )),
@@ -838,7 +839,7 @@ class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
                   ),
                   child: const Text('待确认 ⏳',
                       style: TextStyle(
-                          fontFamily: 'Plus Jakarta Sans',
+                          fontFamily: AppFonts.primary,
                           fontSize: 12, fontWeight: FontWeight.w600,
                           color: AppColors.onSurfaceVariant)),
                 ),
@@ -861,7 +862,7 @@ class _FriendRequestsPageState extends ConsumerState<FriendRequestsPage> {
     child: Column(mainAxisSize: MainAxisSize.min, children: [
       const Text('🐾', style: TextStyle(fontSize: 52)),
       const SizedBox(height: 12),
-      Text(msg, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+      Text(msg, style: TextStyle(fontFamily: AppFonts.primary,
           fontSize: 14, color: AppColors.onSurfaceVariant)),
     ]),
   );
@@ -891,10 +892,10 @@ class _RequestCard extends StatelessWidget {
       ),
       const SizedBox(width: 12),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(name, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+        Text(name, style: const TextStyle(fontFamily: AppFonts.primary,
             fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
         const SizedBox(height: 2),
-        Text(wording, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+        Text(wording, style: TextStyle(fontFamily: AppFonts.primary,
             fontSize: 12, color: AppColors.onSurfaceVariant,
             fontStyle: FontStyle.italic)),
       ])),
@@ -1090,7 +1091,7 @@ class _ConversationCardState extends State<_ConversationCard>
               children: [
                 Row(children: [
                   Expanded(child: Text(name, style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans', fontSize: 14,
+                    fontFamily: AppFonts.primary, fontSize: 14,
                     fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w600,
                     color: AppColors.onSurface))),
                   if (isPinned)
@@ -1100,7 +1101,7 @@ class _ConversationCardState extends State<_ConversationCard>
                 const SizedBox(height: 3),
                 Text(lastMsg, maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+                    fontFamily: AppFonts.primary, fontSize: 12,
                     color: hasUnread
                         ? AppColors.onSurface : AppColors.onSurfaceVariant,
                     fontWeight:
@@ -1108,7 +1109,7 @@ class _ConversationCardState extends State<_ConversationCard>
               ],
             )),
             Text(time, style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 10,
+                fontFamily: AppFonts.primary, fontSize: 10,
                 color: AppColors.onSurfaceVariant)),
           ]),
         );
@@ -1144,7 +1145,7 @@ class _ConversationCardState extends State<_ConversationCard>
                       const Text('删除', style: TextStyle(
                           color: Colors.white, fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          fontFamily: 'Plus Jakarta Sans')),
+                          fontFamily: AppFonts.primary)),
                   ]),
                 ),
               )),
@@ -1257,7 +1258,7 @@ class _SwipeActionBtn extends StatelessWidget {
           const SizedBox(height: 5),
           Text(label, style: const TextStyle(
             color: Colors.white, fontSize: 11,
-            fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700)),
+            fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
         ]),
       ),
     ),

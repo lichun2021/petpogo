@@ -5,6 +5,7 @@ import '../../shared/theme/app_colors.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
 import 'fence_add_flow.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 围栏管理页 ────────────────────────────────────────────
 class FenceManagePage extends ConsumerStatefulWidget {
@@ -45,7 +46,7 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
           icon: const Icon(Icons.arrow_back_ios_rounded, size: 20), color: AppColors.onSurface,
           onPressed: () => Navigator.pop(context)),
         title: Text('${widget.petName} 的围栏',
-            style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 17, fontWeight: FontWeight.w700)),
+            style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 17, fontWeight: FontWeight.w700)),
         centerTitle: true,
         actions: [
           if (_loading)
@@ -70,7 +71,7 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
             ),
             icon: const Icon(Icons.add_location_alt_rounded, size: 22),
             label: const Text('添加围栏', style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans', fontSize: 15, fontWeight: FontWeight.w700)),
+                fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w700)),
           ),
         ),
       ),
@@ -86,7 +87,7 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
         const Icon(Icons.wifi_off_rounded, size: 64, color: AppColors.onSurfaceVariant),
         const SizedBox(height: 16),
         Text(_error!, textAlign: TextAlign.center,
-            style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14, color: AppColors.onSurfaceVariant)),
+            style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 14, color: AppColors.onSurfaceVariant)),
         const SizedBox(height: 16),
         OutlinedButton(onPressed: _loadFences, child: const Text('重试')),
       ]));
@@ -112,10 +113,10 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
     return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
       Icon(Icons.fence_rounded, size: 72, color: AppColors.onSurfaceVariant.withOpacity(0.35)),
       const SizedBox(height: 16),
-      const Text('还没有围栏', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+      const Text('还没有围栏', style: TextStyle(fontFamily: AppFonts.primary,
           fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.onSurfaceVariant)),
       const SizedBox(height: 8),
-      const Text('添加围栏后，宠物越界会收到提醒', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+      const Text('添加围栏后，宠物越界会收到提醒', style: TextStyle(fontFamily: AppFonts.primary,
           fontSize: 13, color: AppColors.onSurfaceVariant)),
     ]));
   }
@@ -155,9 +156,9 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
         backgroundColor: AppColors.surfaceContainerLow,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('删除围栏',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontWeight: FontWeight.w700)),
+            style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
         content: Text('确定删除「${fence.fenceName}」围栏吗？',
-            style: const TextStyle(fontFamily: 'Plus Jakarta Sans')),
+            style: const TextStyle(fontFamily: AppFonts.primary)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
@@ -201,17 +202,17 @@ class _FenceCard extends StatelessWidget {
               child: const Icon(Icons.fence_rounded, color: AppColors.primary, size: 22)),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(fence.fenceName, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+            Text(fence.fenceName, style: const TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
             if (fence.address.isNotEmpty)
-              Text(fence.address, style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              Text(fence.address, style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 11, color: AppColors.onSurfaceVariant), overflow: TextOverflow.ellipsis),
           ])),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(color: const Color(0xFF4ADE80).withOpacity(0.12),
                 borderRadius: BorderRadius.circular(20)),
-            child: const Text('活跃', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            child: const Text('活跃', style: TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF16A34A))),
           ),
         ])),
@@ -222,11 +223,11 @@ class _FenceCard extends StatelessWidget {
           child: Row(children: [
             const Icon(Icons.radio_button_checked_rounded, size: 14, color: AppColors.primary),
             const SizedBox(width: 6),
-            Text('半径 ${fence.displayRadius}', style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+            Text('半径 ${fence.displayRadius}', style: const TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.onSurface)),
             const Spacer(),
             Text('${fence.latitude}°N  ${fence.longitude}°E',
-                style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 11, color: AppColors.onSurfaceVariant)),
+                style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11, color: AppColors.onSurfaceVariant)),
           ]),
         ),
         Divider(height: 1, color: AppColors.surfaceContainerHigh),
@@ -280,7 +281,7 @@ class _FenceFormSheetState extends State<_FenceFormSheet> {
             decoration: BoxDecoration(color: AppColors.onSurfaceVariant.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(2)))),
         const SizedBox(height: 16),
-        Text(widget.title, style: const TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 17, fontWeight: FontWeight.w700)),
+        Text(widget.title, style: const TextStyle(fontFamily: AppFonts.primary, fontSize: 17, fontWeight: FontWeight.w700)),
         const SizedBox(height: 20),
         _buildField(label: '围栏名称', controller: _nameCtrl, hint: '如：家、公司、学校'),
         const SizedBox(height: 12),
@@ -294,7 +295,7 @@ class _FenceFormSheetState extends State<_FenceFormSheet> {
               Icon(Icons.info_outline_rounded, size: 16, color: AppColors.secondary),
               const SizedBox(width: 8),
               const Expanded(child: Text('围栏中心将设为当前设备位置',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12, color: AppColors.secondary))),
+                  style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12, color: AppColors.secondary))),
             ])),
         const SizedBox(height: 20),
         FilledButton(
@@ -308,7 +309,7 @@ class _FenceFormSheetState extends State<_FenceFormSheet> {
           style: FilledButton.styleFrom(backgroundColor: AppColors.primary,
               minimumSize: const Size(double.infinity, 50),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-          child: const Text('保存', style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 15, fontWeight: FontWeight.w700)),
+          child: const Text('保存', style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w700)),
         ),
       ]),
     );
@@ -317,7 +318,7 @@ class _FenceFormSheetState extends State<_FenceFormSheet> {
   Widget _buildField({required String label, required TextEditingController controller,
       String? hint, TextInputType? inputType}) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 12,
+      Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
           fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant)),
       const SizedBox(height: 6),
       TextField(controller: controller, keyboardType: inputType,

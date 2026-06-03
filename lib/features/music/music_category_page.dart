@@ -7,6 +7,7 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_toast.dart';
 import 'data/music_models.dart';
 import 'music_player_page.dart';
+import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 全局播放状态 ──────────────────────────────────────────
 // 注意：不用 autoDispose，播放器需全局存活
@@ -86,7 +87,7 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(widget.playlist != null ? '歌单' : '分类',
-            style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+            style: const TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 17, fontWeight: FontWeight.w700)),
         actions: [
           IconButton(icon: const Icon(Icons.volume_up_outlined),
@@ -134,14 +135,14 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
         ),
         const SizedBox(width: 14),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_title, style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+          Text(_title, style: const TextStyle(fontFamily: AppFonts.primary,
               fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.onSurface)),
           const SizedBox(height: 6),
           Text(
             widget.category != null
                 ? '${_songs.length} 首放松心情的精选曲目，专为毛孩子定制'
                 : (widget.playlist != null ? '${widget.playlist!.songCount} 首' : ''),
-            style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+            style: const TextStyle(fontFamily: AppFonts.primary,
                 fontSize: 12, color: AppColors.onSurfaceVariant),
             maxLines: 3,
           ),
@@ -163,11 +164,11 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
         ),
       ),
       const SizedBox(width: 12),
-      Text('全部播放', style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+      Text('全部播放', style: const TextStyle(fontFamily: AppFonts.primary,
           fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
       const SizedBox(width: 8),
       Text('共 ${_songs.length} 首  ${'  '}$_totalDurationText',
-          style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+          style: const TextStyle(fontFamily: AppFonts.primary,
               fontSize: 11, color: AppColors.onSurfaceVariant)),
     ]),
   );
@@ -244,13 +245,13 @@ class _SongRow extends ConsumerWidget {
               // 名称+艺人
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(song.name,
-                    style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 13, fontWeight: FontWeight.w600,
                         color: isPlaying ? AppColors.primary : AppColors.onSurface),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
                 if (song.artist != null && song.artist!.isNotEmpty)
                   Text(song.artist!,
-                      style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      style: const TextStyle(fontFamily: AppFonts.primary,
                           fontSize: 11, color: AppColors.onSurfaceVariant)),
               ])),
               // 播放/更多
@@ -302,7 +303,7 @@ class _MiniPlayer extends ConsumerWidget {
           const Icon(Icons.music_note_rounded, color: Colors.white, size: 18),
           const SizedBox(width: 10),
           const Expanded(child: Text('正在播放',
-              style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+              style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white))),
           StreamBuilder<bool>(
             stream: player.playingStream,

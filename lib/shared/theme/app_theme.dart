@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
+import 'app_fonts.dart';
 
 /// PetPogo "The Curated Companion" 主题
 /// 字体：Plus Jakarta Sans（设计规范 §15.3）
@@ -58,8 +59,9 @@ class AppTheme {
         ),
         scaffoldBackgroundColor: AppColors.surface,
 
-        // ── 字体：Plus Jakarta Sans ────────────────────
+        // ── 字体：Plus Jakarta Sans（英文）+ Noto Sans SC（中文回退）─
         // 注：google_fonts 包的 plusJakartaSans 即为 Plus Jakarta Sans
+        // 中文字符自动回退到 Noto Sans SC（思源黑体），Google 官方设计字体
         textTheme: GoogleFonts.plusJakartaSansTextTheme().copyWith(
           // Display — Hero 大标题，紧字距
           displayLarge:  GoogleFonts.plusJakartaSans(fontSize: 56, fontWeight: FontWeight.w700, letterSpacing: -0.02 * 56, color: AppColors.onSurface),
@@ -81,6 +83,9 @@ class AppTheme {
           labelLarge:  GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.01 * 14, color: AppColors.onSurface),
           labelMedium: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.01 * 12, color: AppColors.onSurface),
           labelSmall:  GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.01 * 11, color: AppColors.onSurfaceVariant),
+        ).apply(
+          // 中文回退字体：统一从 AppFonts.chineseFallback 读取，改字体只改 app_fonts.dart
+          fontFamilyFallback: AppFonts.fallback,
         ),
 
         // ── AppBar ─────────────────────────────────────
@@ -97,6 +102,8 @@ class AppTheme {
             fontWeight: FontWeight.w800,
             letterSpacing: -0.5,
             color: AppColors.primary,
+          ).copyWith(
+            fontFamilyFallback: AppFonts.fallback,
           ),
         ),
 
@@ -199,12 +206,14 @@ class AppTheme {
           selectedLabelStyle: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: AppFonts.latin,
+            fontFamilyFallback: AppFonts.fallback,
           ),
           unselectedLabelStyle: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w500,
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: AppFonts.latin,
+            fontFamilyFallback: AppFonts.fallback,
           ),
         ),
 
