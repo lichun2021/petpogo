@@ -174,8 +174,10 @@ class _AppearanceGroup extends ConsumerWidget {
                 value: o.family,
                 child: Text(o.name,
                     style: TextStyle(
-                        fontFamily: o.family,           // 每个选项用它自己的字体渲染
-                        fontFamilyFallback: AppFonts.fallback,
+                        fontFamily: o.family,
+                        // 系统默认：fontFamilyFallback 为空，走 Flutter 系统 CJK（苹方/Noto）
+                        // 阿朱泡泡体：自身含 CJK，也不需要额外 fallback
+                        fontFamilyFallback: const [],
                         fontSize: 14,
                         color: AppColors.onSurface)),
               )).toList(),
