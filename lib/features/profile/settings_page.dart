@@ -174,7 +174,8 @@ class _AppearanceGroup extends ConsumerWidget {
                 value: o.family,
                 child: Text(o.name,
                     style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans', // 始终用系统字体显示选项名
+                        fontFamily: o.family,           // 每个选项用它自己的字体渲染
+                        fontFamilyFallback: AppFonts.fallback,
                         fontSize: 14,
                         color: AppColors.onSurface)),
               )).toList(),

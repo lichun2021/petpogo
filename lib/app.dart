@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'shared/theme/app_theme.dart';
 import 'shared/theme/app_fonts.dart';
 import 'shared/theme/app_colors.dart';
+import 'shared/theme/color_schemes.dart';
 import 'core/providers/locale_provider.dart';
 import 'core/providers/font_provider.dart';
 import 'core/providers/color_scheme_provider.dart';
@@ -44,9 +45,16 @@ class PetPogoApp extends ConsumerWidget {
     // 监听配色方案（变化时全局刷新）
     final schemeKey   = ref.watch(colorSchemeProvider);
 
-    // 同步全局静态变量
-    AppFonts.primary  = fontFamily;
-    // AppColors.setScheme 已在 ColorSchemeNotifier.setScheme 里调用，此处无需重复
+    // ── 双重保障同步：build 里也强制更新静态变量 ─────────────
+    // 这样即使 Provider 的异步 _loadSaved 有时序差，AppTheme.light
+    // 被调用时 AppColors._scheme 也已经是最新值
+    AppFonts.primary = fontFamily;
+    AppColors.setScheme(
+      kColorSchemes.firstWhere(
+        (s) => s.key == schemeKey,
+        orElse: () => warmPinkScheme,
+      ),
+    );
 
     return MaterialApp.router(
       // 字体 OR 配色变化时，通过 ValueKey 强制重建整个 App

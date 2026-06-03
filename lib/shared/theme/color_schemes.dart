@@ -238,63 +238,65 @@ const nebulaVioletScheme = PetColorScheme(
   name: '星云紫蓝',
   emoji: '💜',
 
-  // ── Primary — 深靛蓝 #4154CF ──────────────────
+  // ── Primary — 深靖蓝 #4154CF ──────────────
   primary:            Color(0xFF4154CF),
   primaryDim:         Color(0xFF3346B8),
   primaryContainer:   Color(0xFF6871F1),
   primaryFixed:       Color(0xFF6871F1),
   primaryFixedDim:    Color(0xFF5562E3),
-  onPrimary:          Color(0xFFEEEFFF),
-  onPrimaryContainer: Color(0xFF0E1660),
+  onPrimary:          Color(0xFFFFFFFF),   // 白字在深蓝上最清晰
+  onPrimaryContainer: Color(0xFF0A1250),
   inversePrimary:     Color(0xFF8C8FFF),
 
-  // ── Secondary — 柔蓝紫 #8C8FFF ───────────────
+  // ── Secondary — 柔蓝紫 #8C8FFF ────────────
   secondary:          Color(0xFF8C8FFF),
-  secondaryContainer: Color(0xFFAFAEFF),
-  onSecondary:        Color(0xFFF5F4FF),
-  onSecondaryContainer: Color(0xFF22206A),
+  secondaryContainer: Color(0xFFD2CEFF),   // 直接用用户第5色
+  onSecondary:        Color(0xFF1A1860),
+  onSecondaryContainer: Color(0xFF1A1860),
 
-  // ── Tertiary — 由 #6871F1 派生 ───────────────
-  tertiary:           Color(0xFF5060B8),
-  tertiaryContainer:  Color(0xFFD2CEFF),
-  onTertiary:         Color(0xFFF0EEFF),
+  // ── Tertiary —导测温暂色 ──────────────
+  tertiary:           Color(0xFF6060C0),
+  tertiaryContainer:  Color(0xFFE0DEFF),
+  onTertiary:         Color(0xFFFFFFFF),
   onTertiaryContainer: Color(0xFF1A1860),
 
-  // ── Surface — 基于 #D2CEFF 白化 ─────────────
-  surface:            Color(0xFFF5F4FF),
-  surfaceContainerLow:  Color(0xFFECEBFF),
-  surfaceContainer:     Color(0xFFE2E0FF),
-  surfaceContainerHigh: Color(0xFFD8D6FF),
-  surfaceContainerHighest: Color(0xFFD2CEFF),
-  surfaceContainerLowest:  Color(0xFFFFFFFF),
-  surfaceDim:         Color(0xFFC8C5F5),
-  surfaceVariant:     Color(0xFFDDDBFF),
+  // ── Surface — 纯白底色+薄醜衣草渐进 ────────
+  // 卡片背景白中带淡紫，层次渐深，避免灰芒
+  surface:            Color(0xFFF8F7FF),   // 贴近白的淡屐紫
+  surfaceContainerLow:  Color(0xFFF0EEFF), // 很淡的屐紫
+  surfaceContainer:     Color(0xFFE5E2FF), // 中等屐紫（卡片背景）
+  surfaceContainerHigh: Color(0xFFD8D4FF), // 较深屐紫（选中卡片）
+  surfaceContainerHighest: Color(0xFFCDCAFF), // 用户第4色 #AFAEFF 居中
+  surfaceContainerLowest:  Color(0xFFFFFFFF), // 纯白底层
+  surfaceDim:         Color(0xFFC0BCEE),
+  surfaceVariant:     Color(0xFFE0DEFF),
 
-  // ── On-Surface — 深靛文字 ─────────────────────
-  onSurface:          Color(0xFF1E1C5C),
-  onSurfaceVariant:   Color(0xFF4A4A80),
-  background:         Color(0xFFF5F4FF),
-  inverseSurface:     Color(0xFF0A0830),
+  // ── On-Surface — 深靖文字 ──────────────
+  // 深陗蓝字，相比原方案更深、更清晰
+  onSurface:          Color(0xFF13104A),   // 极深饗蓝，在浅屐紫背景上极清晰
+  onSurfaceVariant:   Color(0xFF4050A0),   // 中深蓝紫副标题文字
+  background:         Color(0xFFF8F7FF),
+  inverseSurface:     Color(0xFF08062E),
 
-  // ── Outline ─────────────────────────────────
-  outline:            Color(0xFF8C8FFF),
-  outlineVariant:     Color(0xFFCFCEFF),
+  // ── Outline ──────────────────────────
+  outline:            Color(0xFF7070C8),
+  outlineVariant:     Color(0xFFBDB8F0),
 
-  // ── Error ────────────────────────────────────
+  // ── Error ─────────────────────────────
   error:              Color(0xFFb31b25),
   errorContainer:     Color(0xFFfb5151),
   onError:            Color(0xFFffefee),
 
-  // ── Shadow ───────────────────────────────────
-  ambientShadow:      Color(0x0F1E1C5C),
-  cardShadow:         Color(0x194154CF),
-  primaryGlow:        Color(0x334154CF),
+  // ── Shadow ────────────────────────────
+  ambientShadow:      Color(0x0F4154CF),
+  cardShadow:         Color(0x204154CF),
+  primaryGlow:        Color(0x404154CF),
 
-  // ── Gradient: 深靛 → 柔蓝紫 ──────────────────
+  // ── Gradient: 深遗 → 薄屐紫 ─────────────
   primaryGradient: LinearGradient(
-    colors: [Color(0xFF4154CF), Color(0xFF8C8FFF)],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
+    colors: [Color(0xFF4154CF), Color(0xFF6871F1)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
   ),
   heroGradient: LinearGradient(
     colors: [Color(0xFF4154CF), Color(0x004154CF)],
@@ -317,63 +319,65 @@ const forestDuskScheme = PetColorScheme(
   name: '暮色森林',
   emoji: '🌲',
 
-  // ── Primary — 深红 #C03221 ──────────────────────
+  // ── Primary — 深红 #C03221 ──────────────
   primary:            Color(0xFFC03221),
   primaryDim:         Color(0xFFA82A1C),
   primaryContainer:   Color(0xFFE05540),
   primaryFixed:       Color(0xFFE05540),
   primaryFixedDim:    Color(0xFFD04030),
-  onPrimary:          Color(0xFFFFF0EE),
+  onPrimary:          Color(0xFFFFFFFF),   // 白字在深红上最清晰
   onPrimaryContainer: Color(0xFF3E0A07),
   inversePrimary:     Color(0xFFE8705F),
 
-  // ── Secondary — 墨绿 #3F826D ───────────────────
+  // ── Secondary — 墨绿 #3F826D ───────────
   secondary:          Color(0xFF3F826D),
-  secondaryContainer: Color(0xFFA8D4C6),
-  onSecondary:        Color(0xFFE8F5F1),
+  secondaryContainer: Color(0xFFB6DDD4),   // 浅薄荷叶绿
+  onSecondary:        Color(0xFFFFFFFF),
   onSecondaryContainer: Color(0xFF1A4035),
 
-  // ── Tertiary — 杏色 #F2D0A4 ───────────────────
+  // ── Tertiary — 杏色 #F2D0A4 ───────────
   tertiary:           Color(0xFF8B6030),
   tertiaryContainer:  Color(0xFFF2D0A4),
-  onTertiary:         Color(0xFFFAF0E6),
+  onTertiary:         Color(0xFFFFFFFF),
   onTertiaryContainer: Color(0xFF5A3A12),
 
-  // ── Surface — 月白 #F7F7FF ─────────────────────
-  surface:            Color(0xFFF7F7FF),
-  surfaceContainerLow:  Color(0xFFEFEFF9),
-  surfaceContainer:     Color(0xFFE6E6F2),
-  surfaceContainerHigh: Color(0xFFDDDDEC),
-  surfaceContainerHighest: Color(0xFFD4D4E4),
+  // ── Surface — 温暖象牙色系列 ─────────
+  // 主色是红+绿，surface必须是暖象牙，绝对不能带蓝调
+  surface:            Color(0xFFFAF8F4),   // 暖白象牙
+  surfaceContainerLow:  Color(0xFFF4F0E8), // 麦秆象牙
+  surfaceContainer:     Color(0xFFEDE7D9), // 卡片背景，温暖鹿皮色
+  surfaceContainerHigh: Color(0xFFE4DCC8), // 较深温暖色
+  surfaceContainerHighest: Color(0xFFD8D0B8), // 最深的温暖层
   surfaceContainerLowest:  Color(0xFFFFFFFF),
-  surfaceDim:         Color(0xFFCACADB),
-  surfaceVariant:     Color(0xFFE0E0EE),
+  surfaceDim:         Color(0xFFCCC4AA),
+  surfaceVariant:     Color(0xFFEBE3D2),
 
-  // ── On-Surface — 蓝灰 #545E75 ─────────────────
-  onSurface:          Color(0xFF545E75),
-  onSurfaceVariant:   Color(0xFF7A849A),
-  background:         Color(0xFFF7F7FF),
-  inverseSurface:     Color(0xFF1C2030),
+  // ── On-Surface — 蓝灰 #545E75 ──────────
+  // 在象牙色背景上，深蓝灰文字极具层次感
+  onSurface:          Color(0xFF3A4055),   // 比用户的545E75稍深，更高对比
+  onSurfaceVariant:   Color(0xFF627090),   // 副标题文字
+  background:         Color(0xFFFAF8F4),
+  inverseSurface:     Color(0xFF1A1C28),
 
-  // ── Outline ────────────────────────────────────
-  outline:            Color(0xFF8890A6),
-  outlineVariant:     Color(0xFFBFC5D2),
+  // ── Outline ──────────────────────────
+  outline:            Color(0xFF909AAA),
+  outlineVariant:     Color(0xFFD0C8B8),   // 暖象牙色分割线
 
-  // ── Error ──────────────────────────────────────
+  // ── Error ─────────────────────────────
   error:              Color(0xFFb31b25),
   errorContainer:     Color(0xFFfb5151),
   onError:            Color(0xFFffefee),
 
-  // ── Shadow ─────────────────────────────────────
-  ambientShadow:      Color(0x0F545E75),
-  cardShadow:         Color(0x19545E75),
-  primaryGlow:        Color(0x33C03221),
+  // ── Shadow ────────────────────────────
+  ambientShadow:      Color(0x0F3A4055),
+  cardShadow:         Color(0x15C03221),   // 深红阴影
+  primaryGlow:        Color(0x30C03221),
 
-  // ── Gradient: 深红 → 杏色 ─────────────────────
+  // ── Gradient: 深红 → 杏色 ──────────────
   primaryGradient: LinearGradient(
-    colors: [Color(0xFFC03221), Color(0xFFF2D0A4)],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
+    colors: [Color(0xFFC03221), Color(0xFFE07C50)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
   ),
   heroGradient: LinearGradient(
     colors: [Color(0xFFC03221), Color(0x00C03221)],
