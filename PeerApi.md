@@ -130,7 +130,7 @@ curl -s http://localhost:8002/user/login -X POST \
     "proof": {
       "accessKeyId": "<AWS_ACCESS_KEY_ID>",
       "secretKey": "<AWS_SECRET_ACCESS_KEY>",
-      ""sessionToken": "<AWS_SESSION_TOKEN>"",
+      "sessionToken": "<AWS_SESSION_TOKEN>",
       "sessionExpiration": 1779691978000
     },
     "region": "us-east-1",
@@ -184,7 +184,7 @@ curl -s http://localhost:8002/user/refresh/token -X POST \
     "proof": {
       "accessKeyId": "<AWS_ACCESS_KEY_ID>",
       "secretKey": "<AWS_SECRET_ACCESS_KEY>",
-      ""sessionToken": "<AWS_SESSION_TOKEN>"",
+      "sessionToken": "<AWS_SESSION_TOKEN>",
       "sessionExpiration": 1779691980000
     },
     "region": "us-east-1",
