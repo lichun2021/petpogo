@@ -25,49 +25,58 @@ echo "║       PetPogo 一键打包运行脚本            ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""
 
-# ── Step 1: 检查/启动模拟器 ─────────────────────
-echo "▶ [1/3] 检查模拟器..."
+# ── Step 1: 优先找真机，没有再用模拟器 ──────────
+echo "▶ [1/3] 检查设备..."
 
-# 列出所有在线模拟器
-ALL_DEVICES=$($ADB devices | grep -E "emulator-[0-9]+" | grep "device$" | awk '{print $1}')
-COUNT=$(echo "$ALL_DEVICES" | grep -c "emulator" 2>/dev/null || echo 0)
+# 先找真机（非 emulator 开头的在线设备）
+DEVICE=$($ADB devices | grep -v "^List" | grep "device$" | grep -v "emulator" | head -1 | awk '{print $1}')
 
-# 超过 1 个时，关掉多余的，只保留最新的
-if [ "$COUNT" -gt 1 ]; then
-  echo "  ⚠️  检测到 $COUNT 个模拟器，自动关闭多余的..."
-  echo "$ALL_DEVICES" | tail -n +2 | while read -r OLD_DEV; do
-    $ADB -s $OLD_DEV emu kill > /dev/null 2>&1
-    echo "  关闭: $OLD_DEV"
-  done
-  sleep 2
-fi
+if [ -n "$DEVICE" ]; then
+  echo "  ✅ 找到真机: $DEVICE"
+else
+  echo "  未找到真机，检查模拟器..."
 
-DEVICE=$($ADB devices | grep -E "emulator-[0-9]+" | grep "device$" | head -1 | awk '{print $1}')
+  # 列出所有在线模拟器
+  ALL_EMULATORS=$($ADB devices | grep -E "emulator-[0-9]+" | grep "device$" | awk '{print $1}')
+  COUNT=$(echo "$ALL_EMULATORS" | grep -c "emulator" 2>/dev/null || echo 0)
 
-if [ -z "$DEVICE" ]; then
-  echo "  模拟器未运行，正在启动 $AVD_NAME ..."
-  $EMULATOR -avd $AVD_NAME -no-snapshot-load > /dev/null 2>&1 &
-  echo "  等待模拟器启动（最多 60 秒）..."
-
-  for i in $(seq 1 60); do
+  # 超过 1 个时，关掉多余的，只保留最新的
+  if [ "$COUNT" -gt 1 ]; then
+    echo "  ⚠️  检测到 $COUNT 个模拟器，自动关闭多余的..."
+    echo "$ALL_EMULATORS" | tail -n +2 | while read -r OLD_DEV; do
+      $ADB -s $OLD_DEV emu kill > /dev/null 2>&1
+      echo "  关闭: $OLD_DEV"
+    done
     sleep 2
-    DEVICE=$($ADB devices | grep emulator | grep "device$" | head -1 | awk '{print $1}')
-    if [ -n "$DEVICE" ]; then
-      BOOTED=$($ADB -s $DEVICE shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-      if [ "$BOOTED" == "1" ]; then
-        echo "  ✅ 模拟器已就绪: $DEVICE"
-        break
-      fi
-    fi
-    echo "  ... 等待中 ($((i*2))s)"
-  done
+  fi
+
+  DEVICE=$($ADB devices | grep -E "emulator-[0-9]+" | grep "device$" | head -1 | awk '{print $1}')
 
   if [ -z "$DEVICE" ]; then
-    echo "  ❌ 模拟器启动超时，请手动启动后重试"
-    exit 1
+    echo "  模拟器未运行，正在启动 $AVD_NAME ..."
+    $EMULATOR -avd $AVD_NAME -no-snapshot-load > /dev/null 2>&1 &
+    echo "  等待模拟器启动（最多 60 秒）..."
+
+    for i in $(seq 1 60); do
+      sleep 2
+      DEVICE=$($ADB devices | grep emulator | grep "device$" | head -1 | awk '{print $1}')
+      if [ -n "$DEVICE" ]; then
+        BOOTED=$($ADB -s $DEVICE shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+        if [ "$BOOTED" == "1" ]; then
+          echo "  ✅ 模拟器已就绪: $DEVICE"
+          break
+        fi
+      fi
+      echo "  ... 等待中 ($((i*2))s)"
+    done
+
+    if [ -z "$DEVICE" ]; then
+      echo "  ❌ 模拟器启动超时，请手动启动后重试"
+      exit 1
+    fi
+  else
+    echo "  ✅ 已有模拟器: $DEVICE"
   fi
-else
-  echo "  ✅ 已有模拟器: $DEVICE"
 fi
 
 # ── Step 2: 打包 ────────────────────────────────
@@ -95,7 +104,7 @@ $ADB -s $DEVICE shell am start -n $PKG/$ACTIVITY
 
 echo ""
 echo "╔══════════════════════════════════════════╗"
-echo "║  ✅ 完成！App 已在模拟器上运行           ║"
+echo "║  ✅ 完成！App 已在设备上运行             ║"
 echo "║  👉 查看日志：./log.sh                   ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""

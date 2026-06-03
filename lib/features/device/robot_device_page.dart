@@ -76,7 +76,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     setState(() { _agoraLoading = true; _agoraError = null; });
     try {
       // 1. 请求权限
-      await [Permission.microphone, Permission.camera].request();
+      final statuses = await [Permission.microphone, Permission.camera].request();
+      debugPrint('[🔊音频] 权限状态: mic=${statuses[Permission.microphone]} cam=${statuses[Permission.camera]}');
 
       // 2. 获取 Token（下发 ESP32 参数）
       final auth  = ref.read(authControllerProvider);
@@ -84,6 +85,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       final info = await ref.read(deviceRepositoryProvider)
           .getAgoraToken(mac: widget.mac, customerId: userId);
       _agoraInfo = info;
+      debugPrint('[Agora] Token 获取成功 channel=${info.channelName} uid=${info.userId}');
 
       // 3. 创建引擎
       _engine = createAgoraRtcEngine();
@@ -91,7 +93,6 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       await _engine!.initialize(RtcEngineContext(
         appId: info.appId,
         channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
-        // areaCode 不设置，使用 SDK 默认（全球）
       ));
       debugPrint('[Agora] initialize 成功');
 
@@ -99,30 +100,33 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       if (Platform.isAndroid) {
         try {
           await _engine!.setParameters('{"engine.video.codec_type": "20"}');
-          // 降低播放缓冲区，减少卡顿等待时间
           await _engine!.setParameters('{"rtc.video.playout_delay_min": 0}');
           await _engine!.setParameters('{"rtc.video.playout_delay_max": 300}');
           debugPrint('[Agora] setParameters JPEG 成功');
         } catch (e) {
           debugPrint('[Agora] setParameters JPEG 失败（可忽略）: $e');
-          // 不阻断主流程，继续尝试 joinChannel
         }
       }
 
       // 5. 启用音视频 + IoT 音频模式
-      debugPrint('[Agora] enableVideo...');
+      debugPrint('[🔊音频] enableVideo...');
       await _engine!.enableVideo();
-      debugPrint('[Agora] enableAudio...');
+      debugPrint('[🔊音频] enableAudio...');
       await _engine!.enableAudio();
-      debugPrint('[Agora] setAudioProfile...');
+      debugPrint('[🔊音频] setAudioProfile: Default + Chatroom...');
       await _engine!.setAudioProfile(
         profile: AudioProfileType.audioProfileDefault,
         scenario: AudioScenarioType.audioScenarioChatroom,
       );
-      debugPrint('[Agora] setEnableSpeakerphone...');
-      // setEnableSpeakerphone 已移至 onJoinChannelSuccess，此处跳过
-      debugPrint('[Agora] enableLocalVideo(false)...');
+      debugPrint('[🔊音频] setAudioProfile 完成');
+      debugPrint('[🔊音频] enableLocalVideo(false)...');
       await _engine!.enableLocalVideo(false);  // APP 不发送本地摄像头
+
+      // 开启音量提示（每秒回调一次，用于调试音频是否有数据流入）
+      await _engine!.enableAudioVolumeIndication(
+        interval: 1000, smooth: 3, reportVad: false,
+      );
+      debugPrint('[🔊音频] enableAudioVolumeIndication 已开启（1s 间隔）');
 
       // 6. 注册事件
       debugPrint('[Agora] registerEventHandler...');
@@ -131,29 +135,68 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           if (mounted) setState(() { _agoraJoined = true; _agoraLoading = false; });
           // 加入频道后再开启扬声器（防止提前调用报 -3）
           _engine?.setEnableSpeakerphone(true);
-          debugPrint('[Agora] 加入频道成功，已开启扬声器');
+          debugPrint('[🔊音频] 加入频道成功 → setEnableSpeakerphone(true)');
         },
         onUserJoined: (_, uid, __) {
           if (mounted) setState(() => _remoteUid = uid);
-          debugPrint('[Agora] ESP32 加入频道 uid=$uid');
+          debugPrint('[🔊音频] 远端用户加入 uid=$uid（ESP32）');
+          // 加入后确认没有静音远端
+          _engine?.muteRemoteAudioStream(uid: uid, mute: false);
+          debugPrint('[🔊音频] muteRemoteAudioStream(uid=$uid, mute=false) ← 确保不静音');
         },
         onUserOffline: (_, uid, __) {
           if (mounted) setState(() => _remoteUid = null);
-          debugPrint('[Agora] ESP32 离开 uid=$uid');
+          debugPrint('[🔊音频] 远端用户离线 uid=$uid');
         },
         onRtcStats: (_, stats) {
           if (mounted) {
             setState(() {
               _kbps = stats.rxVideoKBitRate?.toDouble() ?? 0;
             });
+            // 音频码率诊断（不 setState，仅打印）
+            final rxAudio = stats.rxAudioKBitRate ?? 0;
+            final txAudio = stats.txAudioKBitRate ?? 0;
+            if (rxAudio > 0 || txAudio > 0) {
+              debugPrint('[🔊音频] Stats → rxAudio=${rxAudio}kbps txAudio=${txAudio}kbps '
+                  'rxVideo=${stats.rxVideoKBitRate ?? 0}kbps');
+            } else {
+              debugPrint('[🔊音频] ⚠️ Stats → rxAudio=0 txAudio=0（未收到音频数据！）');
+            }
           }
+        },
+        // ── 远端音频状态变化（关键诊断事件）──
+        onRemoteAudioStateChanged: (_, uid, state, reason, __) {
+          debugPrint('[🔊音频] 远端音频状态变化 uid=$uid '
+              'state=$state reason=$reason');
+          // state: 0=stopped 1=starting 2=decoding 3=frozen 4=failed
+          // reason: 0=internal 1=localMuted 2=localUnmuted 3=remoteMuted
+          //         4=remoteUnmuted 5=remoteOffline 6=noPacketReceived
+          final stateStr = const {0:'stopped',1:'starting',2:'decoding ✅',3:'frozen❄️',4:'failed❌'}[state.value] ?? 'unknown';
+          final reasonStr = const {0:'internal',1:'localMuted',2:'localUnmuted',3:'remoteMuted',4:'remoteUnmuted',5:'remoteOffline',6:'noPacketReceived'}[reason.value] ?? 'unknown';
+          debugPrint('[🔊音频] → state=$stateStr  reason=$reasonStr');
+        },
+        // ── 音量回调（有声音时 volume > 0）──
+        onAudioVolumeIndication: (_, speakers, __, totalVolume) {
+          for (final s in speakers) {
+            if ((s.volume ?? 0) > 0) {
+              debugPrint('[🔊音频] 音量回调 uid=${s.uid} volume=${s.volume}');
+            }
+          }
+          if (totalVolume == 0 && speakers.isNotEmpty) {
+            debugPrint('[🔊音频] ⚠️ totalVolume=0，所有音频静音或无数据');
+          }
+        },
+        // ── 音频路由变化（扬声器/听筒/耳机）──
+        onAudioRoutingChanged: (routing) {
+          // -1=default 0=headset 1=earpiece 2=speakerphone 3=bluetooth 4=usb
+          final routeStr = const {-1:'default',0:'headset',1:'earpiece',2:'speakerphone ✅',3:'bluetooth',4:'usb_audio'}[routing] ?? 'unknown($routing)';
+          debugPrint('[🔊音频] 音频路由变化 → $routeStr');
         },
         onError: (err, msg) {
           debugPrint('[Agora] 错误 $err: $msg');
           if (mounted) setState(() => _agoraError = 'Agora错误 $err');
         },
         onTokenPrivilegeWillExpire: (_, __) {
-          // Token 即将过期，重新获取
           _startAgora();
         },
         onConnectionStateChanged: (_, state, reason) {
@@ -168,15 +211,12 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         },
       ));
 
-      // 7. 加入频道（观众模式）
-      debugPrint('[Agora] setClientRole Broadcaster (默认静音)...');
-      // ⭐ 必须用 Broadcaster，ESP32 的 RTSA Lite 只在 onUserJoined(10001) 时才开始推流
-      // Audience 模式不会触发对方的 onUserJoined，ESP32 感知不到 App 进来
+      // 7. 加入频道
+      debugPrint('[🔊音频] setClientRole → Broadcaster');
       await _engine!.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
-      // ⭐ enableLocalAudio(true) + mute = 音频模块保持活跃（Agora 识别为真正 Broadcaster）但不发声
-      // 注意：enableLocalAudio(false) + publishMicrophoneTrack:true 是矛盾的，会导致 ESP32 收不到通知
       await _engine!.enableLocalAudio(true);
-      await _engine!.muteLocalAudioStream(true);  // 静音，用户按对讲时再解除
+      await _engine!.muteLocalAudioStream(true);  // 默认静音本地麦克风
+      debugPrint('[🔊音频] enableLocalAudio=true muteLocalAudioStream=true（对讲默认关）');
       debugPrint('[Agora] joinChannel...');
       await _engine!.joinChannel(
         token: info.token,
@@ -186,7 +226,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           autoSubscribeVideo: true,
           autoSubscribeAudio: true,
           publishCameraTrack: false,
-          publishMicrophoneTrack: true,  // Broadcaster 模式需 true（实际靠 muteLocalAudioStream 控制）
+          publishMicrophoneTrack: true,
         ),
       );
       debugPrint('[Agora] joinChannel 调用完成（等待 onJoinChannelSuccess）');
@@ -195,6 +235,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       if (mounted) setState(() { _agoraLoading = false; _agoraError = e.toString(); });
     }
   }
+
 
   /// 离开频道 + 释放引擎
   Future<void> _stopAgora() async {
@@ -275,12 +316,18 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
 
   @override
   Widget build(BuildContext context) {
+    // 横屏时（进入全屏）返回纯黑，防止底层页面跟着旋转报 OVERFLOW
+    final orientation = MediaQuery.of(context).orientation;
+    if (orientation == Orientation.landscape) {
+      return const Scaffold(backgroundColor: Colors.black);
+    }
+    final screenH = MediaQuery.of(context).size.height;
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: Column(children: [
         _buildTopBar(context),
-        _buildCameraView(),
-        _buildTabBar(),
+        _buildCameraView(screenH),
+        _buildTabBar(screenH),
         Expanded(
           child: TabBarView(
             controller: _tabController,
@@ -319,22 +366,30 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   size: 20, color: AppColors.onPrimary),
             ),
             const SizedBox(width: 8),
-            // 设备名 + 下拉
-            GestureDetector(
-              onTap: () => _showDeviceSwitcher(context),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(widget.name,
-                    style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.onPrimary,
-                      letterSpacing: -0.3,
-                    )),
-                const SizedBox(width: 4),
-                const Icon(Icons.keyboard_arrow_down_rounded,
-                    color: AppColors.onPrimary, size: 22),
-              ]),
+            // 设备名 + 下拉（Flexible 防止长名称溢出）
+            Flexible(
+              child: GestureDetector(
+                onTap: () => _showDeviceSwitcher(context),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Flexible(
+                    child: Text(
+                      widget.name,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.onPrimary,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.onPrimary, size: 22),
+                ]),
+              ),
             ),
             const Spacer(),
             // + 添加设备
@@ -358,9 +413,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   }
 
   // ── 摄像头区域（Agora 视频流）────────────────────────────
-  Widget _buildCameraView() {
+  Widget _buildCameraView(double screenH) {
+    final cameraH = (screenH * 0.27).clamp(160.0, 220.0);
     return Container(
-      height: 220,
+      height: cameraH,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.primaryContainer, AppColors.surfaceContainerLow],
@@ -623,8 +679,11 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     );
   }
 
-  // ── 功能标签栏 ────────────────────────────────────────
-  Widget _buildTabBar() {
+  // ── 功能标签栏（响应式，防止小屏幕 BOTTOM OVERFLOW）──
+  Widget _buildTabBar(double screenH) {
+    // 小屏幕时图标缩小：screenH * 0.075 = 48(640屏) ~ 60(800屏)
+    final iconSize = (screenH * 0.075).clamp(44.0, 60.0);
+    final iconPad  = screenH < 700 ? 8.0 : 12.0;
     final tabs = [
       (Icons.sports_esports_rounded, '遥控'),
       (Icons.favorite_rounded, '逗宠'),
@@ -634,7 +693,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
 
     return Container(
       color: AppColors.surfaceContainerLowest,
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: EdgeInsets.symmetric(vertical: iconPad),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: List.generate(tabs.length, (i) {
@@ -648,7 +707,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                width: 60, height: 60,
+                width: iconSize, height: iconSize,
                 decoration: BoxDecoration(
                   color: active
                       ? AppColors.primary
@@ -663,14 +722,14 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                       : [],
                 ),
                 child: Icon(tabs[i].$1,
-                    size: 26,
+                    size: iconSize * 0.43,
                     color: active ? AppColors.onPrimary : AppColors.onSurfaceVariant),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Text(tabs[i].$2,
                   style: TextStyle(
                     fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 12,
+                    fontSize: screenH < 700 ? 11 : 12,
                     fontWeight: FontWeight.w600,
                     color: active ? AppColors.primary : AppColors.onSurfaceVariant,
                   )),
@@ -681,16 +740,20 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     );
   }
 
-  // ── 遥控标签：可滑动摇杆 ──────────────────────────────
+  // ── 遥控标签：可滑动摇杆 ────────────────────────────────
   Widget _buildRemoteControl() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-      child: Column(children: [
+      child: LayoutBuilder(
+        builder: (ctx, outer) {
+          // 摇杆半径：基于整个卡片尺寸（非剩余空间），让摇杆真正居中
+          final innerW = outer.maxWidth  - 48; // 内边距 24×2
+          final innerH = outer.maxHeight - 80; // 顶部行 ~46 + 底部留白 ~34
+          final padR   = (innerW.clamp(0, innerH) / 2).clamp(70.0, 130.0);
 
-        // 摇杆卡片
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          return Container(
+            width:  outer.maxWidth,
+            height: outer.maxHeight,
             decoration: BoxDecoration(
               color: AppColors.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(24),
@@ -699,51 +762,48 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 blurRadius: 16, offset: const Offset(0, 4),
               )],
             ),
-            child: Column(children: [
-              // 标题行
-              Row(children: [
-                // const Text('摇杆控制',
-                //     style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                //         fontSize: 14, fontWeight: FontWeight.w700,
-                //         color: AppColors.onSurface)),
-                // const SizedBox(width: 6),
-                // Text('速度 ${_moveSpeed.toInt()}%',
-                //     style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                //         fontSize: 12, color: AppColors.onSurfaceVariant)),
-                const Spacer(),
-                // ⚙️ 速度设置
-                GestureDetector(
-                  onTap: () => _showSpeedSheet(context),
-                  child: Container(
-                    width: 36, height: 36,
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerLow,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.tune_rounded,
-                        size: 18, color: AppColors.primary),
-                  ),
-                ),
-              ]),
-              const SizedBox(height: 4),
-              const Text('拖动方向盘控制机器人移动，松手自动停止',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 11, color: AppColors.onSurfaceVariant)),
-              const SizedBox(height: 20),
-              Expanded(
-                child: Center(
+            child: Stack(
+              children: [
+                // ① 摇杆真正居中于整个卡片
+                Center(
                   child: _JoystickPad(
                     onControl: _sendMotorControl,
-                    padRadius: 115,
+                    padRadius: padR,
                   ),
                 ),
-              ),
-            ]),
-          ),
-        ),
-      ]),
+                // ② 顶部栏：提示文字（左）+ 设置按钮（右）
+                Positioned(
+                  top: 14, left: 20, right: 14,
+                  child: Row(
+                    children: [
+                      // const Text('拖动方向盘控制机器人移动',
+                      //     style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                      //         fontSize: 11,
+                      //         color: AppColors.onSurfaceVariant)),
+                      // const Spacer(),
+                      GestureDetector(
+                        onTap: () => _showSpeedSheet(context),
+                        child: Container(
+                          width: 34, height: 34,
+                          decoration: const BoxDecoration(
+                            color: AppColors.surfaceContainerLow,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.tune_rounded,
+                              size: 17, color: AppColors.primary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
+
 
   // 速度设置弹窗
   void _showSpeedSheet(BuildContext ctx) {
@@ -803,15 +863,15 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 },
               ),
             ),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('慢速 10%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 12, color: AppColors.onSurfaceVariant)),
-                Text('快速 100%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 12, color: AppColors.onSurfaceVariant)),
-              ],
-            ),
+            // const Row(
+            //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            //   children: [
+            //     Text('慢速 10%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            //         fontSize: 12, color: AppColors.onSurfaceVariant)),
+            //     Text('快速 100%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            //         fontSize: 12, color: AppColors.onSurfaceVariant)),
+            //   ],
+            // ),
             const SizedBox(height: 8),
 
             // ── 设备音量 ────────────────────────────────
@@ -862,15 +922,15 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 },
               ),
             ),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('静音 0%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 12, color: AppColors.onSurfaceVariant)),
-                Text('最大 100%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 12, color: AppColors.onSurfaceVariant)),
-              ],
-            ),
+            // const Row(
+            //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            //   children: [
+            //     Text('静音 0%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            //         fontSize: 12, color: AppColors.onSurfaceVariant)),
+            //     Text('最大 100%', style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+            //         fontSize: 12, color: AppColors.onSurfaceVariant)),
+            //   ],
+            // ),
             const SizedBox(height: 8),
           ]),
         ),
@@ -889,64 +949,85 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       ('右转', AppColors.secondary,     AppColors.secondaryFixed,  Icons.turn_right_rounded),
     ];
 
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(20),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('机器人动作',
-            style: TextStyle(fontFamily: 'Plus Jakarta Sans',
-                fontSize: 16, fontWeight: FontWeight.w800,
-                color: AppColors.onSurface)),
-        const SizedBox(height: 16),
-        Container(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // ── 精确计算 GridView 列宽 ──────────────────────────
+        // SingleChildScrollView padding 20, Container padding 16 → 水平内缩 72
+        // crossAxisSpacing = 12，三列两间距 = 24
+        const crossSpacing = 12.0;
+        final gridW  = constraints.maxWidth - 72;          // 可用网格总宽
+        final colW   = (gridW - crossSpacing * 2) / 3;     // 实际每列宽
+        // 按钮大小跟随列宽，上限 88（大屏更充实）
+        final btnSize  = colW.clamp(48.0, 88.0);
+        final iconSize = btnSize * 0.44;
+        // 每格内容高 = 按钮 + 文字 + 间距，childAspectRatio 基于实际列宽
+        final contentH = btnSize + 6 + 18.0;               // 6=SizedBox, 18=text
+        final ratio    = colW / contentH;                  // 用列宽除以内容高
+        final spacing  = constraints.maxHeight < 380 ? 8.0 : 12.0;
+
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 16)],
-          ),
-          child: GridView.count(
-            crossAxisCount: 3,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 20,
-            crossAxisSpacing: 20,
-            children: actions.map((a) {
-              return GestureDetector(
-                onTap: () {
-                  HapticFeedback.mediumImpact();
-                  PetToast.warning(context, '执行动作：${a.$1}');
-                },
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Container(
-                    width: 64, height: 64,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [a.$2, a.$3],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('机器人动作',
+                style: TextStyle(fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 16, fontWeight: FontWeight.w800,
+                    color: AppColors.onSurface)),
+            SizedBox(height: spacing),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 16)],
+              ),
+              child: GridView.count(
+                crossAxisCount: 3,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: spacing,
+                crossAxisSpacing: crossSpacing,
+                childAspectRatio: ratio,   // ← 基于实际列宽，大屏不再出现巨大间距
+                children: actions.map((a) {
+                  return GestureDetector(
+                    onTap: () {
+                      HapticFeedback.mediumImpact();
+                      PetToast.warning(context, '执行动作：${a.$1}');
+                    },
+                    child: Column(mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Container(
+                        width: btnSize, height: btnSize,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [a.$2, a.$3],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(btnSize * 0.28),
+                          boxShadow: [BoxShadow(
+                            color: a.$2.withOpacity(0.35),
+                            blurRadius: 8, offset: const Offset(0, 3),
+                          )],
+                        ),
+                        child: Icon(a.$4, color: Colors.white, size: iconSize),
                       ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [BoxShadow(
-                        color: a.$2.withOpacity(0.35),
-                        blurRadius: 10, offset: const Offset(0, 4),
-                      )],
-                    ),
-                    child: Icon(a.$4, color: Colors.white, size: 28),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(a.$1,
-                      style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-                          fontSize: 13, fontWeight: FontWeight.w600,
-                          color: AppColors.onSurface)),
-                ]),
-              );
-            }).toList(),
-          ),
-        ),
-      ]),
+                      const SizedBox(height: 6),
+                      Text(a.$1,
+                          style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                              fontSize: 12, fontWeight: FontWeight.w600,
+                              color: AppColors.onSurface)),
+                    ]),
+                  );
+                }).toList(),
+              ),
+            ),
+          ]),
+        );
+      },
     );
   }
+
 
   // ── 摄影标签 ──────────────────────────────────────────
   Widget _buildPhotography() {
@@ -1025,87 +1106,107 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   // ── 对讲标签（Agora 开麦克对讲）────────────────────────────
   Widget _buildIntercom() {
     final isReady = _agoraJoined;
-    return Center(
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        // 麦克风图标（麦开时变绿）
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: 120, height: 120,
-          decoration: BoxDecoration(
-            gradient: _micOn
-                ? const LinearGradient(
-                    colors: [Color(0xFF43A047), Color(0xFF66BB6A)],
-                    begin: Alignment.topLeft, end: Alignment.bottomRight)
-                : AppColors.primaryGradient,
-            shape: BoxShape.circle,
-            boxShadow: [BoxShadow(
-              color: _micOn
-                  ? Colors.green.withOpacity(0.4)
-                  : AppColors.primaryGlow,
-              blurRadius: _micOn ? 40 : 30, spreadRadius: 0,
-            )],
-          ),
-          child: Icon(
-            _micOn ? Icons.mic_rounded : Icons.mic_off_rounded,
-            size: 52, color: AppColors.onPrimary,
-          ),
-        ),
-        const SizedBox(height: 20),
-        Text(
-          isReady ? (_micOn ? '对讲中...' : '连接已建立') : '连接设备中...',
-          style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-              fontSize: 18, fontWeight: FontWeight.w800,
-              color: AppColors.onSurface),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          isReady ? '点击按钮开启/关闭对讲' : '请稍候...',
-          style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
-              fontSize: 14, color: AppColors.onSurfaceVariant),
-        ),
-        const SizedBox(height: 32),
-        // 对讲按钮
-        GestureDetector(
-          onTap: isReady ? _toggleMic : null,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
-            decoration: BoxDecoration(
-              gradient: isReady
-                  ? (_micOn
-                      ? const LinearGradient(
-                          colors: [Color(0xFF43A047), Color(0xFF66BB6A)])
-                      : AppColors.primaryGradient)
-                  : null,
-              color: isReady ? null : AppColors.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: isReady ? [BoxShadow(
-                color: _micOn
-                    ? Colors.green.withOpacity(0.4)
-                    : AppColors.primaryGlow,
-                blurRadius: 16, offset: const Offset(0, 6),
-              )] : [],
-            ),
-            child: Text(
-              isReady ? (_micOn ? '关闭对讲' : '开启对讲') : '连接中...',
-              style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                fontSize: 16, fontWeight: FontWeight.w800,
-                color: isReady ? AppColors.onPrimary : AppColors.onSurfaceVariant,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final h = constraints.maxHeight;
+        final micSize = h < 350 ? 88.0 : 120.0;
+        final gap1 = h < 350 ? 10.0 : 20.0;
+        final gap2 = h < 350 ? 16.0 : 32.0;
+        return SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: h),
+            child: IntrinsicHeight(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 麦克风图标（麦开时变绿）
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: micSize, height: micSize,
+                    decoration: BoxDecoration(
+                      gradient: _micOn
+                          ? const LinearGradient(
+                              colors: [Color(0xFF43A047), Color(0xFF66BB6A)],
+                              begin: Alignment.topLeft, end: Alignment.bottomRight)
+                          : AppColors.primaryGradient,
+                      shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(
+                        color: _micOn
+                            ? Colors.green.withOpacity(0.4)
+                            : AppColors.primaryGlow,
+                        blurRadius: _micOn ? 40 : 30, spreadRadius: 0,
+                      )],
+                    ),
+                    child: Icon(
+                      _micOn ? Icons.mic_rounded : Icons.mic_off_rounded,
+                      size: micSize * 0.43, color: AppColors.onPrimary,
+                    ),
+                  ),
+                  SizedBox(height: gap1),
+                  Text(
+                    isReady ? (_micOn ? '对讲中...' : '连接已建立') : '连接设备中...',
+                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 18, fontWeight: FontWeight.w800,
+                        color: AppColors.onSurface),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isReady ? '点击按钮开启/关闭对讲' : '请稍候...',
+                    style: const TextStyle(fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 14, color: AppColors.onSurfaceVariant),
+                  ),
+                  SizedBox(height: gap2),
+                  // 对讲按钮
+                  GestureDetector(
+                    onTap: isReady ? _toggleMic : null,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
+                      decoration: BoxDecoration(
+                        gradient: isReady
+                            ? (_micOn
+                                ? const LinearGradient(
+                                    colors: [Color(0xFF43A047), Color(0xFF66BB6A)])
+                                : AppColors.primaryGradient)
+                            : null,
+                        color: isReady ? null : AppColors.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: isReady ? [BoxShadow(
+                          color: _micOn
+                              ? Colors.green.withOpacity(0.4)
+                              : AppColors.primaryGlow,
+                          blurRadius: 16, offset: const Offset(0, 6),
+                        )] : [],
+                      ),
+                      child: Text(
+                        isReady ? (_micOn ? '关闭对讲' : '开启对讲') : '连接中...',
+                        style: TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 16, fontWeight: FontWeight.w800,
+                          color: isReady ? AppColors.onPrimary : AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // 错误信息
+                  if (_agoraError != null) ...[
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(_agoraError!,
+                          style: const TextStyle(
+                              fontFamily: 'Plus Jakarta Sans',
+                              fontSize: 11, color: Colors.redAccent),
+                          textAlign: TextAlign.center),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
-        ),
-        // 错误信息
-        if (_agoraError != null) ...[
-          const SizedBox(height: 16),
-          Text(_agoraError!,
-              style: const TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 11, color: Colors.redAccent),
-              textAlign: TextAlign.center),
-        ],
-      ]),
+        );
+      },
     );
   }
 }
@@ -1357,10 +1458,17 @@ class _JoystickPadState extends State<_JoystickPad> {
                   width: diameter, height: diameter,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.12),
+                    // 深色半透明，白/黑背景都清晰
+                    color: Colors.black.withOpacity(0.40),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.25), width: 1.5,
+                      color: Colors.white.withOpacity(0.55), width: 1.8,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.35),
+                        blurRadius: 20, offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -1383,19 +1491,19 @@ class _JoystickPadState extends State<_JoystickPad> {
           // 方向图标
           Positioned(top: 10, child: Icon(Icons.keyboard_arrow_up_rounded,
               size: 22, color: widget.transparent
-                  ? Colors.white.withOpacity(0.7)
+                  ? Colors.white
                   : AppColors.primary.withOpacity(0.35))),
           Positioned(bottom: 10, child: Icon(Icons.keyboard_arrow_down_rounded,
               size: 22, color: widget.transparent
-                  ? Colors.white.withOpacity(0.7)
+                  ? Colors.white
                   : AppColors.primary.withOpacity(0.35))),
           Positioned(left: 10, child: Icon(Icons.keyboard_arrow_left_rounded,
               size: 22, color: widget.transparent
-                  ? Colors.white.withOpacity(0.7)
+                  ? Colors.white
                   : AppColors.primary.withOpacity(0.35))),
           Positioned(right: 10, child: Icon(Icons.keyboard_arrow_right_rounded,
               size: 22, color: widget.transparent
-                  ? Colors.white.withOpacity(0.7)
+                  ? Colors.white
                   : AppColors.primary.withOpacity(0.35))),
           // 摇杆头（透明模式用玻璃质感）
           Transform.translate(
@@ -1410,19 +1518,22 @@ class _JoystickPadState extends State<_JoystickPad> {
                         width: _thumbR * 2, height: _thumbR * 2,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(_active ? 0.45 : 0.22),
+                          // 深色半透明，白色背景下也清晰
+                          color: _active
+                              ? Colors.white.withOpacity(0.30)
+                              : Colors.black.withOpacity(0.55),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.65), width: 1.5,
+                            color: Colors.white.withOpacity(0.80), width: 2.0,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.white.withOpacity(_active ? 0.3 : 0.1),
-                              blurRadius: _active ? 18 : 8,
+                              color: Colors.black.withOpacity(_active ? 0.5 : 0.3),
+                              blurRadius: _active ? 22 : 10,
                             ),
                           ],
                         ),
                         child: Icon(Icons.pets_rounded,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white,
                             size: _active ? 24 : 20),
                       ),
                     ),
@@ -1664,22 +1775,29 @@ class _GlassBtn extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(size / 2),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
             width: size, height: size,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
+              // 深色半透明底色，白/黑背景都清晰可见
               color: active
-                  ? Colors.white.withOpacity(0.35)
-                  : Colors.white.withOpacity(0.15),
+                  ? Colors.white.withOpacity(0.30)
+                  : Colors.black.withOpacity(0.45),
               border: Border.all(
-                color: Colors.white.withOpacity(active ? 0.6 : 0.3),
-                width: 1.2,
+                color: Colors.white.withOpacity(active ? 0.80 : 0.50),
+                width: 1.5,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.30),
+                  blurRadius: 12, offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Icon(icon,
                 size: size * 0.45,
-                color: active ? Colors.white : Colors.white70),
+                color: active ? Colors.white : Colors.white),
           ),
         ),
       ),

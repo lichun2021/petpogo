@@ -7,11 +7,18 @@
 ADB=~/Library/Android/sdk/platform-tools/adb
 PKG="com.junxin.petpogo_and"
 
-# 如果有多个模拟器，自动选第一个
-DEVICE=$($ADB devices | grep -E "emulator-[0-9]+" | grep "device$" | head -1 | awk '{print $1}')
+# 先找真机（非 emulator 开头的在线设备）
+DEVICE=$($ADB devices | grep -v "^List" | grep "device$" | grep -v "emulator" | head -1 | awk '{print $1}')
+
+if [ -n "$DEVICE" ]; then
+  echo "  ✅ 找到真机: $DEVICE"
+else
+  # 真机没有，找模拟器
+  DEVICE=$($ADB devices | grep -E "emulator-[0-9]+" | grep "device$" | head -1 | awk '{print $1}')
+fi
 
 if [ -z "$DEVICE" ]; then
-  echo "❌ 没有找到运行中的模拟器，请先运行 ./run.sh"
+  echo "❌ 没有找到任何设备（真机或模拟器），请先连接设备或运行 ./run.sh"
   exit 1
 fi
 

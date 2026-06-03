@@ -153,29 +153,38 @@ class AiConsultationBanner extends ConsumerWidget {
                     ),
                 ],
               ),
-              const SizedBox(width: 14),
-              // 文案
+              const SizedBox(width: 12),
+              // 文案（Expanded 防止挤压右侧按钮）
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // 标题行：用 Flexible 防止 RIGHT OVERFLOW
                     Row(children: [
-                      const Text(
-                        '宠小伊 · AI 问诊',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
+                      Flexible(
+                        child: Text(
+                          '宠小伊 · AI 问诊',
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      if (!isLocked) const _NewBadge(),
+                      if (!isLocked) ...const [
+                        SizedBox(width: 6),
+                        _NewBadge(),
+                      ],
                     ]),
                     const SizedBox(height: 4),
                     Text(
                       isLocked
                           ? '请先绑定设备并添加宠物档案'
                           : '描述宠物症状，获得专业 AI 诊断建议',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.white.withOpacity(0.85),
@@ -185,7 +194,8 @@ class AiConsultationBanner extends ConsumerWidget {
                   ],
                 ),
               ),
-              // 右侧胶囊
+              const SizedBox(width: 8),
+              // 右侧胶囊（固定宽度不伸缩）
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -206,9 +216,7 @@ class AiConsultationBanner extends ConsumerWidget {
                     ),
                     const SizedBox(width: 2),
                     Icon(
-                      isLocked
-                          ? Icons.arrow_forward_rounded
-                          : Icons.arrow_forward_rounded,
+                      Icons.arrow_forward_rounded,
                       size: 14,
                       color: AppColors.secondary,
                     ),
