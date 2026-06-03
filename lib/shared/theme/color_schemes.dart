@@ -222,7 +222,86 @@ const blueWhiteScheme = PetColorScheme(
 );
 
 /// 所有可选配色方案列表（只保留2套：原版 + 用户自定义5色）
-const kColorSchemes = [warmPinkScheme, forestDuskScheme];
+const kColorSchemes = [warmPinkScheme, forestDuskScheme, nebulaVioletScheme];
+
+// ═══════════════════════════════════════════════════
+//  星云紫蓝（用户提供5色蓝紫渐变）
+//
+//  #4154CF → 深靛蓝   primary
+//  #6871F1 → 中靛紫   primaryContainer
+//  #8C8FFF → 柔蓝紫   secondary
+//  #AFAEFF → 淡薰衣草  secondaryContainer / outlineVariant
+//  #D2CEFF → 极浅薰衣草 surface 来源
+// ═══════════════════════════════════════════════════
+const nebulaVioletScheme = PetColorScheme(
+  key: 'nebula_violet',
+  name: '星云紫蓝',
+  emoji: '💜',
+
+  // ── Primary — 深靛蓝 #4154CF ──────────────────
+  primary:            Color(0xFF4154CF),
+  primaryDim:         Color(0xFF3346B8),
+  primaryContainer:   Color(0xFF6871F1),
+  primaryFixed:       Color(0xFF6871F1),
+  primaryFixedDim:    Color(0xFF5562E3),
+  onPrimary:          Color(0xFFEEEFFF),
+  onPrimaryContainer: Color(0xFF0E1660),
+  inversePrimary:     Color(0xFF8C8FFF),
+
+  // ── Secondary — 柔蓝紫 #8C8FFF ───────────────
+  secondary:          Color(0xFF8C8FFF),
+  secondaryContainer: Color(0xFFAFAEFF),
+  onSecondary:        Color(0xFFF5F4FF),
+  onSecondaryContainer: Color(0xFF22206A),
+
+  // ── Tertiary — 由 #6871F1 派生 ───────────────
+  tertiary:           Color(0xFF5060B8),
+  tertiaryContainer:  Color(0xFFD2CEFF),
+  onTertiary:         Color(0xFFF0EEFF),
+  onTertiaryContainer: Color(0xFF1A1860),
+
+  // ── Surface — 基于 #D2CEFF 白化 ─────────────
+  surface:            Color(0xFFF5F4FF),
+  surfaceContainerLow:  Color(0xFFECEBFF),
+  surfaceContainer:     Color(0xFFE2E0FF),
+  surfaceContainerHigh: Color(0xFFD8D6FF),
+  surfaceContainerHighest: Color(0xFFD2CEFF),
+  surfaceContainerLowest:  Color(0xFFFFFFFF),
+  surfaceDim:         Color(0xFFC8C5F5),
+  surfaceVariant:     Color(0xFFDDDBFF),
+
+  // ── On-Surface — 深靛文字 ─────────────────────
+  onSurface:          Color(0xFF1E1C5C),
+  onSurfaceVariant:   Color(0xFF4A4A80),
+  background:         Color(0xFFF5F4FF),
+  inverseSurface:     Color(0xFF0A0830),
+
+  // ── Outline ─────────────────────────────────
+  outline:            Color(0xFF8C8FFF),
+  outlineVariant:     Color(0xFFCFCEFF),
+
+  // ── Error ────────────────────────────────────
+  error:              Color(0xFFb31b25),
+  errorContainer:     Color(0xFFfb5151),
+  onError:            Color(0xFFffefee),
+
+  // ── Shadow ───────────────────────────────────
+  ambientShadow:      Color(0x0F1E1C5C),
+  cardShadow:         Color(0x194154CF),
+  primaryGlow:        Color(0x334154CF),
+
+  // ── Gradient: 深靛 → 柔蓝紫 ──────────────────
+  primaryGradient: LinearGradient(
+    colors: [Color(0xFF4154CF), Color(0xFF8C8FFF)],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  ),
+  heroGradient: LinearGradient(
+    colors: [Color(0xFF4154CF), Color(0x004154CF)],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  ),
+);
 
 // ═══════════════════════════════════════════════════
 //  暮色森林（用户自定义5色）
