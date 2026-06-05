@@ -1,18 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tencent_cloud_chat_sdk/tencent_im_sdk_plugin.dart';
 import 'package:tencent_cloud_chat_sdk/enum/V2TimSDKListener.dart';
 import 'package:tencent_cloud_chat_sdk/enum/log_level_enum.dart';
 import 'core/config/app_config.dart';
 import 'core/router/app_router.dart';
+import 'core/providers/font_provider.dart';
+import 'core/providers/color_scheme_provider.dart';
+import 'shared/theme/app_fonts.dart';
+import 'shared/theme/app_colors.dart';
+import 'shared/theme/color_schemes.dart';
 import 'features/auth/controller/auth_controller.dart';
 import 'app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // ── 启动时同步加载保存的字体和主题 ────────────────────────────────
+  // 必须在 ProviderContainer 创建之前完成，确保 provider 直接以正确值启动
+  // （避免异步 _loadSaved 竞态：先以默认值渲染，异步加载后再更新的 bug）
+  final prefs = await SharedPreferences.getInstance();
+
+  // 恢复字体
+  final savedFont = prefs.getString(kFontKey) ?? AppFonts.primary;
+  AppFonts.primary = savedFont;
+
+  // 恢复配色
+  final savedThemeKey = prefs.getString(kThemeKey) ?? warmPinkScheme.key;
+  final savedScheme = kColorSchemes.firstWhere(
+    (s) => s.key == savedThemeKey,
+    orElse: () => warmPinkScheme,
+  );
+  AppColors.setScheme(savedScheme);
+
+  debugPrint('[启动] 恢复字体: $savedFont  配色: $savedThemeKey');
+
   // 初始化腾讯 IM SDK
-  // LogLevelEnum.V2TIM_LOG_WARN：只打印警告/错误（生产环境用 NONE）
   await TencentImSDKPlugin.v2TIMManager.initSDK(
     sdkAppID: AppConfig.timSdkAppId,
     loglevel: LogLevelEnum.V2TIM_LOG_WARN,
@@ -26,16 +50,25 @@ void main() async {
   );
   debugPrint('[TIM] SDK 初始化完成 (SDKAppID: ${AppConfig.timSdkAppId})');
 
-  // ── 创建全局 ProviderContainer，注入给路由守卫 ─────────────
-  // GoRouter 是顶层变量（非 Widget），需要通过 ProviderContainer 读取 Riverpod 状态
-  final container = ProviderContainer();
+  // ── 创建全局 ProviderContainer，通过 overrides 注入已恢复的初始值 ──
+  final container = ProviderContainer(
+    overrides: [
+      // 直接以保存的值为初始状态，避免从默认值闪一下再切换
+      fontFamilyProvider.overrideWith(
+        (ref) => FontFamilyNotifier(savedFont),
+      ),
+      colorSchemeProvider.overrideWith(
+        (ref) => ColorSchemeNotifier(savedThemeKey),
+      ),
+    ],
+  );
+
   initAppRouter(container);
 
-  // 监听 AuthState 变化 → 通知 GoRouter 重新执行 redirect（刷新守卫）
+  // 监听 AuthState 变化 → 通知 GoRouter 重新执行 redirect
   container.listen<AuthState>(
     authControllerProvider,
     (previous, next) {
-      // restoring → guest 或 loggedIn 时刷新路由
       if (previous?.status != next.status) {
         debugPrint('[Router] Auth 状态变化: ${previous?.status} → ${next.status}，刷新路由守卫');
         appRouter.refresh();
@@ -50,4 +83,3 @@ void main() async {
     ),
   );
 }
-

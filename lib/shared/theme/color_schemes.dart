@@ -117,7 +117,7 @@ class PetColorScheme {
 const warmPinkScheme = PetColorScheme(
   key: 'warm_pink',
   name: '暖棕粉红',
-  emoji: '🌸',
+  emoji: '',
   primary:            Color(0xFFa83206),
   primaryDim:         Color(0xFF952800),
   primaryContainer:   Color(0xFFff784e),
@@ -172,7 +172,7 @@ const warmPinkScheme = PetColorScheme(
 const blueWhiteScheme = PetColorScheme(
   key: 'blue_white',
   name: '晴空蓝白',
-  emoji: '🩵',
+  emoji: '',
   primary:            Color(0xFF1A6BB5),
   primaryDim:         Color(0xFF135498),
   primaryContainer:   Color(0xFF4FA3E0),
@@ -222,7 +222,7 @@ const blueWhiteScheme = PetColorScheme(
 );
 
 /// 所有可选配色方案列表（只保留2套：原版 + 用户自定义5色）
-const kColorSchemes = [warmPinkScheme, forestDuskScheme, nebulaVioletScheme];
+const kColorSchemes = [warmPinkScheme, forestDuskScheme, blueWhiteScheme];
 
 // ═══════════════════════════════════════════════════
 //  星云紫蓝（用户提供5色蓝紫渐变）
@@ -236,7 +236,7 @@ const kColorSchemes = [warmPinkScheme, forestDuskScheme, nebulaVioletScheme];
 const nebulaVioletScheme = PetColorScheme(
   key: 'nebula_violet',
   name: '星云紫蓝',
-  emoji: '💜',
+  emoji: '',
 
   // ── Primary — 深靖蓝 #4154CF ──────────────
   primary:            Color(0xFF4154CF),
@@ -317,7 +317,7 @@ const nebulaVioletScheme = PetColorScheme(
 const forestDuskScheme = PetColorScheme(
   key: 'forest_dusk',
   name: '暮色森林',
-  emoji: '🌲',
+  emoji: '',
 
   // ── Primary — 深红 #C03221 ──────────────
   primary:            Color(0xFFC03221),
