@@ -243,9 +243,9 @@ class _HomeHero extends ConsumerWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Color(0xFFFFFCFA),
-            Color(0xFFFFE7E1),
-            Color(0xFFE8F8F4),
+            AppColors.surfaceContainerLowest,
+            AppColors.primaryContainer.withValues(alpha: 0.22),
+            AppColors.secondaryContainer.withValues(alpha: 0.28),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
