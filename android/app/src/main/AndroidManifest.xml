@@ -3,8 +3,12 @@
     <uses-permission android:name="android.permission.CAMERA"/>
     <!-- Android 13+ 相册读取权限 -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <!-- Android 13+ 视频媒体权限（录像保存相册）-->
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
     <!-- Android 12 及以下相册权限 -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+    <!-- Android 9 及以下写入相册（gal 包保存视频）-->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
     <!-- 高德定位权限 -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>

@@ -1,17 +1,25 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:gal/gal.dart';
 import '../shell/main_shell.dart' show hideBottomNavProvider;
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_toast.dart';
+import '../../shared/utils/oss_uploader.dart';
 import '../auth/controller/auth_controller.dart';
 import '../device/data/models/device_model.dart';
 import '../device/data/repository/device_repository.dart';
+import '../device/data/models/media_model.dart';
+import '../device/data/repository/media_repository.dart';
+import '../device/media_gallery_page.dart';
 import 'device_detail_page.dart';
 import '../bind_device/select_device_page.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
@@ -48,6 +56,17 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   bool   _videoFrozen  = false; // 视频网络拥塑冻结状态
   Timer? _statsTimer;
 
+  // ── 摄影：截图 / 录像 状态 ─────────────────────
+  final _cameraKey = GlobalKey(); // RepaintBoundary key 用于截图
+  bool  _takingPhoto   = false;   // 截图进行中
+  bool  _recording     = false;   // 录像进行中
+  bool  _uploadingMedia = false;  // 上传 OSS 中
+  int   _recordSeconds = 0;       // 录像已进行秒数
+  static const _maxRecordSec = 30;
+  Timer? _recordTimer;
+  Timer? _frameTimer;             // 截帧定时器（预留）
+  List<MediaItem> _recentMedia = []; // 摄影标签预览
+
   @override
   void initState() {
     super.initState();
@@ -57,14 +76,19 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         setState(() => _activeTab = _tabController.index);
       }
     });
-    // 页面打开后自动启动视频
-    WidgetsBinding.instance.addPostFrameCallback((_) => _startAgora());
+    // 页面打开后自动启动视频 + 加载媒体预览
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startAgora();
+      _loadRecentMedia();
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     _statsTimer?.cancel();
+    _recordTimer?.cancel();
+    _frameTimer?.cancel();
     // 取出引擎引用后立即置 null（dispose 不能 await，用 fire-and-forget）
     final engine = _engine;
     _engine = null;
@@ -227,18 +251,19 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         },
       ));
 
-      // 7. 加入频道
+      // 7. 加入频道（先防御性 leave，避免引擎残留状态导致 -17 ERR_JOIN_CHANNEL_REJECTED）
       debugPrint('[🔊音频] setClientRole → Broadcaster');
       await _engine!.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
       await _engine!.enableLocalAudio(true);
       await _engine!.muteLocalAudioStream(true);  // 默认静音本地麦克风
       debugPrint('[🔊音频] enableLocalAudio=true muteLocalAudioStream=true（对讲默认关）');
+      try { await _engine!.leaveChannel(); } catch (_) {} // 防御：确保不在频道中
       debugPrint('[Agora] joinChannel...');
       await _engine!.joinChannel(
         token: info.token,
         channelId: info.channelName,
         uid: info.userId,
-        options: ChannelMediaOptions(
+        options: const ChannelMediaOptions(
           autoSubscribeVideo: true,
           autoSubscribeAudio: true,
           publishCameraTrack: false,
@@ -260,6 +285,149 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     _engine = null;
     _agoraJoined = false;
     _remoteUid = null;
+  }
+
+  /// 仅重新加入频道（引擎已存在时用，如从媒体库返回）
+  Future<void> _rejoinChannel() async {
+    if (_agoraLoading || _agoraJoined) return;
+    if (_engine == null || _agoraInfo == null) {
+      // 引擎不存在时走完整初始化流程
+      await _startAgora();
+      return;
+    }
+    setState(() { _agoraLoading = true; _agoraError = null; });
+    try {
+      debugPrint('[Agora] 重新加入频道 channel=${_agoraInfo!.channelName}');
+      await _engine!.joinChannel(
+        token: _agoraInfo!.token,
+        channelId: _agoraInfo!.channelName,
+        uid: _agoraInfo!.userId,
+        options: const ChannelMediaOptions(
+          autoSubscribeVideo: true,
+          autoSubscribeAudio: true,
+          publishCameraTrack: false,
+          publishMicrophoneTrack: true,
+        ),
+      );
+      debugPrint('[Agora] 重连 joinChannel 调用完成');
+    } catch (e) {
+      debugPrint('[Agora] 重连失败: $e');
+      if (mounted) setState(() { _agoraLoading = false; _agoraError = e.toString(); });
+    }
+  }
+
+  // ── 摄影：截图 ─────────────────────────────────────────
+
+  /// 从 RepaintBoundary 截取当前 Agora 视频帧并保存
+  Future<Uint8List?> _captureFrame() async {
+    try {
+      final boundary = _cameraKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) return null;
+      final image = await boundary.toImage(pixelRatio: 1.5);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      return byteData?.buffer.asUint8List();
+    } catch (e) {
+      debugPrint('[摄影] 截帧失败: $e');
+      return null;
+    }
+  }
+
+  /// 拍照：截帧 → 保存相册 → 上传 OSS → 入库
+  Future<void> _takePhoto() async {
+    if (_takingPhoto || !_agoraJoined) return;
+    setState(() => _takingPhoto = true);
+    try {
+      // 1. 请求相册权限
+      if (!await Gal.hasAccess(toAlbum: true)) {
+        await Gal.requestAccess(toAlbum: true);
+      }
+      // 2. 截帧
+      final bytes = await _captureFrame();
+      if (bytes == null) {
+        if (mounted) PetToast.warning(context, '截图失败，请重试');
+        return;
+      }
+      // 3. 写临时文件
+      final tmp = await getTemporaryDirectory();
+      final ts  = DateTime.now().millisecondsSinceEpoch;
+      final path = '${tmp.path}/photo_$ts.jpg';
+      await File(path).writeAsBytes(bytes);
+      // 4. 保存到系统相册
+      await Gal.putImage(path);
+      if (mounted) PetToast.success(context, '📸 已保存到相册');
+      // 5. 后台上传 OSS（不阻塞 UI）
+      _uploadMedia(localPath: path, bytes: bytes, type: 1, duration: null);
+    } catch (e) {
+      debugPrint('[摄影] 拍照失败: $e');
+      if (mounted) PetToast.error(context, '拍照失败');
+    } finally {
+      if (mounted) setState(() => _takingPhoto = false);
+    }
+  }
+
+  // ── 摄影：录像 ─────────────────────────────────────────
+
+  /// 开始录像（截帧合成 MP4）
+  /// 开始录像（功能开发中）
+  Future<void> _startRecording() async {
+    HapticFeedback.mediumImpact();
+    PetToast.warning(context, '🎬 录像功能开发中，敬请期待');
+  }
+
+  /// 停止录像（功能开发中）
+  Future<void> _stopRecording() async {
+    // 占位，当前录像按钮不会进入 _recording=true 状态
+  }
+
+  // ── OSS 上传 + 入库 ────────────────────────────────────
+
+  Future<void> _uploadMedia({
+    required String localPath,
+    required List<int> bytes,
+    required int type,         // 1图片 2视频
+    required int? duration,
+  }) async {
+    if (_uploadingMedia) return; // 防并发
+    setState(() => _uploadingMedia = true);
+    try {
+      final uploader = ref.read(ossUploaderProvider);
+      final sign = await uploader.getSign(
+        folder: 'devices-media',
+        mimeType: type == 1 ? 'image/jpeg' : 'video/mp4',
+      );
+      await uploader.uploadBytes(uploadUrl: sign.uploadUrl, bytes: bytes);
+      final fileSize = bytes.length;
+      // 通知后端入库
+      await ref.read(mediaRepositoryProvider).saveRecord(
+        type:     type,
+        url:      sign.cdnUrl,
+        ossKey:   sign.key,
+        fileSize: fileSize,
+        duration: duration,
+        deviceId: widget.mac,  // 设备 MAC 地址
+      );
+      // 刷新预览
+      _loadRecentMedia();
+      if (mounted) PetToast.success(context, '☁️ 上传成功');
+    } catch (e) {
+      debugPrint('[OSS] 上传失败: $e');
+      if (mounted) PetToast.error(context, '上传失败，文件已保存本地相册');
+    } finally {
+      if (mounted) setState(() => _uploadingMedia = false);
+    }
+  }
+
+  /// 加载最近 6 条媒体（摄影标签预览）
+  Future<void> _loadRecentMedia() async {
+    try {
+      final result = await ref.read(mediaRepositoryProvider).fetchList(
+        deviceId: widget.mac,
+        page: 1,
+        pageSize: 6,
+      );
+      if (mounted) setState(() => _recentMedia = result.list);
+    } catch (_) {}
   }
 
   /// 对讲开关（Broadcaster 模式下直接 mute/unmute，无需切换角色）
@@ -451,12 +619,15 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           child: Stack(fit: StackFit.expand, children: [
             // ── 视频内容区 ──────────────────────────────────
             if (_agoraJoined && _remoteUid != null && _agoraInfo != null && Platform.isAndroid)
-              // Android：显示 Agora JPEG 视频流
-              AgoraVideoView(
-                controller: VideoViewController.remote(
-                  rtcEngine: _engine!,
-                  canvas: VideoCanvas(uid: _remoteUid!),
-                  connection: RtcConnection(channelId: _agoraInfo!.channelName),
+              // Android：显示 Agora JPEG 视频流（用 RepaintBoundary 支持截帧）
+              RepaintBoundary(
+                key: _cameraKey,
+                child: AgoraVideoView(
+                  controller: VideoViewController.remote(
+                    rtcEngine: _engine!,
+                    canvas: VideoCanvas(uid: _remoteUid!),
+                    connection: RtcConnection(channelId: _agoraInfo!.channelName),
+                  ),
                 ),
               )
             else if (_agoraLoading)
@@ -1047,37 +1218,123 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
 
   // ── 摄影标签 ──────────────────────────────────────────
   Widget _buildPhotography() {
+    final recSec = _maxRecordSec - _recordSeconds;
+    final mm = (recSec ~/ 60).toString().padLeft(2, '0');
+    final ss = (recSec % 60).toString().padLeft(2, '0');
+
     return SingleChildScrollView(
       physics: BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+        // ── 操作按钮行 ─────────────────────────────────
         Row(children: [
-          Expanded(child: _PhotoAction(
-            icon: Icons.photo_camera_rounded,
-            label: '拍照',
+          Expanded(child: _buildCameraBtn(
+            icon: _takingPhoto ? Icons.hourglass_top_rounded : Icons.photo_camera_rounded,
+            label: _takingPhoto ? '处理中...' : '拍照',
+            sublabel: _agoraJoined ? '截取当前画面' : '等待视频连接',
             color: AppColors.primary,
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              PetToast.warning(context, '拍照功能即将上线');
-            },
+            enabled: _agoraJoined && !_takingPhoto && !_recording,
+            recording: false,
+            onTap: () { HapticFeedback.mediumImpact(); _takePhoto(); },
           )),
-          SizedBox(width: 16),
-          Expanded(child: _PhotoAction(
-            icon: Icons.videocam_rounded,
-            label: '录像',
-            color: AppColors.primaryDim,
+          SizedBox(width: 12),
+          Expanded(child: _buildCameraBtn(
+            icon: _recording ? Icons.stop_rounded : Icons.videocam_rounded,
+            label: _recording ? '停止 $mm:$ss' : '录像',
+            sublabel: _recording ? '点击提前停止' : '最长 30 秒',
+            color: _recording ? Colors.redAccent : AppColors.primaryDim,
+            enabled: _agoraJoined && !_takingPhoto,
+            recording: _recording,
             onTap: () {
               HapticFeedback.mediumImpact();
-              PetToast.warning(context, '录像功能即将上线');
+              _recording ? _stopRecording() : _startRecording();
             },
           )),
         ]),
+
+        // 上传进度
+        if (_uploadingMedia)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(children: [
+              SizedBox(width: 14, height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 1.5,
+                      color: AppColors.primary)),
+              SizedBox(width: 8),
+              Text('正在上传到云端...',
+                  style: TextStyle(fontFamily: AppFonts.primary,
+                      fontSize: 12, color: AppColors.onSurfaceVariant)),
+            ]),
+          ),
+
         SizedBox(height: 16),
+
+        // ── 最近媒体预览 ───────────────────────────────
+        Row(children: [
+          Text('最近媒体',
+              style: TextStyle(fontFamily: AppFonts.primary,
+                  fontSize: 13, fontWeight: FontWeight.w700,
+                  color: AppColors.onSurface)),
+          Spacer(),
+          if (_recentMedia.isNotEmpty)
+            GestureDetector(
+              onTap: () => _openGallery(),
+              child: Text('查看全部 →',
+                  style: TextStyle(fontFamily: AppFonts.primary,
+                      fontSize: 12, color: AppColors.primary)),
+            ),
+        ]),
+        SizedBox(height: 8),
+
+        if (_recentMedia.isEmpty)
+          Container(
+            height: 80,
+            alignment: Alignment.center,
+            child: Text('还没有照片或视频，去拍一张吧 📷',
+                style: TextStyle(fontFamily: AppFonts.primary,
+                    fontSize: 12, color: AppColors.onSurfaceVariant)),
+          )
+        else
+          SizedBox(
+            height: 80,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _recentMedia.length,
+              separatorBuilder: (_, __) => SizedBox(width: 8),
+              itemBuilder: (context, i) {
+                final item = _recentMedia[i];
+                return GestureDetector(
+                  onTap: _openGallery,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: SizedBox(
+                      width: 80, height: 80,
+                      child: Stack(fit: StackFit.expand, children: [
+                        Image.network(
+                          item.thumbUrl.isNotEmpty ? item.thumbUrl : item.url,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                              color: AppColors.surfaceContainerLow,
+                              child: Icon(Icons.broken_image_outlined,
+                                  color: AppColors.onSurfaceVariant)),
+                        ),
+                        if (item.isVideo)
+                          Center(child: Icon(Icons.play_circle_rounded,
+                              color: Colors.white70, size: 28)),
+                      ]),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+        SizedBox(height: 16),
+
+        // ── 媒体库入口 ──────────────────────────────────
         GestureDetector(
-          onTap: () {
-            HapticFeedback.selectionClick();
-            PetToast.warning(context, '媒体文件功能即将上线');
-          },
+          onTap: () { HapticFeedback.selectionClick(); _openGallery(); },
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -1101,13 +1358,13 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
               SizedBox(width: 14),
               Expanded(child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('媒体文件',
+                Text('媒体库',
                     style: TextStyle(fontFamily: AppFonts.primary,
                         fontSize: 15, fontWeight: FontWeight.w800,
                         color: AppColors.onPrimary)),
-                Text('查看拍照和录像',
+                Text('查看所有拍照和录像（支持设备共享）',
                     style: TextStyle(fontFamily: AppFonts.primary,
-                        fontSize: 12,
+                        fontSize: 11,
                         color: AppColors.onPrimary.withOpacity(0.8))),
               ])),
               Icon(Icons.arrow_forward_rounded,
@@ -1116,6 +1373,85 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           ),
         ),
       ]),
+    );
+  }
+
+  Future<void> _openGallery() async {
+    // 进入媒体库前先离开频道，避免后台持续刷 Agora 音视频回调
+    if (_agoraJoined) {
+      await _engine?.leaveChannel();
+      if (mounted) setState(() { _agoraJoined = false; _remoteUid = null; });
+      debugPrint('[Agora] 进入媒体库，已离开频道');
+    }
+
+    if (!mounted) return;
+    await Navigator.push(context, MaterialPageRoute(
+      builder: (_) => MediaGalleryPage(
+        deviceId: widget.mac,
+        deviceName: widget.name,
+      ),
+    ));
+
+    // 媒体库返回后重新加入频道
+    if (mounted) {
+      debugPrint('[Agora] 媒体库返回，重新加入频道...');
+      _loadRecentMedia();
+      _rejoinChannel();   // 只 join，不重建引擎
+    }
+  }
+
+  // ── 摄影按钮组件 ──────────────────────────────────────
+  Widget _buildCameraBtn({
+    required IconData icon,
+    required String label,
+    required String sublabel,
+    required Color color,
+    required bool enabled,
+    required bool recording,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        decoration: BoxDecoration(
+          color: enabled
+              ? (recording
+                  ? Colors.redAccent.withOpacity(0.08)
+                  : AppColors.surfaceContainerLowest)
+              : AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: enabled
+                ? (recording ? Colors.redAccent : color.withOpacity(0.3))
+                : Colors.transparent,
+            width: 1.5,
+          ),
+          boxShadow: [BoxShadow(
+            color: AppColors.cardShadow,
+            blurRadius: 8, offset: Offset(0, 2),
+          )],
+        ),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon, size: 30,
+              color: enabled
+                  ? (recording ? Colors.redAccent : color)
+                  : AppColors.onSurfaceVariant),
+          SizedBox(height: 6),
+          Text(label,
+              style: TextStyle(fontFamily: AppFonts.primary,
+                  fontSize: 13, fontWeight: FontWeight.w700,
+                  color: enabled
+                      ? (recording ? Colors.redAccent : AppColors.onSurface)
+                      : AppColors.onSurfaceVariant)),
+          SizedBox(height: 2),
+          Text(sublabel,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontFamily: AppFonts.primary,
+                  fontSize: 10, color: AppColors.onSurfaceVariant)),
+        ]),
+      ),
     );
   }
 
@@ -1469,7 +1805,7 @@ class _JoystickPadState extends State<_JoystickPad> {
           if (widget.transparent)
             ClipOval(
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                 child: Container(
                   width: diameter, height: diameter,
                   decoration: BoxDecoration(
@@ -1527,7 +1863,7 @@ class _JoystickPadState extends State<_JoystickPad> {
             child: widget.transparent
                 ? ClipOval(
                     child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                      filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                       child: AnimatedContainer(
                         duration: _active ? Duration.zero : Duration(milliseconds: 200),
                         curve: Curves.easeOut,
@@ -1791,7 +2127,7 @@ class _GlassBtn extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(size / 2),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
             width: size, height: size,
             decoration: BoxDecoration(

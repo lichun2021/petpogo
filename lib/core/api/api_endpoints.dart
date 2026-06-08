@@ -31,6 +31,15 @@ abstract class ApiEndpoints {
   /// 获取预签名上传地址  POST /sdkapi/upload/sign
   static const ossUploadSign = '/sdkapi/upload/sign';
 
+  // ── 媒体库 ──────────────────────────────────────────
+  /// 保存图库记录  POST /sdkapi/media/save
+  static const mediaSave   = '/sdkapi/media/save';
+  /// 获取图库列表  GET /sdkapi/media/list
+  static const mediaList   = '/sdkapi/media/list';
+  /// 删除图库文件  DELETE /sdkapi/media/:id
+  static String mediaDelete(String id) => '/sdkapi/media/$id';
+
+
   // ── 宠小伊 AI 问诊（独立后端 AppConfig.aiConsultBaseUrl）─
   /// 创建新 session（POST JSON body {pet_id}，v0.4 改为 POST）
   static const aiConsultSessionNew      = '/session/new';

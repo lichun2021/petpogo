@@ -73,6 +73,7 @@ dependencies:
   # Icons
   cupertino_icons: ^1.0.6
   shared_preferences: ^2.5.5
+  gal: ^2.3.2
 
 dev_dependencies:
   flutter_test:

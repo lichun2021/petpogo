@@ -7,6 +7,7 @@ import '../../core/api/api_endpoints.dart';
 import '../../core/providers/locale_provider.dart';
 import '../../core/providers/font_provider.dart';
 import '../../core/providers/color_scheme_provider.dart';
+import '../../core/providers/video_quality_provider.dart';
 import '../../shared/theme/color_schemes.dart';
 import '../../shared/widgets/pet_toast.dart';
 import '../../app.dart' show AppL10nX;
@@ -165,10 +166,12 @@ class _AppearanceGroup extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentFont   = ref.watch(fontFamilyProvider);
-    final currentScheme = ref.watch(colorSchemeProvider);
-    final fontNotifier   = ref.read(fontFamilyProvider.notifier);
-    final schemeNotifier = ref.read(colorSchemeProvider.notifier);
+    final currentFont    = ref.watch(fontFamilyProvider);
+    final currentScheme  = ref.watch(colorSchemeProvider);
+    final currentQuality = ref.watch(videoQualityProvider);
+    final fontNotifier    = ref.read(fontFamilyProvider.notifier);
+    final schemeNotifier  = ref.read(colorSchemeProvider.notifier);
+    final qualityNotifier = ref.read(videoQualityProvider.notifier);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -195,8 +198,6 @@ class _AppearanceGroup extends ConsumerWidget {
                 child: Text(o.name,
                     style: TextStyle(
                         fontFamily: o.family,
-                        // 系统默认：fontFamilyFallback 为空，走 Flutter 系统 CJK（苹方/Noto）
-                        // 阿朱泡泡体：自身含 CJK，也不需要额外 fallback
                         fontFamilyFallback: const [],
                         fontSize: 14,
                         color: AppColors.onSurface)),
@@ -227,6 +228,35 @@ class _AppearanceGroup extends ConsumerWidget {
               )).toList(),
               onChanged: (v) { if (v != null) schemeNotifier.setScheme(v); },
             ),
+            Divider(height: 1, indent: 52,
+                color: AppColors.outlineVariant.withOpacity(0.2)),
+            // ―― 录像质量 ――
+            // _DropdownRow(
+            //   icon: Icons.videocam_rounded,
+            //   label: '录像质量',
+            //   value: currentQuality,
+            //   items: kVideoQualityOptions.map<DropdownMenuItem<String>>((o) => DropdownMenuItem<String>(
+            //     value: o.key,
+            //     child: Row(
+            //       mainAxisSize: MainAxisSize.min,
+            //       children: [
+            //         Text(o.label,
+            //             style: TextStyle(
+            //                 fontFamily: AppFonts.primary,
+            //                 fontSize: 14,
+            //                 fontWeight: FontWeight.w600,
+            //                 color: AppColors.onSurface)),
+            //         SizedBox(width: 6),
+            //         Text(o.description,
+            //             style: TextStyle(
+            //                 fontFamily: AppFonts.primary,
+            //                 fontSize: 11,
+            //                 color: AppColors.onSurfaceVariant)),
+            //       ],
+            //     ),
+            //   )).toList(),
+            //   onChanged: (v) { if (v != null) qualityNotifier.setQuality(v); },
+            // ),
           ],
         ),
       ),

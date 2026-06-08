@@ -8,6 +8,7 @@ import 'core/config/app_config.dart';
 import 'core/router/app_router.dart';
 import 'core/providers/font_provider.dart';
 import 'core/providers/color_scheme_provider.dart';
+import 'core/providers/video_quality_provider.dart';
 import 'shared/theme/app_fonts.dart';
 import 'shared/theme/app_colors.dart';
 import 'shared/theme/color_schemes.dart';
@@ -34,7 +35,10 @@ void main() async {
   );
   AppColors.setScheme(savedScheme);
 
-  debugPrint('[启动] 恢复字体: $savedFont  配色: $savedThemeKey');
+  // 恢复录像质量
+  final savedVideoQuality = prefs.getString(kVideoQualityKey) ?? 'medium';
+
+  debugPrint('[启动] 恢复字体: $savedFont  配色: $savedThemeKey  录像质量: $savedVideoQuality');
 
   // 初始化腾讯 IM SDK
   await TencentImSDKPlugin.v2TIMManager.initSDK(
@@ -59,6 +63,9 @@ void main() async {
       ),
       colorSchemeProvider.overrideWith(
         (ref) => ColorSchemeNotifier(savedThemeKey),
+      ),
+      videoQualityProvider.overrideWith(
+        (ref) => VideoQualityNotifier(savedVideoQuality),
       ),
     ],
   );
