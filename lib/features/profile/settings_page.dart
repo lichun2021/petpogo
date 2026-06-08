@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../core/config/app_config.dart';
+import '../../core/api/api_client.dart';
+import '../../core/api/api_endpoints.dart';
 import '../../core/providers/locale_provider.dart';
 import '../../core/providers/font_provider.dart';
 import '../../core/providers/color_scheme_provider.dart';
 import '../../shared/theme/color_schemes.dart';
+import '../../shared/widgets/pet_toast.dart';
 import '../../app.dart' show AppL10nX;
 import '../auth/controller/auth_controller.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
@@ -57,7 +60,7 @@ class SettingsPage extends ConsumerWidget {
           ]),
           SizedBox(height: 20),
 
-          // ── 关于 ──────────────────────────────────────
+          // ── 关于 ──────────────────────────────────────────
           _buildSectionHeader(l10n.settingsSectionAbout),
           _buildGroup([
             _SettingsTile(
@@ -70,6 +73,11 @@ class SettingsPage extends ConsumerWidget {
               icon: Icons.article_rounded,
               label: l10n.settingsTerms,
               onTap: () {},
+            ),
+            _SettingsTile(
+              icon: Icons.feedback_outlined,
+              label: '意见反馈',
+              onTap: () => _showFeedbackSheet(context, ref),
             ),
           ]),
           SizedBox(height: 32),
@@ -95,6 +103,18 @@ class SettingsPage extends ConsumerWidget {
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (ctx) => _PasswordSheet(ref: ref),
+    );
+  }
+
+  // ── 意见反馈 Bottom Sheet ────────────────────────────
+  void _showFeedbackSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surfaceContainerLowest,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => _FeedbackSheet(ref: ref),
     );
   }
 
@@ -579,6 +599,176 @@ class _LogoutButton extends ConsumerWidget {
         side: BorderSide(color: AppColors.error.withOpacity(0.3)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(48)),
         minimumSize: Size(double.infinity, 52),
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  意见反馈 Bottom Sheet
+// ════════════════════════════════════════════════════════════
+class _FeedbackSheet extends ConsumerStatefulWidget {
+  final WidgetRef ref;
+  const _FeedbackSheet({required this.ref});
+
+  @override
+  ConsumerState<_FeedbackSheet> createState() => _FeedbackSheetState();
+}
+
+class _FeedbackSheetState extends ConsumerState<_FeedbackSheet> {
+  int _type = 1;
+  final _contentCtrl = TextEditingController();
+  bool _loading = false;
+
+  static const _types = [
+    (value: 1, label: '💡 建议', hexColor: 0xFF3B82F6),
+    (value: 2, label: '🚨 投诉', hexColor: 0xFFEF4444),
+    (value: 3, label: '❤️ 好评', hexColor: 0xFF10B981),
+  ];
+
+  @override
+  void dispose() {
+    _contentCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final content = _contentCtrl.text.trim();
+    if (content.isEmpty) {
+      PetToast.warning(context, '请输入反馈内容');
+      return;
+    }
+    if (content.length > 50) {
+      PetToast.warning(context, '反馈内容不能超过 50 字');
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final api = ref.read(apiClientProvider);
+      await api.post<dynamic>(
+        ApiEndpoints.feedback,
+        data: {'type': _type, 'content': content},
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+      PetToast.success(context, '反馈已提交，感谢您的意见 🙏');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      PetToast.error(context, '提交失败，请稍后重试');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final charCount = _contentCtrl.text.trim().length;
+    final nearLimit = charCount > 40;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 20, 24, 24 + bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.outline.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          SizedBox(height: 16),
+          Row(children: [
+            Icon(Icons.feedback_outlined, color: AppColors.primary, size: 22),
+            SizedBox(width: 8),
+            Text('意见反馈',
+                style: TextStyle(fontFamily: AppFonts.primary,
+                    fontSize: 18, fontWeight: FontWeight.w800,
+                    color: AppColors.onSurface)),
+          ]),
+          SizedBox(height: 20),
+          Text('反馈类型',
+              style: TextStyle(fontFamily: AppFonts.primary,
+                  fontSize: 13, fontWeight: FontWeight.w700,
+                  color: AppColors.onSurfaceVariant)),
+          SizedBox(height: 10),
+          Row(
+            children: _types.map((t) {
+              final selected = _type == t.value;
+              final color = Color(t.hexColor);
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _type = t.value),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? color.withValues(alpha: 0.12)
+                          : AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: selected ? color : Colors.transparent,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Text(t.label,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 13,
+                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                          color: selected ? color : AppColors.onSurfaceVariant,
+                        )),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          SizedBox(height: 18),
+          Text('反馈内容',
+              style: TextStyle(fontFamily: AppFonts.primary,
+                  fontSize: 13, fontWeight: FontWeight.w700,
+                  color: AppColors.onSurfaceVariant)),
+          SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: TextField(
+              controller: _contentCtrl,
+              maxLines: 4,
+              onChanged: (_) => setState(() {}),
+              style: TextStyle(fontFamily: AppFonts.primary,
+                  fontSize: 14, color: AppColors.onSurface),
+              decoration: InputDecoration(
+                hintText: '请输入您的建议或反馈（1 ~ 50 字）',
+                hintStyle: TextStyle(fontFamily: AppFonts.primary,
+                    fontSize: 13, color: AppColors.onSurfaceVariant),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.all(14),
+                suffix: Text('$charCount/50',
+                    style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 11,
+                      color: nearLimit ? AppColors.error : AppColors.onSurfaceVariant,
+                    )),
+              ),
+            ),
+          ),
+          SizedBox(height: 16),
+          _SheetButton(
+            label: '提交反馈',
+            loading: _loading,
+            onTap: _submit,
+          ),
+          SizedBox(height: 8),
+        ],
       ),
     );
   }

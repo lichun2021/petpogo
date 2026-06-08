@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/widgets/pet_toast.dart';
+import '../../../shared/widgets/doc_reader_page.dart';
 import 'data/models/country_model.dart';
 import 'data/country_repository.dart';
 import 'controller/auth_controller.dart';
@@ -35,6 +36,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   bool _obscure = true;
   bool _isSmsLogin = true;
+  bool _agreedToTerms = false;   // 是否同意协议
 
   bool _isSendingSms = false;
   int _countdown = 0;
@@ -84,6 +86,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void _submit() {
+    // 先检查是否同意协议
+    if (!_agreedToTerms) {
+      PetToast.warning(context, '请先阅读并同意《服务条款》和《隐私政策》');
+      return;
+    }
     final phone = _phoneCtrl.text.trim();
     if (phone.isEmpty) {
       PetToast.warning(context, '请先输入手机号');
@@ -318,7 +325,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ]),
               ],
 
-              SizedBox(height: 36),
+              SizedBox(height: 28),
+
+              // ── 协议勾选 ──────────────────────────────────
+              _AgreementRow(
+                agreed: _agreedToTerms,
+                onChanged: (v) => setState(() => _agreedToTerms = v),
+              ),
+
+              SizedBox(height: 20),
 
               // ── 登录按钮 ──────────────────────────────────
               SizedBox(
@@ -327,7 +342,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 child: ElevatedButton(
                   onPressed: auth.isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: _agreedToTerms
+                        ? AppColors.primary
+                        : AppColors.primary.withOpacity(0.45),
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
                     elevation: 0,
@@ -415,6 +432,116 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide(color: AppColors.primary, width: 1.5)),
       );
+}
+
+// ══════════════════════════════════════════════════════════════
+//  协议勾选行 — _AgreementRow
+// ══════════════════════════════════════════════════════════════
+class _AgreementRow extends StatelessWidget {
+  final bool agreed;
+  final ValueChanged<bool> onChanged;
+
+  const _AgreementRow({required this.agreed, required this.onChanged});
+
+  void _openDoc(BuildContext context, String title, String assetPath) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DocReaderPage(title: title, assetPath: assetPath),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      // 点击整行切换勾选状态（方便拇指点击）
+      onTap: () => onChanged(!agreed),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 自定义圆形 Checkbox
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 22,
+            height: 22,
+            margin: const EdgeInsets.only(top: 1),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: agreed ? AppColors.primary : Colors.transparent,
+              border: Border.all(
+                color: agreed
+                    ? AppColors.primary
+                    : AppColors.outline.withOpacity(0.5),
+                width: 1.8,
+              ),
+            ),
+            child: agreed
+                ? const Icon(Icons.check_rounded,
+                    size: 14, color: Colors.white)
+                : null,
+          ),
+          const SizedBox(width: 10),
+          // 文字（含可点击链接）
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 12.5,
+                  color: AppColors.onSurfaceVariant,
+                  height: 1.6,
+                ),
+                children: [
+                  const TextSpan(text: '我已阅读并同意'),
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: GestureDetector(
+                      onTap: () => _openDoc(
+                        context,
+                        '服务条款',
+                        'assets/docs/服务条款.html',
+                      ),
+                      child: Text(
+                        '《服务条款》',
+                        style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const TextSpan(text: '和'),
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: GestureDetector(
+                      onTap: () => _openDoc(
+                        context,
+                        '隐私政策',
+                        'assets/docs/隐私政策.html',
+                      ),
+                      child: Text(
+                        '《隐私政策》',
+                        style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const TextSpan(text: '，并授权使用手机号注册/登录'),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ── 国家选择器底部弹窗 ─────────────────────────────────────────

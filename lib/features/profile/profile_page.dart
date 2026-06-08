@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../shared/utils/image_pick_helper.dart';
 import '../../shared/theme/app_colors.dart';
+import '../../shared/widgets/pet_toast.dart';
 import '../../app.dart' show AppL10nX;
 import '../auth/controller/auth_controller.dart';
 import '../auth/data/models/auth_model.dart';
@@ -26,6 +29,106 @@ class ProfilePage extends ConsumerStatefulWidget {
 
 class _ProfilePageState extends ConsumerState<ProfilePage> {
   bool _loaded = false;
+  String _cacheSize = '...';   // 显示缓存大小
+
+  @override
+  void initState() {
+    super.initState();
+    _calcCacheSize();
+  }
+
+  // ── 计算当前缓存大小 ──────────────────────────────
+  Future<void> _calcCacheSize() async {
+    try {
+      int bytes = 0;
+      // 临时目录
+      final tmp = await getTemporaryDirectory();
+      bytes += await _dirSize(tmp);
+      if (mounted) setState(() => _cacheSize = _fmtBytes(bytes));
+    } catch (_) {
+      if (mounted) setState(() => _cacheSize = '0 B');
+    }
+  }
+
+  // ── 清除缓存 ──────────────────────────────────
+  Future<void> _clearCache() async {
+    try {
+      // 图片内存缓存
+      PaintingBinding.instance.imageCache.clear();
+      // CachedNetworkImage 磁盘缓存
+      await CachedNetworkImage.evictFromCache('');
+      // 临时目录文件
+      final tmp = await getTemporaryDirectory();
+      await _clearDir(tmp);
+      if (!mounted) return;
+      await _calcCacheSize();
+      PetToast.success(context, '缓存已清除 ✨');
+    } catch (e) {
+      if (mounted) PetToast.error(context, '清除失败: $e');
+    }
+  }
+
+  Future<int> _dirSize(Directory dir) async {
+    int total = 0;
+    try {
+      await for (final e in dir.list(recursive: true, followLinks: false)) {
+        if (e is File) total += await e.length();
+      }
+    } catch (_) {}
+    return total;
+  }
+
+  Future<void> _clearDir(Directory dir) async {
+    try {
+      await for (final e in dir.list()) {
+        try { await e.delete(recursive: true); } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  String _fmtBytes(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / 1024 / 1024).toStringAsFixed(1)} MB';
+  }
+
+  // ── 确认弹窗 ──────────────────────────────────
+  void _showClearConfirm() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceContainerLow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('清除缓存',
+            style: TextStyle(fontFamily: AppFonts.primary,
+                fontSize: 17, fontWeight: FontWeight.w800,
+                color: AppColors.onSurface)),
+        content: Text('将清除图片缓存和临时文件（$_cacheSize），不影响您的数据。',
+            style: TextStyle(fontFamily: AppFonts.primary,
+                fontSize: 14, color: AppColors.onSurfaceVariant,
+                height: 1.55)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('取消', style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurfaceVariant)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _clearCache();
+            },
+            child: Text('确认清除', style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,6 +196,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PetMusicPage()))),
                   _MenuItemData(icon: Icons.grid_view_rounded,      label: l10n.profileMyPosts,       onTap: () {}),
                   _MenuItemData(icon: Icons.settings_rounded,       label: l10n.profileSettings,      onTap: () => context.push('/settings')),
+                  _MenuItemData(
+                    icon: Icons.cleaning_services_rounded,
+                    label: '清除缓存',
+                    trailing: _cacheSize,
+                    onTap: _showClearConfirm,
+                  ),
                 ]),
 
                 SizedBox(height: 32),
@@ -724,7 +833,13 @@ class _MenuItemData {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  const _MenuItemData({required this.icon, required this.label, required this.onTap});
+  final String? trailing;   // 右侧额外文字（如缓存大小）
+  const _MenuItemData({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.trailing,
+  });
 }
 
 class _MenuItemRow extends StatelessWidget {
@@ -760,6 +875,12 @@ class _MenuItemRow extends StatelessWidget {
                 Expanded(child: Text(data.label,
                     style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
                         fontWeight: FontWeight.w600, color: AppColors.onSurface))),
+                if (data.trailing != null) ...[
+                  Text(data.trailing!,
+                      style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
+                          color: AppColors.onSurfaceVariant)),
+                  SizedBox(width: 4),
+                ],
                 Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant, size: 20),
               ],
             ),

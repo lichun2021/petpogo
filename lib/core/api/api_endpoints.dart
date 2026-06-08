@@ -9,6 +9,7 @@ abstract class ApiEndpoints {
   static const devices     = '/devices';
   static const deviceBind  = '/devices/bind';
   static const user        = '/user/profile';
+  static const feedback    = '/api/user/feedback';
   static const login       = '/auth/login';
   static const logout      = '/auth/logout';
   static const community   = '/posts';

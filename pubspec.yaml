@@ -41,6 +41,8 @@ dependencies:
   shimmer: ^3.0.0
   flutter_svg: ^2.0.10+1
   flutter_markdown: ^0.7.4      # AI 消息 Markdown 渲染
+  flutter_widget_from_html: ^0.17.2  # 渲染 HTML 文档（协议/帮助页）
+  webview_flutter: ^4.0.0       # DocReaderPage：渲染 HTTP 网页
 
   # Media
   image_picker: ^1.1.2
@@ -88,6 +90,7 @@ flutter:
     - assets/animations/
     - assets/icons/
     - assets/fonts/pet_breeds.json
+    - assets/docs/
 
   fonts:
     - family: AZhuBubble

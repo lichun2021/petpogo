@@ -9,21 +9,11 @@ class AppConfig {
   // 业务后端（uCloudlink）
   // ──────────────────────────────────────────────
   static const String baseUrl        = 'http://115.29.196.61:3000';
-  static const String baseUrlCn      = 'https://saas.ucloudlink.cn/';
-
-  // ──────────────────────────────────────────────
-  // OAuth 凭证（生产）
-  // ──────────────────────────────────────────────
-  static const String partnerCode    = 'GCGROUP';
-  static const String clientId       = '585920816499674940a2cbae';
-  static const String clientSecret   = '585920816499674940a2cbaf';
-  static const String enterpriseCode = 'EA00000484';
 
   // ──────────────────────────────────────────────
   // 第三方 SDK（待填入）
   // ──────────────────────────────────────────────
-  static const String amapAndroidKey = 'YOUR_AMAP_ANDROID_KEY';
-  static const String amapIosKey     = 'YOUR_AMAP_IOS_KEY';
+
   static const int    timSdkAppId  = 1600139420;  // 宠物测试 IM - 体验版
 
   /// ⚠️ [仅开发测试] 腾讯 IM SecretKey
@@ -36,18 +26,10 @@ class AppConfig {
   static const String timSecretKey = 'f10fd3888e0c707830bf398bd51ffa6be657aeff601905c0f5230e0f82907775';
 
   // ──────────────────────────────────────────────
-  // 认证服务（独立部署）
+  // 认证服务
   // ──────────────────────────────────────────────
-
-  /// 登录接口根地址（与主业务后端不同，独立部署）
-  ///
-  /// 完整登录 URL = [authServiceBase] + '/admin/sys/index/login'
-  ///
-  /// 部署地址变更时只改这里，AuthRepository 无需修改。
-  static const String authServiceBase = 'http://115.29.196.61:3000';
-
-  /// 旧版翻译服务地址（保留，待接入时替换）
-  static const String translationBaseUrl = 'http://YOUR_TRANSLATION_HOST:8078';
+  // 登录接口与主业务后端同地址，统一使用 baseUrl。
+  // 完整登录 URL = baseUrl + '/auth/login'
 
   // ──────────────────────────────────────────────
   // 宠小伊 AI 问诊（独立后端 — 临时明文 HTTP，上线前换 HTTPS 域名）
