@@ -67,8 +67,9 @@ class _MediaGalleryPageState extends ConsumerState<MediaGalleryPage> {
     setState(() => _loading = true);
     try {
       final me = ref.read(authControllerProvider).user?.id;
+      // 两种模式都传 deviceId 查设备图库，只看我的时在客户端再按 userId 过滤
       final result = await ref.read(mediaRepositoryProvider).fetchList(
-        deviceId: _showOnlyMine ? null : widget.deviceId,
+        deviceId: widget.deviceId,
         page: _page,
       );
       setState(() {
@@ -128,19 +129,57 @@ class _MediaGalleryPageState extends ConsumerState<MediaGalleryPage> {
     }
   }
 
-  // ── 两段式切换按钮的单个选项 ──────────────────────────────
-  Widget _segBtn(String label, bool active) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: active ? Colors.white : Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: active ? [BoxShadow(
-          color: Colors.black.withOpacity(0.08),
-          blurRadius: 4, offset: const Offset(0, 1),
-        )] : [],
+  // ── 两段式滑块切换按钮 ────────────────────────────────────
+  Widget _buildSegmentedControl() {
+    const h = 32.0;
+    const btnW = 72.0; // 每段宽度
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _showOnlyMine = !_showOnlyMine);
+        _load(reset: true);
+      },
+      child: Container(
+        height: h,
+        width: btnW * 2 + 4,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(h / 2),
+        ),
+        child: Stack(
+          children: [
+            // 滑动白色药丸
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeInOut,
+              left: _showOnlyMine ? btnW : 2,
+              top: 2, bottom: 2,
+              width: btnW,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular((h - 4) / 2),
+                  boxShadow: [BoxShadow(
+                    color: Colors.black.withOpacity(0.10),
+                    blurRadius: 6, offset: const Offset(0, 1),
+                  )],
+                ),
+              ),
+            ),
+            // 文字层
+            Row(children: [
+              _segLabel('全部',    !_showOnlyMine, btnW),
+              _segLabel('只看我的', _showOnlyMine,  btnW),
+            ]),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _segLabel(String label, bool active, double w) {
+    return SizedBox(
+      width: w,
       child: Center(
         child: Text(label,
           style: TextStyle(
@@ -171,28 +210,9 @@ class _MediaGalleryPageState extends ConsumerState<MediaGalleryPage> {
             style: TextStyle(fontFamily: AppFonts.primary,
                 fontWeight: FontWeight.w700, fontSize: 18)),
         actions: [
-          // 「全部 / 只看我的」两段式切换按钮
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _showOnlyMine = !_showOnlyMine);
-                _load(reset: true);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  _segBtn('全部',    !_showOnlyMine),
-                  _segBtn('只看我的', _showOnlyMine),
-                ]),
-              ),
-            ),
+            child: _buildSegmentedControl(),
           ),
         ],
       ),

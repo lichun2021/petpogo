@@ -74,6 +74,7 @@ dependencies:
   cupertino_icons: ^1.0.6
   shared_preferences: ^2.5.5
   gal: ^2.3.2
+  jpush_flutter: ^3.4.5
 
 dev_dependencies:
   flutter_test:

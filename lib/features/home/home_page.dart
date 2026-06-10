@@ -615,44 +615,48 @@ class _ActionTileState extends State<_ActionTile> {
             splashColor: widget.color.withValues(alpha: 0.14),
             highlightColor: widget.color.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(17),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(11, 0, 10, 0),
-              child: Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: widget.color.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    child: Icon(
-                      widget.icon,
-                      color: widget.color,
-                      size: 17,
-                    ),
+            child: LayoutBuilder(
+              builder: (ctx, constraints) {
+                // 固定内容：左pad(11)+图标(32)+间距(9)+右pad(10) = 62
+                // 箭头区域：间距(4)+箭头(18) = 22  →  阈值 = 62 + 22 + 最小文字宽 ≈ 112
+                final showArrow = constraints.maxWidth >= 112;
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(11, 0, 10, 0),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: widget.color.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Icon(widget.icon, color: widget.color, size: 17),
+                      ),
+                      SizedBox(width: 9),
+                      Flexible(
+                        child: Text(
+                          widget.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.onSurface,
+                            height: 1.0,
+                          ),
+                        ),
+                      ),
+                      if (showArrow) ...[
+                        SizedBox(width: 4),
+                        Icon(Icons.arrow_forward_rounded,
+                            color: widget.color, size: 18),
+                      ],
+                    ],
                   ),
-                  SizedBox(width: 9),
-                  Text(
-                    widget.title,
-                    maxLines: 1,
-                    softWrap: false,
-                    style: TextStyle(
-                      fontFamily: AppFonts.primary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.onSurface,
-                      height: 1.0,
-                    ),
-                  ),
-                  Spacer(),
-                  Icon(
-                    Icons.arrow_forward_rounded,
-                    color: widget.color,
-                    size: 18,
-                  ),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ),

@@ -9,6 +9,7 @@ import 'core/router/app_router.dart';
 import 'core/providers/font_provider.dart';
 import 'core/providers/color_scheme_provider.dart';
 import 'core/providers/video_quality_provider.dart';
+import 'core/push/push_service.dart';
 import 'shared/theme/app_fonts.dart';
 import 'shared/theme/app_colors.dart';
 import 'shared/theme/color_schemes.dart';
@@ -53,6 +54,9 @@ void main() async {
     ),
   );
   debugPrint('[TIM] SDK 初始化完成 (SDKAppID: ${AppConfig.timSdkAppId})');
+
+  // ── 初始化极光推送 ──────────────────────────────────────────────────
+  await PushService.init();
 
   // ── 创建全局 ProviderContainer，通过 overrides 注入已恢复的初始值 ──
   final container = ProviderContainer(

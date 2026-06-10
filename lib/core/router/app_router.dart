@@ -43,6 +43,10 @@ import '../../features/consultation/report_diagnosis_page.dart';
 import '../../features/consultation/report_care_page.dart';
 import '../../features/consultation/report_medical_page.dart';
 import '../../features/consultation/data/models/consultation_models.dart';
+import '../../features/device/robot_device_page.dart';
+import '../../features/device/device_detail_page.dart';
+import '../../features/device/data/repository/device_repository.dart';
+import '../../features/device/data/models/device_model.dart';
 import '../../app.dart' show globalNavigatorKey;
 
 // ── 路由实例和内部 ProviderContainer 用于守卫读取状态 ──────
@@ -216,6 +220,16 @@ final appRouter = GoRouter(
         return _slidePage(state, ReportMedicalPage(report: report));
       },
     ),
+
+    // ── 设备详情（push 通知点击跳转）─────────────────────────
+    // URL: /device/:mac  → 按 mac 查找设备信息并打开 RobotDevicePage
+    GoRoute(
+      path: AppRoutes.deviceDetailTemplate,
+      pageBuilder: (context, state) {
+        final mac = state.pathParameters['mac'] ?? '';
+        return _slidePage(state, _DeviceDetailWrapper(mac: mac));
+      },
+    ),
   ],
 );
 
@@ -344,5 +358,56 @@ class _NavLogger extends NavigatorObserver {
   @override
   void didReplace({Route? newRoute, Route? oldRoute}) {
     debugPrint('[路由] replace: ${oldRoute?.settings.name} → ${newRoute?.settings.name}');
+  }
+}
+
+// ── 设备详情路由包装 Widget ──────────────────────────────────
+/// push 通知携带 device_mac 时跳转到此，
+/// 从 deviceListProvider 按 mac 查找设备信息，根据 productKey 渲染正确的设备页面：
+///   - PK_IPET_ROBOT / 含 robot/bot → RobotDevicePage（机器人）
+///   - 其他（PK_IPET_ESP32 等）      → DeviceDetailPage（项圈/追踪器）
+class _DeviceDetailWrapper extends ConsumerWidget {
+  final String mac;
+  const _DeviceDetailWrapper({required this.mac});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final deviceState = ref.watch(deviceListProvider);
+
+    if (deviceState.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // 按 mac 查找（忽略大小写）
+    final DeviceModel? device = deviceState.devices.cast<DeviceModel?>().firstWhere(
+      (d) => d!.mac.toLowerCase() == mac.toLowerCase(),
+      orElse: () => null,
+    );
+
+    if (device != null) {
+      return _buildDevicePage(device);
+    }
+
+    // 找不到时用 mac 直接打开（避免白屏），默认用项圈页
+    return DeviceDetailPage(mac: mac, name: '设备 $mac');
+  }
+
+  /// 根据 productKey 判断设备类型，渲染对应页面
+  Widget _buildDevicePage(DeviceModel device) {
+    final key  = device.productKey.toLowerCase();
+    final name = device.displayName.toLowerCase();
+    final isRobot = key.contains('robot') ||
+        key.contains('bot') ||
+        name.contains('机器人') ||
+        name.contains('robot') ||
+        name.contains('bot');
+
+    if (isRobot) {
+      return RobotDevicePage(mac: device.mac, name: device.displayName);
+    } else {
+      return DeviceDetailPage(mac: device.mac, name: device.displayName);
+    }
   }
 }

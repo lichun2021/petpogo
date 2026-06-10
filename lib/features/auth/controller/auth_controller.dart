@@ -18,12 +18,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/result.dart';
+import '../../../core/push/push_service.dart';
 import '../data/auth_repository.dart';
 import '../data/models/auth_model.dart';
 import '../../message/controller/im_controller.dart';
 import '../../pet/controller/pet_controller.dart';
 import '../../device/data/repository/device_repository.dart';
 import '../../profile/data/user_stats_provider.dart';
+import '../../../core/router/app_router.dart';
+import '../../../core/router/app_routes.dart';
 
 // ── 认证状态枚举 ────────────────────────────────────────────
 enum AuthStatus {
@@ -89,10 +92,35 @@ class AuthController extends StateNotifier<AuthState> {
       debugPrint('[AuthCtrl] [状态] restoring → loggedIn (${user.name})');
       state = AuthState(status: AuthStatus.loggedIn, user: user);
       _loadUserData();
+      _consumePendingPushRoute(); // ← 认证恢复后跳转 push 待定路由
     } else {
       debugPrint('[AuthCtrl] [状态] restoring → guest (无本地会话)');
       state = const AuthState.guest();
     }
+  }
+
+  /// 消费 PushService.pendingRoute：认证就绪后执行 push 通知跳转
+  void _consumePendingPushRoute() {
+    final pending = PushService.pendingRoute;
+    if (pending == null || pending.isEmpty) return;
+    PushService.pendingRoute = null;
+    // 延迟一帧，确保路由守卫已刷新、GoRouter 就绪
+    Future.delayed(const Duration(milliseconds: 500), () {
+      try {
+        if (pending == AppRoutes.home) {
+          appRouter.go(pending);
+        } else {
+          // 先铺首页底层，再 push 目标页，确保返回时有首页可回
+          appRouter.go(AppRoutes.home);
+          Future.delayed(const Duration(milliseconds: 100), () {
+            appRouter.push(pending);
+          });
+        }
+        debugPrint('[AuthCtrl] push 待定路由已跳转: $pending');
+      } catch (e) {
+        debugPrint('[AuthCtrl] push 待定路由跳转失败: $e');
+      }
+    });
   }
 
   Future<void> loginWithSms({
@@ -207,6 +235,8 @@ class AuthController extends StateNotifier<AuthState> {
   // ── 退出登录 ───────────────────────────────────────────
   Future<void> logout() async {
     debugPrint('[AuthCtrl] [状态] loggedIn → guest (退出登录)');
+    // 清除极光推送 alias
+    await PushService.clearAlias();
     await _repo.logout();
     state = const AuthState.guest();
   }
@@ -259,7 +289,15 @@ class AuthController extends StateNotifier<AuthState> {
       debugPrint('[AuthCtrl] ⚠️ imUserSig 为空，跳过 IM 登录');
     }
 
-    // ② 并行拉取：宠物列表 / 设备列表 / 用户统计
+    
+    // ② 绑定极光推送 alias（用 account 手机号作为别名，服务端按用户推送）
+    PushService.setAlias(user.account + '@qq.com');
+
+
+
+    debugPrint('[AuthCtrl] 极光推送 alias 绑定: ${user.account}');
+
+    // ③ 并行拉取：宠物列表 / 设备列表 / 用户统计
     _ref.read(petControllerProvider.notifier).loadPets();
     _ref.read(deviceListProvider.notifier).load();
     _ref.read(userStatsProvider.notifier).loadMyStats();

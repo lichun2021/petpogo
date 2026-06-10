@@ -113,7 +113,15 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg),
+        content: Text(
+          msg,
+          style: TextStyle(
+            fontFamily: AppFonts.primary,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
         backgroundColor: color ?? AppColors.primary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -122,6 +130,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
