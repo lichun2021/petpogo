@@ -140,7 +140,7 @@ class _RobotAiHomePageState extends State<RobotAiHomePage> {
               const SizedBox(height: 10),
               _FeatureCard(
                 icon: Icons.camera_alt_rounded,
-                title: '宠物出现时自动抓拍',
+                title: '自动抓拍',
                 desc: '识别宠物出现后拍照，并生成情绪分析',
                 enabled: _captureEnabled,
                 schedule: _captureSchedule,
@@ -150,7 +150,7 @@ class _RobotAiHomePageState extends State<RobotAiHomePage> {
               const SizedBox(height: 12),
               _FeatureCard(
                 icon: Icons.record_voice_over_rounded,
-                title: '定时打招呼',
+                title: '自动打招呼',
                 desc: '按计划播放问候语，并分析宠物回应',
                 enabled: _greetingEnabled,
                 schedule: _greetingSchedule,
@@ -187,7 +187,7 @@ class _RobotAiHomePageState extends State<RobotAiHomePage> {
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      color: AppColors.surfaceContainerLowest,
+      color: AppColors.surface,
       child: SafeArea(
         bottom: false,
         child: Column(children: [
@@ -201,22 +201,14 @@ class _RobotAiHomePageState extends State<RobotAiHomePage> {
                     size: 20, color: AppColors.onSurface),
               ),
               const SizedBox(width: 12),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('AI 智能',
-                  style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.onSurface,
-                    letterSpacing: -0.3,
-                  )),
-                Text('为 ${widget.deviceName} 设置自动互动能力',
-                  style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 12,
-                    color: AppColors.onSurfaceVariant,
-                  )),
-              ]),
+              Text('AI 智能',
+                style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.onSurface,
+                  letterSpacing: -0.3,
+                )),
               const Spacer(),
               // 机器人状态 chip
               Container(

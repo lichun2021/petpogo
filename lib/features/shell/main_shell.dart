@@ -27,9 +27,6 @@ class MainShell extends ConsumerStatefulWidget {
 }
 
 class _MainShellState extends ConsumerState<MainShell> {
-  // 当前选中的 Tab 索引（0=首页 1=消息 2=社区 3=商城 4=我的）
-  int _currentIndex = 0;
-
   // 使用 AppRoutes 常量，路径变更只改 AppRoutes 一处
   static const _tabs = [
     AppRoutes.home,       // '/'
@@ -38,6 +35,14 @@ class _MainShellState extends ConsumerState<MainShell> {
     AppRoutes.mall,       // '/mall'
     AppRoutes.profile,    // '/profile'
   ];
+
+  /// 根据当前路由路径计算选中 Tab（外部 go() 跳转时也能同步）
+  int _indexFromLocation(String location) {
+    for (int i = _tabs.length - 1; i >= 0; i--) {
+      if (location.startsWith(_tabs[i])) return i;
+    }
+    return 0;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +56,8 @@ class _MainShellState extends ConsumerState<MainShell> {
     ];
 
     final hideNav = ref.watch(hideBottomNavProvider);
+    final location = GoRouterState.of(context).matchedLocation;
+    final currentIndex = _indexFromLocation(location);
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -59,11 +66,8 @@ class _MainShellState extends ConsumerState<MainShell> {
       bottomNavigationBar: hideNav
           ? null
           : GlassBottomNav(
-              currentIndex: _currentIndex,
-              onTap: (index) {
-                setState(() => _currentIndex = index);
-                context.go(_tabs[index]);
-              },
+              currentIndex: currentIndex,
+              onTap: (index) => context.go(_tabs[index]),
               items: navItems,
             ),
     );
