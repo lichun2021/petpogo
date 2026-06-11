@@ -21,8 +21,9 @@ import '../device/data/models/media_model.dart';
 import '../device/data/repository/media_repository.dart';
 import '../device/media_gallery_page.dart';
 import 'device_detail_page.dart';
-import '../bind_device/select_device_page.dart';
+
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
+import 'robot_ai_home_page.dart';
 
 // ── 机器人设备详情页 ─────────────────────────────────────
 class RobotDevicePage extends ConsumerStatefulWidget {
@@ -89,21 +90,49 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     _statsTimer?.cancel();
     _recordTimer?.cancel();
     _frameTimer?.cancel();
-    // 取出引擎引用后立即置 null（dispose 不能 await，用 fire-and-forget）
-    final engine = _engine;
-    _engine = null;
+
+    // 立即置 null，防止后续 setState 崩溃
+    final engine   = _engine;
+    final micWasOn = _micOn;
+    _engine      = null;
+    _micOn       = false;
     _agoraJoined = false;
-    _remoteUid = null;
+    _remoteUid   = null;
+
     if (engine != null) {
-      // 先禁用音量回调（interval=0），再离开频道、释放引擎
-      engine
-          .enableAudioVolumeIndication(interval: 0, smooth: 3, reportVad: false)
-          .then((_) => engine.leaveChannel())
-          .then((_) => engine.release())
-          .catchError((e) {
-        debugPrint('[Agora] dispose 清理异常（可忽略）: $e');
-      });
+      // 每步独立 try/catch — 保证 leaveChannel 无论如何都会执行
+      () async {
+        // 1. 对讲开着时先关麦克风
+        if (micWasOn) {
+          try { await engine.muteLocalAudioStream(true); } catch (_) {}
+          try { await engine.enableLocalAudio(false); } catch (_) {}
+          debugPrint('[Agora] dispose: 本地麦克风已关闭');
+        }
+        // 2. 静音远端 + 关视频
+        try { await engine.muteAllRemoteAudioStreams(true); } catch (_) {}
+        try { await engine.disableVideo(); } catch (_) {}
+        // 3. 停止音量回调
+        try {
+          await engine.enableAudioVolumeIndication(
+              interval: 0, smooth: 3, reportVad: false);
+        } catch (_) {}
+        // 4. ✅ 关键：离开频道，断开 RTC 连接
+        try {
+          await engine.leaveChannel();
+          debugPrint('[Agora] dispose: leaveChannel ✅');
+        } catch (e) {
+          debugPrint('[Agora] dispose: leaveChannel 失败: $e');
+        }
+        // 5. 释放引擎
+        try {
+          await engine.release();
+          debugPrint('[Agora] dispose: release ✅');
+        } catch (e) {
+          debugPrint('[Agora] dispose: release 失败: $e');
+        }
+      }();
     }
+
     super.dispose();
   }
 
@@ -285,6 +314,25 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     _engine = null;
     _agoraJoined = false;
     _remoteUid = null;
+  }
+
+  /// 暂停推流（只离开频道，保留引擎实例和 Token——退出子页后可快速重连）
+  Future<void> _pauseAgora() async {
+    if (!_agoraJoined) return;
+    try {
+      if (_micOn) {
+        await _engine?.muteLocalAudioStream(true);
+        await _engine?.enableLocalAudio(false);
+        if (mounted) setState(() => _micOn = false);
+      }
+      await _engine?.muteAllRemoteAudioStreams(true);
+      await _engine?.disableVideo();
+      await _engine?.leaveChannel();
+      if (mounted) setState(() { _agoraJoined = false; _remoteUid = null; });
+      debugPrint('[Agora] pause: 已离开频道（引擎保留）');
+    } catch (e) {
+      debugPrint('[Agora] pause 异常（可忽略）: $e');
+    }
   }
 
   /// 仅重新加入频道（引擎已存在时用，如从媒体库返回）
@@ -550,8 +598,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   size: 20, color: AppColors.onPrimary),
             ),
             SizedBox(width: 8),
-            // 设备名 + 下拉（Flexible 防止长名称溢出）
-            Flexible(
+            // 设备名 + 下拉（Expanded 确保小屏幕全部显示）
+            Expanded(
               child: GestureDetector(
                 onTap: () => _showDeviceSwitcher(context),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -575,20 +623,21 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 ]),
               ),
             ),
-            Spacer(),
-            // + 添加设备
-            _TopBarIcon(
-              icon: Icons.add_circle_outline_rounded,
-              badge: 0,
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => SelectDevicePage())),
-            ),
-            SizedBox(width: 8),
-            // 消息
-            _TopBarIcon(
-              icon: Icons.notifications_outlined,
-              badge: 0,
-              onTap: () => PetToast.warning(context, '消息功能即将上线'),
+            // AI 荧光按钮
+            _AiGlowButton(
+              onTap: () async {
+                // 进入 AI 页前先暂停推流
+                await _pauseAgora();
+                if (!mounted) return;
+                await Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => RobotAiHomePage(
+                    mac: widget.mac,
+                    deviceName: widget.name,
+                  ),
+                ));
+                // 返回后重新连接
+                if (mounted) _rejoinChannel();
+              },
             ),
           ]),
         ),
@@ -2225,4 +2274,124 @@ class _PhotoAction extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── AI 按钮（电流扫光 + 主题渐变，无缩放）─────────────────────
+class _AiGlowButton extends StatefulWidget {
+  final VoidCallback onTap;
+  const _AiGlowButton({required this.onTap});
+
+  @override
+  State<_AiGlowButton> createState() => _AiGlowButtonState();
+}
+
+class _AiGlowButtonState extends State<_AiGlowButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: AnimatedBuilder(
+        animation: _ctrl,
+        builder: (_, __) {
+          // shimmer 光从 -1.0 扫到 2.0（含进出过渡）
+          final sweep = _ctrl.value * 3.0 - 1.0;
+          return Container(
+            width: 40, height: 26,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primary, AppColors.primaryContainer],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(7),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.45),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(7),
+              child: Stack(children: [
+                // 电流扫光层
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _ShimmerPainter(position: sweep),
+                  ),
+                ),
+                // AI 文字
+                Center(
+                  child: Text(
+                    'AI',
+                    style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.onPrimary,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ]),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// 电流扫光 CustomPainter — 一道细白光斜线从左到右扫过
+class _ShimmerPainter extends CustomPainter {
+  final double position; // -1.0 ~ 2.0
+
+  const _ShimmerPainter({required this.position});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final x = position * size.width;
+    final w = size.width * 0.55; // 光带宽度
+    final paint = Paint()
+      ..shader = LinearGradient(
+        colors: [
+          Colors.white.withOpacity(0.0),
+          Colors.white.withOpacity(0.38),
+          Colors.white.withOpacity(0.0),
+        ],
+        stops: const [0.0, 0.5, 1.0],
+      ).createShader(Rect.fromLTWH(x - w / 2, 0, w, size.height));
+
+    // 斜切光带（倾斜 20°）
+    final path = Path()
+      ..moveTo(x - w / 2 + size.height * 0.28, 0)
+      ..lineTo(x + w / 2 + size.height * 0.28, 0)
+      ..lineTo(x + w / 2 - size.height * 0.28, size.height)
+      ..lineTo(x - w / 2 - size.height * 0.28, size.height)
+      ..close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_ShimmerPainter old) => old.position != position;
 }

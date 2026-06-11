@@ -131,7 +131,8 @@ class AppTheme {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(48), // xl pill
             ),
-            textStyle: GoogleFonts.plusJakartaSans(
+            // 不设置 fontFamily，让系统自动选择中文字体
+            textStyle: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
             ),

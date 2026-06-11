@@ -744,18 +744,20 @@ class _SectionHeader extends StatelessWidget {
   final String? subtitle;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final VoidCallback? onAdd;
 
   const _SectionHeader({
     required this.title,
     this.subtitle,
     this.actionLabel,
     this.onAction,
+    this.onAdd,
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
           child: Column(
@@ -787,9 +789,24 @@ class _SectionHeader extends StatelessWidget {
             ],
           ),
         ),
+        // + 添加设备图标
+        if (onAdd != null)
+          GestureDetector(
+            onTap: onAdd,
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Icon(Icons.add_rounded, size: 22, color: AppColors.primary),
+            ),
+          ),
+        // 文字行动按钮（"全部"）
         if (actionLabel != null && onAction != null)
           TextButton(
             onPressed: onAction,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
             child: Text(
               actionLabel!,
               style: TextStyle(
@@ -821,6 +838,11 @@ class _HomeDeviceSection extends ConsumerWidget {
           subtitle: state.devices.isEmpty
               ? '还没有绑定设备'
               : l10n.homeDevicesActive(onlineCount),
+          // 右边始终显示 + 图标，点击添加新设备
+          onAdd: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => SelectDevicePage()),
+          ),
           actionLabel: state.devices.isEmpty ? null : '全部',
           onAction: state.devices.isEmpty
               ? null

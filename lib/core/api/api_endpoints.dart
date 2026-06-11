@@ -39,6 +39,21 @@ abstract class ApiEndpoints {
   /// 删除图库文件  DELETE /sdkapi/media/:id
   static String mediaDelete(String id) => '/sdkapi/media/$id';
 
+  // ── 自动抓拍事件 ─────────────────────────────────────
+  /// 获取抓拍记录列表  GET /sdkapi/capture/list
+  static const captureList = '/sdkapi/capture/list';
+
+  // ── 打招呼事件 ─────────────────────────────────────
+  /// 获取打招呼记录列表  GET /sdkapi/greeting/list
+  static const greetingList = '/sdkapi/greeting/list';
+
+  /// 删除抓拍记录  DELETE /sdkapi/capture/:id
+  static String captureDelete(int id) => '/sdkapi/capture/$id';
+
+  // ── 声音预设 ───────────────────────────────────────
+  /// 获取声音预设列表  GET /sdkapi/sound/preset/list
+  static const soundPresetList = '/sdkapi/sound/preset/list';
+
 
   // ── 宠小伊 AI 问诊（独立后端 AppConfig.aiConsultBaseUrl）─
   /// 创建新 session（POST JSON body {pet_id}，v0.4 改为 POST）

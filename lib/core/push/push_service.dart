@@ -120,7 +120,10 @@ class PushService {
   static void _handleNotificationTap(Map<String, dynamic> message) {
     final extras = _extractExtras(message);
     final type      = extras['type'] ?? '';
-    final deviceMac = extras['device_mac'] ?? '';
+    final deviceMacRaw = extras['device_mac'] ?? '';
+
+    // 防御：device_mac 不应含 JSON 特殊字符（{ } " :），若含则说明解析失败，回退空值
+    final deviceMac = _isValidMac(deviceMacRaw) ? deviceMacRaw : '';
 
     debugPrint('[JPush] 通知跳转 type=$type device_mac=$deviceMac extras=$extras');
 
@@ -176,15 +179,34 @@ class PushService {
     }
   }
 
-  // ── 从不同结构里提取 extras ─────────────────────────────────
-  // 支持三种格式：
+  // ── device_mac 合法性校验（不含 JSON 特殊字符） ───────────────
+  static bool _isValidMac(String mac) {
+    if (mac.isEmpty) return false;
+    // MAC 地址或设备标识符只含字母、数字、连字符、下划线、冒号
+    // 若含 { } " 说明是整段 JSON 被误提取，视为非法
+    return !mac.contains('{') && !mac.contains('}') && !mac.contains('"');
+  }
+
   // ── 从不同结构里提取应用级 extras ──────────────────────────────
-  // JPush Android 通知的数据结构（四种情况）：
+  // JPush Android 通知的数据结构（五种情况）：
   //   1. 前台/在线:  { "extras": { "cn.jpush.android.EXTRA": { device_mac: "xxx" } } }
   //   2. 后台点击:   同上
   //   3. HMS冷启动:  { "n_extras": { device_mac: "xxx" } }  或字符串
   //   4. 直接:       { "extras": { device_mac: "xxx" } }（无 cn.jpush 包装）
+  //   5. HMS冷启动:  整个 message 只有一个 key，value 是整段 payload JSON 字符串
   static Map<String, String> _extractExtras(Map<String, dynamic> message) {
+    // ⑤ HMS 冷启动极端情况：message 本身只有一个条目，且该 value 是整段 JSON
+    //    例如: { "0": "{\"n_extras\":{...},\"n_title\":\"...\"}" }
+    if (message.length == 1) {
+      final onlyValue = message.values.first;
+      if (onlyValue is String && onlyValue.trim().startsWith('{')) {
+        try {
+          final decoded = jsonDecode(onlyValue) as Map<String, dynamic>;
+          return _extractExtras(decoded);
+        } catch (_) {}
+      }
+    }
+
     final raw = message['extras']
              ?? message['Extras']
              ?? message['n_extras'];   // HMS 冷启动格式

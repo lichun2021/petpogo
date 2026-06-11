@@ -166,7 +166,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       backgroundColor: AppColors.surface,
       body: SafeArea(
         child: SingleChildScrollView(
+          clipBehavior: Clip.hardEdge,
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width - 56, // 减去两侧 padding
+            ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -338,7 +343,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               // ── 登录按钮 ──────────────────────────────────
               SizedBox(
                 width: double.infinity,
-                height: 54,
                 child: ElevatedButton(
                   onPressed: auth.isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
@@ -348,22 +352,39 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
                     elevation: 0,
+                    // 不固定高度，改用 minimumSize + 垂直 padding 让字体自然展开
+                    minimumSize: const Size(double.infinity, 54),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 14),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16)),
                   ),
                   child: auth.isLoading
-                      ? SizedBox(
+                      ? const SizedBox(
                           width: 22, height: 22,
                           child: CircularProgressIndicator(
                               color: Colors.white, strokeWidth: 2.5),
                         )
-                      : Text('登录 / 注册',
-                          style: TextStyle(fontFamily: AppFonts.primary,
-                              fontSize: 16, fontWeight: FontWeight.w700)),
+                      : Text(
+                          '登录 / 注册',
+                          style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            // 固定行高为 1.0 防止自定义字体 ascender/descender 被裁
+                            height: 1.0,
+                          ),
+                          strutStyle: const StrutStyle(
+                            forceStrutHeight: true,
+                            height: 1.2,
+                          ),
+                        ),
                 ),
               ),
             ],
           ),
+          ), // ConstrainedBox
         ),
       ),
     );
