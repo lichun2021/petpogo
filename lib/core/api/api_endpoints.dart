@@ -70,4 +70,12 @@ abstract class ApiEndpoints {
   static const aiConsultSessionByPet    = '/session/by-pet';
   /// 查询指定会话的完整聊天记录（POST {session_id}）
   static const aiConsultSessionMessages = '/session/messages';
+
+  // ── 视频流自动 AI 分析（router_video_stream.py）──────────
+  /// 保存/更新自动分析设置（POST JSON body）
+  static const autoAnalysisSave   = '/video/stream/auto-analysis/settings/save';
+  /// 启用或禁用自动分析设置（POST JSON body）
+  static const autoAnalysisToggle = '/video/stream/auto-analysis/settings/disable';
+  /// 查询设备任务列表（POST JSON body）
+  static const autoAnalysisTasks  = '/video/stream/auto-analysis/tasks';
 }

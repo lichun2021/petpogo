@@ -68,6 +68,7 @@ dependencies:
   url_launcher: ^6.3.0
   permission_handler: ^12.0.1
   connectivity_plus: ^7.1.1
+  network_info_plus: ^6.0.0
   package_info_plus: ^9.0.1
 
   # Icons
@@ -75,6 +76,7 @@ dependencies:
   shared_preferences: ^2.5.5
   gal: ^2.3.2
   jpush_flutter: ^3.4.5
+  share_plus: ^12.0.2
 
 dev_dependencies:
   flutter_test:

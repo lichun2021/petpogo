@@ -4,14 +4,18 @@ library;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_fonts.dart';
 import '../../shared/widgets/pet_switch.dart';
+import '../../shared/widgets/pet_toast.dart';
+import '../consultation/data/repository/consultation_repository.dart';
 import 'robot_ai_capture_page.dart';
 import 'robot_ai_greeting_page.dart';
 
-class RobotAiHomePage extends StatefulWidget {
+class RobotAiHomePage extends ConsumerStatefulWidget {
   final String mac;
   final String deviceName;
 
@@ -22,12 +26,15 @@ class RobotAiHomePage extends StatefulWidget {
   });
 
   @override
-  State<RobotAiHomePage> createState() => _RobotAiHomePageState();
+  ConsumerState<RobotAiHomePage> createState() => _RobotAiHomePageState();
 }
 
-class _RobotAiHomePageState extends State<RobotAiHomePage> {
+class _RobotAiHomePageState extends ConsumerState<RobotAiHomePage> {
   bool _captureEnabled  = false;
   bool _greetingEnabled = false;
+  // 服务端是否已有自动分析配置（决定开关是否可用）
+  bool _hasSetting = false;
+  String _account  = '';
 
   // 摘要信息（从 prefs 读）
   String _captureSchedule  = '未配置';
@@ -45,9 +52,13 @@ class _RobotAiHomePageState extends State<RobotAiHomePage> {
   }
 
   Future<void> _loadStatus() async {
+    // 1. 读取账号
+    const storage = FlutterSecureStorage();
+    _account = await storage.read(key: 'auth_account') ?? '';
+
     final prefs = await SharedPreferences.getInstance();
 
-    // ── 抓拍配置 ──
+    // ── 本地抓拍缓存 ──
     final capRaw = prefs.getString('robot_ai_capture_${widget.mac}');
     if (capRaw != null) {
       try {
@@ -55,14 +66,14 @@ class _RobotAiHomePageState extends State<RobotAiHomePage> {
         final enabled = m['enabled'] == true;
         final start   = m['start'] as String? ?? '09:00';
         final end     = m['end']   as String? ?? '22:00';
-        setState(() {
+        if (mounted) setState(() {
           _captureEnabled  = enabled;
           _captureSchedule = enabled ? '$start ~ $end' : '已关闭';
         });
       } catch (_) {}
     }
 
-    // ── 打招呼配置 ──
+    // ── 打招呼配置（本地）──
     final greetRaw = prefs.getString('robot_ai_greeting_${widget.mac}');
     if (greetRaw != null) {
       try {
@@ -70,17 +81,55 @@ class _RobotAiHomePageState extends State<RobotAiHomePage> {
         final enabled = m['enabled'] == true;
         final start   = m['start'] as String? ?? '10:00';
         final end     = m['end']   as String? ?? '18:00';
-        setState(() {
+        if (mounted) setState(() {
           _greetingEnabled  = enabled;
           _greetingSchedule = enabled ? '$start ~ $end' : '已关闭';
         });
       } catch (_) {}
     }
+
+    // 2. 查询服务端是否已有自动抓拍设置
+    if (_account.isNotEmpty) {
+      final result = await ref
+          .read(consultationRepositoryProvider)
+          .getAutoAnalysisTasks(account: _account, deviceNo: widget.mac);
+      result.when(
+        success: (data) {
+          if (!mounted) return;
+          setState(() {
+            _hasSetting = data.setting != null;
+            if (data.setting != null) {
+              final s = data.setting!;
+              _captureEnabled  = s.enabled;
+              final start = s.effectiveStartTime;
+              final end   = s.effectiveEndTime;
+              _captureSchedule = s.enabled ? '$start ~ $end' : '已关闭';
+            }
+          });
+        },
+        failure: (_) {}, // 网络失败保留本地缓存显示
+      );
+    }
   }
 
-  /// 快速保存 enabled 状态（不打开详情页）
+  /// 开关抓拍：有服务端配置才可 enable，否则提示
   Future<void> _toggleCapture(bool v) async {
+    if (v && !_hasSetting) {
+      if (mounted) PetToast.show(context, '请先进入配置页保存自动抓拍设置');
+      return;
+    }
     setState(() => _captureEnabled = v);
+    // 调用 API
+    if (_account.isNotEmpty) {
+      await ref
+          .read(consultationRepositoryProvider)
+          .toggleAutoAnalysisSetting(
+            account: _account,
+            deviceNo: widget.mac,
+            enabled: v,
+          );
+    }
+    // 同步本地缓存
     final prefs = await SharedPreferences.getInstance();
     final key   = 'robot_ai_capture_${widget.mac}';
     final raw   = prefs.getString(key);
@@ -90,7 +139,7 @@ class _RobotAiHomePageState extends State<RobotAiHomePage> {
     }
     m['enabled'] = v;
     await prefs.setString(key, jsonEncode(m));
-    setState(() => _captureSchedule = v
+    if (mounted) setState(() => _captureSchedule = v
         ? '${m['start'] ?? '09:00'} ~ ${m['end'] ?? '22:00'}' : '已关闭');
   }
 
@@ -146,6 +195,7 @@ class _RobotAiHomePageState extends State<RobotAiHomePage> {
                 schedule: _captureSchedule,
                 onToggle: _toggleCapture,
                 onTap: _goCapture,
+                canToggle: _hasSetting,
               ),
               const SizedBox(height: 12),
               _FeatureCard(
@@ -187,59 +237,34 @@ class _RobotAiHomePageState extends State<RobotAiHomePage> {
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      color: AppColors.surface,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.primary, AppColors.primaryContainer],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
       child: SafeArea(
         bottom: false,
-        child: Column(children: [
-          // ── 顶部导航行 ──
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(children: [
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Icon(Icons.arrow_back_ios_rounded,
-                    size: 20, color: AppColors.onSurface),
-              ),
-              const SizedBox(width: 12),
-              Text('AI 智能',
-                style: TextStyle(
-                  fontFamily: AppFonts.primary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.onSurface,
-                  letterSpacing: -0.3,
-                )),
-              const Spacer(),
-              // 机器人状态 chip
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Container(
-                    width: 6, height: 6,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 5),
-                  Text('在线',
-                    style: TextStyle(
-                      fontFamily: AppFonts.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
-                    )),
-                ]),
-              ),
-            ]),
-          ),
-          // ── 底部分隔线 ──
-          Divider(height: 1, color: AppColors.outlineVariant.withOpacity(0.3)),
-        ]),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(children: [
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Icon(Icons.arrow_back_ios_rounded,
+                  size: 20, color: AppColors.onPrimary),
+            ),
+            const SizedBox(width: 12),
+            Text('AI 智能',
+              style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppColors.onPrimary,
+                letterSpacing: -0.3,
+              )),
+          ]),
+        ),
       ),
     );
   }
@@ -267,6 +292,8 @@ class _FeatureCard extends StatelessWidget {
   final String     schedule;
   final ValueChanged<bool> onToggle;
   final VoidCallback       onTap;
+  /// 为 false 时开关置灰不可交互（服务端无配置时不允许 enable）
+  final bool       canToggle;
 
   const _FeatureCard({
     required this.icon,
@@ -276,6 +303,7 @@ class _FeatureCard extends StatelessWidget {
     required this.schedule,
     required this.onToggle,
     required this.onTap,
+    this.canToggle = true,
   });
 
   @override
@@ -346,13 +374,20 @@ class _FeatureCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            // ── 开关 ──
-            PetSwitch(
-              value: enabled,
-              onChanged: (v) {
-                HapticFeedback.selectionClick();
-                onToggle(v);
-              },
+            // ── 开关（无服务端配置时置灰）──
+            IgnorePointer(
+              ignoring: !canToggle,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: canToggle ? 1.0 : 0.4,
+                child: PetSwitch(
+                  value: enabled,
+                  onChanged: (v) {
+                    HapticFeedback.selectionClick();
+                    onToggle(v);
+                  },
+                ),
+              ),
             ),
           ]),
         ),

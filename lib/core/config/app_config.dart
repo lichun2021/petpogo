@@ -8,8 +8,8 @@ class AppConfig {
   // ──────────────────────────────────────────────
   // 业务后端（uCloudlink）
   // ──────────────────────────────────────────────
-  static const String baseUrl        = 'http://115.29.196.61:3000';
-
+  //static const String baseUrl        = 'http://115.29.196.61:3000';
+  static const String baseUrl        = 'https://api.jxpetai.com';
   // ──────────────────────────────────────────────
   // 第三方 SDK（待填入）
   // ──────────────────────────────────────────────

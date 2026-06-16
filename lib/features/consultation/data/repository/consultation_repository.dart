@@ -19,6 +19,7 @@ import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/api/api_exception.dart';
 import '../../../../core/api/result.dart';
 import '../../../../core/config/app_config.dart';
+import '../models/auto_analysis_models.dart';
 import '../models/consultation_models.dart';
 
 class ConsultationRepository {
@@ -159,6 +160,63 @@ class ConsultationRepository {
           data: {'session_id': sessionId},
         );
         return SessionHistory.fromJson(_unwrap(data));
+      });
+  // ── 8. 保存/更新自动 AI 分析设置 ─────────────────────────
+  Future<Result<AutoAnalysisSaveResult>> saveAutoAnalysisSetting({
+    required String account,
+    required String deviceNo,
+    required String effectiveStartTime,
+    required String effectiveEndTime,
+    required List<int> repeatWeekdays,
+    required int dailyAnalysisCount,
+    bool enabled = true,
+  }) =>
+      guardResult(() async {
+        final data = await _client.post<Map<String, dynamic>>(
+          _url(ApiEndpoints.autoAnalysisSave),
+          data: {
+            'account': account,
+            'device_no': deviceNo,
+            'effective_start_time': effectiveStartTime,
+            'effective_end_time': effectiveEndTime,
+            'repeat_weekdays': repeatWeekdays,
+            'daily_analysis_count': dailyAnalysisCount,
+            'enabled': enabled,
+          },
+        );
+        return AutoAnalysisSaveResult.fromJson(_unwrap(data));
+      });
+
+  // ── 9. 启用或禁用自动 AI 分析设置 ────────────────────────
+  Future<Result<bool>> toggleAutoAnalysisSetting({
+    required String account,
+    required String deviceNo,
+    required bool enabled,
+  }) =>
+      guardResult(() async {
+        final data = await _client.post<Map<String, dynamic>>(
+          _url(ApiEndpoints.autoAnalysisToggle),
+          data: {
+            'account': account,
+            'device_no': deviceNo,
+            'enabled': enabled,
+          },
+        );
+        final info = _unwrap(data);
+        return info['enabled'] as bool? ?? enabled;
+      });
+
+  // ── 10. 查询任务列表（setting + tasks[]）─────────────────
+  Future<Result<AutoAnalysisTasksResult>> getAutoAnalysisTasks({
+    required String account,
+    required String deviceNo,
+  }) =>
+      guardResult(() async {
+        final data = await _client.post<Map<String, dynamic>>(
+          _url(ApiEndpoints.autoAnalysisTasks),
+          data: {'account': account, 'device_no': deviceNo},
+        );
+        return AutoAnalysisTasksResult.fromJson(_unwrap(data));
       });
 }
 

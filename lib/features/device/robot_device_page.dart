@@ -43,7 +43,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
 
   double _moveSpeed = 50; // 10~100
   double _deviceVolume = 100; // 设备音量 0~100
-  bool _cameraOn = true;
+
 
   // ── Agora 视频推流状态 ──────────────────────────────────
   RtcEngine? _engine;
@@ -812,37 +812,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
               ),
             ),
 
-            // 摄像头开关（左下）
-            Positioned(
-              bottom: 10, left: 10,
-              child: GestureDetector(
-                onTap: () {
-                  setState(() => _cameraOn = !_cameraOn);
-                  if (_cameraOn) { _startAgora(); } else { _stopAgora(); setState(() {}); }
-                },
-                child: AnimatedContainer(
-                  duration: Duration(milliseconds: 250),
-                  width: 44, height: 24,
-                  decoration: BoxDecoration(
-                    color: _cameraOn ? AppColors.primary : Colors.white30,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Stack(children: [
-                    AnimatedPositioned(
-                      duration: Duration(milliseconds: 250),
-                      left: _cameraOn ? 22 : 2, top: 2,
-                      child: Container(
-                        width: 20, height: 20,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  ]),
-                ),
-              ),
-            ),
+
+
 
             // 连接状态标签（右上）
             Positioned(
