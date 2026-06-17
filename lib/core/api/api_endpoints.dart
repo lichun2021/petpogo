@@ -78,4 +78,10 @@ abstract class ApiEndpoints {
   static const autoAnalysisToggle = '/video/stream/auto-analysis/settings/disable';
   /// 查询设备任务列表（POST JSON body）
   static const autoAnalysisTasks  = '/video/stream/auto-analysis/tasks';
+
+  // ── 音频流自动 AI 分析（自动打招呼）──────────────────────
+  /// 保存/更新音频流自动分析设置（POST JSON body）
+  static const voiceAnalysisSave   = '/voice/stream/auto-analysis/settings/save';
+  /// 启用或禁用音频流自动分析设置（POST JSON body）
+  static const voiceAnalysisToggle = '/voice/stream/auto-analysis/settings/disable';
 }

@@ -218,7 +218,51 @@ class ConsultationRepository {
         );
         return AutoAnalysisTasksResult.fromJson(_unwrap(data));
       });
+
+  // ── 音频流自动分析（自动打招呼）─────────────────────────────
+
+  /// 保存/更新音频流自动分析设置（每次保存默认 enabled:true）
+  Future<Result<AutoAnalysisSaveResult>> saveVoiceAnalysisSetting({
+    required String account,
+    required String deviceNo,
+    required String effectiveStartTime,
+    required String effectiveEndTime,
+    required List<int> repeatWeekdays,
+    required int dailyAnalysisCount,
+    bool enabled = true,
+  }) =>
+      guardResult(() async {
+        final data = await _client.post<Map<String, dynamic>>(
+          _url(ApiEndpoints.voiceAnalysisSave),
+          data: {
+            'account': account,
+            'device_no': deviceNo,
+            'effective_start_time': effectiveStartTime,
+            'effective_end_time': effectiveEndTime,
+            'repeat_weekdays': repeatWeekdays,
+            'daily_analysis_count': dailyAnalysisCount,
+            'enabled': enabled,
+          },
+        );
+        return AutoAnalysisSaveResult.fromJson(_unwrap(data));
+      });
+
+  /// 启用/禁用音频流自动分析设置
+  Future<Result<bool>> toggleVoiceAnalysisSetting({
+    required String account,
+    required String deviceNo,
+    required bool enabled,
+  }) =>
+      guardResult(() async {
+        final data = await _client.post<Map<String, dynamic>>(
+          _url(ApiEndpoints.voiceAnalysisToggle),
+          data: {'account': account, 'device_no': deviceNo, 'enabled': enabled},
+        );
+        final info = _unwrap(data);
+        return info['enabled'] as bool? ?? enabled;
+      });
 }
+
 
 // ── Riverpod Provider ─────────────────────────────────────
 final consultationRepositoryProvider = Provider<ConsultationRepository>((ref) {

@@ -11,6 +11,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -20,6 +21,7 @@ import 'package:uuid/uuid.dart';
 import 'package:video_player/video_player.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_fonts.dart';
+import '../../features/consultation/data/repository/consultation_repository.dart';
 
 import '../../shared/utils/oss_uploader.dart';
 import '../../shared/widgets/pet_toast.dart';
@@ -103,6 +105,11 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
   int _page = 1;
   final ScrollController _scroll = ScrollController();
 
+  // ── 服务端状态 ───────────────────────────────────────────
+  String _account      = '';
+  bool   _apiSaving    = false;
+  bool   _settingExists = false;
+
   // ── 音频播放（试听预设）──────────────────────────────────
   final AudioPlayer _previewPlayer = AudioPlayer();
   String? _playingUrl;
@@ -112,6 +119,7 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
   @override
   void initState() {
     super.initState();
+    _loadAccount();
     _loadPrefs();
     _loadSounds(); // 进页面并行拉一次猫 + 狗，后续切换只读缓存
     _loadMedia(reset: true);
@@ -127,6 +135,13 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
     _scroll.dispose();
     _previewPlayer.dispose();
     super.dispose();
+  }
+
+  // ── 加载账号 ─────────────────────────────────────────────
+  Future<void> _loadAccount() async {
+    const storage = FlutterSecureStorage();
+    final account = await storage.read(key: 'auth_account') ?? '';
+    if (mounted) setState(() => _account = account);
   }
 
   // ── 加载配置 ─────────────────────────────────────────────
@@ -297,7 +312,7 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
     await _loadMedia();
   }
 
-  // ── 保存配置 ─────────────────────────────────────────────
+  // ── 保存配置（本地）────────────────────────────────────────
   Future<void> _persistPrefs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -319,6 +334,54 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
     } catch (_) {
       if (mounted) PetToast.error(context, '保存失败');
     }
+  }
+
+  // ── 保存并开启服务端设置（save + toggle 双重保障）──────────
+  Future<void> _saveToServer() async {
+    if (_account.isEmpty) {
+      PetToast.error(context, '无法获取账户信息，请重新登录');
+      return;
+    }
+    final startMin = _startTime.hour * 60 + _startTime.minute;
+    final endMin   = _endTime.hour * 60 + _endTime.minute;
+    if (startMin >= endMin) {
+      PetToast.error(context, '结束时间必须晚于开始时间');
+      return;
+    }
+    setState(() => _apiSaving = true);
+    final result = await ref
+        .read(consultationRepositoryProvider)
+        .saveVoiceAnalysisSetting(
+          account: _account,
+          deviceNo: widget.mac,
+          effectiveStartTime: _fmtTime(_startTime),
+          effectiveEndTime: _fmtTime(_endTime),
+          repeatWeekdays: _weekdays.toList()..sort(),
+          dailyAnalysisCount: _count,
+          enabled: true,
+        );
+    if (!mounted) return;
+    setState(() => _apiSaving = false);
+    result.when(
+      success: (_) async {
+        // 保存后额外调用 enable 确保开启
+        await ref
+            .read(consultationRepositoryProvider)
+            .toggleVoiceAnalysisSetting(
+              account: _account,
+              deviceNo: widget.mac,
+              enabled: true,
+            );
+        if (!mounted) return;
+        setState(() {
+          _settingExists = true;
+          _enabled = true;
+        });
+        await _persistPrefs();
+        PetToast.success(context, '设置已保存并开启');
+      },
+      failure: (e) => PetToast.error(context, e.message),
+    );
   }
 
   // ── 试听声音 ─────────────────────────────────────────────
@@ -569,6 +632,38 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
               : const SizedBox.shrink(),
         ),
         const SizedBox(height: 6),
+        // ── 保存设置按钮 ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: ElevatedButton(
+              onPressed: _apiSaving ? null : _saveToServer,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
+              ),
+              child: _apiSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : Text(
+                      _settingExists ? '更新设置' : '保存设置',
+                      style: const TextStyle(
+                        fontFamily: 'Outfit',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+            ),
+          ),
+        ),
       ]),
     );
   }
