@@ -224,9 +224,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               SizedBox(height: 8),
               TextField(
                 controller: _phoneCtrl,
-                keyboardType: TextInputType.phone,
+                keyboardType: TextInputType.number,
                 textInputAction: TextInputAction.next,
-                autofillHints: [],
+                autofillHints: const <String>[],
                 style: TextStyle(fontFamily: AppFonts.primary,
                     fontSize: 15, color: AppColors.onSurface),
                 decoration: _inputDecorationWithCountry(
