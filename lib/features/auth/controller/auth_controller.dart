@@ -89,6 +89,19 @@ class AuthController extends StateNotifier<AuthState> {
     debugPrint('[AuthCtrl] [状态] restoring → 检查本地会话...');
     final user = await _repo.restoreSession();
     if (user != null) {
+      // ── 主动验证 token 是否仍有效 ──
+      debugPrint('[AuthCtrl] 验证 token 有效性...');
+      final valid = await _repo.verifyToken();
+      if (!valid) {
+        // token 已过期 → 清除会话 → 引导重新登录
+        debugPrint('[AuthCtrl] [状态] token 失效 → guest（需重新登录）');
+        await _repo.logout();
+        state = const AuthState(
+          status: AuthStatus.guest,
+          errorMessage: '登录已过期，请重新登录',
+        );
+        return;
+      }
       debugPrint('[AuthCtrl] [状态] restoring → loggedIn (${user.name})');
       state = AuthState(status: AuthStatus.loggedIn, user: user);
       _loadUserData();

@@ -195,6 +195,27 @@ class AuthRepository {
     return user;
   }
 
+  // ── 主动验证 Token 有效性（冷启动时调用）──────────────────
+  /// 返回 true：token 有效（或网络异常无法判断）
+  /// 返回 false：token 已过期（服务端返回 401）
+  Future<bool> verifyToken() async {
+    try {
+      await _client.get<Map<String, dynamic>>('/sdkapi/user/profile');
+      return true; // 正常响应 → token 有效
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+      if (statusCode == 401) {
+        debugPrint('[AuthRepo] token 已过期（401）');
+        return false;
+      }
+      // 网络超时 / 无网络 → 不登出，保持已登录状态
+      debugPrint('[AuthRepo] verifyToken 网络异常 ($statusCode)，保持会话');
+      return true;
+    } catch (_) {
+      return true; // 其他意外错误，保守处理
+    }
+  }
+
   // ── 退出登录 ────────────────────────────────────────────
   Future<void> logout() async {
     await _storage.deleteAll();
