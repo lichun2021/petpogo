@@ -24,6 +24,7 @@ import 'device_detail_page.dart';
 
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 import 'robot_ai_home_page.dart';
+import '../consultation/data/repository/consultation_repository.dart';
 
 // ── 机器人设备详情页 ─────────────────────────────────────
 class RobotDevicePage extends ConsumerStatefulWidget {
@@ -59,13 +60,15 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
 
   // ── 摄影：截图 / 录像 状态 ─────────────────────
   final _cameraKey = GlobalKey(); // RepaintBoundary key 用于截图
-  bool  _takingPhoto   = false;   // 截图进行中
-  bool  _recording     = false;   // 录像进行中
+  bool  _takingPhoto    = false;  // 截图进行中
+  bool  _recording      = false;  // 录像进行中
+  bool  _serverStopping = false;  // 当前当前正在停止录制（合成中）
   bool  _uploadingMedia = false;  // 上传 OSS 中
-  int   _recordSeconds = 0;       // 录像已进行秒数
-  static const _maxRecordSec = 30;
+  int   _recordSeconds  = 0;      // 录像已进行秒数
+  static const _maxRecordSec = 30; // App 限制 30s，到时自动调 stopRecording
   Timer? _recordTimer;
-  Timer? _frameTimer;             // 截帧定时器（预留）
+  String? _serverRecordingId;     // 服务端返回的 recording_id
+  String? _serverAccount;         // 登录账号（录制时缓存）
   List<MediaItem> _recentMedia = []; // 摄影标签预览
 
   @override
@@ -89,7 +92,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     _tabController.dispose();
     _statsTimer?.cancel();
     _recordTimer?.cancel();
-    _frameTimer?.cancel();
+    // 如果页面关闭时录像还在进行，不调停止接口（合成中難以取消）
+    // 提示用户继续在后台处理
 
     // 立即置 null，防止后续 setState 崩溃
     final engine   = _engine;
@@ -414,19 +418,135 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     }
   }
 
-  // ── 摄影：录像 ─────────────────────────────────────────
+  // ── 摄影：录像（服务端录制）─────────────────────────────
 
-  /// 开始录像（截帧合成 MP4）
-  /// 开始录像（功能开发中）
+  /// 开始录像：调用服务端 POST /video/recording/start
   Future<void> _startRecording() async {
+    if (_recording || _serverStopping || !_agoraJoined) {
+      if (!_agoraJoined) PetToast.warning(context, '请先等待设备连接');
+      return;
+    }
     HapticFeedback.mediumImpact();
-    PetToast.warning(context, '🎬 录像功能开发中，敬请期待');
+
+    // 读取当前登录账号
+    final account = ref.read(authControllerProvider).user?.account ?? '';
+    if (account.isEmpty) {
+      PetToast.error(context, '无法获取账号，请重新登录');
+      return;
+    }
+
+    setState(() { _recording = true; _recordSeconds = 0; });
+    try {
+      final result = await ref
+          .read(consultationRepositoryProvider)
+          .startRecording(account: account, deviceNo: widget.mac);
+
+      result.when(
+        success: (info) {
+          _serverRecordingId = info.recordingId;
+          _serverAccount = account;
+          debugPrint('[录制] 服务端录制已开始 id=${info.recordingId}');
+          // 启动计时（UI 展示用，到 300s 自动提示）
+          _recordTimer =
+              Timer.periodic(const Duration(seconds: 1), (t) {
+            if (!mounted) { t.cancel(); return; }
+            if (_recordSeconds >= _maxRecordSec) {
+              t.cancel();
+              // 服务端到最大时长会自动停止，UI 同步状态
+              _stopRecording();
+              return;
+            }
+            setState(() => _recordSeconds++);
+          });
+        },
+        failure: (err) {
+          if (mounted) {
+            setState(() { _recording = false; _recordSeconds = 0; });
+            PetToast.error(context, '录制启动失败：${err.userMessage}');
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('[录制] 开始异常: $e');
+      if (mounted) {
+        setState(() { _recording = false; _recordSeconds = 0; });
+        PetToast.error(context, '录制启动失败');
+      }
+    }
   }
 
-  /// 停止录像（功能开发中）
+  /// 停止录像：调用服务端 POST /video/recording/stop
+  /// ⚠️ 服务端合成 MP4 + 上传 OSS 可能耗时较长，期间显示「合成中」
   Future<void> _stopRecording() async {
-    // 占位，当前录像按钮不会进入 _recording=true 状态
+    if (_serverStopping) return;
+    _recordTimer?.cancel();
+
+    final account = _serverAccount ?? '';
+    final secs    = _recordSeconds;
+    _serverRecordingId = null;
+    _serverAccount = null;
+
+    setState(() {
+      _recording      = false;
+      _recordSeconds  = 0;
+      _serverStopping = true; // 显示「合成中」状态
+    });
+
+    HapticFeedback.mediumImpact();
+    if (mounted) PetToast.show(context, '⏳ 正在合成视频，请稍候...');
+
+    try {
+      final result = await ref
+          .read(consultationRepositoryProvider)
+          .stopRecording(account: account, deviceNo: widget.mac);
+
+      if (!mounted) return;
+      result.when(
+        success: (info) {
+          debugPrint('[录制] 合成完成 video=${info.videoUrl}');
+          PetToast.success(context,
+              '🎬 录制完成 (${secs}s)，视频已上传');
+          // 刷新媒体列表（视频已在 OSS，通知后端入库）
+          _saveServerVideoRecord(
+              videoUrl: info.videoUrl,
+              coverUrl: info.coverUrl,
+              duration: secs);
+        },
+        failure: (err) {
+          PetToast.error(context, '合成失败：${err.userMessage}');
+          debugPrint('[录制] 停止失败: ${err.message}');
+        },
+      );
+    } catch (e) {
+      debugPrint('[录制] 停止异常: $e');
+      if (mounted) PetToast.error(context, '停止录制失败，请检查网络');
+    } finally {
+      if (mounted) setState(() => _serverStopping = false);
+    }
   }
+
+  /// 把服务端返回的视频信息存入媒体库（复用 mediaRepository.saveRecord）
+  Future<void> _saveServerVideoRecord({
+    required String videoUrl,
+    required String coverUrl,
+    required int duration,
+  }) async {
+    try {
+      await ref.read(mediaRepositoryProvider).saveRecord(
+        type:     2,         // 视频
+        url:      videoUrl,
+        ossKey:   '',        // 服务端已完成 OSS 上传，key 留空
+        fileSize: 0,
+        duration: duration,
+        deviceId: widget.mac,
+      );
+      _loadRecentMedia(); // 刷新媒体库预览
+    } catch (e) {
+      debugPrint('[录制] 入库失败: $e');
+    }
+  }
+
+
 
   // ── OSS 上传 + 入库 ────────────────────────────────────
 

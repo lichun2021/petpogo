@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tencent_cloud_chat_sdk/tencent_im_sdk_plugin.dart';
 import 'package:tencent_cloud_chat_sdk/enum/V2TimSDKListener.dart';
@@ -18,6 +19,7 @@ import 'app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized(); // 必须在 ensureInitialized 之后第一时间调用
 
   // ── 启动时同步加载保存的字体和主题 ────────────────────────────────
   // 必须在 ProviderContainer 创建之前完成，确保 provider 直接以正确值启动

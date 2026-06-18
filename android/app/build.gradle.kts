@@ -90,7 +90,9 @@ android {
             isShrinkResources = false
         }
         debug {
-            signingConfig = signingConfigs.getByName("debug")
+            // 使用 release 签名，这样 debug 包也能调通微信 SDK（签名一致）
+            // 热重载、调试功能不受影响
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

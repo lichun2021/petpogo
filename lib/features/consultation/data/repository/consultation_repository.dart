@@ -261,6 +261,80 @@ class ConsultationRepository {
         final info = _unwrap(data);
         return info['enabled'] as bool? ?? enabled;
       });
+
+  // ── 手动录制音视频流 ──────────────────────────────────────
+
+  /// 开始录制：服务端接入声网频道，后台持续录制
+  /// 返回 [RecordingStartInfo]（含 recording_id）
+  Future<Result<RecordingStartInfo>> startRecording({
+    required String account,
+    required String deviceNo,
+  }) =>
+      guardResult(() async {
+        final data = await _client.post<Map<String, dynamic>>(
+          _url(ApiEndpoints.recordingStart),
+          data: {'account': account, 'device_no': deviceNo},
+        );
+        return RecordingStartInfo.fromJson(_unwrap(data));
+      });
+
+  /// 停止录制：服务端合成 MP4 + 上传 OSS，返回视频和封面地址
+  /// ⚠️ 此接口可能耗时较长（等待合成+上传），设置 310s 超时
+  Future<Result<RecordingStopInfo>> stopRecording({
+    required String account,
+    required String deviceNo,
+  }) =>
+      guardResult(() async {
+        final data = await _client.post<Map<String, dynamic>>(
+          _url(ApiEndpoints.recordingStop),
+          data: {'account': account, 'device_no': deviceNo},
+          options: Options(receiveTimeout: const Duration(seconds: 310)),
+        );
+        return RecordingStopInfo.fromJson(_unwrap(data));
+      });
+}
+
+// ── 录制接口模型 ──────────────────────────────────────────────
+
+class RecordingStartInfo {
+  final String recordingId;
+  final String account;
+  final String deviceNo;
+  final String startedAt;
+
+  const RecordingStartInfo({
+    required this.recordingId,
+    required this.account,
+    required this.deviceNo,
+    required this.startedAt,
+  });
+
+  factory RecordingStartInfo.fromJson(Map<String, dynamic> j) =>
+      RecordingStartInfo(
+        recordingId: j['recording_id'] as String? ?? '',
+        account:     j['account']      as String? ?? '',
+        deviceNo:    j['device_no']    as String? ?? '',
+        startedAt:   j['started_at']   as String? ?? '',
+      );
+}
+
+class RecordingStopInfo {
+  final String recordingId;
+  final String videoUrl;
+  final String coverUrl;
+
+  const RecordingStopInfo({
+    required this.recordingId,
+    required this.videoUrl,
+    required this.coverUrl,
+  });
+
+  factory RecordingStopInfo.fromJson(Map<String, dynamic> j) =>
+      RecordingStopInfo(
+        recordingId: j['recording_id'] as String? ?? '',
+        videoUrl:    j['video_url']    as String? ?? '',
+        coverUrl:    j['cover_url']    as String? ?? '',
+      );
 }
 
 

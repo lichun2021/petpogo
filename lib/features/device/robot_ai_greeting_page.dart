@@ -6,6 +6,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
+import 'package:gal/gal.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -16,9 +18,14 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
+import 'package:share_plus/share_plus.dart';
+import '../../shared/utils/wechat_share.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:video_player/video_player.dart';
+import 'package:media_kit/media_kit.dart' hide PlayerState;  // hide避免与just_audio.PlayerState冲突
+import 'package:media_kit_video/media_kit_video.dart';
+
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_fonts.dart';
 import '../../features/consultation/data/repository/consultation_repository.dart';
@@ -90,6 +97,7 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
   };
   bool _soundLoading = false;
   bool _soundExpanded = false;
+  int _soundTabDirection = 1;
 
   // ── 计划配置 ─────────────────────────────────────────────
   bool _enabled = false;
@@ -106,9 +114,9 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
   final ScrollController _scroll = ScrollController();
 
   // ── 服务端状态 ───────────────────────────────────────────
-  String _account      = '';
-  bool   _apiSaving    = false;
-  bool   _settingExists = false;
+  String _account = '';
+  bool _apiSaving = false;
+  bool _settingExists = false;
 
   // ── 音频播放（试听预设）──────────────────────────────────
   final AudioPlayer _previewPlayer = AudioPlayer();
@@ -343,23 +351,22 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
       return;
     }
     final startMin = _startTime.hour * 60 + _startTime.minute;
-    final endMin   = _endTime.hour * 60 + _endTime.minute;
+    final endMin = _endTime.hour * 60 + _endTime.minute;
     if (startMin >= endMin) {
       PetToast.error(context, '结束时间必须晚于开始时间');
       return;
     }
     setState(() => _apiSaving = true);
-    final result = await ref
-        .read(consultationRepositoryProvider)
-        .saveVoiceAnalysisSetting(
-          account: _account,
-          deviceNo: widget.mac,
-          effectiveStartTime: _fmtTime(_startTime),
-          effectiveEndTime: _fmtTime(_endTime),
-          repeatWeekdays: _weekdays.toList()..sort(),
-          dailyAnalysisCount: _count,
-          enabled: true,
-        );
+    final result =
+        await ref.read(consultationRepositoryProvider).saveVoiceAnalysisSetting(
+              account: _account,
+              deviceNo: widget.mac,
+              effectiveStartTime: _fmtTime(_startTime),
+              effectiveEndTime: _fmtTime(_endTime),
+              repeatWeekdays: _weekdays.toList()..sort(),
+              dailyAnalysisCount: _count,
+              enabled: true,
+            );
     if (!mounted) return;
     setState(() => _apiSaving = false);
     result.when(
@@ -487,28 +494,31 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
       body: Column(children: [
         _buildHeader(),
         Expanded(
-          child: RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: () => _loadMedia(reset: true),
-            child: CustomScrollView(
-              controller: _scroll,
-              slivers: [
-                // ── 配置卡片 ──
-                SliverToBoxAdapter(child: _buildConfigCard()),
-                // ── 媒体库标题 ──
-                SliverToBoxAdapter(child: _buildMediaHeader()),
-                // ── 媒体列表 ──
-                _buildMediaList(),
-                if (_hasMore)
-                  SliverToBoxAdapter(
-                      child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Center(
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: AppColors.primary)),
-                  )),
-                const SliverToBoxAdapter(child: SizedBox(height: 40)),
-              ],
+          child: SafeArea(
+            top: false,
+            child: RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: () => _loadMedia(reset: true),
+              child: CustomScrollView(
+                controller: _scroll,
+                slivers: [
+                  // ── 配置卡片 ──
+                  SliverToBoxAdapter(child: _buildConfigCard()),
+                  // ── 媒体库标题 ──
+                  SliverToBoxAdapter(child: _buildMediaHeader()),
+                  // ── 媒体列表 ──
+                  _buildMediaList(),
+                  if (_hasMore)
+                    SliverToBoxAdapter(
+                        child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Center(
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: AppColors.primary)),
+                    )),
+                  const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                ],
+              ),
             ),
           ),
         ),
@@ -610,42 +620,31 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
         ),
         const Divider(height: 1, indent: 20, endIndent: 20),
         _buildSoundSettingsHeader(),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          child: _soundExpanded
-              ? Column(children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-                    child: _buildPetTab(),
-                  ),
-                  _soundLoading
-                      ? Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Center(
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: AppColors.primary)),
-                        )
-                      : _buildSoundList(),
-                  const Divider(height: 1, indent: 20, endIndent: 20),
-                ])
-              : const SizedBox.shrink(),
-        ),
+        _buildSoundSettingsBody(),
         const SizedBox(height: 6),
         // ── 保存设置按钮 ──
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: SizedBox(
             width: double.infinity,
-            height: 46,
+            height: 52,
             child: ElevatedButton(
               onPressed: _apiSaving ? null : _saveToServer,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(52),
+                padding: EdgeInsets.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
                 elevation: 0,
+                textStyle: const TextStyle(
+                  fontFamily: 'Outfit',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  height: 1.1,
+                ),
               ),
               child: _apiSaving
                   ? const SizedBox(
@@ -655,11 +654,7 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
                           strokeWidth: 2, color: Colors.white))
                   : Text(
                       _settingExists ? '更新设置' : '保存设置',
-                      style: const TextStyle(
-                        fontFamily: 'Outfit',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      maxLines: 1,
                     ),
             ),
           ),
@@ -738,6 +733,87 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
     );
   }
 
+  Widget _buildSoundSettingsBody() {
+    return ClipRect(
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 260),
+        reverseDuration: const Duration(milliseconds: 200),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          return SizeTransition(
+            sizeFactor: animation,
+            axisAlignment: -1,
+            child: FadeTransition(opacity: animation, child: child),
+          );
+        },
+        child: !_soundExpanded
+            ? const SizedBox.shrink(key: ValueKey('sound-collapsed'))
+            : Column(
+                key: const ValueKey('sound-expanded'),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                    child: _buildPetTab(),
+                  ),
+                  _soundLoading
+                      ? Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        )
+                      : _buildSoundListSwitcher(),
+                  const Divider(height: 1, indent: 20, endIndent: 20),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildSoundListSwitcher() {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 240),
+        reverseDuration: const Duration(milliseconds: 180),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        layoutBuilder: (currentChild, previousChildren) {
+          return Stack(
+            alignment: Alignment.topCenter,
+            children: [
+              ...previousChildren,
+              if (currentChild != null) currentChild,
+            ],
+          );
+        },
+        transitionBuilder: (child, animation) {
+          final begin = Offset(_soundTabDirection * 0.08, 0);
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: begin,
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          );
+        },
+        child: KeyedSubtree(
+          key: ValueKey(_petTypes[_selectedPetIndex]),
+          child: _buildSoundList(),
+        ),
+      ),
+    );
+  }
+
   Future<void> _pickCount() async {
     HapticFeedback.selectionClick();
     final picked = await showModalBottomSheet<int>(
@@ -765,40 +841,62 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
         color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(22),
       ),
-      child: Row(
-        children: List.generate(_petTypes.length, (i) {
-          final selected = _selectedPetIndex == i;
-          return Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                if (_selectedPetIndex == i) return;
-                HapticFeedback.selectionClick();
-                setState(() => _selectedPetIndex = i);
-              },
+      child: Stack(
+        children: [
+          AnimatedAlign(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            alignment: _selectedPetIndex == 0
+                ? Alignment.centerLeft
+                : Alignment.centerRight,
+            child: FractionallySizedBox(
+              widthFactor: 0.5,
+              heightFactor: 1,
               child: Container(
-                height: double.infinity,
-                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: selected ? AppColors.primary : Colors.transparent,
+                  color: AppColors.primary,
                   borderRadius: BorderRadius.circular(18),
-                ),
-                child: Text(
-                  tabTexts[i],
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: selected ? Colors.white : Colors.grey.shade600,
-                    height: 1.0,
-                  ),
                 ),
               ),
             ),
-          );
-        }),
+          ),
+          Row(
+            children: List.generate(_petTypes.length, (i) {
+              final selected = _selectedPetIndex == i;
+              return Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    if (_selectedPetIndex == i) return;
+                    HapticFeedback.selectionClick();
+                    setState(() {
+                      _soundTabDirection = i > _selectedPetIndex ? 1 : -1;
+                      _selectedPetIndex = i;
+                    });
+                  },
+                  child: Center(
+                    child: AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 160),
+                      curve: Curves.easeOutCubic,
+                      style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: selected ? Colors.white : Colors.grey.shade600,
+                        height: 1.0,
+                      ),
+                      child: Text(
+                        tabTexts[i],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }
@@ -1038,10 +1136,13 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
-          (ctx, i) => _GreetingCell(
-            item: _items[i],
-            onTap: () => _openDetail(_items[i]),
-          ),
+          (ctx, i) {
+            if (i >= _items.length) return null;
+            return _GreetingCell(
+              item: _items[i],
+              onTap: () => _openDetail(_items[i]),
+            );
+          },
           childCount: _items.length,
         ),
       ),
@@ -1049,11 +1150,17 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
   }
 
   void _openDetail(GreetingItem item) {
-    Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => _GreetingDetailPage(item: item),
-        ));
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _GreetingDetailSheet(
+        item: item,
+        onDeleted: () {
+          setState(() => _items.removeWhere((e) => e.id == item.id));
+        },
+      ),
+    );
   }
 }
 
@@ -1225,133 +1332,271 @@ class _CountPickerSheetState extends State<_CountPickerSheet> {
   }
 }
 
-// ── 打招呼记录格子（列表式）──────────────────────────────────
+// ── 打招呼横排卡片 ────────────────────────────────────────
 class _GreetingCell extends StatelessWidget {
   final GreetingItem item;
   final VoidCallback onTap;
   const _GreetingCell({required this.item, required this.onTap});
 
+  // 根据情绪生成左侧渐变色，没有情绪则用品牌主色
+  static const List<List<Color>> _emotionPalettes = [
+    [Color(0xFF43E97B), Color(0xFF38F9D7)], // 兴奋 / 开心
+    [Color(0xFF4FACFE), Color(0xFF00F2FE)], // 平静
+    [Color(0xFFFA709A), Color(0xFFFEE140)], // 疼痛 / 担忧
+    [Color(0xFF667EEA), Color(0xFF764BA2)], // 其他
+  ];
+
+  List<Color> get _gradient {
+    final name = item.aiResult?.top?.name ?? '';
+    if (name.contains('兴') || name.contains('开') || name.contains('喜')) {
+      return _emotionPalettes[0];
+    } else if (name.contains('静') || name.contains('安')) {
+      return _emotionPalettes[1];
+    } else if (name.contains('痛') || name.contains('担') || name.contains('焦')) {
+      return _emotionPalettes[2];
+    }
+    return _emotionPalettes[3];
+  }
+
   @override
   Widget build(BuildContext context) {
     final top = item.aiResult?.top;
+    final hasCover = item.coverUrl.isNotEmpty;
+    final hasVideo = item.responseUrl.isNotEmpty;
+    final hasAudio = item.resourceUrl.isNotEmpty;
+    final grad = _gradient;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(12),
+        height: 88,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2))
+              color: grad[0].withValues(alpha: 0.18),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
           ],
+          border: Border.all(
+            color: grad[0].withValues(alpha: 0.28),
+            width: 1.2,
+          ),
         ),
         child: Row(children: [
-          // 封面图
+          // ── 左侧：渐变色封面图 ──
           ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius:
+                const BorderRadius.horizontal(left: Radius.circular(15)),
             child: SizedBox(
-              width: 64,
-              height: 64,
-              child: item.coverUrl.isNotEmpty || item.responseUrl.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: item.coverUrl.isNotEmpty
-                          ? item.coverUrl
-                          : item.responseUrl,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => Container(
-                          color: Colors.grey.shade200,
-                          child: const Icon(Icons.pets_rounded,
-                              color: Colors.grey, size: 28)),
-                    )
-                  : Container(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      child: const Center(
-                          child: Text('👋', style: TextStyle(fontSize: 28)))),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (top != null)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
+              width: 88,
+              height: 88,
+              child: Stack(fit: StackFit.expand, children: [
+                // 封面图 or 渐变占位
+                if (hasCover || hasVideo)
+                  CachedNetworkImage(
+                    imageUrl: hasCover ? item.coverUrl : item.responseUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => _buildCoverPlaceholder(grad),
+                    errorWidget: (_, __, ___) => _buildCoverPlaceholder(grad),
+                  )
+                else
+                  _buildCoverPlaceholder(grad),
+                // 视频图标角标
+                if (hasVideo)
+                  Positioned(
+                    bottom: 5,
+                    right: 5,
+                    child: Container(
+                      width: 22,
+                      height: 22,
+                      decoration: const BoxDecoration(
+                          color: Colors.black54, shape: BoxShape.circle),
+                      child: const Icon(Icons.play_arrow_rounded,
+                          color: Colors.white, size: 14),
                     ),
-                    child: Text(
-                        '${top.emoji} ${top.name} ${(top.confidence * 100).round()}%',
-                        style: TextStyle(
-                            fontFamily: AppFonts.primary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary)),
                   ),
-                const SizedBox(height: 6),
-                Text(_fmtFull(item.createdAt),
-                    style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontSize: 13,
-                        color: Colors.grey.shade600)),
-              ],
+              ]),
             ),
           ),
-          Icon(Icons.chevron_right_rounded, color: Colors.grey.shade300),
+          // ── 右侧：内容 ──
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 情绪标签
+                  if (top != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            grad[0].withValues(alpha: 0.15),
+                            grad[1].withValues(alpha: 0.08)
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: grad[0].withValues(alpha: 0.35), width: 0.8),
+                      ),
+                      child: Text(
+                        '${top.emoji} ${top.name}  ${(top.confidence * 100).round()}%',
+                        style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: grad[0].withValues(alpha: 1),
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text('👋 打招呼',
+                          style: TextStyle(
+                              fontFamily: AppFonts.primary,
+                              fontSize: 11,
+                              color: Colors.grey.shade600)),
+                    ),
+                  const SizedBox(height: 6),
+                  // 时间
+                  Row(children: [
+                    Icon(Icons.access_time_rounded,
+                        size: 11, color: Colors.grey.shade400),
+                    const SizedBox(width: 3),
+                    Text(
+                      _fmtFull(item.createdAt),
+                      style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ]),
+                  if (hasAudio) ...[
+                    const SizedBox(height: 4),
+                    Row(children: [
+                      Icon(Icons.graphic_eq_rounded,
+                          size: 11, color: grad[0].withValues(alpha: 0.8)),
+                      const SizedBox(width: 3),
+                      Text('含招呼音频',
+                          style: TextStyle(
+                              fontFamily: AppFonts.primary,
+                              fontSize: 10,
+                              color: grad[0].withValues(alpha: 0.85),
+                              fontWeight: FontWeight.w600)),
+                    ]),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          // ── 右箭头 ──
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: Icon(Icons.chevron_right_rounded,
+                size: 20, color: Colors.grey.shade300),
+          ),
         ]),
       ),
     );
   }
 
+  Widget _buildCoverPlaceholder(List<Color> grad) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            grad[0].withValues(alpha: 0.3),
+            grad[1].withValues(alpha: 0.15)
+          ],
+        ),
+      ),
+      child: const Center(child: Text('🐾', style: TextStyle(fontSize: 28))),
+    );
+  }
+
   String _fmtFull(DateTime dt) {
-    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-'
-        '${dt.day.toString().padLeft(2, '0')} '
-        '${dt.hour.toString().padLeft(2, '0')}:'
-        '${dt.minute.toString().padLeft(2, '0')}';
+    String p(int v) => v.toString().padLeft(2, '0');
+    return '${dt.month}/${dt.day}  ${p(dt.hour)}:${p(dt.minute)}';
   }
 }
 
-// ── 打招呼详情页 ─────────────────────────────────────────────
-class _GreetingDetailPage extends StatefulWidget {
+class _GreetingDetailSheet extends StatefulWidget {
   final GreetingItem item;
-  const _GreetingDetailPage({required this.item});
+  final VoidCallback onDeleted;
+  const _GreetingDetailSheet({required this.item, required this.onDeleted});
 
   @override
-  State<_GreetingDetailPage> createState() => _GreetingDetailPageState();
+  State<_GreetingDetailSheet> createState() => _GreetingDetailSheetState();
 }
 
-class _GreetingDetailPageState extends State<_GreetingDetailPage> {
-  VideoPlayerController? _videoCtrl;
-  bool _videoReady = false;
+class _GreetingDetailSheetState extends State<_GreetingDetailSheet> {
+  // ── media_kit 播放器
+  Player? _mkPlayer;
+  VideoController? _mkController;
+  bool _videoError = false;
+
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _audioPlaying = false;
+  Duration _audioPos = Duration.zero;
+  Duration _audioDur = Duration.zero;
+
+  bool _downloading = false;
+  bool _deleting = false;
+  bool _sharingCommunity = false;
 
   @override
   void initState() {
     super.initState();
     if (widget.item.responseUrl.isNotEmpty) {
-      _videoCtrl =
-          VideoPlayerController.networkUrl(Uri.parse(widget.item.responseUrl))
-            ..initialize().then((_) {
-              if (mounted) setState(() => _videoReady = true);
-            });
+      _mkPlayer = Player();
+      _mkController = VideoController(
+        _mkPlayer!,
+        configuration: const VideoControllerConfiguration(
+          enableHardwareAcceleration: false,
+        ),
+      );
+
+      _mkPlayer!.stream.error.listen((err) {
+        debugPrint('[Video] media_kit error: $err');
+        if (mounted) setState(() => _videoError = true);
+      });
+      _mkPlayer!.open(Media(widget.item.responseUrl));
     }
+    _audioPlayer.positionStream.listen((p) {
+      if (mounted) setState(() => _audioPos = p);
+    });
+    _audioPlayer.durationStream.listen((d) {
+      if (mounted) setState(() => _audioDur = d ?? Duration.zero);
+    });
     _audioPlayer.playerStateStream.listen((s) {
-      if (s.processingState == ProcessingState.completed) {
-        if (mounted) setState(() => _audioPlaying = false);
+      if (s.processingState == ProcessingState.completed && mounted) {
+        setState(() {
+          _audioPlaying = false;
+          _audioPos = Duration.zero;
+        });
       }
     });
   }
 
   @override
   void dispose() {
-    _videoCtrl?.dispose();
+    _mkPlayer?.dispose();
     _audioPlayer.dispose();
     super.dispose();
   }
@@ -1371,89 +1616,250 @@ class _GreetingDetailPageState extends State<_GreetingDetailPage> {
     }
   }
 
+  Future<void> _download() async {
+    final url = widget.item.coverUrl.isNotEmpty
+        ? widget.item.coverUrl
+        : widget.item.responseUrl;
+    if (url.isEmpty) return;
+    setState(() => _downloading = true);
+    try {
+      final hasAccess = await Gal.hasAccess(toAlbum: true);
+      if (!hasAccess) {
+        final ok = await Gal.requestAccess(toAlbum: true);
+        if (!ok) {
+          if (mounted) PetToast.error(context, '无相册权限，请在设置中开启');
+          return;
+        }
+      }
+      final tmp = await getTemporaryDirectory();
+      final isVideo = widget.item.responseUrl.isNotEmpty;
+      final ext = isVideo ? 'mp4' : 'jpg';
+      final path =
+          '${tmp.path}/greeting_${DateTime.now().millisecondsSinceEpoch}.$ext';
+      await Dio().download(url, path);
+      if (isVideo) {
+        await Gal.putVideo(path, album: 'PetPogo');
+      } else {
+        await Gal.putImage(path, album: 'PetPogo');
+      }
+      await File(path).delete();
+      if (mounted) PetToast.success(context, '已保存到相册');
+    } catch (_) {
+      if (mounted) PetToast.error(context, '保存失败，请重试');
+    } finally {
+      if (mounted) setState(() => _downloading = false);
+    }
+  }
+
+  Future<void> _delete(BuildContext ctx) async {
+    final confirm = await showDialog<bool>(
+      context: ctx,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('删除打招呼记录'),
+        content: const Text('确定要删除这条打招呼记录吗？此操作不可撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    setState(() => _deleting = true);
+    try {
+      // TODO: 接入打招呼删除接口
+      widget.onDeleted();
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted) PetToast.error(context, '删除失败，请重试');
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
+  }
+
+  void _shareToWechat() {
+    final url = widget.item.coverUrl.isNotEmpty
+        ? widget.item.coverUrl
+        : widget.item.responseUrl;
+    if (url.isEmpty) return;
+    final emotion = widget.item.aiResult?.top;
+    final emotionText =
+        emotion != null ? ' Ta现在${emotion.emoji}${emotion.name}' : '';
+    shareToWechat(
+      '我家宠物打招呼瞬间$emotionText 🐾\n$url',
+      subject: 'PetPogo 宠物打招呼',
+    );
+  }
+
+  void _shareToTimeline() {
+    final url = widget.item.coverUrl.isNotEmpty
+        ? widget.item.coverUrl
+        : widget.item.responseUrl;
+    if (url.isEmpty) return;
+    final emotion = widget.item.aiResult?.top;
+    final emotionText =
+        emotion != null ? ' Ta现在${emotion.emoji}${emotion.name}' : '';
+    shareToWechatTimeline(
+      '我家宠物打招呼瞬间$emotionText 🐾\n$url',
+      subject: 'PetPogo 宠物打招呼',
+    );
+  }
+
+  void _showShareSheet(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _GreetShareSheet(
+        onWechat: () {
+          Navigator.pop(ctx);
+          _shareToWechat();
+        },
+        onTimeline: () {
+          Navigator.pop(ctx);
+          _shareToTimeline();
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: Text('打招呼详情',
-            style: TextStyle(
-                fontFamily: AppFonts.primary,
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w700)),
-      ),
-      body: SingleChildScrollView(
-        child: Column(children: [
-          // 宠物响应视频
-          if (widget.item.responseUrl.isNotEmpty)
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: _videoReady
-                  ? GestureDetector(
-                      onTap: () {
-                        _videoCtrl!.value.isPlaying
-                            ? _videoCtrl!.pause()
-                            : _videoCtrl!.play();
-                        setState(() {});
-                      },
-                      child: Stack(children: [
-                        AspectRatio(
-                            aspectRatio: _videoCtrl!.value.aspectRatio,
-                            child: VideoPlayer(_videoCtrl!)),
-                        if (!_videoCtrl!.value.isPlaying)
-                          const Center(
-                              child: Icon(Icons.play_circle_fill_rounded,
-                                  size: 60, color: Colors.white70)),
-                        Positioned(
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            child: VideoProgressIndicator(_videoCtrl!,
-                                allowScrubbing: true,
-                                colors: VideoProgressColors(
-                                  playedColor: AppColors.primary,
-                                  bufferedColor: Colors.white30,
-                                  backgroundColor: Colors.white10,
-                                ))),
-                      ]),
-                    )
-                  : Container(
-                      color: Colors.grey.shade900,
-                      child: const Center(
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))),
-            ),
+    final hasResponse = widget.item.responseUrl.isNotEmpty;
+    final hasCover = widget.item.coverUrl.isNotEmpty;
+    final hasGreetAudio = widget.item.resourceUrl.isNotEmpty;
+    final hasEmotion = widget.item.aiResult?.emotions.isNotEmpty == true;
+    final bottomPad = MediaQuery.of(context).viewPadding.bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomPad),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          // 拖拽指示条
+          const SizedBox(height: 10),
           Container(
-            color: Colors.white,
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 招呼音频播放
-                if (widget.item.resourceUrl.isNotEmpty) _buildAudioRow(),
-                const SizedBox(height: 16),
-                // 时间
-                Row(children: [
-                  const Text('📅', style: TextStyle(fontSize: 16)),
-                  const SizedBox(width: 8),
-                  Text(_fmtFull(widget.item.createdAt),
-                      style: TextStyle(
-                          fontFamily: AppFonts.primary,
-                          fontSize: 14,
-                          color: Colors.grey.shade700)),
-                ]),
-                // AI 情绪卡片
-                if (widget.item.aiResult != null &&
-                    widget.item.aiResult!.emotions.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  AiEmotionCard(
-                      result: widget.item.aiResult!,
-                      time: widget.item.createdAt),
-                ],
-              ],
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 4),
+          // 可滚动内容（最多占屏高 80%）
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.80,
+            ),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.zero,
+              child: Column(children: [
+                // 封面 / 视频区
+                _buildMediaArea(hasResponse, hasCover),
+                // 信息区
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (hasGreetAudio) _buildAudioRow(),
+                      if (hasGreetAudio) const SizedBox(height: 12),
+                      _GreetInfoRow(
+                          icon: '📅',
+                          label: '打招呼时间',
+                          value: _fmtFull(widget.item.createdAt)),
+                      if (hasEmotion) ...[
+                        const SizedBox(height: 16),
+                        AiEmotionCard(
+                            result: widget.item.aiResult!,
+                            time: widget.item.createdAt),
+                      ],
+                      const SizedBox(height: 20),
+                      // ── 操作按钮行 ──
+                      Row(children: [
+                        // 下载（有封面/视频才显示）
+                        if (hasCover || hasResponse) ...[
+                          Expanded(
+                            child: SizedBox(
+                              height: 46,
+                              child: ElevatedButton.icon(
+                                onPressed: _downloading ? null : _download,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  minimumSize: const Size.fromHeight(46),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                  elevation: 0,
+                                  textStyle: TextStyle(
+                                    fontFamily: AppFonts.primary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.1,
+                                  ),
+                                ),
+                                icon: _downloading
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white))
+                                    : const Icon(Icons.download_rounded,
+                                        size: 18),
+                                label: Text(_downloading ? '保存中...' : '保存到相册',
+                                    maxLines: 1),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        // 删除
+                        SizedBox(
+                          width: 46,
+                          height: 46,
+                          child: Builder(
+                            builder: (ctx) => ElevatedButton(
+                              onPressed: _deleting ? null : () => _delete(ctx),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red.shade50,
+                                foregroundColor: Colors.red.shade700,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                elevation: 0,
+                                padding: EdgeInsets.zero,
+                              ),
+                              child: _deleting
+                                  ? SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.red.shade700))
+                                  : const Icon(Icons.delete_outline_rounded,
+                                      size: 20),
+                            ),
+                          ),
+                        ),
+                      ]),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ),
+              ]),
             ),
           ),
         ]),
@@ -1461,7 +1867,58 @@ class _GreetingDetailPageState extends State<_GreetingDetailPage> {
     );
   }
 
+  Widget _buildMediaArea(bool hasResponse, bool hasCover) {
+    if (hasResponse) {
+      return AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Container(
+          color: Colors.black,
+          child: _videoError
+              ? _buildVideoErrorWidget()
+              : _mkController != null
+                  ? Video(
+                      controller: _mkController!,
+                      controls: AdaptiveVideoControls,
+                    )
+                  : const Center(
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white)),
+        ),
+      );
+    }
+    if (hasCover) {
+      return AspectRatio(
+        aspectRatio: 4 / 3,
+        child: CachedNetworkImage(
+          imageUrl: widget.item.coverUrl,
+          fit: BoxFit.cover,
+          errorWidget: (_, __, ___) => Container(
+              color: Colors.grey.shade200,
+              child: const Icon(Icons.broken_image_outlined,
+                  size: 48, color: Colors.grey)),
+        ),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  // 视频解码失败降级 UI
+  Widget _buildVideoErrorWidget() => Center(
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      const Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 40),
+      const SizedBox(height: 8),
+      const Text('视频格式暂不支持播放',
+          style: TextStyle(color: Colors.white60, fontSize: 12)),
+      const SizedBox(height: 4),
+      Text('可保存到相册查看',
+          style: TextStyle(color: Colors.white38, fontSize: 11)),
+    ]),
+  );
+
   Widget _buildAudioRow() {
+    final progress = _audioDur.inMilliseconds > 0
+        ? (_audioPos.inMilliseconds / _audioDur.inMilliseconds).clamp(0.0, 1.0)
+        : 0.0;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -1469,52 +1926,488 @@ class _GreetingDetailPageState extends State<_GreetingDetailPage> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
       ),
-      child: Row(children: [
-        GestureDetector(
-          onTap: _toggleAudio,
-          child: Container(
-            width: 42,
-            height: 42,
-            decoration:
-                BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-            child: Icon(
-                _audioPlaying ? Icons.stop_rounded : Icons.play_arrow_rounded,
-                color: Colors.white,
-                size: 24),
+      child: Column(children: [
+        Row(children: [
+          GestureDetector(
+            onTap: _toggleAudio,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                  color: AppColors.primary, shape: BoxShape.circle),
+              child: Icon(
+                  _audioPlaying ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                  color: Colors.white,
+                  size: 24),
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('招呼音频',
-                style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700)),
-            Text(_audioPlaying ? '播放中...' : '点击播放招呼声',
-                style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 12,
-                    color: Colors.grey.shade500)),
-          ],
-        )),
-        if (_audioPlaying)
-          SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                  strokeWidth: 2, color: AppColors.primary)),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('👋 招呼音频',
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700)),
+                Text(
+                    _audioPlaying
+                        ? '${_fmtDur(_audioPos)} / ${_fmtDur(_audioDur)}'
+                        : '点击播放招呼声',
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 12,
+                        color: Colors.grey.shade500)),
+              ],
+            ),
+          ),
+        ]),
+        if (_audioPlaying || progress > 0) ...[
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress.toDouble(),
+              minHeight: 3,
+              backgroundColor: Colors.grey.shade200,
+              valueColor: AlwaysStoppedAnimation(AppColors.primary),
+            ),
+          ),
+        ],
       ]),
     );
   }
 
+  String _fmtDur(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
   String _fmtFull(DateTime dt) {
-    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-'
-        '${dt.day.toString().padLeft(2, '0')} '
-        '${dt.hour.toString().padLeft(2, '0')}:'
-        '${dt.minute.toString().padLeft(2, '0')}';
+    String p(int v) => v.toString().padLeft(2, '0');
+    return '${dt.year}-${p(dt.month)}-${p(dt.day)} ${p(dt.hour)}:${p(dt.minute)}';
+  }
+}
+
+// ── 微信图标按钮（46×46）───────────────────────────
+class _WechatIconBtn extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final Color color;
+  final VoidCallback onTap;
+  const _WechatIconBtn(
+      {required this.icon,
+      required this.tooltip,
+      required this.color,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.25), width: 1),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+      ),
+    );
+  }
+}
+
+class _GreetInfoRow extends StatelessWidget {
+  final String icon;
+  final String label;
+  final String value;
+  const _GreetInfoRow(
+      {required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      Text(icon, style: const TextStyle(fontSize: 16)),
+      const SizedBox(width: 8),
+      Text(label,
+          style: TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 14,
+              color: Colors.grey.shade600)),
+      const Spacer(),
+      Text(value,
+          style: TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 14,
+              fontWeight: FontWeight.w600)),
+    ]);
+  }
+}
+
+// ── 打招呼详情页（全新沉浸式设计）──────────────────────────
+class _GreetingDetailPage extends StatefulWidget {
+  final GreetingItem item;
+  const _GreetingDetailPage({required this.item});
+
+  @override
+  State<_GreetingDetailPage> createState() => _GreetingDetailPageState();
+}
+
+class _GreetingDetailPageState extends State<_GreetingDetailPage>
+    with TickerProviderStateMixin {
+  // ── media_kit 播放器
+  Player? _mkPlayer;
+  VideoController? _mkController;
+  bool _videoError = false;
+
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _audioPlaying = false;
+  Duration _audioPos = Duration.zero;
+  Duration _audioDur = Duration.zero;
+
+  late final AnimationController _pulseCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+
+    if (widget.item.responseUrl.isNotEmpty) {
+      _mkPlayer = Player();
+      _mkController = VideoController(
+        _mkPlayer!,
+        configuration: const VideoControllerConfiguration(
+          enableHardwareAcceleration: false,
+        ),
+      );
+
+      _mkPlayer!.stream.error.listen((err) {
+        debugPrint('[Video] media_kit error: $err');
+        if (mounted) setState(() => _videoError = true);
+      });
+      _mkPlayer!.open(Media(widget.item.responseUrl));
+    }
+    _audioPlayer.positionStream.listen((p) {
+      if (mounted) setState(() => _audioPos = p);
+    });
+    _audioPlayer.durationStream.listen((d) {
+      if (mounted) setState(() => _audioDur = d ?? Duration.zero);
+    });
+    _audioPlayer.playerStateStream.listen((s) {
+      if (s.processingState == ProcessingState.completed && mounted) {
+        setState(() {
+          _audioPlaying = false;
+          _audioPos = Duration.zero;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pulseCtrl.dispose();
+    _mkPlayer?.dispose();
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggleVideo() async {
+    if (_mkPlayer == null) return;
+    _mkPlayer!.state.playing ? _mkPlayer!.pause() : _mkPlayer!.play();
+  }
+
+  Future<void> _toggleAudio() async {
+    if (_audioPlaying) {
+      await _audioPlayer.stop();
+      setState(() => _audioPlaying = false);
+    } else {
+      try {
+        await _audioPlayer.setUrl(widget.item.resourceUrl);
+        await _audioPlayer.play();
+        setState(() => _audioPlaying = true);
+      } catch (_) {
+        if (mounted) PetToast.error(context, '播放失败');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasResponse = widget.item.responseUrl.isNotEmpty;
+    final hasGreet = widget.item.resourceUrl.isNotEmpty;
+    final hasEmotion = widget.item.aiResult?.emotions.isNotEmpty == true;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D0D1A),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          '🐾 打招呼详情',
+          style: TextStyle(
+            fontFamily: AppFonts.primary,
+            color: Colors.white,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 视频 / 封面区（顶部全宽，沉到 AppBar 后面）
+            _buildVideoSection(hasResponse),
+
+            const SizedBox(height: 20),
+
+            // 招呼音频播放器
+            if (hasGreet)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildAudioPlayer(),
+              ),
+
+            // 时间 chip
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              child: Wrap(children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(99),
+                    border:
+                        Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.access_time_rounded,
+                        size: 13, color: Colors.white.withValues(alpha: 0.55)),
+                    const SizedBox(width: 5),
+                    Text(
+                      _fmtFull(widget.item.createdAt),
+                      style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 12,
+                        color: Colors.white.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ]),
+                ),
+              ]),
+            ),
+
+            // AI 情绪卡片
+            if (hasEmotion)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: AiEmotionCard(
+                    result: widget.item.aiResult!, time: widget.item.createdAt),
+              ),
+
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─ 视频区
+  Widget _buildVideoSection(bool hasResponse) {
+    final hasCover = widget.item.coverUrl.isNotEmpty;
+    return AspectRatio(
+      aspectRatio: 16 / 9,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 背景：封面 or 深色渐变（video出错或未就绪时）
+          if (!hasResponse || _videoError || _mkController == null)
+            _videoError
+                ? _videoErrorBg()
+                : hasCover
+                    ? CachedNetworkImage(
+                        imageUrl: widget.item.coverUrl,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => _videoBg(),
+                      )
+                    : _videoBg(),
+          // media_kit 视频播放器（自带进度条 + 播放按钮）
+          if (hasResponse && _mkController != null && !_videoError)
+            Video(
+              controller: _mkController!,
+              controls: AdaptiveVideoControls,
+            ),
+          // 底部渐变遮罩
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: Container(
+              height: 100,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Color(0xFF0D0D1A)],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _videoBg() => Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.primary.withValues(alpha: 0.15),
+              const Color(0xFF0D0D1A),
+            ],
+          ),
+        ),
+        child: const Center(child: Text('🐾', style: TextStyle(fontSize: 52))),
+      );
+
+  // 视频解码失败降级背景
+  Widget _videoErrorBg() => Container(
+    color: const Color(0xFF0D0D1A),
+    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      const Icon(Icons.videocam_off_rounded, color: Colors.white38, size: 52),
+      const SizedBox(height: 12),
+      const Text('视频格式暂不支持播放',
+          style: TextStyle(color: Colors.white54, fontSize: 14)),
+      const SizedBox(height: 4),
+      const Text('可保存到相册后查看',
+          style: TextStyle(color: Colors.white30, fontSize: 12)),
+    ]),
+  );
+
+  // ─ 音频播放器
+  Widget _buildAudioPlayer() {
+    final progress = _audioDur.inMilliseconds > 0
+        ? (_audioPos.inMilliseconds / _audioDur.inMilliseconds).clamp(0.0, 1.0)
+        : 0.0;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primary.withValues(alpha: 0.22),
+            AppColors.primary.withValues(alpha: 0.08),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.28), width: 1),
+      ),
+      child: Column(children: [
+        Row(children: [
+          // 播放按钮（呼吸光晕）
+          GestureDetector(
+            onTap: _toggleAudio,
+            child: AnimatedBuilder(
+              animation: _pulseCtrl,
+              builder: (_, child) => Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primary,
+                  boxShadow: _audioPlaying
+                      ? [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(
+                                alpha: 0.35 + 0.30 * _pulseCtrl.value),
+                            blurRadius: 12 + 10 * _pulseCtrl.value,
+                            spreadRadius: 2 * _pulseCtrl.value,
+                          )
+                        ]
+                      : [],
+                ),
+                child: child,
+              ),
+              child: Icon(
+                _audioPlaying ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                color: Colors.white,
+                size: 26,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          // 标题 + 进度文字
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '👋 招呼音频',
+                  style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white.withValues(alpha: 0.92),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _audioPlaying
+                      ? '${_fmtDur(_audioPos)} / ${_fmtDur(_audioDur)}'
+                      : '点击播放招呼声音',
+                  style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 12,
+                    color: Colors.white.withValues(alpha: 0.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ]),
+        // 进度条
+        if (_audioPlaying || progress > 0) ...[
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress.toDouble(),
+              minHeight: 3,
+              backgroundColor: Colors.white.withValues(alpha: 0.12),
+              valueColor: AlwaysStoppedAnimation(AppColors.primary),
+            ),
+          ),
+        ],
+      ]),
+    );
+  }
+
+  String _fmtDur(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  String _fmtFull(DateTime dt) {
+    String p(int v) => v.toString().padLeft(2, '0');
+    return '${dt.year}-${p(dt.month)}-${p(dt.day)}  ${p(dt.hour)}:${p(dt.minute)}';
   }
 }
 
@@ -2321,3 +3214,100 @@ class _RecorderSheetState extends State<_RecorderSheet>
 }
 
 enum _RecState { idle, recording, done }
+
+// ── 打招呼专用分享弹窗（微信好友 + 朋友圈）──────────────────
+class _GreetShareSheet extends StatelessWidget {
+  final VoidCallback onWechat;
+  final VoidCallback onTimeline;
+  const _GreetShareSheet({required this.onWechat, required this.onTimeline});
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPad = MediaQuery.of(context).viewPadding.bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomPad),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text('分享到',
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.onSurface)),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _GreetShareOption(
+                icon: Icons.chat_bubble_rounded,
+                label: '微信好友',
+                color: const Color(0xFF07C160),
+                onTap: onWechat,
+              ),
+              _GreetShareOption(
+                icon: Icons.wb_sunny_rounded,
+                label: '朋友圈',
+                color: const Color(0xFF07C160),
+                onTap: onTimeline,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+  }
+}
+
+class _GreetShareOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _GreetShareOption(
+      {required this.icon,
+      required this.label,
+      required this.color,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(children: [
+        Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+            border:
+                Border.all(color: color.withValues(alpha: 0.20), width: 1.5),
+          ),
+          child: Icon(icon, color: color, size: 28),
+        ),
+        const SizedBox(height: 8),
+        Text(label,
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurface)),
+      ]),
+    );
+  }
+}

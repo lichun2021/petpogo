@@ -84,4 +84,10 @@ abstract class ApiEndpoints {
   static const voiceAnalysisSave   = '/voice/stream/auto-analysis/settings/save';
   /// 启用或禁用音频流自动分析设置（POST JSON body）
   static const voiceAnalysisToggle = '/voice/stream/auto-analysis/settings/disable';
+
+  // ── 手动录制声网音视频流（router_video_recording.py）───
+  /// 开始录制设备音视频流  POST /video/recording/start
+  static const recordingStart = '/video/recording/start';
+  /// 结束录制并合成 MP4   POST /video/recording/stop
+  static const recordingStop  = '/video/recording/stop';
 }

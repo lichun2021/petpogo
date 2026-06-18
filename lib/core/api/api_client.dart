@@ -91,13 +91,15 @@ class ApiClient {
 
   /// POST 请求（创建资源）
   ///
-  /// [data] - 请求体，会被自动序列化为 JSON
+  /// [data]    - 请求体，会被自动序列化为 JSON
+  /// [options] - 可选 Dio Options（如自定义超时）
   Future<T> post<T>(
     String path, {
     dynamic data,
     T Function(dynamic)? fromJson,
+    Options? options,
   }) async {
-    final res = await _dio.post(path, data: data);
+    final res = await _dio.post(path, data: data, options: options);
     return fromJson != null ? fromJson(res.data) : res.data as T;
   }
 

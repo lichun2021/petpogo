@@ -14,9 +14,12 @@ import 'package:gal/gal.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:video_player/video_player.dart';
+import 'package:video_player/video_player.dart';          // 保留，其他页面使用
+import 'package:media_kit/media_kit.dart';                // 新增
+import 'package:media_kit_video/media_kit_video.dart';    // 新增
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../shared/utils/wechat_share.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_fonts.dart';
 import '../../shared/widgets/pet_toast.dart';
@@ -52,8 +55,8 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
   int _count = 5; // AI 分析次数上限
   // 服务端配置状态
   bool _settingExists = false; // 服务端是否已存在设置
-  bool _apiSaving    = false;  // 保存接口加载中
-  String _account    = '';     // 用户账号
+  bool _apiSaving = false; // 保存接口加载中
+  String _account = ''; // 用户账号
 
   // ── 媒体库状态 ────────────────────────────────────────────
   final List<CaptureItem> _items = [];
@@ -147,13 +150,13 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
           final s = data.setting!;
           setState(() {
             _settingExists = true;
-            _enabled   = s.enabled;
+            _enabled = s.enabled;
             _startTime = _parseTime(s.effectiveStartTime);
-            _endTime   = _parseTime(s.effectiveEndTime);
-            _weekdays  = s.repeatWeekdays.isEmpty
+            _endTime = _parseTime(s.effectiveEndTime);
+            _weekdays = s.repeatWeekdays.isEmpty
                 ? {1, 2, 3, 4, 5, 6, 7}
                 : s.repeatWeekdays.toSet();
-            _count     = s.dailyAnalysisCount.clamp(1, 9);
+            _count = s.dailyAnalysisCount.clamp(1, 9);
           });
         }
       },
@@ -168,23 +171,22 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
       return;
     }
     final startMin = _startTime.hour * 60 + _startTime.minute;
-    final endMin   = _endTime.hour * 60 + _endTime.minute;
+    final endMin = _endTime.hour * 60 + _endTime.minute;
     if (startMin >= endMin) {
       PetToast.error(context, '结束时间必须晚于开始时间');
       return;
     }
     setState(() => _apiSaving = true);
-    final result = await ref
-        .read(consultationRepositoryProvider)
-        .saveAutoAnalysisSetting(
-          account: _account,
-          deviceNo: widget.mac,
-          effectiveStartTime: _fmtTime(_startTime),
-          effectiveEndTime: _fmtTime(_endTime),
-          repeatWeekdays: _weekdays.toList()..sort(),
-          dailyAnalysisCount: _count,
-          enabled: true, // 每次保存默认开启
-        );
+    final result =
+        await ref.read(consultationRepositoryProvider).saveAutoAnalysisSetting(
+              account: _account,
+              deviceNo: widget.mac,
+              effectiveStartTime: _fmtTime(_startTime),
+              effectiveEndTime: _fmtTime(_endTime),
+              repeatWeekdays: _weekdays.toList()..sort(),
+              dailyAnalysisCount: _count,
+              enabled: true, // 每次保存默认开启
+            );
     if (!mounted) return;
     setState(() => _apiSaving = false);
     result.when(
@@ -208,7 +210,6 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
       failure: (e) => PetToast.error(context, e.message),
     );
   }
-
 
   // ── 媒体库加载 ────────────────────────────────────────────
   Future<void> _loadMedia({bool reset = false}) async {
@@ -392,10 +393,11 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
         const Divider(height: 1, indent: 20, endIndent: 20),
         // ── 保存按钟 ──
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          padding: EdgeInsets.fromLTRB(
+              16, 12, 16, 16 + MediaQuery.of(context).viewPadding.bottom),
           child: SizedBox(
             width: double.infinity,
-            height: 46,
+            height: 52,
             child: ElevatedButton(
               onPressed: _apiSaving ? null : _saveToServer,
               style: ElevatedButton.styleFrom(
@@ -426,7 +428,6 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
             ),
           ),
         ),
-
       ]),
     );
   }
@@ -662,6 +663,144 @@ class _CountPickerButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ── 朋友圈分享编辑弹窗 ─────────────────────────────────────────────
+class _TimelineShareSheet extends StatefulWidget {
+  final CaptureItem item;
+  final TextEditingController ctrl;
+  const _TimelineShareSheet({required this.item, required this.ctrl});
+
+  @override
+  State<_TimelineShareSheet> createState() => _TimelineShareSheetState();
+}
+
+class _TimelineShareSheetState extends State<_TimelineShareSheet> {
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final navBar = MediaQuery.of(context).viewPadding.bottom;
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + bottom + navBar),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          width: 36,
+          height: 4,
+          decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2)),
+        ),
+        const SizedBox(height: 16),
+        // 标题
+        Row(children: [
+          const Icon(Icons.wb_sunny_rounded,
+              color: Color(0xFF07C160), size: 20),
+          const SizedBox(width: 8),
+          Text('分享到朋友圈',
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.onSurface)),
+          const Spacer(),
+          // 标签提示
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFF07C160).withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                  color: const Color(0xFF07C160).withValues(alpha: 0.25)),
+            ),
+            child: const Text('#萌宠智伴#',
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF07C160))),
+          ),
+        ]),
+        const SizedBox(height: 14),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // 媒体预览
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: SizedBox(
+              width: 80,
+              height: 80,
+              child: (widget.item.coverUrl.isNotEmpty ||
+                      widget.item.resourceUrl.isNotEmpty)
+                  ? CachedNetworkImage(
+                      imageUrl: widget.item.coverUrl.isNotEmpty
+                          ? widget.item.coverUrl
+                          : widget.item.resourceUrl,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      color: Colors.grey.shade200,
+                      child: const Icon(Icons.photo,
+                          color: Colors.grey, size: 32)),
+            ),
+          ),
+          const SizedBox(width: 14),
+          // 文字输入
+          Expanded(
+            child: TextField(
+              controller: widget.ctrl,
+              maxLines: 3,
+              minLines: 3,
+              maxLength: 200,
+              autofocus: true,
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 15,
+                  color: AppColors.onSurface),
+              decoration: InputDecoration(
+                hintText: '说说宠物的萌照... #萌宠智伴#',
+                hintStyle: TextStyle(
+                    color: AppColors.onSurfaceVariant.withOpacity(0.5)),
+                filled: true,
+                fillColor: AppColors.surfaceContainerLow,
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.all(12),
+                counterText: '',
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF07C160),
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(48),
+              padding: EdgeInsets.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              elevation: 0,
+              textStyle: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  height: 1.1),
+            ),
+            child: const Text('分享到朋友圈', maxLines: 1),
+          ),
+        ),
+      ]),
     );
   }
 }
@@ -919,8 +1058,11 @@ class _CaptureDetailSheet extends ConsumerStatefulWidget {
 }
 
 class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
-  VideoPlayerController? _ctrl;
-  bool _videoReady = false;
+  // ── media_kit 播放器（支持 H.264 High Profile 软解码）
+  Player? _mkPlayer;
+  VideoController? _mkController;
+  bool _videoError = false;
+
   bool _downloading = false;
   bool _deleting = false;
   bool _sharingCommunity = false;
@@ -998,15 +1140,9 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
       context: ctx,
       backgroundColor: Colors.transparent,
       builder: (_) => _ShareSheet(
-        item: widget.item,
-        onCommunity: () {
-          Navigator.pop(ctx);
-          _shareToCommunity(ctx);
-        },
-        onWechat: () {
-          Navigator.pop(ctx);
-          _shareToWechat();
-        },
+        onCommunity: () => _shareToCommunity(ctx),
+        onWechat: _shareToWechat,
+        onTimeline: () => _showTimelineSheet(ctx),
       ),
     );
   }
@@ -1034,10 +1170,10 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
     try {
       if (widget.item.isVideo) {
         await ref.read(postRepositoryProvider).createPost(
-          content: captionText,
-          mediaType: MediaType.video,
-          videoUrl: widget.item.resourceUrl,
-        );
+              content: captionText,
+              mediaType: MediaType.video,
+              videoUrl: widget.item.resourceUrl,
+            );
       } else {
         await ref.read(postRepositoryProvider).createPost(
           content: captionText,
@@ -1056,28 +1192,64 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
   void _shareToWechat() {
     final url = widget.item.resourceUrl;
     if (url.isEmpty) return;
-    Share.share(
+    shareToWechat(
       'PetPogo AI抓拍 🐾\n$url',
       subject: 'PetPogo 宠物瞬间',
     );
+  }
+
+  void _shareToTimeline(String content) {
+    final url = widget.item.resourceUrl;
+    if (url.isEmpty) return;
+    shareToWechatTimeline(
+      '$content\n$url',
+      subject: 'PetPogo 宠物瞬间',
+    );
+  }
+
+  /// 先弹文本输入，确认后再分享到朋友圈
+  Future<void> _showTimelineSheet(BuildContext ctx) async {
+    final ctrl = TextEditingController(text: '🐾我家宝贝超可爱！#萌宠智伴# ');
+    final confirmed = await showModalBottomSheet<bool>(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _TimelineShareSheet(
+        item: widget.item,
+        ctrl: ctrl,
+      ),
+    );
+    final text = ctrl.text.trim();
+    ctrl.dispose();
+    if (confirmed != true || !mounted) return;
+    _shareToTimeline(text.isEmpty ? '#萌宠智伴#' : text);
   }
 
   @override
   void initState() {
     super.initState();
     if (widget.item.isVideo && widget.item.resourceUrl.isNotEmpty) {
-      _ctrl =
-          VideoPlayerController.networkUrl(Uri.parse(widget.item.resourceUrl))
-            ..initialize().then((_) {
-              if (mounted) setState(() => _videoReady = true);
-              _ctrl?.play();
-            });
+      _mkPlayer = Player();
+      _mkController = VideoController(
+        _mkPlayer!,
+        configuration: const VideoControllerConfiguration(
+          enableHardwareAcceleration: false, // 兼容模拟器，真机同样有效
+        ),
+      );
+
+      // 监听播放器错误
+      _mkPlayer!.stream.error.listen((err) {
+        debugPrint('[Video] media_kit 播放失败: $err');
+        if (mounted) setState(() => _videoError = true);
+      });
+      // 开始播放（不需要手动调用 initialize）
+      _mkPlayer!.open(Media(widget.item.resourceUrl));
     }
   }
 
   @override
   void dispose() {
-    _ctrl?.dispose();
+    _mkPlayer?.dispose();
     super.dispose();
   }
 
@@ -1096,7 +1268,8 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
           // 拖拽指示条
           const SizedBox(height: 8),
           Container(
-            width: 40, height: 4,
+            width: 40,
+            height: 4,
             decoration: BoxDecoration(
               color: Colors.grey.shade300,
               borderRadius: BorderRadius.circular(2),
@@ -1115,13 +1288,22 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _InfoRow(icon: '📅', label: '拍摄时间', value: _fmtFull(widget.item.createdAt)),
+                      _InfoRow(
+                          icon: '📅',
+                          label: '拍摄时间',
+                          value: _fmtFull(widget.item.createdAt)),
                       const SizedBox(height: 10),
-                      _InfoRow(icon: '📍', label: '触发方式', value: widget.item.eventTypeLabel),
+                      _InfoRow(
+                          icon: '📍',
+                          label: '触发方式',
+                          value: widget.item.eventTypeLabel),
                       // AI 情绪卡片
-                      if (widget.item.aiResult != null && widget.item.aiResult!.emotions.isNotEmpty) ...[
+                      if (widget.item.aiResult != null &&
+                          widget.item.aiResult!.emotions.isNotEmpty) ...[
                         const SizedBox(height: 20),
-                        AiEmotionCard(result: widget.item.aiResult!, time: widget.item.createdAt),
+                        AiEmotionCard(
+                            result: widget.item.aiResult!,
+                            time: widget.item.createdAt),
                       ],
                       const SizedBox(height: 20),
                       // 操作按钮：下载 + 分享 + 删除
@@ -1137,9 +1319,12 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
                                   backgroundColor: AppColors.primary,
                                   foregroundColor: Colors.white,
                                   minimumSize: const Size.fromHeight(46),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
                                   elevation: 0,
                                   textStyle: TextStyle(
                                     fontFamily: AppFonts.primary,
@@ -1149,57 +1334,100 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
                                   ),
                                 ),
                                 icon: _downloading
-                                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                    : const Icon(Icons.download_rounded, size: 18),
-                                label: Text(_downloading ? '保存中...' : '保存到相册', maxLines: 1),
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white))
+                                    : const Icon(Icons.download_rounded,
+                                        size: 18),
+                                label: Text(_downloading ? '保存中...' : '保存到相册',
+                                    maxLines: 1),
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // ── 分享按钮 ──
-                          Builder(builder: (ctx) => SizedBox(
-                            width: 46, height: 46,
-                            child: ElevatedButton(
-                              onPressed: _sharingCommunity ? null : () => _showShareSheet(ctx),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFEEF2FF),
-                                foregroundColor: const Color(0xFF5869DB),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                elevation: 0,
-                                padding: EdgeInsets.zero,
-                              ),
-                              child: _sharingCommunity
-                                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF5869DB)))
-                                  : const Icon(Icons.share_rounded, size: 20),
-                            ),
-                          )),
+                          // ── 分享 ──
+                          Builder(
+                              builder: (ctx) => SizedBox(
+                                    width: 46,
+                                    height: 46,
+                                    child: ElevatedButton(
+                                      onPressed: _sharingCommunity
+                                          ? null
+                                          : () => _showShareSheet(ctx),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            const Color(0xFFEEF2FF),
+                                        foregroundColor:
+                                            const Color(0xFF5869DB),
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12)),
+                                        elevation: 0,
+                                        padding: EdgeInsets.zero,
+                                      ),
+                                      child: _sharingCommunity
+                                          ? const SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color: Color(0xFF5869DB)))
+                                          : const Icon(Icons.share_rounded,
+                                              size: 20),
+                                    ),
+                                  )),
                           const SizedBox(width: 8),
                         ],
                         // 删除
                         SizedBox(
-                          width: widget.item.resourceUrl.isNotEmpty ? 46 : double.infinity,
+                          width: widget.item.resourceUrl.isNotEmpty
+                              ? 46
+                              : double.infinity,
                           height: 46,
-                          child: Builder(builder: (ctx) => ElevatedButton(
-                            onPressed: _deleting ? null : () => _delete(ctx),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red.shade50,
-                              foregroundColor: Colors.red.shade700,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              elevation: 0,
-                              padding: EdgeInsets.zero,
-                            ),
-                            child: _deleting
-                                ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red.shade700))
-                                : widget.item.resourceUrl.isNotEmpty
-                                    ? const Icon(Icons.delete_outline_rounded, size: 20)
-                                    : Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          const Icon(Icons.delete_outline_rounded, size: 18),
-                                          const SizedBox(width: 6),
-                                          const Text('删除记录', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                                        ]),
-                          )),
+                          child: Builder(
+                              builder: (ctx) => ElevatedButton(
+                                    onPressed:
+                                        _deleting ? null : () => _delete(ctx),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red.shade50,
+                                      foregroundColor: Colors.red.shade700,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12)),
+                                      elevation: 0,
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                    child: _deleting
+                                        ? SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.red.shade700))
+                                        : widget.item.resourceUrl.isNotEmpty
+                                            ? const Icon(
+                                                Icons.delete_outline_rounded,
+                                                size: 20)
+                                            : Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                    const Icon(
+                                                        Icons
+                                                            .delete_outline_rounded,
+                                                        size: 18),
+                                                    const SizedBox(width: 6),
+                                                    const Text('删除记录',
+                                                        style: TextStyle(
+                                                            fontSize: 14,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w700)),
+                                                  ]),
+                                  )),
                         ),
                       ]),
                       const SizedBox(height: 8),
@@ -1220,32 +1448,25 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
         aspectRatio: 16 / 9,
         child: Container(
           color: Colors.black,
-          child: _videoReady
-              ? GestureDetector(
-                  onTap: () {
-                    _ctrl!.value.isPlaying ? _ctrl!.pause() : _ctrl!.play();
-                    setState(() {});
-                  },
-                  child: Stack(children: [
-                    AspectRatio(
-                      aspectRatio: _ctrl!.value.aspectRatio,
-                      child: VideoPlayer(_ctrl!),
-                    ),
-                    if (!_ctrl!.value.isPlaying)
-                      const Center(child: Icon(Icons.play_circle_fill_rounded, size: 60, color: Colors.white70)),
-                    Positioned(
-                      bottom: 0, left: 0, right: 0,
-                      child: VideoProgressIndicator(_ctrl!,
-                          allowScrubbing: true,
-                          colors: const VideoProgressColors(
-                            playedColor: Color(0xFF43E97B),
-                            bufferedColor: Colors.white30,
-                            backgroundColor: Colors.white10,
-                          )),
-                    ),
-                  ]),
-                )
-              : const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+          child: _videoError
+              ? const Center(child: Column(
+                  mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 40),
+                    SizedBox(height: 8),
+                    Text('视频播放失败',
+                        style: TextStyle(color: Colors.white60, fontSize: 12)),
+                    SizedBox(height: 4),
+                    Text('可保存到相册查看',
+                        style: TextStyle(color: Colors.white38, fontSize: 11)),
+                  ]))
+              : _mkController != null
+                  ? Video(
+                      controller: _mkController!,
+                      controls: AdaptiveVideoControls,
+                    )
+                  : const Center(
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white)),
         ),
       );
     }
@@ -1257,7 +1478,8 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
         fit: BoxFit.cover,
         errorWidget: (_, __, ___) => Container(
             color: Colors.grey.shade200,
-            child: const Icon(Icons.broken_image_outlined, size: 48, color: Colors.grey)),
+            child: const Icon(Icons.broken_image_outlined,
+                size: 48, color: Colors.grey)),
       ),
     );
   }
@@ -1275,68 +1497,135 @@ class _InfoRow extends StatelessWidget {
   final String icon;
   final String label;
   final String value;
-  const _InfoRow({required this.icon, required this.label, required this.value});
+  const _InfoRow(
+      {required this.icon, required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Row(children: [
       Text(icon, style: const TextStyle(fontSize: 16)),
       const SizedBox(width: 8),
-      Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14, color: Colors.grey.shade600)),
+      Text(label,
+          style: TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 14,
+              color: Colors.grey.shade600)),
       const Spacer(),
-      Text(value, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14, fontWeight: FontWeight.w600)),
+      Text(value,
+          style: TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 14,
+              fontWeight: FontWeight.w600)),
     ]);
   }
 }
 
-// ── 分享操作底部弹窗 ────────────────────────────────────────────────
-class _ShareSheet extends StatelessWidget {
-  final CaptureItem item;
-  final VoidCallback onCommunity;
-  final VoidCallback onWechat;
-  const _ShareSheet({required this.item, required this.onCommunity, required this.onWechat});
+// ── 微信图标按钮（46×46）────────────────────────────────
+class _WcIconBtn extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  const _WcIconBtn(
+      {required this.icon, required this.tooltip, required this.onTap});
+
+  static const Color _green = Color(0xFF07C160);
 
   @override
   Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: _green.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _green.withValues(alpha: 0.25), width: 1),
+          ),
+          child: Icon(icon, color: _green, size: 20),
+        ),
+      ),
+    );
+  }
+}
+
+// ── 分享操作底部弹窗（3 选项）────────────────────────────
+class _ShareSheet extends StatelessWidget {
+  final VoidCallback onCommunity;
+  final VoidCallback onWechat;
+  final VoidCallback onTimeline;
+  const _ShareSheet({
+    required this.onCommunity,
+    required this.onWechat,
+    required this.onTimeline,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // 直接读入局部变量，不通过InheritedWidget依赖链注册依赖
+    final bottomPad = MediaQuery.of(context).viewPadding.bottom;
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-      child: SafeArea(
-        top: false,
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 36, height: 4,
-            decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+      padding: EdgeInsets.fromLTRB(24, 12, 24, 20 + bottomPad),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        // 拖拽条
+        Container(
+          width: 36,
+          height: 4,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade300,
+            borderRadius: BorderRadius.circular(99),
           ),
-          const SizedBox(height: 20),
-          Text('分享到',
-            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-          const SizedBox(height: 28),
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        ),
+        const SizedBox(height: 18),
+        Text('分享到',
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.onSurface)),
+        const SizedBox(height: 20),
+        // 3 个圆形图标选项 —— onTap 先用 sheet 自己的 context 关闭
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
             _ShareOption(
               icon: Icons.groups_rounded,
               label: '社区动态',
-              color: AppColors.primary,
-              onTap: onCommunity,
+              color: const Color(0xFFFF6B35),
+              onTap: () {
+                Navigator.pop(context);
+                onCommunity();
+              },
             ),
-            const SizedBox(width: 40),
             _ShareOption(
-              icon: Icons.chat_rounded,
+              icon: Icons.chat_bubble_rounded,
               label: '微信好友',
               color: const Color(0xFF07C160),
-              onTap: onWechat,
+              onTap: () {
+                Navigator.pop(context);
+                onWechat();
+              },
             ),
-          ]),
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('取消', style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15, color: AppColors.onSurfaceVariant)),
-          ),
-        ]),
-      ),
+            _ShareOption(
+              icon: Icons.wb_sunny_rounded,
+              label: '朋友圈',
+              color: const Color(0xFF07C160),
+              onTap: () {
+                Navigator.pop(context);
+                onTimeline();
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+      ]),
     );
   }
 }
@@ -1346,7 +1635,11 @@ class _ShareOption extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
-  const _ShareOption({required this.icon, required this.label, required this.color, required this.onTap});
+  const _ShareOption(
+      {required this.icon,
+      required this.label,
+      required this.color,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1354,17 +1647,70 @@ class _ShareOption extends StatelessWidget {
       onTap: onTap,
       child: Column(children: [
         Container(
-          width: 68, height: 68,
+          width: 60,
+          height: 60,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color.withOpacity(0.2), width: 1.5),
+            color: color.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+            border:
+                Border.all(color: color.withValues(alpha: 0.20), width: 1.5),
           ),
-          child: Icon(icon, color: color, size: 32),
+          child: Icon(icon, color: color, size: 28),
         ),
         const SizedBox(height: 8),
-        Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.onSurface)),
+        Text(label,
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurface)),
       ]),
+    );
+  }
+}
+
+class _SharePill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final LinearGradient gradient;
+  final VoidCallback onTap;
+  const _SharePill(
+      {required this.icon,
+      required this.label,
+      required this.gradient,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 54,
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: gradient.colors.first.withValues(alpha: 0.35),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 6),
+            Text(label,
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white)),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1393,8 +1739,11 @@ class _CommunityShareSheetState extends State<_CommunityShareSheet> {
         top: false,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
-            width: 36, height: 4,
-            decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2)),
           ),
           const SizedBox(height: 16),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1402,13 +1751,20 @@ class _CommunityShareSheetState extends State<_CommunityShareSheet> {
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: SizedBox(
-                width: 80, height: 80,
-                child: (widget.item.coverUrl.isNotEmpty || widget.item.resourceUrl.isNotEmpty)
+                width: 80,
+                height: 80,
+                child: (widget.item.coverUrl.isNotEmpty ||
+                        widget.item.resourceUrl.isNotEmpty)
                     ? CachedNetworkImage(
-                        imageUrl: widget.item.coverUrl.isNotEmpty ? widget.item.coverUrl : widget.item.resourceUrl,
+                        imageUrl: widget.item.coverUrl.isNotEmpty
+                            ? widget.item.coverUrl
+                            : widget.item.resourceUrl,
                         fit: BoxFit.cover,
                       )
-                    : Container(color: Colors.grey.shade200, child: const Icon(Icons.photo, color: Colors.grey, size: 32)),
+                    : Container(
+                        color: Colors.grey.shade200,
+                        child: const Icon(Icons.photo,
+                            color: Colors.grey, size: 32)),
               ),
             ),
             const SizedBox(width: 14),
@@ -1420,13 +1776,19 @@ class _CommunityShareSheetState extends State<_CommunityShareSheet> {
                 minLines: 3,
                 maxLength: 200,
                 autofocus: true,
-                style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15, color: AppColors.onSurface),
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 15,
+                    color: AppColors.onSurface),
                 decoration: InputDecoration(
                   hintText: '分享宠物的精彩瞬间... 🐾',
-                  hintStyle: TextStyle(color: AppColors.onSurfaceVariant.withOpacity(0.5)),
+                  hintStyle: TextStyle(
+                      color: AppColors.onSurfaceVariant.withOpacity(0.5)),
                   filled: true,
                   fillColor: AppColors.surfaceContainerLow,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
                   contentPadding: const EdgeInsets.all(12),
                   counterText: '',
                 ),
@@ -1439,13 +1801,19 @@ class _CommunityShareSheetState extends State<_CommunityShareSheet> {
             width: double.infinity,
             height: 48,
             child: ElevatedButton(
-              onPressed: widget.captionCtrl.text.trim().isNotEmpty ? () => Navigator.pop(context, true) : null,
+              onPressed: widget.captionCtrl.text.trim().isNotEmpty
+                  ? () => Navigator.pop(context, true)
+                  : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
                 elevation: 0,
-                textStyle: TextStyle(fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w700),
+                textStyle: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700),
               ),
               child: const Text('发布到社区'),
             ),

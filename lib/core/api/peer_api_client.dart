@@ -71,22 +71,32 @@ class PeerApiClient {
 
   bool get isReady => _baseUrl.isNotEmpty && _token.isNotEmpty;
 
-  /// POST to iPet gateway, returns parsed [PeerResponse]
+  /// POST to iPet gateway (form-urlencoded), returns parsed [PeerResponse]
   Future<PeerResponse<T>> post<T>(
     String path, {
     Map<String, dynamic>? params,
     T Function(dynamic)? fromInfo,
+    bool useJson = false,   // true → application/json body
   }) async {
     if (!isReady) {
       throw Exception('[PeerApi] 设备接口未就绪，请检查网络或重新登录');
     }
-    final body = params != null
-        ? params.map((k, v) => MapEntry(k, v?.toString() ?? ''))
-        : <String, String>{};
+
+    dynamic body;
+    Options? options;
+    if (useJson) {
+      body = params ?? {};
+      options = Options(headers: {'Content-Type': 'application/json'});
+    } else {
+      body = params != null
+          ? Uri(queryParameters: params.map((k, v) => MapEntry(k, v?.toString() ?? ''))).query
+          : '';
+    }
 
     final res = await _dio.post<Map<String, dynamic>>(
       path,
-      data: Uri(queryParameters: body).query,
+      data: body,
+      options: options,
     );
     final json = res.data!;
     final pr = PeerResponse<T>.fromJson(json, fromInfo);
@@ -96,6 +106,27 @@ class PeerApiClient {
     }
     return pr;
   }
+
+  // ── 声音控制 ─────────────────────────────────────────────
+
+  /// 播放音频到设备  POST /pet/sound/play  (JSON body)
+  /// [mac]    设备 MAC 地址
+  /// [url]    音频 URL (MP3/AAC/FLAC/WAV)
+  /// [volume] 0-21，默认 15
+  Future<PeerResponse<void>> soundPlay({
+    required String mac,
+    required String url,
+    int volume = 15,
+  }) =>
+      post<void>('/pet/sound/play', useJson: true, params: {
+        'mac': mac,
+        'url': url,
+        'volume': volume,
+      });
+
+  /// 停止设备播放  POST /pet/sound/stop  (JSON body)
+  Future<PeerResponse<void>> soundStop({required String mac}) =>
+      post<void>('/pet/sound/stop', useJson: true, params: {'mac': mac});
 }
 
 // ── 日志拦截器 ────────────────────────────────────────────
