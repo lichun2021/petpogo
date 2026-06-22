@@ -14,22 +14,22 @@ import 'package:gal/gal.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:video_player/video_player.dart';          // 保留，其他页面使用
-import 'package:media_kit/media_kit.dart';                // 新增
-import 'package:media_kit_video/media_kit_video.dart';    // 新增
+import 'package:media_kit/media_kit.dart'; // 新增
+import 'package:media_kit_video/media_kit_video.dart'; // 新增
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:share_plus/share_plus.dart';
 import '../../shared/utils/wechat_share.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_fonts.dart';
 import '../../shared/widgets/pet_toast.dart';
 import '../community/data/models/post_model.dart';
 import '../community/data/post_repository.dart';
-import '../consultation/data/models/auto_analysis_models.dart';
 import '../consultation/data/repository/consultation_repository.dart';
+import '../share/data/repository/share_repository.dart';
 import 'data/models/capture_model.dart';
 import 'data/repository/capture_repository.dart';
 import 'widgets/ai_emotion_card.dart';
+import 'widgets/date_filter_bar.dart';
+import 'widgets/date_picker_sheet.dart';
 
 class RobotAiCapturePage extends ConsumerStatefulWidget {
   final String mac;
@@ -59,11 +59,27 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
   String _account = ''; // 用户账号
 
   // ── 媒体库状态 ────────────────────────────────────────────
-  final List<CaptureItem> _items = [];
+  // 全量记录（首次进入即拉取全部，供按日期分组/筛选）
+  final List<CaptureItem> _allItems = [];
+  // 有记录的日期（降序，日历 / 日期条仅这些天可选）
+  List<DateTime> _availableDates = [];
+  // 当前选中日期；null = 还没加载完成或无记录
+  DateTime? _selectedDate;
   bool _loading = false;
-  bool _hasMore = true;
-  int _page = 1;
   final ScrollController _scroll = ScrollController();
+
+  /// 当前选中日期下的记录（按时间倒序）
+  List<CaptureItem> get _visibleItems {
+    if (_selectedDate == null) return const [];
+    final s = _selectedDate!;
+    return _allItems
+        .where((i) =>
+            i.createdAt.year == s.year &&
+            i.createdAt.month == s.month &&
+            i.createdAt.day == s.day)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
 
   String get _prefKey => 'robot_ai_capture_${widget.mac}';
 
@@ -72,12 +88,7 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
     super.initState();
     _loadPrefs();
     _loadServerSettings(); // 优先从服务端读取配置
-    _loadMedia(reset: true);
-    _scroll.addListener(() {
-      if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 200) {
-        _loadMore();
-      }
-    });
+    _loadMedia();
   }
 
   @override
@@ -211,24 +222,43 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
     );
   }
 
-  // ── 媒体库加载 ────────────────────────────────────────────
-  Future<void> _loadMedia({bool reset = false}) async {
+  // ── 媒体库全量加载（用于按日期分组）────────────────────────
+  Future<void> _loadMedia() async {
     if (_loading) return;
-    if (reset) {
-      _page = 1;
-      _hasMore = true;
-      _items.clear();
-    }
     setState(() => _loading = true);
     try {
-      final result = await ref.read(captureRepositoryProvider).fetchCaptureList(
-            deviceId: widget.mac,
-            page: _page,
-          );
+      final repo = ref.read(captureRepositoryProvider);
+      final all = <CaptureItem>[];
+      var page = 1;
+      const pageSize = 100;
+      // 循环分页拉取，直到没有更多
+      while (true) {
+        final result = await repo.fetchCaptureList(
+          deviceId: widget.mac,
+          page: page,
+          pageSize: pageSize,
+        );
+        all.addAll(result.list);
+        if (!result.hasMore) break;
+        page++;
+      }
+      if (!mounted) return;
+      // 按时间倒序排序，便于「最新一天」计算
+      all.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      final dates = _computeAvailableDates(all);
       setState(() {
-        _items.addAll(result.list);
-        _hasMore = result.hasMore;
-        _page++;
+        _allItems
+          ..clear()
+          ..addAll(all);
+        _availableDates = dates;
+        // 默认选中最新有记录的一天；若当前选中天仍存在则保留
+        if (_selectedDate == null ||
+            !dates.any((d) =>
+                d.year == _selectedDate!.year &&
+                d.month == _selectedDate!.month &&
+                d.day == _selectedDate!.day)) {
+          _selectedDate = dates.isNotEmpty ? dates.first : null;
+        }
       });
     } catch (_) {
       if (mounted) PetToast.error(context, '媒体库加载失败');
@@ -237,9 +267,17 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
     }
   }
 
-  Future<void> _loadMore() async {
-    if (!_hasMore || _loading) return;
-    await _loadMedia();
+  /// 从记录列表提取有记录的天（DateTime(y,m,d)，降序去重）
+  List<DateTime> _computeAvailableDates(List<CaptureItem> items) {
+    final set = <String>{};
+    final list = <DateTime>[];
+    for (final i in items) {
+      final d = DateTime(i.createdAt.year, i.createdAt.month, i.createdAt.day);
+      final key = '${d.year}-${d.month}-${d.day}';
+      if (set.add(key)) list.add(d);
+    }
+    list.sort((a, b) => b.compareTo(a));
+    return list;
   }
 
   // ── 选择时间 ─────────────────────────────────────────────
@@ -249,7 +287,7 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
       initialTime: isStart ? _startTime : _endTime,
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: ColorScheme.light(primary: const Color(0xFF00BFA5)),
+          colorScheme: ColorScheme.light(primary: AppColors.primary),
         ),
         child: child!,
       ),
@@ -269,22 +307,16 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
         Expanded(
           child: RefreshIndicator(
             color: AppColors.primary,
-            onRefresh: () => _loadMedia(reset: true),
+            onRefresh: () => _loadMedia(),
             child: CustomScrollView(
               controller: _scroll,
               slivers: [
                 SliverToBoxAdapter(child: _buildConfigCard()),
                 SliverToBoxAdapter(child: _buildMediaHeader()),
+                if (_availableDates.isNotEmpty)
+                  SliverToBoxAdapter(child: _buildDateFilterBar()),
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
                 _buildMediaGrid(),
-                if (_hasMore)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Center(
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: AppColors.primary)),
-                    ),
-                  ),
                 const SliverToBoxAdapter(child: SizedBox(height: 40)),
               ],
             ),
@@ -465,18 +497,18 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
-            width: 28,
-            height: 28,
+            width: 26,
+            height: 26,
             margin: const EdgeInsets.only(left: 4),
             decoration: BoxDecoration(
-              color: sel ? const Color(0xFF43E97B) : Colors.grey.shade100,
+              color: sel ? AppColors.primary : Colors.grey.shade100,
               shape: BoxShape.circle,
             ),
             child: Center(
               child: Text(labels[i],
                   style: TextStyle(
                     fontFamily: AppFonts.primary,
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
                     color: sel ? Colors.white : Colors.grey.shade600,
                   )),
@@ -520,9 +552,28 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
   }
 
   // ── 媒体库标题 ────────────────────────────────────────────
+  Widget _buildDateFilterBar() {
+    return DateFilterBar(
+      availableDates: _availableDates,
+      selectedDate: _selectedDate,
+      onChanged: (d) => setState(() => _selectedDate = d),
+    );
+  }
+
+  Future<void> _openCalendar() async {
+    final picked = await showRecordDatePickerSheet(
+      context: context,
+      availableDates: _availableDates,
+      initialDate: _selectedDate,
+    );
+    if (picked != null && mounted) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
   Widget _buildMediaHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+      padding: const EdgeInsets.fromLTRB(20, 24, 12, 8),
       child: Row(children: [
         Text('抓拍记录',
             style: TextStyle(
@@ -537,7 +588,7 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
             color: AppColors.primary.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Text('${_items.length}',
+          child: Text('${_visibleItems.length}',
               style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontSize: 12,
@@ -545,13 +596,15 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
                 color: AppColors.primary,
               )),
         ),
+        const Spacer(),
+        CalendarIconButton(onTap: _openCalendar),
       ]),
     );
   }
 
   // ── 媒体网格 ─────────────────────────────────────────────
   Widget _buildMediaGrid() {
-    if (_loading && _items.isEmpty) {
+    if (_loading && _visibleItems.isEmpty) {
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.all(40),
@@ -561,7 +614,7 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
         ),
       );
     }
-    if (_items.isEmpty) {
+    if (_visibleItems.isEmpty) {
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 48),
@@ -588,13 +641,14 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
       sliver: SliverGrid(
         delegate: SliverChildBuilderDelegate(
           (context, i) {
-            if (i >= _items.length) return null;
+            if (i >= _visibleItems.length) return null;
+            final item = _visibleItems[i];
             return _CaptureCell(
-              item: _items[i],
-              onTap: () => _openDetail(_items[i]),
+              item: item,
+              onTap: () => _openDetail(item),
             );
           },
-          childCount: _items.length,
+          childCount: _visibleItems.length,
         ),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
@@ -614,7 +668,19 @@ class _RobotAiCapturePageState extends ConsumerState<RobotAiCapturePage> {
       builder: (_) => _CaptureDetailSheet(
         item: item,
         onDeleted: () {
-          setState(() => _items.removeWhere((e) => e.id == item.id));
+          setState(() {
+            _allItems.removeWhere((e) => e.id == item.id);
+            _availableDates = _computeAvailableDates(_allItems);
+            // 若选中天已无记录，自动切换到最新有记录天
+            if (_selectedDate != null &&
+                !_availableDates.any((d) =>
+                    d.year == _selectedDate!.year &&
+                    d.month == _selectedDate!.month &&
+                    d.day == _selectedDate!.day)) {
+              _selectedDate =
+                  _availableDates.isNotEmpty ? _availableDates.first : null;
+            }
+          });
         },
       ),
     );
@@ -1189,21 +1255,66 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
     }
   }
 
-  void _shareToWechat() {
-    final url = widget.item.resourceUrl;
-    if (url.isEmpty) return;
-    shareToWechat(
-      'PetPogo AI抓拍 🐾\n$url',
-      subject: 'PetPogo 宠物瞬间',
+  Future<void> _shareToWechat() {
+    return _shareCapture(WechatShareScene.session);
+  }
+
+  Future<void> _shareToTimeline(String content) {
+    return _shareCapture(
+      WechatShareScene.timeline,
+      timelineText: content,
     );
   }
 
-  void _shareToTimeline(String content) {
+  Future<void> _shareCapture(
+    WechatShareScene scene, {
+    String? timelineText,
+  }) async {
     final url = widget.item.resourceUrl;
     if (url.isEmpty) return;
-    shareToWechatTimeline(
-      '$content\n$url',
-      subject: 'PetPogo 宠物瞬间',
+
+    final title = widget.item.isVideo ? '分享一段宠物视频' : '分享一张宠物抓拍';
+    final description = (timelineText?.trim().isNotEmpty == true)
+        ? timelineText!.trim()
+        : '来看看我家宠物的可爱瞬间。';
+    final imageUrl = widget.item.coverUrl.isNotEmpty
+        ? widget.item.coverUrl
+        : (widget.item.isVideo ? '' : widget.item.resourceUrl);
+
+    final result = await ref.read(shareRepositoryProvider).createShare(
+      type: 'capture',
+      targetId: widget.item.id.toString(),
+      title: title,
+      description: description,
+      imageUrl: imageUrl,
+      payload: {
+        'deviceId': widget.item.deviceId,
+        'eventType': widget.item.eventType,
+        'resourceUrl': widget.item.resourceUrl,
+        'coverUrl': widget.item.coverUrl,
+        'isVideo': widget.item.isVideo,
+        'createdAt': widget.item.createdAt.toIso8601String(),
+      },
+    );
+
+    await result.when<Future<void>>(
+      success: (share) async {
+        if (share.shareUrl.isEmpty) {
+          if (mounted) PetToast.error(context, '分享链接生成失败');
+          return;
+        }
+        await shareWechatWebPage(
+          url: share.shareUrl,
+          title: share.title.isNotEmpty ? share.title : title,
+          description:
+              share.description.isNotEmpty ? share.description : description,
+          scene: scene,
+        );
+        if (mounted) PetToast.success(context, '分享已打开');
+      },
+      failure: (error) async {
+        if (mounted) PetToast.error(context, error.userMessage);
+      },
     );
   }
 
@@ -1222,7 +1333,7 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
     final text = ctrl.text.trim();
     ctrl.dispose();
     if (confirmed != true || !mounted) return;
-    _shareToTimeline(text.isEmpty ? '#萌宠智伴#' : text);
+    await _shareToTimeline(text.isEmpty ? '#萌宠智伴#' : text);
   }
 
   @override
@@ -1449,16 +1560,17 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
         child: Container(
           color: Colors.black,
           child: _videoError
-              ? const Center(child: Column(
-                  mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 40),
-                    SizedBox(height: 8),
-                    Text('视频播放失败',
-                        style: TextStyle(color: Colors.white60, fontSize: 12)),
-                    SizedBox(height: 4),
-                    Text('可保存到相册查看',
-                        style: TextStyle(color: Colors.white38, fontSize: 11)),
-                  ]))
+              ? const Center(
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.videocam_off_rounded,
+                      color: Colors.white54, size: 40),
+                  SizedBox(height: 8),
+                  Text('视频播放失败',
+                      style: TextStyle(color: Colors.white60, fontSize: 12)),
+                  SizedBox(height: 4),
+                  Text('可保存到相册查看',
+                      style: TextStyle(color: Colors.white38, fontSize: 11)),
+                ]))
               : _mkController != null
                   ? Video(
                       controller: _mkController!,

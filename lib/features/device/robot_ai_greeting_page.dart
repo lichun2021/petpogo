@@ -18,12 +18,11 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
-import 'package:share_plus/share_plus.dart';
 import '../../shared/utils/wechat_share.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
-import 'package:video_player/video_player.dart';
-import 'package:media_kit/media_kit.dart' hide PlayerState;  // hide避免与just_audio.PlayerState冲突
+import 'package:media_kit/media_kit.dart'
+    hide PlayerState; // hide避免与just_audio.PlayerState冲突
 import 'package:media_kit_video/media_kit_video.dart';
 
 import '../../shared/theme/app_colors.dart';
@@ -32,9 +31,12 @@ import '../../features/consultation/data/repository/consultation_repository.dart
 
 import '../../shared/utils/oss_uploader.dart';
 import '../../shared/widgets/pet_toast.dart';
+import '../share/data/repository/share_repository.dart';
 import 'data/models/capture_model.dart';
 import 'data/repository/capture_repository.dart';
 import 'widgets/ai_emotion_card.dart';
+import 'widgets/date_filter_bar.dart';
+import 'widgets/date_picker_sheet.dart';
 
 String _soundDisplayName(SoundPreset sound) =>
     sound.isUserCustom ? '自录音' : sound.name;
@@ -107,11 +109,27 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
   int _count = 3; // 时间段内触发次数
 
   // ── 媒体库 ───────────────────────────────────────────────
-  final List<GreetingItem> _items = [];
+  // 全量记录（首次进入即拉取全部，供按日期分组/筛选）
+  final List<GreetingItem> _allItems = [];
+  // 有记录的日期（降序，日历 / 日期条仅这些天可选）
+  List<DateTime> _availableDates = [];
+  // 当前选中日期；null = 还没加载完成或无记录
+  DateTime? _selectedDate;
   bool _loading = false;
-  bool _hasMore = true;
-  int _page = 1;
   final ScrollController _scroll = ScrollController();
+
+  /// 当前选中日期下的记录（按时间倒序）
+  List<GreetingItem> get _visibleItems {
+    if (_selectedDate == null) return const [];
+    final s = _selectedDate!;
+    return _allItems
+        .where((i) =>
+            i.createdAt.year == s.year &&
+            i.createdAt.month == s.month &&
+            i.createdAt.day == s.day)
+        .toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
 
   // ── 服务端状态 ───────────────────────────────────────────
   String _account = '';
@@ -130,12 +148,7 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
     _loadAccount();
     _loadPrefs();
     _loadSounds(); // 进页面并行拉一次猫 + 狗，后续切换只读缓存
-    _loadMedia(reset: true);
-    _scroll.addListener(() {
-      if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 200) {
-        _loadMore();
-      }
-    });
+    _loadMedia();
   }
 
   @override
@@ -289,24 +302,43 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
     }
   }
 
-  // ── 加载媒体库 ────────────────────────────────────────────
-  Future<void> _loadMedia({bool reset = false}) async {
+  // ── 加载媒体库（全量拉取，用于按日期分组/筛选）─────────────
+  Future<void> _loadMedia() async {
     if (_loading) return;
-    if (reset) {
-      _page = 1;
-      _hasMore = true;
-      _items.clear();
-    }
     setState(() => _loading = true);
     try {
-      final res = await ref.read(captureRepositoryProvider).fetchGreetingList(
-            deviceId: widget.mac,
-            page: _page,
-          );
+      final repo = ref.read(captureRepositoryProvider);
+      final all = <GreetingItem>[];
+      var page = 1;
+      const pageSize = 100;
+      // 循环分页拉取，直到没有更多
+      while (true) {
+        final res = await repo.fetchGreetingList(
+          deviceId: widget.mac,
+          page: page,
+          pageSize: pageSize,
+        );
+        all.addAll(res.list);
+        if (!res.hasMore) break;
+        page++;
+      }
+      if (!mounted) return;
+      // 按时间倒序排序，便于「最新一天」计算
+      all.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      final dates = _computeAvailableDates(all);
       setState(() {
-        _items.addAll(res.list);
-        _hasMore = res.hasMore;
-        _page++;
+        _allItems
+          ..clear()
+          ..addAll(all);
+        _availableDates = dates;
+        // 默认选中最新有记录的一天；若当前选中天仍存在则保留
+        if (_selectedDate == null ||
+            !dates.any((d) =>
+                d.year == _selectedDate!.year &&
+                d.month == _selectedDate!.month &&
+                d.day == _selectedDate!.day)) {
+          _selectedDate = dates.isNotEmpty ? dates.first : null;
+        }
       });
     } catch (_) {
       if (mounted) PetToast.error(context, '记录加载失败');
@@ -315,9 +347,17 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
     }
   }
 
-  Future<void> _loadMore() async {
-    if (!_hasMore || _loading) return;
-    await _loadMedia();
+  /// 从记录列表提取有记录的天（DateTime(y,m,d)，降序去重）
+  List<DateTime> _computeAvailableDates(List<GreetingItem> items) {
+    final set = <String>{};
+    final list = <DateTime>[];
+    for (final i in items) {
+      final d = DateTime(i.createdAt.year, i.createdAt.month, i.createdAt.day);
+      final key = '${d.year}-${d.month}-${d.day}';
+      if (set.add(key)) list.add(d);
+    }
+    list.sort((a, b) => b.compareTo(a));
+    return list;
   }
 
   // ── 保存配置（本地）────────────────────────────────────────
@@ -498,7 +538,7 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
             top: false,
             child: RefreshIndicator(
               color: AppColors.primary,
-              onRefresh: () => _loadMedia(reset: true),
+              onRefresh: () => _loadMedia(),
               child: CustomScrollView(
                 controller: _scroll,
                 slivers: [
@@ -506,16 +546,12 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
                   SliverToBoxAdapter(child: _buildConfigCard()),
                   // ── 媒体库标题 ──
                   SliverToBoxAdapter(child: _buildMediaHeader()),
+                  // ── 日期筛选条 ──
+                  if (_availableDates.isNotEmpty)
+                    SliverToBoxAdapter(child: _buildDateFilterBar()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
                   // ── 媒体列表 ──
                   _buildMediaList(),
-                  if (_hasMore)
-                    SliverToBoxAdapter(
-                        child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Center(
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: AppColors.primary)),
-                    )),
                   const SliverToBoxAdapter(child: SizedBox(height: 40)),
                 ],
               ),
@@ -1073,9 +1109,28 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
   }
 
   // ── 媒体库标题 ────────────────────────────────────────────
+  Widget _buildDateFilterBar() {
+    return DateFilterBar(
+      availableDates: _availableDates,
+      selectedDate: _selectedDate,
+      onChanged: (d) => setState(() => _selectedDate = d),
+    );
+  }
+
+  Future<void> _openCalendar() async {
+    final picked = await showRecordDatePickerSheet(
+      context: context,
+      availableDates: _availableDates,
+      initialDate: _selectedDate,
+    );
+    if (picked != null && mounted) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
   Widget _buildMediaHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+      padding: const EdgeInsets.fromLTRB(20, 24, 12, 8),
       child: Row(children: [
         Text('打招呼记录',
             style: TextStyle(
@@ -1089,20 +1144,22 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
             color: AppColors.primary.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Text('${_items.length}',
+          child: Text('${_visibleItems.length}',
               style: TextStyle(
                   fontFamily: AppFonts.primary,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: AppColors.primary)),
         ),
+        const Spacer(),
+        CalendarIconButton(onTap: _openCalendar),
       ]),
     );
   }
 
   // ── 媒体列表（列表式）────────────────────────────────────
   Widget _buildMediaList() {
-    if (_loading && _items.isEmpty) {
+    if (_loading && _visibleItems.isEmpty) {
       return SliverToBoxAdapter(
           child: Padding(
         padding: const EdgeInsets.all(40),
@@ -1111,7 +1168,7 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
                 strokeWidth: 2, color: AppColors.primary)),
       ));
     }
-    if (_items.isEmpty) {
+    if (_visibleItems.isEmpty) {
       return SliverToBoxAdapter(
           child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 48),
@@ -1137,13 +1194,14 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
           (ctx, i) {
-            if (i >= _items.length) return null;
+            if (i >= _visibleItems.length) return null;
+            final item = _visibleItems[i];
             return _GreetingCell(
-              item: _items[i],
-              onTap: () => _openDetail(_items[i]),
+              item: item,
+              onTap: () => _openDetail(item),
             );
           },
-          childCount: _items.length,
+          childCount: _visibleItems.length,
         ),
       ),
     );
@@ -1157,7 +1215,19 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
       builder: (_) => _GreetingDetailSheet(
         item: item,
         onDeleted: () {
-          setState(() => _items.removeWhere((e) => e.id == item.id));
+          setState(() {
+            _allItems.removeWhere((e) => e.id == item.id);
+            _availableDates = _computeAvailableDates(_allItems);
+            // 若选中天已无记录，自动切换到最新有记录天
+            if (_selectedDate != null &&
+                !_availableDates.any((d) =>
+                    d.year == _selectedDate!.year &&
+                    d.month == _selectedDate!.month &&
+                    d.day == _selectedDate!.day)) {
+              _selectedDate =
+                  _availableDates.isNotEmpty ? _availableDates.first : null;
+            }
+          });
         },
       ),
     );
@@ -1536,16 +1606,17 @@ class _GreetingCell extends StatelessWidget {
   }
 }
 
-class _GreetingDetailSheet extends StatefulWidget {
+class _GreetingDetailSheet extends ConsumerStatefulWidget {
   final GreetingItem item;
   final VoidCallback onDeleted;
   const _GreetingDetailSheet({required this.item, required this.onDeleted});
 
   @override
-  State<_GreetingDetailSheet> createState() => _GreetingDetailSheetState();
+  ConsumerState<_GreetingDetailSheet> createState() =>
+      _GreetingDetailSheetState();
 }
 
-class _GreetingDetailSheetState extends State<_GreetingDetailSheet> {
+class _GreetingDetailSheetState extends ConsumerState<_GreetingDetailSheet> {
   // ── media_kit 播放器
   Player? _mkPlayer;
   VideoController? _mkController;
@@ -1683,21 +1754,15 @@ class _GreetingDetailSheetState extends State<_GreetingDetailSheet> {
     }
   }
 
-  void _shareToWechat() {
-    final url = widget.item.coverUrl.isNotEmpty
-        ? widget.item.coverUrl
-        : widget.item.responseUrl;
-    if (url.isEmpty) return;
-    final emotion = widget.item.aiResult?.top;
-    final emotionText =
-        emotion != null ? ' Ta现在${emotion.emoji}${emotion.name}' : '';
-    shareToWechat(
-      '我家宠物打招呼瞬间$emotionText 🐾\n$url',
-      subject: 'PetPogo 宠物打招呼',
-    );
+  Future<void> _shareToWechat() {
+    return _shareGreeting(WechatShareScene.session);
   }
 
-  void _shareToTimeline() {
+  Future<void> _shareToTimeline() {
+    return _shareGreeting(WechatShareScene.timeline);
+  }
+
+  Future<void> _shareGreeting(WechatShareScene scene) async {
     final url = widget.item.coverUrl.isNotEmpty
         ? widget.item.coverUrl
         : widget.item.responseUrl;
@@ -1705,9 +1770,41 @@ class _GreetingDetailSheetState extends State<_GreetingDetailSheet> {
     final emotion = widget.item.aiResult?.top;
     final emotionText =
         emotion != null ? ' Ta现在${emotion.emoji}${emotion.name}' : '';
-    shareToWechatTimeline(
-      '我家宠物打招呼瞬间$emotionText 🐾\n$url',
-      subject: 'PetPogo 宠物打招呼',
+    final description = '我家宠物打招呼瞬间$emotionText，快来看看。';
+
+    final result = await ref.read(shareRepositoryProvider).createShare(
+      type: 'greeting',
+      targetId: widget.item.id.toString(),
+      title: '分享一段宠物打招呼',
+      description: description,
+      imageUrl: widget.item.coverUrl,
+      payload: {
+        'deviceId': widget.item.deviceId,
+        'resourceUrl': widget.item.resourceUrl,
+        'responseUrl': widget.item.responseUrl,
+        'coverUrl': widget.item.coverUrl,
+        'createdAt': widget.item.createdAt.toIso8601String(),
+      },
+    );
+
+    await result.when<Future<void>>(
+      success: (share) async {
+        if (share.shareUrl.isEmpty) {
+          if (mounted) PetToast.error(context, '分享链接生成失败');
+          return;
+        }
+        await shareWechatWebPage(
+          url: share.shareUrl,
+          title: share.title.isNotEmpty ? share.title : '宠物打招呼',
+          description:
+              share.description.isNotEmpty ? share.description : description,
+          scene: scene,
+        );
+        if (mounted) PetToast.success(context, '分享已打开');
+      },
+      failure: (error) async {
+        if (mounted) PetToast.error(context, error.userMessage);
+      },
     );
   }
 
@@ -1904,16 +2001,17 @@ class _GreetingDetailSheetState extends State<_GreetingDetailSheet> {
 
   // 视频解码失败降级 UI
   Widget _buildVideoErrorWidget() => Center(
-    child: Column(mainAxisSize: MainAxisSize.min, children: [
-      const Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 40),
-      const SizedBox(height: 8),
-      const Text('视频格式暂不支持播放',
-          style: TextStyle(color: Colors.white60, fontSize: 12)),
-      const SizedBox(height: 4),
-      Text('可保存到相册查看',
-          style: TextStyle(color: Colors.white38, fontSize: 11)),
-    ]),
-  );
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.videocam_off_rounded,
+              color: Colors.white54, size: 40),
+          const SizedBox(height: 8),
+          const Text('视频格式暂不支持播放',
+              style: TextStyle(color: Colors.white60, fontSize: 12)),
+          const SizedBox(height: 4),
+          Text('可保存到相册查看',
+              style: TextStyle(color: Colors.white38, fontSize: 11)),
+        ]),
+      );
 
   Widget _buildAudioRow() {
     final progress = _audioDur.inMilliseconds > 0
@@ -2254,7 +2352,9 @@ class _GreetingDetailPageState extends State<_GreetingDetailPage>
             ),
           // 底部渐变遮罩
           Positioned(
-            bottom: 0, left: 0, right: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
             child: Container(
               height: 100,
               decoration: const BoxDecoration(
@@ -2287,17 +2387,18 @@ class _GreetingDetailPageState extends State<_GreetingDetailPage>
 
   // 视频解码失败降级背景
   Widget _videoErrorBg() => Container(
-    color: const Color(0xFF0D0D1A),
-    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      const Icon(Icons.videocam_off_rounded, color: Colors.white38, size: 52),
-      const SizedBox(height: 12),
-      const Text('视频格式暂不支持播放',
-          style: TextStyle(color: Colors.white54, fontSize: 14)),
-      const SizedBox(height: 4),
-      const Text('可保存到相册后查看',
-          style: TextStyle(color: Colors.white30, fontSize: 12)),
-    ]),
-  );
+        color: const Color(0xFF0D0D1A),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          const Icon(Icons.videocam_off_rounded,
+              color: Colors.white38, size: 52),
+          const SizedBox(height: 12),
+          const Text('视频格式暂不支持播放',
+              style: TextStyle(color: Colors.white54, fontSize: 14)),
+          const SizedBox(height: 4),
+          const Text('可保存到相册后查看',
+              style: TextStyle(color: Colors.white30, fontSize: 12)),
+        ]),
+      );
 
   // ─ 音频播放器
   Widget _buildAudioPlayer() {
