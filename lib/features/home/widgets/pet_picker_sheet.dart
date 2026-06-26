@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_routes.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/widgets/pet_avatar.dart';
 import '../../device/data/repository/device_repository.dart';
 import '../../device/data/models/device_model.dart';
 import '../../pet/data/models/pet_peer_models.dart';
@@ -26,6 +27,7 @@ class _PetWithDevice {
 class PetPickerSheet extends ConsumerStatefulWidget {
   /// 用户选中宠物后回调（petId）
   final void Function(String petId) onPicked;
+
   /// 预加载的宠物列表（传入则跳过 loading 状态，避免高度闪变）
   final List<_PetWithDevice>? preloaded;
 
@@ -60,8 +62,7 @@ class PetPickerSheet extends ConsumerStatefulWidget {
     } else if (deviceState.isLoading) {
       const maxWait = Duration(seconds: 8);
       final deadline = DateTime.now().add(maxWait);
-      while (
-          ref.read(deviceListProvider).isLoading &&
+      while (ref.read(deviceListProvider).isLoading &&
           DateTime.now().isBefore(deadline)) {
         await Future.delayed(Duration(milliseconds: 200));
       }
@@ -100,7 +101,7 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
     super.initState();
     // 如果外部已预加载，直接使用，跳过 loading 闪变
     if (widget.preloaded != null) {
-      _pets    = widget.preloaded!;
+      _pets = widget.preloaded!;
       _loading = false;
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) => _load());
@@ -138,7 +139,8 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
       await Future.wait(devices.map((d) async {
         try {
           final pet = await petRepo.fetchPetInfo(deviceId: d.deviceId);
-          debugPrint('[宠小伊] 设备 ${d.displayName} → 宠物=${pet.petName} id=${pet.petId}');
+          debugPrint(
+              '[宠小伊] 设备 ${d.displayName} → 宠物=${pet.petName} id=${pet.petId}');
           if (pet.petName.isNotEmpty) {
             results.add(_PetWithDevice(pet: pet, device: d));
           }
@@ -179,7 +181,7 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,   // ← 自适应内容高度
+        mainAxisSize: MainAxisSize.min, // ← 自适应内容高度
         children: [
           // 顶部 handle
           Container(
@@ -224,7 +226,6 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
     );
   }
 
-
   Widget _buildContent() {
     if (_loading) {
       return SizedBox(
@@ -242,7 +243,8 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
       );
     }
     if (_error != null) {
-      return _ErrorState(key: ValueKey('error'), message: _error!, onRetry: _load);
+      return _ErrorState(
+          key: ValueKey('error'), message: _error!, onRetry: _load);
     }
     if (_pets.isEmpty) {
       return const _EmptyState(key: ValueKey('empty'));
@@ -251,11 +253,11 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
     // ── 动态高度计算 ──────────────────────────────────────
     // 每行 tile 约 76px（内容 48 + padding 14×2）
     // 间隔 10px，列表上下 padding：top=4 / bottom=12 → 共 16px
-    const tileH    = 76.0;
-    const sepH     = 10.0;
-    const padV     = 16.0;          // 4 top + 12 bottom
+    const tileH = 76.0;
+    const sepH = 10.0;
+    const padV = 16.0; // 4 top + 12 bottom
     final visibleN = _pets.length.clamp(1, 5);
-    final listH    = padV + visibleN * tileH + (visibleN - 1) * sepH;
+    final listH = padV + visibleN * tileH + (visibleN - 1) * sepH;
 
     return SizedBox(
       key: ValueKey('list'),
@@ -280,7 +282,6 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
     );
   }
 }
-
 
 // ── 宠物卡片 ──────────────────────────────────────────────
 class _PetTile extends StatelessWidget {
@@ -318,11 +319,7 @@ class _PetTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: AppColors.secondaryContainer,
-              child: Text('🐾', style: TextStyle(fontSize: 22)),
-            ),
+            PetAvatar(imageUrl: pet.avatar, size: 48),
             SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -437,7 +434,6 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
-
 
 class _ErrorState extends StatelessWidget {
   final String message;

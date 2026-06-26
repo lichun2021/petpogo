@@ -6,6 +6,13 @@ version: 1.0.8+8
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
+fluwx:
+  app_id: 'wx02094a124e425dfe'
+  debug_logging: true
+  ios:
+    universal_link: https://www.jxpetai.com/
+    no_pay: true
+
 dependencies:
   flutter:
     sdk: flutter
@@ -81,6 +88,8 @@ dependencies:
   shared_preferences: ^2.5.5
   gal: ^2.3.2
   jpush_flutter: ^3.4.5
+  app_links: ^7.0.0
+  fluwx: ^5.7.5
   share_plus: ^12.0.2
   android_intent_plus: ^5.0.1
 

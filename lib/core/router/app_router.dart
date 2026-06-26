@@ -1,19 +1,19 @@
-/// ════════════════════════════════════════════════════════════
-///  应用路由配置 — AppRouter
-///
-///  这里是所有页面跳转的唯一入口。
-///
-///  架构职责：
-///    ✅ 集中管理所有页面路由（不再散落在各个页面文件里）
-///    ✅ 统一配置页面切换动画（Tab 淡入、子页面从下滑入、成功页缩放）
-///    ✅ 支持路由守卫（如未登录跳登录页，见注释中的 redirect）
-///    ❌ 不包含业务逻辑（业务在 Controller 里）
-///
-///  如何新增页面：
-///    1. 在 AppRoutes 里加路径常量
-///    2. 在下面的 routes 里加 GoRoute
-///    3. 使用 _slide() / _fade() / _fadeScale() 指定动画类型
-/// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+//  应用路由配置 — AppRouter
+//
+//  这里是所有页面跳转的唯一入口。
+//
+//  架构职责：
+//    ✅ 集中管理所有页面路由（不再散落在各个页面文件里）
+//    ✅ 统一配置页面切换动画（Tab 淡入、子页面从下滑入、成功页缩放）
+//    ✅ 支持路由守卫（如未登录跳登录页，见注释中的 redirect）
+//    ❌ 不包含业务逻辑（业务在 Controller 里）
+//
+//  如何新增页面：
+//    1. 在 AppRoutes 里加路径常量
+//    2. 在下面的 routes 里加 GoRoute
+//    3. 使用 _slide() / _fade() / _fadeScale() 指定动画类型
+// ════════════════════════════════════════════════════════════
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -26,7 +26,7 @@ import '../../features/auth/controller/auth_controller.dart';
 import '../../features/home/home_page.dart';
 import '../../features/message/message_page.dart';
 import '../../features/community/community_page.dart';
-import '../../features/mall/mall_page.dart';
+import '../../features/pet_circle/pet_circle_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/profile/settings_page.dart';
 import '../../features/pet/add_pet_page.dart';
@@ -47,6 +47,7 @@ import '../../features/device/robot_device_page.dart';
 import '../../features/device/device_detail_page.dart';
 import '../../features/device/data/repository/device_repository.dart';
 import '../../features/device/data/models/device_model.dart';
+import '../../features/share/share_landing_page.dart';
 import '../../app.dart' show globalNavigatorKey;
 
 // ── 路由实例和内部 ProviderContainer 用于守卫读取状态 ──────
@@ -85,18 +86,19 @@ final appRouter = GoRouter(
     //   （这是修复低端机闪屏的关键：拦截一切跳转，只允许待在 /splash）
     if (auth.isRestoring) {
       if (location == AppRoutes.splash) return null; // 已在启动页，不动
-      return AppRoutes.splash;                        // 其余页面全部拦截到启动页
+      return AppRoutes.splash; // 其余页面全部拦截到启动页
     }
 
     final isOnSplash = location == AppRoutes.splash;
-    final isOnLogin  = location == AppRoutes.login;
+    final isOnLogin = location == AppRoutes.login;
+    final isOnShare = location == AppRoutes.share;
 
     // ② 在启动页时：SplashPage 自己负责跳转（保证最短展示时间），守卫不干预
     //   SplashPage 会调用 _navigate() → appRouter.go() 跳转到正确页面
     if (isOnSplash) return null;
 
     // ③ 未登录 且 不在登录页 → 强制跳到登录页
-    if (auth.isGuest && !isOnLogin) return AppRoutes.login;
+    if (auth.isGuest && !isOnLogin && !isOnShare) return AppRoutes.login;
 
     // ④ 已登录 且 在登录页 → 跳回首页
     if (auth.isLoggedIn && isOnLogin) return AppRoutes.home;
@@ -120,20 +122,31 @@ final appRouter = GoRouter(
       builder: (context, state, child) => MainShell(child: child),
       routes: [
         // Tab 切换使用淡入动画（不用 slide，避免方向混乱）
-        _fade(AppRoutes.home,      const HomePage()),
-        _fade(AppRoutes.message,   const MessagePage()),
+        _fade(AppRoutes.home, const HomePage()),
+        _fade(AppRoutes.message, const MessagePage()),
         _fade(AppRoutes.community, const CommunityPage()),
-        _fade(AppRoutes.mall,      const MallPage()),
-        _fade(AppRoutes.profile,   const ProfilePage()),
+        _fade(AppRoutes.petCircle, const PetCirclePage()),
+        _fade(AppRoutes.profile, const ProfilePage()),
       ],
     ),
 
     // ══════════════════════════════════════════════════════
     //  子页面 — 从底部滑入（符合 iOS/Android 平台习惯）
     // ══════════════════════════════════════════════════════
-    _slide(AppRoutes.settings,   const SettingsPage()),
-    _slide(AppRoutes.addPet,     const AddPetPage()),
+    _slide(AppRoutes.settings, const SettingsPage()),
+    _slide(AppRoutes.addPet, const AddPetPage()),
     _slide(AppRoutes.bindDevice, const SelectDevicePage()),
+
+    GoRoute(
+      path: AppRoutes.share,
+      pageBuilder: (context, state) => _slidePage(
+        state,
+        ShareLandingPage(
+          code: state.uri.queryParameters['code'] ?? '',
+          type: state.uri.queryParameters['type'],
+        ),
+      ),
+    ),
 
     // ── 带参数路由 ────────────────────────────────────────
     // 设备扫码页（参数：设备类型 KeyTracker / PetPhone）
@@ -196,12 +209,14 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.reportDiagnosis,
       pageBuilder: (context, state) {
-        final args    = _extractReportArgs(state.extra);
-        return _slidePage(state, ReportDiagnosisPage(
-          report:     args.$1,
-          petInfo:    args.$2,
-          petAvatar:  args.$3,
-        ));
+        final args = _extractReportArgs(state.extra);
+        return _slidePage(
+            state,
+            ReportDiagnosisPage(
+              report: args.$1,
+              petInfo: args.$2,
+              petAvatar: args.$3,
+            ));
       },
     ),
     // 治疗养护建议页（extra: ConsultationReport）
@@ -241,8 +256,8 @@ final appRouter = GoRouter(
   String,
 ) _extractReportArgs(Object? extra) {
   if (extra is Map) {
-    final report    = extra['report'] as ConsultationReport?;
-    final petInfo   = extra['petInfo'] as PetInfoSnapshot?;
+    final report = extra['report'] as ConsultationReport?;
+    final petInfo = extra['petInfo'] as PetInfoSnapshot?;
     final petAvatar = (extra['petAvatar'] as String?) ?? '';
     return (report ?? _emptyReport(), petInfo, petAvatar);
   }
@@ -278,23 +293,23 @@ ConsultationReport _emptyReport() {
 ///
 /// 轻量快速（200ms），不带方向性，避免 Tab 切换时的视觉混乱
 GoRoute _fade(String path, Widget page) => GoRoute(
-  path: path,
-  pageBuilder: (context, state) => CustomTransitionPage(
-    key: state.pageKey,
-    child: page,
-    transitionDuration: const Duration(milliseconds: 200),
-    transitionsBuilder: (context, animation, _, child) =>
-        FadeTransition(opacity: animation, child: child),
-  ),
-);
+      path: path,
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: page,
+        transitionDuration: const Duration(milliseconds: 200),
+        transitionsBuilder: (context, animation, _, child) =>
+            FadeTransition(opacity: animation, child: child),
+      ),
+    );
 
 /// 从下滑入动画 — 用于子页面（设置、添加宠物、绑定设备等）
 ///
 /// 符合 Material 和 iOS 两种平台的用户直觉
 GoRoute _slide(String path, Widget page) => GoRoute(
-  path: path,
-  pageBuilder: (context, state) => _slidePage(state, page),
-);
+      path: path,
+      pageBuilder: (context, state) => _slidePage(state, page),
+    );
 
 /// 构建"从下滑入 + 淡入"过渡页（子页面通用）
 CustomTransitionPage _slidePage(GoRouterState state, Widget page) =>
@@ -357,7 +372,8 @@ class _NavLogger extends NavigatorObserver {
 
   @override
   void didReplace({Route? newRoute, Route? oldRoute}) {
-    debugPrint('[路由] replace: ${oldRoute?.settings.name} → ${newRoute?.settings.name}');
+    debugPrint(
+        '[路由] replace: ${oldRoute?.settings.name} → ${newRoute?.settings.name}');
   }
 }
 
@@ -381,10 +397,11 @@ class _DeviceDetailWrapper extends ConsumerWidget {
     }
 
     // 按 mac 查找（忽略大小写）
-    final DeviceModel? device = deviceState.devices.cast<DeviceModel?>().firstWhere(
-      (d) => d!.mac.toLowerCase() == mac.toLowerCase(),
-      orElse: () => null,
-    );
+    final DeviceModel? device =
+        deviceState.devices.cast<DeviceModel?>().firstWhere(
+              (d) => d!.mac.toLowerCase() == mac.toLowerCase(),
+              orElse: () => null,
+            );
 
     if (device != null) {
       return _buildDevicePage(device);
@@ -396,7 +413,7 @@ class _DeviceDetailWrapper extends ConsumerWidget {
 
   /// 根据 productKey 判断设备类型，渲染对应页面
   Widget _buildDevicePage(DeviceModel device) {
-    final key  = device.productKey.toLowerCase();
+    final key = device.productKey.toLowerCase();
     final name = device.displayName.toLowerCase();
     final isRobot = key.contains('robot') ||
         key.contains('bot') ||

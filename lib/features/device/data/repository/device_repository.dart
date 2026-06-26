@@ -50,6 +50,27 @@ class DeviceRepository {
     await _peer.post('/user/device/unbind', params: {'mac': mac});
   }
 
+  /// POST /user/device/member/query — 查询设备共享成员列表
+  /// 返回该设备下的所有被分享成员（不含主人自己）
+  Future<List<DeviceMemberModel>> fetchMembers(String mac) async {
+    final res = await _peer.post<List<dynamic>>(
+      '/user/device/member/query',
+      params: {'mac': mac},
+      fromInfo: (d) => d as List<dynamic>,
+    );
+    return (res.info ?? [])
+        .map((e) => DeviceMemberModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// POST /user/device/member/remove — 移除共享成员
+  Future<void> removeMember({required String deviceId, required String userId}) async {
+    await _peer.post(
+      '/user/device/member/remove',
+      params: {'deviceId': deviceId, 'userId': userId},
+    );
+  }
+
   /// POST /user/device/bind — 绑定设备
   Future<DeviceModel> bindDevice(
       {required String mac, String nickname = ''}) async {

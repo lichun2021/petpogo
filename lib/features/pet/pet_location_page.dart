@@ -1,5 +1,4 @@
 import 'dart:ui' as ui;
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/utils/coord_transform.dart';
+import '../../shared/widgets/pet_avatar.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
@@ -52,7 +52,7 @@ class PetLocationPage extends ConsumerStatefulWidget {
   final String deviceMac;
   final String petAvatar;
 
-  PetLocationPage({
+  const PetLocationPage({
     super.key,
     required this.petName,
     required this.deviceMac,
@@ -210,8 +210,8 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: Colors.white,
-                          border: Border.all(
-                              color: Color(0xFF3EBD6D), width: 3),
+                          border:
+                              Border.all(color: Color(0xFF3EBD6D), width: 3),
                           boxShadow: [
                             BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.2),
@@ -219,18 +219,8 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
                                 offset: Offset(0, 3)),
                           ],
                         ),
-                        child: ClipOval(
-                          child: widget.petAvatar.isNotEmpty
-                              ? CachedNetworkImage(
-                                  imageUrl: widget.petAvatar,
-                                  fit: BoxFit.cover,
-                                  errorWidget: (_, __, ___) => Center(
-                                      child: Text('🐾',
-                                          style: TextStyle(fontSize: 24))))
-                              : Center(
-                                  child: Text('🐾',
-                                      style: TextStyle(fontSize: 24))),
-                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: PetAvatar(imageUrl: widget.petAvatar, size: 56),
                       ),
                       // 三角箭头
                       CustomPaint(
@@ -385,18 +375,9 @@ class _BottomCard extends StatelessWidget {
                 decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: Color(0xFFF0F0EE),
-                    border:
-                        Border.all(color: Color(0xFF3EBD6D), width: 2.5)),
-                child: ClipOval(
-                    child: petAvatar.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: petAvatar,
-                            fit: BoxFit.cover,
-                            errorWidget: (_, __, ___) => Center(
-                                child:
-                                    Text('🐾', style: TextStyle(fontSize: 22))))
-                        : Center(
-                            child: Text('🐾', style: TextStyle(fontSize: 22)))),
+                    border: Border.all(color: Color(0xFF3EBD6D), width: 2.5)),
+                clipBehavior: Clip.antiAlias,
+                child: PetAvatar(imageUrl: petAvatar, size: 52),
               ),
               SizedBox(width: 12),
               Expanded(
@@ -575,9 +556,8 @@ class _MapBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final iconColor = color ?? AppColors.onSurface;
-    final bgColor = color != null
-        ? color!.withValues(alpha: 0.12)
-        : Colors.white;
+    final bgColor =
+        color != null ? color!.withValues(alpha: 0.12) : Colors.white;
     return GestureDetector(
       onTap: onTap,
       child: Container(

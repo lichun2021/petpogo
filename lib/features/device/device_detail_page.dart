@@ -1,8 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/theme/app_colors.dart';
+import '../../shared/widgets/pet_avatar.dart';
 import '../../shared/widgets/pet_toast.dart';
 import '../device/data/repository/device_repository.dart';
 import '../device/data/models/device_model.dart';
@@ -11,6 +11,7 @@ import '../pet/data/repository/pet_peer_repository.dart';
 import '../pet/pet_location_page.dart';
 import '../pet/pet_track_page.dart';
 import '../pet/bind_pet_sheet.dart';
+import '../pet_circle/controller/pet_circle_pet_controller.dart';
 import 'safety_scene_page.dart';
 import 'robot_device_page.dart';
 import '../bind_device/select_device_page.dart';
@@ -28,12 +29,12 @@ class DeviceDetailPage extends ConsumerStatefulWidget {
 
 class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   DeviceDetailModel? _detail;
-  PetInfoModel?      _petInfo;
-  OtaInfoModel?      _otaInfo;
+  PetInfoModel? _petInfo;
+  OtaInfoModel? _otaInfo;
   bool _loading = true;
   String? _error;
-  bool _ringing = false;   // 响铃进行中
-  bool _ledOn   = false;   // LED 当前状态（本地 toggle，无法从设备读回）
+  bool _ringing = false; // 响铃进行中
+  bool _ledOn = false; // LED 当前状态（本地 toggle，无法从设备读回）
 
   @override
   void initState() {
@@ -42,9 +43,12 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   }
 
   Future<void> _loadAll() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      final repo    = ref.read(deviceRepositoryProvider);
+      final repo = ref.read(deviceRepositoryProvider);
       final petRepo = ref.read(petPeerRepositoryProvider);
       final results = await Future.wait([
         repo.fetchDeviceDetail(widget.mac),
@@ -53,14 +57,18 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
       ]);
       if (mounted) {
         setState(() {
-          _detail  = results[0] as DeviceDetailModel;
+          _detail = results[0] as DeviceDetailModel;
           _petInfo = results[1] as PetInfoModel;
           _otaInfo = results[2] as OtaInfoModel;
           _loading = false;
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _loading = false; _error = e.toString(); });
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _error = e.toString();
+        });
     }
   }
 
@@ -69,22 +77,27 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: _loading
-          ? Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5))
+          ? Center(
+              child: CircularProgressIndicator(
+                  color: AppColors.primary, strokeWidth: 2.5))
           : _error != null
               ? _buildError()
               : CustomScrollView(slivers: [
                   _buildAppBar(context),
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-                    sliver: SliverList(delegate: SliverChildListDelegate([
+                    sliver: SliverList(
+                        delegate: SliverChildListDelegate([
                       SizedBox(height: 20),
                       _buildStatusHero(),
                       SizedBox(height: 20),
                       // 宠物区块（始终显示：有宠物显示详情，无宠物显示绑定入口）
                       _buildPetSection(context),
                       SizedBox(height: 20),
-                      if (_otaInfo != null && _otaInfo!.isUpgrade) _buildOtaBanner(),
-                      if (_otaInfo != null && _otaInfo!.isUpgrade) SizedBox(height: 20),
+                      if (_otaInfo != null && _otaInfo!.isUpgrade)
+                        _buildOtaBanner(),
+                      if (_otaInfo != null && _otaInfo!.isUpgrade)
+                        SizedBox(height: 20),
                       // 今日安全概览（有宠物时显示）
                       if (_petInfo != null && _petInfo!.petName.isNotEmpty) ...[
                         _buildSafetyOverview(context),
@@ -105,11 +118,17 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   }
 
   Widget _buildError() {
-    return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Icon(Icons.error_outline_rounded, size: 64, color: AppColors.onSurfaceVariant),
+    return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Icon(Icons.error_outline_rounded,
+          size: 64, color: AppColors.onSurfaceVariant),
       SizedBox(height: 16),
-      Text(_error!, textAlign: TextAlign.center,
-          style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14, color: AppColors.onSurfaceVariant)),
+      Text(_error!,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 14,
+              color: AppColors.onSurfaceVariant)),
       SizedBox(height: 16),
       OutlinedButton(onPressed: _loadAll, child: Text('重试')),
     ]));
@@ -155,9 +174,11 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
           color: AppColors.primary,
           tooltip: '添加设备',
           onPressed: () {
-            Navigator.push(context, MaterialPageRoute(
-              builder: (_) => SelectDevicePage(),
-            ));
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SelectDevicePage(),
+                ));
           },
         ),
       ],
@@ -194,98 +215,133 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   }
 
   bool _isRobotDevice(DeviceModel d) {
-    final key  = d.productKey.toLowerCase();
+    final key = d.productKey.toLowerCase();
     final name = d.displayName.toLowerCase();
-    return key.contains('robot') || name.contains('机器人') ||
-        name.contains('robot') || key.contains('bot') || name.contains('bot');
+    return key.contains('robot') ||
+        name.contains('机器人') ||
+        name.contains('robot') ||
+        key.contains('bot') ||
+        name.contains('bot');
   }
 
   Widget _buildStatusHero() {
-    final online      = _detail?.onlineStatus ?? false;
-    final deviceName  = _detail?.name ?? widget.name;
+    final online = _detail?.onlineStatus ?? false;
+    final deviceName = _detail?.name ?? widget.name;
     return GestureDetector(
-      onTap: () => _showRemarkDialog(context),  // 点击卡片任意区域也可编辑
+      onTap: () => _showRemarkDialog(context), // 点击卡片任意区域也可编辑
       child: Container(
-        width: double.infinity, padding: const EdgeInsets.all(22),
+        width: double.infinity,
+        padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [Color(0xFF6b1a01), Color(0xFF9e2f04), Color(0xFFe85d26)],
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.30),
-              blurRadius: 28, spreadRadius: -6, offset: Offset(0, 10))],
+          boxShadow: [
+            BoxShadow(
+                color: AppColors.primary.withOpacity(0.30),
+                blurRadius: 28,
+                spreadRadius: -6,
+                offset: Offset(0, 10))
+          ],
         ),
         child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           // 左侧图标
-          Container(width: 64, height: 64,
+          Container(
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+                border: Border.all(
+                    color: Colors.white.withOpacity(0.2), width: 1.5),
               ),
               child: Icon(Icons.router_rounded, color: Colors.white, size: 32)),
           SizedBox(width: 16),
           // 中间信息
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // 设备名称 + 编辑图标
-            Row(children: [
-              Flexible(
-                child: Text(deviceName,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: AppFonts.primary,
-                        fontSize: 18, fontWeight: FontWeight.w800,
-                        color: Colors.white, letterSpacing: -0.3)),
-              ),
-              SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(6),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                // 设备名称 + 编辑图标
+                Row(children: [
+                  Flexible(
+                    child: Text(deviceName,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: -0.3)),
+                  ),
+                  SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child:
+                        Icon(Icons.edit_rounded, size: 12, color: Colors.white),
+                  ),
+                ]),
+                SizedBox(height: 5),
+                // 在线状态徽章
+                Row(children: [
+                  Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                          color: online ? Color(0xFF4ADE80) : Colors.white38,
+                          shape: BoxShape.circle)),
+                  SizedBox(width: 5),
+                  Text(online ? '在线' : '离线',
+                      style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: online ? Color(0xFF4ADE80) : Colors.white60)),
+                ]),
+                SizedBox(height: 8),
+                // MAC 地址 chip
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withOpacity(0.15)),
+                  ),
+                  child: Text(widget.mac,
+                      style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white70,
+                          letterSpacing: 0.5)),
                 ),
-                child: Icon(Icons.edit_rounded, size: 12, color: Colors.white),
-              ),
-            ]),
-            SizedBox(height: 5),
-            // 在线状态徽章
-            Row(children: [
-              Container(width: 7, height: 7, decoration: BoxDecoration(
-                  color: online ? Color(0xFF4ADE80) : Colors.white38,
-                  shape: BoxShape.circle)),
-              SizedBox(width: 5),
-              Text(online ? '在线' : '离线',
-                  style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: online ? Color(0xFF4ADE80) : Colors.white60)),
-            ]),
-            SizedBox(height: 8),
-            // MAC 地址 chip
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.10),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white.withOpacity(0.15)),
-              ),
-              child: Text(widget.mac,
-                  style: TextStyle(fontFamily: AppFonts.primary,
-                      fontSize: 10, fontWeight: FontWeight.w600,
-                      color: Colors.white70, letterSpacing: 0.5)),
-            ),
-          ])),
+              ])),
           // 右侧最后在线时间
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(color: Colors.white.withOpacity(0.12),
+            Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(20)),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.access_time_rounded, size: 10, color: Colors.white60),
+                  Icon(Icons.access_time_rounded,
+                      size: 10, color: Colors.white60),
                   SizedBox(width: 4),
                   Text(
                     _detail?.lastOnlineDisplay ?? '-',
-                    style: TextStyle(fontFamily: AppFonts.primary,
-                        fontSize: 10, color: Colors.white70),
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 10,
+                        color: Colors.white70),
                   ),
                 ])),
           ]),
@@ -302,7 +358,10 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
       return GestureDetector(
         onTap: () async {
           final ok = await PetBindHelper.showAdd(context, mac: widget.mac);
-          if (ok) _loadAll();
+          if (ok) {
+            ref.read(petCirclePetControllerProvider.notifier).load();
+            _loadAll();
+          }
         },
         child: Container(
           padding: const EdgeInsets.all(18),
@@ -312,18 +371,33 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
             border: Border.all(color: AppColors.primary.withOpacity(0.25)),
           ),
           child: Row(children: [
-            Container(width: 46, height: 46,
-                decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.12), shape: BoxShape.circle),
-                child: Icon(Icons.add_rounded, color: AppColors.primary, size: 26)),
+            Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.12),
+                    shape: BoxShape.circle),
+                child: Icon(Icons.add_rounded,
+                    color: AppColors.primary, size: 26)),
             SizedBox(width: 14),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('绑定宠物', style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primary)),
-              Text('点此添加宠物信息，开始跟踪位置、管理围栏',
-                  style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
-                      color: AppColors.onSurfaceVariant)),
-            ])),
-            Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 20),
+            Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text('绑定宠物',
+                      style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary)),
+                  Text('点此添加宠物信息，开始跟踪位置、管理围栏',
+                      style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 12,
+                          color: AppColors.onSurfaceVariant)),
+                ])),
+            Icon(Icons.chevron_right_rounded,
+                color: AppColors.primary, size: 20),
           ]),
         ),
       );
@@ -332,62 +406,93 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     final pet = _petInfo!;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text('绑定的宠物', style: TextStyle(fontFamily: AppFonts.primary,
-            fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+        Text('绑定的宠物',
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.onSurface)),
         Row(children: [
-          _SmallAction(icon: Icons.edit_rounded, label: '编辑', onTap: () async {
-            final ok = await PetBindHelper.showEdit(
-              context, mac: widget.mac, pet: pet,
-            );
-            if (ok) _loadAll();
-          }),
+          _SmallAction(
+              icon: Icons.edit_rounded,
+              label: '编辑',
+              onTap: () async {
+                final ok = await PetBindHelper.showEdit(
+                  context,
+                  mac: widget.mac,
+                  pet: pet,
+                );
+                if (ok) {
+                  ref.read(petCirclePetControllerProvider.notifier).load();
+                  _loadAll();
+                }
+              }),
           SizedBox(width: 8),
-          _SmallAction(icon: Icons.delete_outline_rounded, label: '删除',
-              color: AppColors.error, onTap: () => _confirmDeletePet(context, pet)),
+          _SmallAction(
+              icon: Icons.delete_outline_rounded,
+              label: '删除',
+              color: AppColors.error,
+              onTap: () => _confirmDeletePet(context, pet)),
         ]),
       ]),
       SizedBox(height: 12),
       GestureDetector(
-        onTap: () => Navigator.push(context, MaterialPageRoute(
-          builder: (_) => PetLocationPage(
-              petName: pet.petName, deviceMac: widget.mac, petAvatar: pet.avatar),
-        )),
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PetLocationPage(
+                  petName: pet.petName,
+                  deviceMac: widget.mac,
+                  petAvatar: pet.avatar),
+            )),
         child: Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: AppColors.surfaceContainerLow,
+          decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLow,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.surfaceContainerHigh)),
           child: Row(children: [
-            Container(width: 46, height: 46,
-                decoration: BoxDecoration(color: AppColors.primaryContainer.withOpacity(0.25),
-                    shape: BoxShape.circle),
-                child: pet.avatar.isNotEmpty
-                    ? ClipOval(child: CachedNetworkImage(imageUrl: pet.avatar, fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => Icon(Icons.pets_rounded, color: AppColors.primary, size: 24)))
-                    : Icon(Icons.pets_rounded, color: AppColors.primary, size: 24)),
+            PetAvatar(imageUrl: pet.avatar, size: 46),
             SizedBox(width: 14),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(pet.petName, style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-              Text(
-                [if (pet.breed.isNotEmpty) pet.breed,
-                 if (pet.age > 0) '${pet.age}岁',
-                 if (pet.weight.isNotEmpty) '${pet.weight}kg',
-                 if (pet.sex.isNotEmpty) pet.sexDisplay].join(' · '),
-                style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
-                    color: AppColors.onSurfaceVariant),
-              ),
-            ])),
+            Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text(pet.petName,
+                      style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onSurface)),
+                  Text(
+                    [
+                      if (pet.breed.isNotEmpty) pet.breed,
+                      if (pet.age > 0) '${pet.age}岁',
+                      if (pet.weight.isNotEmpty) '${pet.weight}kg',
+                      if (pet.sex.isNotEmpty) pet.sexDisplay
+                    ].join(' · '),
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 12,
+                        color: AppColors.onSurfaceVariant),
+                  ),
+                ])),
             Row(children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.12),
+                decoration: BoxDecoration(
+                    color: AppColors.secondary.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(20)),
-                child: Text('查看位置', style: TextStyle(fontFamily: AppFonts.primary,
-                    fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.secondary)),
+                child: Text('查看位置',
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.secondary)),
               ),
               SizedBox(width: 6),
-              Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant, size: 20),
+              Icon(Icons.chevron_right_rounded,
+                  color: AppColors.onSurfaceVariant, size: 20),
             ]),
           ]),
         ),
@@ -396,34 +501,45 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   }
 
   void _confirmDeletePet(BuildContext context, PetInfoModel pet) {
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-      backgroundColor: AppColors.surfaceContainerLow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('删除宠物', style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
-      content: Text('确定要删除「${pet.petName}」吗？删除后数据不可恢复。',
-          style: TextStyle(fontFamily: AppFonts.primary)),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: Text('取消')),
-        FilledButton(
-          onPressed: () async {
-            Navigator.pop(ctx);   // 用 dialog 自己的 ctx，避免 null state 崩溃
-            try {
-              await ref.read(petPeerRepositoryProvider).deletePet(
-                petId: pet.petId.isNotEmpty ? pet.petId : null,
-                // 不传 deviceId：避免后端把设备关联一并删除
-              );
-              await _loadAll();
-              if (mounted) PetToast.success(context, '宠物已删除');
-            } catch (e) {
-              if (mounted) PetToast.error(context, e.toString().replaceAll('Exception: ', ''));
-            }
-          },
-          style: FilledButton.styleFrom(backgroundColor: AppColors.error,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-          child: Text('删除'),
-        ),
-      ],
-    ));
+    showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+              backgroundColor: AppColors.surfaceContainerLow,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+              title: Text('删除宠物',
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontWeight: FontWeight.w700)),
+              content: Text('确定要删除「${pet.petName}」吗？删除后数据不可恢复。',
+                  style: TextStyle(fontFamily: AppFonts.primary)),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx), child: Text('取消')),
+                FilledButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx); // 用 dialog 自己的 ctx，避免 null state 崩溃
+                    try {
+                      await ref.read(petPeerRepositoryProvider).deletePet(
+                            petId: pet.petId.isNotEmpty ? pet.petId : null,
+                            // 不传 deviceId：避免后端把设备关联一并删除
+                          );
+                      await _loadAll();
+                      if (mounted) PetToast.success(context, '宠物已删除');
+                    } catch (e) {
+                      if (mounted)
+                        PetToast.error(context,
+                            e.toString().replaceAll('Exception: ', ''));
+                    }
+                  },
+                  style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.error,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: Text('删除'),
+                ),
+              ],
+            ));
   }
 
   Widget _buildOtaBanner() {
@@ -437,13 +553,24 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
       child: Row(children: [
         Icon(Icons.system_update_rounded, color: AppColors.tertiary, size: 22),
         SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('有新版本可升级', style: TextStyle(fontFamily: AppFonts.primary,
-              fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.tertiary)),
-          Text(_otaInfo?.msg ?? '', style: TextStyle(fontFamily: AppFonts.primary,
-              fontSize: 11, color: AppColors.onSurfaceVariant)),
+        Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('有新版本可升级',
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.tertiary)),
+          Text(_otaInfo?.msg ?? '',
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 11,
+                  color: AppColors.onSurfaceVariant)),
         ])),
-        TextButton(onPressed: () {}, child: Text('升级', style: TextStyle(color: AppColors.tertiary))),
+        TextButton(
+            onPressed: () {},
+            child: Text('升级', style: TextStyle(color: AppColors.tertiary))),
       ]),
     );
   }
@@ -452,13 +579,20 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   Widget _buildSafetyOverview(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Expanded(child: Text('今日安全概览',
-            style: TextStyle(fontFamily: AppFonts.primary,
-                fontSize: 15, fontWeight: FontWeight.w800))),
+        Expanded(
+            child: Text('今日安全概览',
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800))),
         GestureDetector(
           onTap: () => PetToast.warning(context, '更多功能即将上线'),
-          child: Text('更多', style: TextStyle(fontFamily: AppFonts.primary,
-              fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+          child: Text('更多',
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary)),
         ),
       ]),
       SizedBox(height: 12),
@@ -467,7 +601,12 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: Offset(0, 3))],
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 12,
+                offset: Offset(0, 3))
+          ],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // 状态横幅
@@ -479,31 +618,54 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
             ),
             child: Row(children: [
               Container(
-                width: 28, height: 28,
-                decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.12), shape: BoxShape.circle),
-                child: Icon(Icons.bolt_rounded, size: 16, color: AppColors.primary),
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.12),
+                    shape: BoxShape.circle),
+                child: Icon(Icons.bolt_rounded,
+                    size: 16, color: AppColors.primary),
               ),
               SizedBox(width: 10),
               Text('宠物行为活跃，安心守护中',
-                  style: TextStyle(fontFamily: AppFonts.primary,
-                      fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary)),
             ]),
           ),
           SizedBox(height: 14),
           // 统计数字
           Row(children: [
-            Expanded(child: Column(children: [
-              Text('0', style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.onSurface)),
-              Text('预警提醒', style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 12, color: AppColors.onSurfaceVariant)),
+            Expanded(
+                child: Column(children: [
+              Text('0',
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.onSurface)),
+              Text('预警提醒',
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 12,
+                      color: AppColors.onSurfaceVariant)),
             ])),
             Container(width: 1, height: 36, color: AppColors.outlineVariant),
-            Expanded(child: Column(children: [
-              Text('0', style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.onSurface)),
-              Text('越界提醒', style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 12, color: AppColors.onSurfaceVariant)),
+            Expanded(
+                child: Column(children: [
+              Text('0',
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.onSurface)),
+              Text('越界提醒',
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 12,
+                      color: AppColors.onSurfaceVariant)),
             ])),
           ]),
           SizedBox(height: 14),
@@ -517,33 +679,51 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(children: [
-                Expanded(child: Text('实时动态',
-                    style: TextStyle(fontFamily: AppFonts.primary,
-                        fontSize: 13, fontWeight: FontWeight.w700))),
-                Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.onSurfaceVariant),
+                Expanded(
+                    child: Text('实时动态',
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700))),
+                Icon(Icons.chevron_right_rounded,
+                    size: 18, color: AppColors.onSurfaceVariant),
               ]),
             ),
           ),
           SizedBox(height: 8),
           Row(children: [
-            Container(width: 8, height: 8,
-                decoration: BoxDecoration(color: Color(0xFF4ADE80), shape: BoxShape.circle)),
+            Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                    color: Color(0xFF4ADE80), shape: BoxShape.circle)),
             SizedBox(width: 8),
-            Expanded(child: Text('在安全区域内',
-                style: TextStyle(fontFamily: AppFonts.primary,
-                    fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.onSurface))),
+            Expanded(
+                child: Text('在安全区域内',
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onSurface))),
             Text(
-              () { final n = DateTime.now(); return '${n.hour.toString().padLeft(2,'0')}:${n.minute.toString().padLeft(2,'0')}'; }(),
-              style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 12, color: AppColors.onSurfaceVariant),
+              () {
+                final n = DateTime.now();
+                return '${n.hour.toString().padLeft(2, '0')}:${n.minute.toString().padLeft(2, '0')}';
+              }(),
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 12,
+                  color: AppColors.onSurfaceVariant),
             ),
           ]),
           SizedBox(height: 4),
           Padding(
             padding: EdgeInsets.only(left: 16),
             child: Text('宠物当前在围栏内，安心活动',
-                style: TextStyle(fontFamily: AppFonts.primary,
-                    fontSize: 11, color: AppColors.onSurfaceVariant)),
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 11,
+                    color: AppColors.onSurfaceVariant)),
           ),
         ]),
       ),
@@ -553,8 +733,11 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   // ── 安全场景 ─────────────────────────────────────────────
   Widget _buildSafetyScenes(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('安全场景', style: TextStyle(fontFamily: AppFonts.primary,
-          fontSize: 15, fontWeight: FontWeight.w800)),
+      Text('安全场景',
+          style: TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 15,
+              fontWeight: FontWeight.w800)),
       SizedBox(height: 12),
       _SceneCard(
         color: Color(0xFFFFF3E0),
@@ -562,12 +745,15 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         icon: Icons.home_rounded,
         title: '居家场景',
         subtitle: '室内监控安全区域，低功耗定位模式',
-        onTap: () => Navigator.push(context, MaterialPageRoute(
-          builder: (_) => SafetyScenePage(
-              deviceMac: widget.mac, deviceName: widget.name,
-              petName: _petInfo?.petName ?? '',
-              initialTab: 0),
-        )),
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SafetyScenePage(
+                  deviceMac: widget.mac,
+                  deviceName: widget.name,
+                  petName: _petInfo?.petName ?? '',
+                  initialTab: 0),
+            )),
       ),
       SizedBox(height: 10),
       _SceneCard(
@@ -576,12 +762,15 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         icon: Icons.park_rounded,
         title: '外出场景',
         subtitle: '户外活动区域，开启虚拟围栏告警',
-        onTap: () => Navigator.push(context, MaterialPageRoute(
-          builder: (_) => SafetyScenePage(
-              deviceMac: widget.mac, deviceName: widget.name,
-              petName: _petInfo?.petName ?? '',
-              initialTab: 1),
-        )),
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SafetyScenePage(
+                  deviceMac: widget.mac,
+                  deviceName: widget.name,
+                  petName: _petInfo?.petName ?? '',
+                  initialTab: 1),
+            )),
       ),
       // SizedBox(height: 10),
       // _SceneCard(
@@ -597,15 +786,22 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
 
   // ── 互动（设备功能，重新设计为网格）──────────────────────
   Widget _buildControls(BuildContext context) {
-    final hasPet    = _petInfo != null && _petInfo!.petName.isNotEmpty;
-    final isOnline  = _detail?.onlineStatus == true;
+    final hasPet = _petInfo != null && _petInfo!.petName.isNotEmpty;
+    final isOnline = _detail?.onlineStatus == true;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('互动', style: TextStyle(fontFamily: AppFonts.primary,
-          fontSize: 15, fontWeight: FontWeight.w800)),
+      Text('互动',
+          style: TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 15,
+              fontWeight: FontWeight.w800)),
       SizedBox(height: 12),
       GridView.count(
-        crossAxisCount: 2, shrinkWrap: true, physics: NeverScrollableScrollPhysics(),
-        crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 2.4,
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        physics: NeverScrollableScrollPhysics(),
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 2.4,
         children: [
           _InteractTile(
             icon: Icons.lightbulb_rounded,
@@ -613,7 +809,9 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
             label: _ledOn ? '关闭亮灯' : '亮灯',
             enabled: isOnline,
             active: _ledOn,
-            onTap: isOnline ? _toggleLed : () => PetToast.warning(context, '设备离线，无法操作'),
+            onTap: isOnline
+                ? _toggleLed
+                : () => PetToast.warning(context, '设备离线，无法操作'),
           ),
           _InteractTile(
             icon: Icons.notifications_active_rounded,
@@ -621,7 +819,9 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
             label: _ringing ? '停止响铃' : '响铃',
             enabled: isOnline,
             active: _ringing,
-            onTap: isOnline ? _toggleRing : () => PetToast.warning(context, '设备离线，无法操作'),
+            onTap: isOnline
+                ? _toggleRing
+                : () => PetToast.warning(context, '设备离线，无法操作'),
           ),
           _InteractTile(
             icon: Icons.location_on_rounded,
@@ -629,10 +829,13 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
             label: '查看位置',
             enabled: hasPet,
             onTap: hasPet
-                ? () => Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => PetLocationPage(
-                        petName: _petInfo!.petName, deviceMac: widget.mac,
-                        petAvatar: _petInfo!.avatar)))
+                ? () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => PetLocationPage(
+                            petName: _petInfo!.petName,
+                            deviceMac: widget.mac,
+                            petAvatar: _petInfo!.avatar)))
                 : () => PetToast.warning(context, '请先绑定宠物'),
           ),
           _InteractTile(
@@ -641,8 +844,11 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
             label: '即时轨迹',
             enabled: hasPet,
             onTap: hasPet
-                ? () => Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => PetTrackPage(petName: _petInfo!.petName, deviceMac: widget.mac)))
+                ? () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => PetTrackPage(
+                            petName: _petInfo!.petName, deviceMac: widget.mac)))
                 : () => PetToast.warning(context, '请先绑定宠物'),
           ),
         ],
@@ -654,12 +860,19 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   Widget _buildSafetySettings(BuildContext context) {
     final hasPet = _petInfo != null && _petInfo!.petName.isNotEmpty;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('安全设置', style: TextStyle(fontFamily: AppFonts.primary,
-          fontSize: 15, fontWeight: FontWeight.w800)),
+      Text('安全设置',
+          style: TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 15,
+              fontWeight: FontWeight.w800)),
       SizedBox(height: 12),
       GridView.count(
-        crossAxisCount: 2, shrinkWrap: true, physics: NeverScrollableScrollPhysics(),
-        crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 2.4,
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        physics: NeverScrollableScrollPhysics(),
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 2.4,
         children: [
           _InteractTile(
             icon: Icons.route_rounded,
@@ -667,8 +880,11 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
             label: '历史轨迹',
             enabled: hasPet,
             onTap: hasPet
-                ? () => Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => PetTrackPage(petName: _petInfo!.petName, deviceMac: widget.mac)))
+                ? () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => PetTrackPage(
+                            petName: _petInfo!.petName, deviceMac: widget.mac)))
                 : () => PetToast.warning(context, '请先绑定宠物'),
           ),
           _InteractTile(
@@ -685,7 +901,6 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     ]);
   }
 
-
   Future<void> _toggleRing() async {
     final next = !_ringing;
     setState(() => _ringing = next);
@@ -697,7 +912,8 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     } catch (e) {
       if (mounted) {
         setState(() => _ringing = !next);
-        PetToast.error(context, '响铃失败：${e.toString().replaceAll("Exception: ", "")}');
+        PetToast.error(
+            context, '响铃失败：${e.toString().replaceAll("Exception: ", "")}');
       }
     }
   }
@@ -717,7 +933,8 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     } catch (e) {
       if (mounted) {
         setState(() => _ledOn = !next);
-        PetToast.error(context, 'LED 控制失败：${e.toString().replaceAll("Exception: ", "")}');
+        PetToast.error(
+            context, 'LED 控制失败：${e.toString().replaceAll("Exception: ", "")}');
       }
     }
   }
@@ -727,92 +944,152 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     return Column(children: [
       if (!hasPet) ...[
         _ActionButton(
-          icon: Icons.pets_rounded, label: '绑定宠物',
-          color: AppColors.secondary, fullWidth: true,
+          icon: Icons.pets_rounded,
+          label: '绑定宠物',
+          color: AppColors.secondary,
+          fullWidth: true,
           onTap: () async {
             final ok = await PetBindHelper.showAdd(context, mac: widget.mac);
-            if (ok) _loadAll();
+            if (ok) {
+              ref.read(petCirclePetControllerProvider.notifier).load();
+              _loadAll();
+            }
           },
         ),
         SizedBox(height: 12),
       ],
-      _ActionButton(icon: Icons.link_off_rounded, label: '解绑设备',
-          color: AppColors.error, fullWidth: true, onTap: () => _showUnbindDialog(context)),
+      _ActionButton(
+          icon: Icons.link_off_rounded,
+          label: '解绑设备',
+          color: AppColors.error,
+          fullWidth: true,
+          onTap: () => _showUnbindDialog(context)),
     ]);
   }
 
   void _showRemarkDialog(BuildContext context) {
     final ctrl = TextEditingController(text: widget.name);
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-      backgroundColor: AppColors.surfaceContainerLow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('设备备注', style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
-      content: TextField(controller: ctrl, decoration: InputDecoration(
-          hintText: '输入备注内容', filled: true, fillColor: AppColors.surfaceContainer,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: Text('取消')),
-        FilledButton(
-          onPressed: () async {
-            Navigator.pop(ctx);
-            try {
-              await ref.read(deviceRepositoryProvider).updateDeviceName(widget.mac, ctrl.text);
-              await ref.read(deviceListProvider.notifier).load();
-              await _loadAll();
-            } catch (e) { debugPrint('[DeviceDetail] 备注失败: $e'); }
-          },
-          style: FilledButton.styleFrom(backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-          child: Text('保存'),
-        ),
-      ],
-    ));
+    showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+              backgroundColor: AppColors.surfaceContainerLow,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+              title: Text('设备备注',
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontWeight: FontWeight.w700)),
+              content: TextField(
+                  controller: ctrl,
+                  decoration: InputDecoration(
+                      hintText: '输入备注内容',
+                      filled: true,
+                      fillColor: AppColors.surfaceContainer,
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none))),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx), child: Text('取消')),
+                FilledButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    try {
+                      await ref
+                          .read(deviceRepositoryProvider)
+                          .updateDeviceName(widget.mac, ctrl.text);
+                      await ref.read(deviceListProvider.notifier).load();
+                      await _loadAll();
+                    } catch (e) {
+                      debugPrint('[DeviceDetail] 备注失败: $e');
+                    }
+                  },
+                  style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: Text('保存'),
+                ),
+              ],
+            ));
   }
 
   void _showUnbindDialog(BuildContext context) {
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-      backgroundColor: AppColors.surfaceContainerLow,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('解绑设备', style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
-      content: Text('确定要解绑「${widget.name}」吗？解绑后宠物数据将停止同步。',
-          style: TextStyle(fontFamily: AppFonts.primary)),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: Text('取消')),
-        FilledButton(
-          onPressed: () async {
-            Navigator.pop(ctx);   // 关 dialog（用 dialog 自己的 ctx）
-            try {
-              await ref.read(deviceRepositoryProvider).unbindDevice(widget.mac);
-              ref.read(deviceListProvider.notifier).removeDevice(widget.mac);
-              if (mounted) Navigator.pop(context);  // 退出设备详情页（用页面 context）
-            } catch (e) { debugPrint('[DeviceDetail] 解绑失败: $e'); }
-          },
-          style: FilledButton.styleFrom(backgroundColor: AppColors.error,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-          child: Text('确认解绑'),
-        ),
-      ],
-    ));
+    showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+              backgroundColor: AppColors.surfaceContainerLow,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+              title: Text('解绑设备',
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontWeight: FontWeight.w700)),
+              content: Text('确定要解绑「${widget.name}」吗？解绑后宠物数据将停止同步。',
+                  style: TextStyle(fontFamily: AppFonts.primary)),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx), child: Text('取消')),
+                FilledButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx); // 关 dialog（用 dialog 自己的 ctx）
+                    try {
+                      await ref
+                          .read(deviceRepositoryProvider)
+                          .unbindDevice(widget.mac);
+                      ref
+                          .read(deviceListProvider.notifier)
+                          .removeDevice(widget.mac);
+                      if (mounted)
+                        Navigator.pop(context); // 退出设备详情页（用页面 context）
+                    } catch (e) {
+                      debugPrint('[DeviceDetail] 解绑失败: $e');
+                    }
+                  },
+                  style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.error,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: Text('确认解绑'),
+                ),
+              ],
+            ));
   }
 }
 
 // ── 小操作按钮（用于宠物区块右上角 编辑/删除）────────────
 class _SmallAction extends StatelessWidget {
-  final IconData icon; final String label; final VoidCallback onTap; final Color? color;
-  const _SmallAction({required this.icon, required this.label, required this.onTap, this.color});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color? color;
+  const _SmallAction(
+      {required this.icon,
+      required this.label,
+      required this.onTap,
+      this.color});
   @override
   Widget build(BuildContext context) {
     final c = color ?? AppColors.onSurfaceVariant;
     return GestureDetector(
-      onTap: () { HapticFeedback.selectionClick(); onTap(); },
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(color: c.withOpacity(0.08), borderRadius: BorderRadius.circular(20)),
+        decoration: BoxDecoration(
+            color: c.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(20)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 13, color: c),
           SizedBox(width: 4),
-          Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11,
-              fontWeight: FontWeight.w700, color: c)),
+          Text(label,
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: c)),
         ]),
       ),
     );
@@ -821,25 +1098,41 @@ class _SmallAction extends StatelessWidget {
 
 // ── 操作大按钮 ─────────────────────────────────────────────
 class _ActionButton extends StatelessWidget {
-  final IconData icon; final String label; final VoidCallback onTap;
-  final Color? color; final bool fullWidth;
-  const _ActionButton({required this.icon, required this.label, required this.onTap,
-      this.color, this.fullWidth = false});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color? color;
+  final bool fullWidth;
+  const _ActionButton(
+      {required this.icon,
+      required this.label,
+      required this.onTap,
+      this.color,
+      this.fullWidth = false});
   @override
   Widget build(BuildContext context) {
     final c = color ?? AppColors.onSurface;
     return GestureDetector(
-      onTap: () { HapticFeedback.selectionClick(); onTap(); },
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
       child: Container(
         width: fullWidth ? double.infinity : null,
         padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(color: c.withOpacity(0.08), borderRadius: BorderRadius.circular(14),
+        decoration: BoxDecoration(
+            color: c.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: c.withOpacity(0.18))),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(icon, color: c, size: 20),
           SizedBox(width: 8),
-          Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
-              fontWeight: FontWeight.w700, color: c)),
+          Text(label,
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: c)),
         ]),
       ),
     );
@@ -848,51 +1141,67 @@ class _ActionButton extends StatelessWidget {
 
 // ── 安全场景卡片 ───────────────────────────────────────────
 class _SceneCard extends StatelessWidget {
-  final Color    color, iconBg;
+  final Color color, iconBg;
   final IconData icon;
-  final String   title, subtitle;
+  final String title, subtitle;
   final VoidCallback onTap;
   const _SceneCard({
-    required this.color, required this.iconBg, required this.icon,
-    required this.title, required this.subtitle, required this.onTap,
+    required this.color,
+    required this.iconBg,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(children: [
-        Container(
-          width: 44, height: 44,
-          decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(14)),
-          child: Icon(icon, color: Colors.white, size: 22),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                  color: iconBg, borderRadius: BorderRadius.circular(14)),
+              child: Icon(icon, color: Colors.white, size: 22),
+            ),
+            SizedBox(width: 14),
+            Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text(title,
+                      style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800)),
+                  SizedBox(height: 3),
+                  Text(subtitle,
+                      style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 11,
+                          color: Colors.black.withOpacity(0.5))),
+                ])),
+            Icon(Icons.arrow_forward_ios_rounded,
+                size: 14, color: Colors.black38),
+          ]),
         ),
-        SizedBox(width: 14),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: TextStyle(fontFamily: AppFonts.primary,
-              fontSize: 14, fontWeight: FontWeight.w800)),
-          SizedBox(height: 3),
-          Text(subtitle, style: TextStyle(fontFamily: AppFonts.primary,
-              fontSize: 11, color: Colors.black.withOpacity(0.5))),
-        ])),
-        Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.black38),
-      ]),
-    ),
-  );
+      );
 }
 
 // ── 互动 / 安全设置格子 ─────────────────────────────────────
 class _InteractTile extends StatelessWidget {
   final IconData icon;
-  final Color    iconColor;
-  final String   label;
-  final bool     enabled;
-  final bool     active;
+  final Color iconColor;
+  final String label;
+  final bool enabled;
+  final bool active;
   final VoidCallback onTap;
 
   const _InteractTile({
@@ -901,7 +1210,7 @@ class _InteractTile extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.enabled = true,
-    this.active  = false,
+    this.active = false,
   });
 
   @override
@@ -918,26 +1227,32 @@ class _InteractTile extends StatelessWidget {
               : AppColors.surfaceContainerLow,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: active ? iconColor.withOpacity(0.4) : AppColors.surfaceContainerHigh,
+            color: active
+                ? iconColor.withOpacity(0.4)
+                : AppColors.surfaceContainerHigh,
           ),
         ),
         child: Row(children: [
           Container(
-            width: 36, height: 36,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: dimmed
                   ? Colors.grey.withOpacity(0.12)
                   : iconColor.withOpacity(0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: 18,
-                color: dimmed ? Colors.grey : iconColor),
+            child:
+                Icon(icon, size: 18, color: dimmed ? Colors.grey : iconColor),
           ),
           SizedBox(width: 10),
-          Expanded(child: Text(label,
-              style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 12, fontWeight: FontWeight.w700,
-                  color: dimmed ? Colors.grey : AppColors.onSurface))),
+          Expanded(
+              child: Text(label,
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: dimmed ? Colors.grey : AppColors.onSurface))),
         ]),
       ),
     );
@@ -957,10 +1272,13 @@ class _DeviceSwitcherSheet extends StatelessWidget {
   });
 
   bool _isRobot(DeviceModel d) {
-    final key  = d.productKey.toLowerCase();
+    final key = d.productKey.toLowerCase();
     final name = d.displayName.toLowerCase();
-    return key.contains('robot') || name.contains('机器人') ||
-        name.contains('robot') || key.contains('bot') || name.contains('bot');
+    return key.contains('robot') ||
+        name.contains('机器人') ||
+        name.contains('robot') ||
+        key.contains('bot') ||
+        name.contains('bot');
   }
 
   @override
@@ -975,7 +1293,8 @@ class _DeviceSwitcherSheet extends StatelessWidget {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         // 拖拽指示条
         Container(
-          width: 40, height: 4,
+          width: 40,
+          height: 4,
           decoration: BoxDecoration(
             color: Colors.grey.shade300,
             borderRadius: BorderRadius.circular(2),
@@ -985,13 +1304,16 @@ class _DeviceSwitcherSheet extends StatelessWidget {
         Align(
           alignment: Alignment.centerLeft,
           child: Text('切换设备',
-              style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1A1A2E))),
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1A1A2E))),
         ),
         SizedBox(height: 16),
         ...devices.map((d) {
           final isSelected = d.mac == currentMac;
-          final isRobot    = _isRobot(d);
+          final isRobot = _isRobot(d);
           return GestureDetector(
             onTap: () {
               HapticFeedback.selectionClick();
@@ -1016,7 +1338,8 @@ class _DeviceSwitcherSheet extends StatelessWidget {
               child: Row(children: [
                 // 设备图标
                 Container(
-                  width: 44, height: 44,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: isRobot
@@ -1027,36 +1350,49 @@ class _DeviceSwitcherSheet extends StatelessWidget {
                   ),
                   child: Icon(
                     isRobot ? Icons.smart_toy_rounded : Icons.pets_rounded,
-                    color: Colors.white, size: 22,
+                    color: Colors.white,
+                    size: 22,
                   ),
                 ),
                 SizedBox(width: 14),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(d.displayName,
-                      style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontSize: 14, fontWeight: FontWeight.w700,
-                        color: isSelected ? AppColors.primary : AppColors.onSurface,
-                      )),
-                  SizedBox(height: 2),
-                  Row(children: [
-                    Text(isRobot ? '智能宠物机器人' : '智能项圈',
-                        style: TextStyle(fontFamily: AppFonts.primary,
-                            fontSize: 11, color: AppColors.onSurfaceVariant)),
-                    SizedBox(width: 8),
-                    Container(width: 6, height: 6,
-                        decoration: BoxDecoration(
-                          color: d.isOnline
-                              ? Color(0xFF4ADE80)
-                              : AppColors.onSurfaceVariant,
-                          shape: BoxShape.circle,
-                        )),
-                    SizedBox(width: 4),
-                    Text(d.isOnline ? '在线' : '离线',
-                        style: TextStyle(fontFamily: AppFonts.primary,
-                            fontSize: 11, color: AppColors.onSurfaceVariant)),
-                  ]),
-                ])),
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text(d.displayName,
+                          style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: isSelected
+                                ? AppColors.primary
+                                : AppColors.onSurface,
+                          )),
+                      SizedBox(height: 2),
+                      Row(children: [
+                        Text(isRobot ? '智能宠物机器人' : '智能项圈',
+                            style: TextStyle(
+                                fontFamily: AppFonts.primary,
+                                fontSize: 11,
+                                color: AppColors.onSurfaceVariant)),
+                        SizedBox(width: 8),
+                        Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: d.isOnline
+                                  ? Color(0xFF4ADE80)
+                                  : AppColors.onSurfaceVariant,
+                              shape: BoxShape.circle,
+                            )),
+                        SizedBox(width: 4),
+                        Text(d.isOnline ? '在线' : '离线',
+                            style: TextStyle(
+                                fontFamily: AppFonts.primary,
+                                fontSize: 11,
+                                color: AppColors.onSurfaceVariant)),
+                      ]),
+                    ])),
                 if (isSelected)
                   Icon(Icons.check_circle_rounded,
                       color: AppColors.primary, size: 20),

@@ -52,8 +52,8 @@ class PeerApiClient {
     _token   = token;
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 15),
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 30),
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'token': token,

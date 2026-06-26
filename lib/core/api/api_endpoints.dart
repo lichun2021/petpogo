@@ -5,15 +5,15 @@
 /// AI 功能统一通过业务后端 /sdkapi/ai/* 接口调用，不再直连独立 AI 服务。
 abstract class ApiEndpoints {
   // ── 业务后端（PetPogo 自有服务）────────────────────────
-  static const pets        = '/pets';
-  static const devices     = '/devices';
-  static const deviceBind  = '/devices/bind';
-  static const user        = '/user/profile';
-  static const feedback    = '/api/user/feedback';
-  static const login       = '/auth/login';
-  static const logout      = '/auth/logout';
-  static const community   = '/posts';
-  static const mallItems   = '/mall/products';
+  static const pets = '/pets';
+  static const devices = '/devices';
+  static const deviceBind = '/devices/bind';
+  static const user = '/user/profile';
+  static const feedback = '/api/user/feedback';
+  static const login = '/auth/login';
+  static const logout = '/auth/logout';
+  static const community = '/posts';
+  static const mallItems = '/mall/products';
   static const storeNearby = '/stores/nearby';
 
   // 带参数（用方法生成）
@@ -33,9 +33,11 @@ abstract class ApiEndpoints {
 
   // ── 媒体库 ──────────────────────────────────────────
   /// 保存图库记录  POST /sdkapi/media/save
-  static const mediaSave   = '/sdkapi/media/save';
+  static const mediaSave = '/sdkapi/media/save';
+
   /// 获取图库列表  GET /sdkapi/media/list
-  static const mediaList   = '/sdkapi/media/list';
+  static const mediaList = '/sdkapi/media/list';
+
   /// 删除图库文件  DELETE /sdkapi/media/:id
   static String mediaDelete(String id) => '/sdkapi/media/$id';
 
@@ -50,44 +52,69 @@ abstract class ApiEndpoints {
   /// 删除抓拍记录  DELETE /sdkapi/capture/:id
   static String captureDelete(int id) => '/sdkapi/capture/$id';
 
+  // ── 萌宠圈自动动态 ─────────────────────────────────────
+  /// 获取某只宠物的萌宠圈动态  GET /sdkapi/pet-circle/feed
+  static const petCircleFeed = '/sdkapi/pet-circle/feed';
+
+  /// 删除萌宠圈动态  DELETE /sdkapi/pet-circle/post/:id
+  static String petCirclePostDelete(String id) => '/sdkapi/pet-circle/post/$id';
+
   // ── 声音预设 ───────────────────────────────────────
   /// 获取声音预设列表  GET /sdkapi/sound/preset/list
   static const soundPresetList = '/sdkapi/sound/preset/list';
 
+  // ── 分享落地页 / App 内解析 ──────────────────────────────
+  /// 创建分享卡片链接  POST /sdkapi/share/create
+  static const shareCreate = '/sdkapi/share/create';
+
+  /// 打开 App 后解析分享码  GET /sdkapi/share/resolve
+  static const shareResolve = '/sdkapi/share/resolve';
 
   // ── 宠小伊 AI 问诊（独立后端 AppConfig.aiConsultBaseUrl）─
   /// 创建新 session（POST JSON body {pet_id}，v0.4 改为 POST）
-  static const aiConsultSessionNew      = '/session/new';
+  static const aiConsultSessionNew = '/session/new';
+
   /// 删除 session（POST JSON body {session_id}）
-  static const aiConsultSessionDelete   = '/session/delete';
+  static const aiConsultSessionDelete = '/session/delete';
+
   /// 同步问诊（一次性返回，调试/降级用）
-  static const aiConsultMessages        = '/messages';
+  static const aiConsultMessages = '/messages';
+
   /// 流式问诊（SSE，主入口）
-  static const aiConsultMessagesStream  = '/messages/stream';
+  static const aiConsultMessagesStream = '/messages/stream';
+
   /// 生成诊断报告
-  static const aiConsultReport          = '/report';
+  static const aiConsultReport = '/report';
+
   /// 查询宠物的全部历史会话列表（POST {pet_id}）
-  static const aiConsultSessionByPet    = '/session/by-pet';
+  static const aiConsultSessionByPet = '/session/by-pet';
+
   /// 查询指定会话的完整聊天记录（POST {session_id}）
   static const aiConsultSessionMessages = '/session/messages';
 
   // ── 视频流自动 AI 分析（router_video_stream.py）──────────
   /// 保存/更新自动分析设置（POST JSON body）
-  static const autoAnalysisSave   = '/video/stream/auto-analysis/settings/save';
+  static const autoAnalysisSave = '/video/stream/auto-analysis/settings/save';
+
   /// 启用或禁用自动分析设置（POST JSON body）
-  static const autoAnalysisToggle = '/video/stream/auto-analysis/settings/disable';
+  static const autoAnalysisToggle =
+      '/video/stream/auto-analysis/settings/disable';
+
   /// 查询设备任务列表（POST JSON body）
-  static const autoAnalysisTasks  = '/video/stream/auto-analysis/tasks';
+  static const autoAnalysisTasks = '/video/stream/auto-analysis/tasks';
 
   // ── 音频流自动 AI 分析（自动打招呼）──────────────────────
   /// 保存/更新音频流自动分析设置（POST JSON body）
-  static const voiceAnalysisSave   = '/voice/stream/auto-analysis/settings/save';
+  static const voiceAnalysisSave = '/voice/stream/auto-analysis/settings/save';
+
   /// 启用或禁用音频流自动分析设置（POST JSON body）
-  static const voiceAnalysisToggle = '/voice/stream/auto-analysis/settings/disable';
+  static const voiceAnalysisToggle =
+      '/voice/stream/auto-analysis/settings/disable';
 
   // ── 手动录制声网音视频流（router_video_recording.py）───
   /// 开始录制设备音视频流  POST /video/recording/start
   static const recordingStart = '/video/recording/start';
+
   /// 结束录制并合成 MP4   POST /video/recording/stop
-  static const recordingStop  = '/video/recording/stop';
+  static const recordingStop = '/video/recording/stop';
 }

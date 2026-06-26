@@ -1,15 +1,17 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/theme/app_colors.dart';
+import '../../shared/widgets/pet_avatar.dart';
 import '../device/data/repository/device_repository.dart';
 import '../device/data/models/device_model.dart';
 import '../device/device_detail_page.dart';
+import '../device/device_members_page.dart';
 import '../device/robot_device_page.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
 import '../pet/bind_pet_sheet.dart';
+import '../pet_circle/controller/pet_circle_pet_controller.dart';
 import '../bind_device/select_device_page.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
@@ -32,14 +34,21 @@ class DeviceListPage extends ConsumerWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text('我的设备',
-            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 17, fontWeight: FontWeight.w700)),
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 17,
+                fontWeight: FontWeight.w700)),
         centerTitle: true,
         actions: [
           // 右上角刷新（加载中显示 loading）
           if (state.isLoading)
-            Padding(padding: EdgeInsets.only(right: 8),
-              child: SizedBox(width: 18, height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)))
+            Padding(
+                padding: EdgeInsets.only(right: 8),
+                child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.primary)))
           else
             IconButton(
               icon: Icon(Icons.refresh_rounded),
@@ -52,9 +61,11 @@ class DeviceListPage extends ConsumerWidget {
             color: AppColors.primary,
             onPressed: () async {
               HapticFeedback.mediumImpact();
-              await Navigator.push(context, MaterialPageRoute(
-                builder: (_) => SelectDevicePage(),
-              ));
+              await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SelectDevicePage(),
+                  ));
               ref.read(deviceListProvider.notifier).load();
             },
           ),
@@ -64,9 +75,12 @@ class DeviceListPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildBody(BuildContext context, WidgetRef ref, DeviceListState state) {
+  Widget _buildBody(
+      BuildContext context, WidgetRef ref, DeviceListState state) {
     if (state.isLoading && state.devices.isEmpty) {
-      return Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5));
+      return Center(
+          child: CircularProgressIndicator(
+              color: AppColors.primary, strokeWidth: 2.5));
     }
     if (state.errorMessage != null && state.devices.isEmpty) {
       return _buildError(context, ref, state.errorMessage!);
@@ -87,41 +101,59 @@ class DeviceListPage extends ConsumerWidget {
   }
 
   Widget _buildEmpty(BuildContext context, WidgetRef ref) {
-    return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Icon(Icons.devices_other_rounded, size: 80, color: AppColors.onSurfaceVariant.withOpacity(0.3)),
+    return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Icon(Icons.devices_other_rounded,
+          size: 80, color: AppColors.onSurfaceVariant.withOpacity(0.3)),
       SizedBox(height: 20),
-      Text('还没有绑定设备', style: TextStyle(fontFamily: AppFonts.primary,
-          fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+      Text('还没有绑定设备',
+          style: TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.onSurface)),
       SizedBox(height: 8),
       Text('选择类型，扫码绑定智能项圈或宠物机器人',
-          style: TextStyle(fontFamily: AppFonts.primary, fontSize: 13,
-              color: AppColors.onSurfaceVariant), textAlign: TextAlign.center),
+          style: TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 13,
+              color: AppColors.onSurfaceVariant),
+          textAlign: TextAlign.center),
       SizedBox(height: 32),
       FilledButton.icon(
         onPressed: () async {
           HapticFeedback.mediumImpact();
-          await Navigator.push(context, MaterialPageRoute(
-              builder: (_) => SelectDevicePage()));
+          await Navigator.push(
+              context, MaterialPageRoute(builder: (_) => SelectDevicePage()));
           ref.read(deviceListProvider.notifier).load();
         },
         icon: Icon(Icons.add_rounded),
-        label: Text('添加设备', style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
+        label: Text('添加设备',
+            style: TextStyle(
+                fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.primary,
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
     ]));
   }
 
   Widget _buildError(BuildContext context, WidgetRef ref, String msg) {
-    return Center(child: Padding(padding: const EdgeInsets.all(32),
+    return Center(
+        child: Padding(
+      padding: const EdgeInsets.all(32),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.wifi_off_rounded, size: 64, color: AppColors.onSurfaceVariant),
+        Icon(Icons.wifi_off_rounded,
+            size: 64, color: AppColors.onSurfaceVariant),
         SizedBox(height: 16),
-        Text(msg, textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
+        Text(msg,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 14,
                 color: AppColors.onSurfaceVariant)),
         SizedBox(height: 16),
         OutlinedButton(
@@ -149,16 +181,29 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
   @override
   void initState() {
     super.initState();
-    _loadPet();
+    if (_detectType(widget.device) == _DeviceType.collar) {
+      _loadPet();
+    } else {
+      _petLoading = false;
+    }
   }
 
   Future<void> _loadPet() async {
     try {
-      final pet = await ref.read(petPeerRepositoryProvider)
+      final pet = await ref
+          .read(petPeerRepositoryProvider)
           .fetchPetInfo(mac: widget.device.mac);
-      if (mounted) setState(() { _pet = pet; _petLoading = false; });
+      if (mounted)
+        setState(() {
+          _pet = pet;
+          _petLoading = false;
+        });
     } catch (_) {
-      if (mounted) setState(() { _pet = null; _petLoading = false; });
+      if (mounted)
+        setState(() {
+          _pet = null;
+          _petLoading = false;
+        });
     }
   }
 
@@ -171,13 +216,16 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
       onTap: () async {
         HapticFeedback.selectionClick();
         final deviceType = _detectType(device);
-        await Navigator.push(context, MaterialPageRoute(
-          builder: (_) => deviceType == _DeviceType.robot
-              ? RobotDevicePage(mac: device.mac, name: device.displayName)
-              : DeviceDetailPage(mac: device.mac, name: device.displayName),
-        ));
-        // 返回后刷新宠物信息
-        _loadPet();
+        await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => deviceType == _DeviceType.robot
+                  ? RobotDevicePage(mac: device.mac, name: device.displayName)
+                  : DeviceDetailPage(mac: device.mac, name: device.displayName),
+            ));
+        if (deviceType == _DeviceType.collar) {
+          _loadPet();
+        }
       },
       child: Container(
         decoration: BoxDecoration(
@@ -185,12 +233,16 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
             colors: device.isOnline
                 ? [Color(0xFF1e1e2e), Color(0xFF2a2440)]
                 : [Color(0xFF1e1e2e), Color(0xFF252525)],
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(22),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.22),
-                blurRadius: 20, spreadRadius: -4, offset: Offset(0, 6)),
+            BoxShadow(
+                color: Colors.black.withOpacity(0.22),
+                blurRadius: 20,
+                spreadRadius: -4,
+                offset: Offset(0, 6)),
           ],
         ),
         child: Column(children: [
@@ -202,26 +254,51 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
               _DeviceTypeIcon(type: deviceType, isOnline: device.isOnline),
               SizedBox(width: 14),
               // 设备名称 + 状态
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(device.displayName, style: TextStyle(fontFamily: AppFonts.primary,
-                    fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
-                SizedBox(height: 4),
-                Row(children: [
-                  Text(deviceType.label, style: TextStyle(fontFamily: AppFonts.primary,
-                      fontSize: 11, fontWeight: FontWeight.w600,
-                      color: Colors.white.withOpacity(0.45))),
-                  SizedBox(width: 8),
-                  Container(width: 4, height: 4, decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.25), shape: BoxShape.circle)),
-                  SizedBox(width: 8),
-                  Text('MAC: ${device.mac.length > 14 ? '...${device.mac.substring(device.mac.length - 10)}' : device.mac}',
-                      style: TextStyle(fontFamily: AppFonts.primary, fontSize: 10,
-                          color: Colors.white.withOpacity(0.35))),
-                ]),
-              ])),
+              Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text(device.displayName,
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white)),
+                    SizedBox(height: 4),
+                    Row(children: [
+                      Text(deviceType.label,
+                          style: TextStyle(
+                              fontFamily: AppFonts.primary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withOpacity(0.45))),
+                      SizedBox(width: 8),
+                      // ── 角色标签 ──────────────────────────
+                      _RoleBadge(device: device),
+                      SizedBox(width: 8),
+                      Container(
+                          width: 4,
+                          height: 4,
+                          decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.25),
+                              shape: BoxShape.circle)),
+                      SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'MAC: ${device.mac.length > 14 ? '...${device.mac.substring(device.mac.length - 10)}' : device.mac}',
+                          style: TextStyle(
+                              fontFamily: AppFonts.primary,
+                              fontSize: 10,
+                              color: Colors.white.withOpacity(0.35)),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ]),
+                  ])),
               // 在线状态标签
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: device.isOnline
                       ? Color(0xFF4ADE80).withOpacity(0.15)
@@ -229,42 +306,107 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Container(width: 5, height: 5,
+                  Container(
+                      width: 5,
+                      height: 5,
                       decoration: BoxDecoration(
-                        color: device.isOnline ? Color(0xFF4ADE80) : Colors.white38,
+                        color: device.isOnline
+                            ? Color(0xFF4ADE80)
+                            : Colors.white38,
                         shape: BoxShape.circle,
                       )),
                   SizedBox(width: 5),
                   Text(device.isOnline ? '在线' : '离线',
-                      style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11,
+                      style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: device.isOnline ? Color(0xFF4ADE80) : Colors.white38)),
+                          color: device.isOnline
+                              ? Color(0xFF4ADE80)
+                              : Colors.white38)),
                 ]),
               ),
             ]),
           ),
 
-          // ── 分割线 ────────────────────────────────────────
-          Container(height: 1, margin: const EdgeInsets.symmetric(horizontal: 18),
-              color: Colors.white.withOpacity(0.07)),
+          if (deviceType == _DeviceType.collar) ...[
+            // ── 分割线 ────────────────────────────────────────
+            Container(
+                height: 1,
+                margin: const EdgeInsets.symmetric(horizontal: 18),
+                color: Colors.white.withOpacity(0.07)),
 
-          // ── 宠物行 ────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
-            child: _petLoading
-                ? Row(children: [
-                    Container(width: 32, height: 32,
-                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.08),
-                            shape: BoxShape.circle)),
-                    SizedBox(width: 10),
-                    Container(width: 80, height: 11,
-                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(6))),
-                  ])
-                : _pet != null && _pet!.petName.isNotEmpty
-                    ? _buildPetRow(context)
-                    : _buildNoPetRow(context),
-          ),
+            // ── 宠物行（仅项圈需要绑定宠物）───────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
+              child: _petLoading
+                  ? Row(children: [
+                      Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.08),
+                              shape: BoxShape.circle)),
+                      SizedBox(width: 10),
+                      Container(
+                          width: 80,
+                          height: 11,
+                          decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(6))),
+                    ])
+                  : _pet != null && _pet!.petName.isNotEmpty
+                      ? _buildPetRow(context)
+                      : _buildNoPetRow(context),
+            ),
+          ],
+
+          // ── 管理按鈕行（仅 OWNER 显示）─────────────────────
+          if (device.isOwner) ...[
+            Container(
+                height: 1,
+                margin: const EdgeInsets.symmetric(horizontal: 18),
+                color: Colors.white.withOpacity(0.07)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
+              child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DeviceMembersPage(
+                            mac: device.mac,
+                            deviceId: device.deviceId,
+                            deviceName: device.displayName,
+                          ),
+                        ));
+                  },
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.07),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withOpacity(0.12)),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.group_rounded,
+                          size: 13, color: Colors.white60),
+                      SizedBox(width: 5),
+                      Text('管理共享',
+                          style: TextStyle(
+                              fontFamily: AppFonts.primary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white60)),
+                    ]),
+                  ),
+                ),
+              ]),
+            ),
+          ],
         ]),
       ),
     );
@@ -276,34 +418,52 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
       onTap: () async {
         HapticFeedback.selectionClick();
         final deviceType = _detectType(widget.device);
-        await Navigator.push(context, MaterialPageRoute(
-          builder: (_) => deviceType == _DeviceType.robot
-              ? RobotDevicePage(mac: widget.device.mac, name: widget.device.displayName)
-              : DeviceDetailPage(mac: widget.device.mac, name: widget.device.displayName),
-        ));
-        _loadPet();
+        await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => deviceType == _DeviceType.robot
+                  ? RobotDevicePage(
+                      mac: widget.device.mac, name: widget.device.displayName)
+                  : DeviceDetailPage(
+                      mac: widget.device.mac, name: widget.device.displayName),
+            ));
+        if (deviceType == _DeviceType.collar) {
+          _loadPet();
+        }
       },
       child: Row(children: [
-        // 宠物头像
-        Container(width: 36, height: 36,
-          decoration: BoxDecoration(shape: BoxShape.circle,
-              border: Border.all(color: AppColors.primary.withOpacity(0.5), width: 1.5)),
-          child: ClipOval(
-            child: pet.avatar.isNotEmpty
-                ? CachedNetworkImage(imageUrl: pet.avatar, fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => _petEmoji(pet.petName))
-                : _petEmoji(pet.petName),
+        Container(
+          width: 38,
+          height: 38,
+          padding: const EdgeInsets.all(1.5),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.55),
+              width: 1.5,
+            ),
           ),
+          child: PetAvatar(imageUrl: pet.avatar, size: 35),
         ),
         SizedBox(width: 10),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(pet.petName, style: TextStyle(fontFamily: AppFonts.primary,
-              fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+        Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(pet.petName,
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white)),
           Text(
-            [if (pet.breed.isNotEmpty) pet.breed,
-             if (pet.age > 0) '${pet.age}岁',
-             if (pet.sex.isNotEmpty) pet.sexDisplay].join(' · '),
-            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 10,
+            [
+              if (pet.breed.isNotEmpty) pet.breed,
+              if (pet.age > 0) '${pet.age}岁',
+              if (pet.sex.isNotEmpty) pet.sexDisplay
+            ].join(' · '),
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 10,
                 color: Colors.white.withOpacity(0.4)),
           ),
         ])),
@@ -317,17 +477,27 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
       onTap: () async {
         HapticFeedback.mediumImpact();
         final ok = await PetBindHelper.showAdd(context, mac: widget.device.mac);
-        if (ok) _loadPet();
+        if (ok) {
+          ref.read(petCirclePetControllerProvider.notifier).load();
+          _loadPet();
+        }
       },
       child: Row(children: [
-        Container(width: 36, height: 36,
-          decoration: BoxDecoration(color: Colors.white.withOpacity(0.07),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withOpacity(0.12))),
-          child: Icon(Icons.add_rounded, color: Colors.white38, size: 20)),
+        Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.07),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withOpacity(0.12))),
+            child: Icon(Icons.add_rounded, color: Colors.white38, size: 20)),
         SizedBox(width: 10),
-        Text('点击绑定宠物', style: TextStyle(fontFamily: AppFonts.primary,
-            fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white38)),
+        Text('点击绑定宠物',
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.white38)),
         Spacer(),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -335,33 +505,79 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
             color: AppColors.primary.withOpacity(0.15),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Text('绑定', style: TextStyle(fontFamily: AppFonts.primary,
-              fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary.withOpacity(0.8))),
+          child: Text('绑定',
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary.withOpacity(0.8))),
         ),
       ]),
     );
   }
 
-  Widget _petEmoji(String name) {
-    // 简单判断常见宠物 emoji
-    return Container(color: AppColors.primary.withOpacity(0.2),
-        child: Center(child: Text(
-          name.contains('猫') || name.toLowerCase().contains('cat') ? '🐱'
-              : name.contains('狗') || name.toLowerCase().contains('dog') ? '🐶' : '🐾',
-          style: TextStyle(fontSize: 20),
-        )));
-  }
-
   _DeviceType _detectType(DeviceModel d) {
-    final key  = d.productKey.toLowerCase();
+    final key = d.productKey.toLowerCase();
     final name = d.displayName.toLowerCase();
     // 机器人判断（名称/productKey 含 robot/机器人）
-    if (key.contains('robot') || name.contains('机器人') || name.contains('robot') ||
-        key.contains('bot') || name.contains('bot')) {
+    if (key.contains('robot') ||
+        name.contains('机器人') ||
+        name.contains('robot') ||
+        key.contains('bot') ||
+        name.contains('bot')) {
       return _DeviceType.robot;
     }
     // 其余默认为智能项圈
     return _DeviceType.collar;
+  }
+}
+
+// ── 角色标签 chip ────────────────────────────────────────
+class _RoleBadge extends StatelessWidget {
+  final DeviceModel device;
+  const _RoleBadge({required this.device});
+
+  @override
+  Widget build(BuildContext context) {
+    // 自有设备（主人）不显示额外标签，节省空间
+    if (!device.isShared && device.isOwner) return const SizedBox.shrink();
+
+    final Color bg;
+    final Color fg;
+    final IconData icon;
+
+    if (device.isAdmin) {
+      // ADMIN — 蓝色
+      bg = const Color(0xFF60A5FA).withOpacity(0.15);
+      fg = const Color(0xFF60A5FA);
+      icon = Icons.admin_panel_settings_rounded;
+    } else {
+      // MEMBER / 共享设备 — 灰紫色
+      bg = Colors.white.withOpacity(0.10);
+      fg = Colors.white54;
+      icon = Icons.share_rounded;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 10, color: fg),
+        const SizedBox(width: 3),
+        Text(
+          device.roleLabel,
+          style: TextStyle(
+            fontFamily: AppFonts.primary,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: fg,
+          ),
+        ),
+      ]),
+    );
   }
 }
 
@@ -371,8 +587,10 @@ enum _DeviceType { collar, robot }
 extension _DeviceTypeX on _DeviceType {
   String get label {
     switch (this) {
-      case _DeviceType.collar: return '智能项圈';
-      case _DeviceType.robot:  return '智能宠物机器人';
+      case _DeviceType.collar:
+        return '智能项圈';
+      case _DeviceType.robot:
+        return '智能宠物机器人';
     }
   }
 
@@ -388,8 +606,10 @@ extension _DeviceTypeX on _DeviceType {
 
   Color get glowColor {
     switch (this) {
-      case _DeviceType.collar: return Color(0xFFff784e);
-      case _DeviceType.robot:  return Color(0xFF7fe6db);
+      case _DeviceType.collar:
+        return Color(0xFFff784e);
+      case _DeviceType.robot:
+        return Color(0xFF7fe6db);
     }
   }
 }
@@ -402,21 +622,28 @@ class _DeviceTypeIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gradient = isOnline
-        ? type.onlineGradient
-        : [Color(0xFF2c2c3e), Color(0xFF1e1e2a)];
+    final gradient =
+        isOnline ? type.onlineGradient : [Color(0xFF2c2c3e), Color(0xFF1e1e2a)];
     final iconColor = isOnline ? Colors.white : Colors.white24;
 
     return Container(
-      width: 58, height: 58,
+      width: 58,
+      height: 58,
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: gradient,
-            begin: Alignment.topLeft, end: Alignment.bottomRight),
+        gradient: LinearGradient(
+            colors: gradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(18),
-        boxShadow: isOnline ? [
-          BoxShadow(color: type.glowColor.withOpacity(0.45),
-              blurRadius: 14, spreadRadius: -2, offset: Offset(0, 5)),
-        ] : [],
+        boxShadow: isOnline
+            ? [
+                BoxShadow(
+                    color: type.glowColor.withOpacity(0.45),
+                    blurRadius: 14,
+                    spreadRadius: -2,
+                    offset: Offset(0, 5)),
+              ]
+            : [],
       ),
       child: Center(
         child: type == _DeviceType.collar
@@ -437,10 +664,14 @@ class _CollarIcon extends StatelessWidget {
       Icon(Icons.circle_outlined, color: color.withOpacity(0.5), size: 38),
       Icon(Icons.pets_rounded, color: color, size: 20),
       // 项圈扣具小装饰
-      Positioned(bottom: 7,
-        child: Container(width: 12, height: 3,
-          decoration: BoxDecoration(color: color.withOpacity(0.6),
-              borderRadius: BorderRadius.circular(2)))),
+      Positioned(
+          bottom: 7,
+          child: Container(
+              width: 12,
+              height: 3,
+              decoration: BoxDecoration(
+                  color: color.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(2)))),
     ]);
   }
 }

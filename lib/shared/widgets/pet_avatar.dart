@@ -7,7 +7,7 @@ class PetAvatar extends StatelessWidget {
   final double size;
   final String fallbackEmoji;
 
-  PetAvatar({
+  const PetAvatar({
     super.key,
     this.imageUrl,
     this.size = 44,
@@ -28,16 +28,50 @@ class PetAvatar extends StatelessWidget {
           ? CachedNetworkImage(
               imageUrl: imageUrl!,
               fit: BoxFit.cover,
-              placeholder: (_, __) => Center(
-                child: Text(fallbackEmoji, style: TextStyle(fontSize: size * 0.4)),
+              placeholder: (_, __) => _FallbackPetAvatar(
+                size: size,
+                fallbackEmoji: fallbackEmoji,
               ),
-              errorWidget: (_, __, ___) => Center(
-                child: Text(fallbackEmoji, style: TextStyle(fontSize: size * 0.4)),
+              errorWidget: (_, __, ___) => _FallbackPetAvatar(
+                size: size,
+                fallbackEmoji: fallbackEmoji,
               ),
             )
-          : Center(
-              child: Text(fallbackEmoji, style: TextStyle(fontSize: size * 0.4)),
+          : _FallbackPetAvatar(
+              size: size,
+              fallbackEmoji: fallbackEmoji,
             ),
+    );
+  }
+}
+
+class _FallbackPetAvatar extends StatelessWidget {
+  final double size;
+  final String fallbackEmoji;
+
+  const _FallbackPetAvatar({
+    required this.size,
+    required this.fallbackEmoji,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (fallbackEmoji == '🐾') {
+      return Container(
+        color: AppColors.primaryContainer.withValues(alpha: 0.55),
+        child: Icon(
+          Icons.pets_rounded,
+          color: AppColors.primary,
+          size: size * 0.48,
+        ),
+      );
+    }
+
+    return Center(
+      child: Text(
+        fallbackEmoji,
+        style: TextStyle(fontSize: size * 0.4),
+      ),
     );
   }
 }

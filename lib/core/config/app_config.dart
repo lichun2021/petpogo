@@ -9,12 +9,14 @@ class AppConfig {
   // 业务后端（uCloudlink）
   // ──────────────────────────────────────────────
   //static const String baseUrl        = 'http://115.29.196.61:3000';
-  static const String baseUrl        = 'https://api.jxpetai.com';
+  static const String baseUrl = 'https://api.jxpetai.com';
   // ──────────────────────────────────────────────
   // 第三方 SDK（待填入）
   // ──────────────────────────────────────────────
 
-  static const int    timSdkAppId  = 1600139420;  // 宠物测试 IM - 体验版
+  static const int timSdkAppId = 1600139420; // 宠物测试 IM - 体验版
+  static const String wechatAppId = 'wx02094a124e425dfe';
+  static const String wechatUniversalLink = 'https://www.jxpetai.com/';
 
   /// ⚠️ [仅开发测试] 腾讯 IM SecretKey
   ///
@@ -23,7 +25,8 @@ class AppConfig {
   ///   - Release 构建：此值必须清空，UserSig 由后端生成后下发
   ///
   /// TODO: 上线前将此值清空，确保 SecretKey 不出现在生产包中
-  static const String timSecretKey = 'f10fd3888e0c707830bf398bd51ffa6be657aeff601905c0f5230e0f82907775';
+  static const String timSecretKey =
+      'f10fd3888e0c707830bf398bd51ffa6be657aeff601905c0f5230e0f82907775';
 
   // ──────────────────────────────────────────────
   // 极光推送
@@ -45,13 +48,15 @@ class AppConfig {
   // ──────────────────────────────────────────────
   // App 信息
   // ──────────────────────────────────────────────
-  static const String appVersion     = '1.0.5';
-  static const String defaultLang    = 'zh-CN';
+  static const String appVersion = '1.0.5';
+  static const String defaultLang = 'zh-CN';
+  static const String shareSiteBaseUrl = 'https://www.jxpetai.com';
+  static const String appScheme = 'petpogo';
 
   // ──────────────────────────────────────────────
   // 分页
   // ──────────────────────────────────────────────
-  static const int pageSize          = 20;
+  static const int pageSize = 20;
 
   // ──────────────────────────────────────────────
   // ApiClient 专用（统一入口）

@@ -1082,7 +1082,7 @@ class _HomeDeviceCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  device.isOwner ? '主人' : '共享',
+                  device.isOwner ? '我的' : '共享',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,

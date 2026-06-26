@@ -1,7 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../shared/theme/app_colors.dart';
+import '../../shared/widgets/pet_avatar.dart';
 import 'data/models/consultation_models.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
@@ -9,7 +9,7 @@ class ReportDiagnosisPage extends StatelessWidget {
   final ConsultationReport report;
   final PetInfoSnapshot? petInfo;
   final String petAvatar;
-  ReportDiagnosisPage({
+  const ReportDiagnosisPage({
     super.key,
     required this.report,
     this.petInfo,
@@ -112,7 +112,11 @@ class _PetHeroCard extends StatelessWidget {
       if (pet.weight.isNotEmpty)
         (label: '体重', value: '${pet.weight} kg', color: Color(0xFF10B981)),
       if (pet.gender.isNotEmpty)
-        (label: '性别', value: _genderLabel(pet.gender), color: Color(0xFFF59E0B)),
+        (
+          label: '性别',
+          value: _genderLabel(pet.gender),
+          color: Color(0xFFF59E0B)
+        ),
     ];
 
     return Container(
@@ -138,7 +142,7 @@ class _PetHeroCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // ── 头像 ───────────────────────────
-            _Avatar(avatarUrl: avatarUrl, name: pet.name, gender: pet.gender),
+            _Avatar(avatarUrl: avatarUrl),
             SizedBox(width: 16),
             // ── 名字 + 信息标签 ────────────────
             Expanded(
@@ -257,23 +261,12 @@ class _PetHeroCard extends StatelessWidget {
 // ── 宠物头像 ──────────────────────────────────────────────
 class _Avatar extends StatelessWidget {
   final String avatarUrl;
-  final String name;
-  final String gender;
   const _Avatar({
     required this.avatarUrl,
-    required this.name,
-    required this.gender,
   });
 
   @override
   Widget build(BuildContext context) {
-    final emoji = name.contains('猫') ||
-            gender.toLowerCase().contains('cat')
-        ? '🐱'
-        : name.contains('狗') || gender.toLowerCase().contains('dog')
-            ? '🐶'
-            : '🐾';
-
     return Container(
       width: 72,
       height: 72,
@@ -293,30 +286,8 @@ class _Avatar extends StatelessWidget {
           width: 2.5,
         ),
       ),
-      child: ClipOval(
-        child: avatarUrl.isNotEmpty
-            ? CachedNetworkImage(
-                imageUrl: avatarUrl,
-                fit: BoxFit.cover,
-                errorWidget: (_, __, ___) => _EmojiAvatar(emoji: emoji),
-              )
-            : _EmojiAvatar(emoji: emoji),
-      ),
-    );
-  }
-}
-
-class _EmojiAvatar extends StatelessWidget {
-  final String emoji;
-  const _EmojiAvatar({required this.emoji});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Color(0xFF6366F1).withOpacity(0.08),
-      child: Center(
-        child: Text(emoji, style: TextStyle(fontSize: 34)),
-      ),
+      clipBehavior: Clip.antiAlias,
+      child: PetAvatar(imageUrl: avatarUrl, size: 72),
     );
   }
 }

@@ -29,11 +29,11 @@ class MainShell extends ConsumerStatefulWidget {
 class _MainShellState extends ConsumerState<MainShell> {
   // 使用 AppRoutes 常量，路径变更只改 AppRoutes 一处
   static const _tabs = [
-    AppRoutes.home,       // '/'
-    AppRoutes.message,    // '/message'
-    AppRoutes.community,  // '/community'
-    AppRoutes.mall,       // '/mall'
-    AppRoutes.profile,    // '/profile'
+    AppRoutes.home, // '/'
+    AppRoutes.message, // '/message'
+    AppRoutes.community, // '/community'
+    AppRoutes.petCircle, // '/pet-circle'
+    AppRoutes.profile, // '/profile'
   ];
 
   /// 根据当前路由路径计算选中 Tab（外部 go() 跳转时也能同步）
@@ -48,11 +48,26 @@ class _MainShellState extends ConsumerState<MainShell> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final navItems = [
-      NavItem(icon: Icons.home_outlined,        activeIcon: Icons.home_rounded,          label: l10n.navHome),
-      NavItem(icon: Icons.chat_bubble_outline,   activeIcon: Icons.chat_bubble_rounded,   label: l10n.navMessage),
-      NavItem(icon: Icons.people_outline,        activeIcon: Icons.people_rounded,        label: l10n.navCommunity),
-      NavItem(icon: Icons.shopping_bag_outlined, activeIcon: Icons.shopping_bag_rounded,  label: l10n.navMall),
-      NavItem(icon: Icons.person_outline,        activeIcon: Icons.person_rounded,        label: l10n.navProfile),
+      NavItem(
+          icon: Icons.home_outlined,
+          activeIcon: Icons.home_rounded,
+          label: l10n.navHome),
+      NavItem(
+          icon: Icons.chat_bubble_outline,
+          activeIcon: Icons.chat_bubble_rounded,
+          label: l10n.navMessage),
+      NavItem(
+          icon: Icons.people_outline,
+          activeIcon: Icons.people_rounded,
+          label: l10n.navCommunity),
+      NavItem(
+          icon: Icons.pets_outlined,
+          activeIcon: Icons.pets_rounded,
+          label: '萌宠圈'),
+      NavItem(
+          icon: Icons.person_outline,
+          activeIcon: Icons.person_rounded,
+          label: l10n.navProfile),
     ];
 
     final hideNav = ref.watch(hideBottomNavProvider);
@@ -62,7 +77,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: widget.child,
-      extendBody: hideNav,   // 全屏时 body 延伸到底部边缘
+      extendBody: hideNav, // 全屏时 body 延伸到底部边缘
       bottomNavigationBar: hideNav
           ? null
           : GlassBottomNav(

@@ -10,7 +10,9 @@ import 'core/router/app_router.dart';
 import 'core/providers/font_provider.dart';
 import 'core/providers/color_scheme_provider.dart';
 import 'core/providers/video_quality_provider.dart';
+import 'core/deep_link/deep_link_service.dart';
 import 'core/push/push_service.dart';
+import 'shared/utils/wechat_share.dart';
 import 'shared/theme/app_fonts.dart';
 import 'shared/theme/app_colors.dart';
 import 'shared/theme/color_schemes.dart';
@@ -41,21 +43,25 @@ void main() async {
   // 恢复录像质量
   final savedVideoQuality = prefs.getString(kVideoQualityKey) ?? 'medium';
 
-  debugPrint('[启动] 恢复字体: $savedFont  配色: $savedThemeKey  录像质量: $savedVideoQuality');
+  debugPrint(
+      '[启动] 恢复字体: $savedFont  配色: $savedThemeKey  录像质量: $savedVideoQuality');
 
   // 初始化腾讯 IM SDK
   await TencentImSDKPlugin.v2TIMManager.initSDK(
     sdkAppID: AppConfig.timSdkAppId,
     loglevel: LogLevelEnum.V2TIM_LOG_WARN,
     listener: V2TimSDKListener(
-      onConnecting: ()       => debugPrint('[TIM] 连接中...'),
-      onConnectSuccess: ()   => debugPrint('[TIM] ✅ 连接成功'),
-      onConnectFailed: (c, e)=> debugPrint('[TIM] ❌ 连接失败: $c $e'),
-      onKickedOffline: ()    => debugPrint('[TIM] ⚠️ 账号在其他设备登录，被踢下线'),
-      onUserSigExpired: ()   => debugPrint('[TIM] ⚠️ UserSig 已过期，需重新登录'),
+      onConnecting: () => debugPrint('[TIM] 连接中...'),
+      onConnectSuccess: () => debugPrint('[TIM] ✅ 连接成功'),
+      onConnectFailed: (c, e) => debugPrint('[TIM] ❌ 连接失败: $c $e'),
+      onKickedOffline: () => debugPrint('[TIM] ⚠️ 账号在其他设备登录，被踢下线'),
+      onUserSigExpired: () => debugPrint('[TIM] ⚠️ UserSig 已过期，需重新登录'),
     ),
   );
   debugPrint('[TIM] SDK 初始化完成 (SDKAppID: ${AppConfig.timSdkAppId})');
+
+  // ── 初始化微信分享 SDK ─────────────────────────────────────
+  await initWechatShare();
 
   // ── 初始化极光推送 ──────────────────────────────────────────────────
   await PushService.init();
@@ -77,14 +83,17 @@ void main() async {
   );
 
   initAppRouter(container);
+  await DeepLinkService.init(container);
 
   // 监听 AuthState 变化 → 通知 GoRouter 重新执行 redirect
   container.listen<AuthState>(
     authControllerProvider,
     (previous, next) {
       if (previous?.status != next.status) {
-        debugPrint('[Router] Auth 状态变化: ${previous?.status} → ${next.status}，刷新路由守卫');
+        debugPrint(
+            '[Router] Auth 状态变化: ${previous?.status} → ${next.status}，刷新路由守卫');
         appRouter.refresh();
+        if (!next.isRestoring) DeepLinkService.consumePendingRoute();
       }
     },
   );
