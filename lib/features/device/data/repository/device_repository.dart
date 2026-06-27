@@ -71,6 +71,25 @@ class DeviceRepository {
     );
   }
 
+  /// POST /device/share/push/add — 创建设备分享，返回口令码 order
+  Future<String> createShareOrder({required String deviceId}) async {
+    final res = await _peer.post<Map<String, dynamic>>(
+      '/device/share/push/add',
+      params: {'deviceId': deviceId, 'type': '3'},
+      fromInfo: (d) => d as Map<String, dynamic>,
+    );
+    final order = (res.info?['order'] as String?) ?? '';
+    if (order.isEmpty) {
+      throw Exception('[iPet] 口令生成失败');
+    }
+    return order;
+  }
+
+  /// POST /user/device/accept — 接收者凭口令绑定设备
+  Future<void> acceptShare(String order) async {
+    await _peer.post('/user/device/accept', params: {'order': order});
+  }
+
   /// POST /user/device/bind — 绑定设备
   Future<DeviceModel> bindDevice(
       {required String mac, String nickname = ''}) async {
@@ -222,10 +241,40 @@ class DeviceListNotifier extends StateNotifier<DeviceListState> {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
       final list = await _repo.fetchDevices();
+      // 先展示基础列表（快速反馈）
       state = state.copyWith(devices: list, isLoading: false);
+      // 再用实时接口校正在线态 + 回填成员设备缺失的 productKey
+      await _enrich(list);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
+  }
+
+  /// 列表接口对「被分享设备」可能返回 connect=false 且不含 productKey。
+  /// 这里按 mac 调实时在线接口校正在线态，并对缺 productKey 的设备
+  /// 用 detail 回填，避免类型判断（项圈/机器人）出错。
+  Future<void> _enrich(List<DeviceModel> base) async {
+    final enriched = await Future.wait(base.map((d) async {
+      if (d.mac.isEmpty) return d;
+      var result = d;
+      // 实时在线态（与 owner/member 身份无关，按 mac 查）
+      try {
+        final online = await _repo.fetchOnlineState(d.mac);
+        result = result.copyWith(connect: online);
+      } catch (_) {/* 保留列表原值 */}
+      // 回填 productKey（成员设备列表不含此字段）
+      if (result.productKey.isEmpty) {
+        try {
+          final detail = await _repo.fetchDeviceDetail(d.mac);
+          if (detail.productKey.isNotEmpty) {
+            result = result.copyWith(productKey: detail.productKey);
+          }
+        } catch (_) {/* 忽略，回退按名称判断 */}
+      }
+      return result;
+    }));
+    if (!mounted) return;
+    state = state.copyWith(devices: enriched);
   }
 
   void removeDevice(String mac) {

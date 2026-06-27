@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/router/app_routes.dart';
 import '../../features/auth/controller/auth_controller.dart';
+import '../../features/device/data/repository/device_repository.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_fonts.dart';
+import '../../shared/widgets/pet_toast.dart';
 import 'data/models/share_link_model.dart';
 import 'data/repository/share_repository.dart';
 
@@ -56,7 +58,9 @@ class _ShareLandingPageState extends ConsumerState<ShareLandingPage> {
               else if (!auth.isLoggedIn)
                 _LoginCard(type: widget.type)
               else if (_data != null)
-                _ResultCard(data: _data!)
+                (_data!.type == 'device'
+                    ? _DeviceShareCard(data: _data!)
+                    : _ResultCard(data: _data!))
               else
                 _ErrorCard(
                   message: _error ?? '分享内容打开失败',
@@ -232,6 +236,167 @@ class _ResultCard extends StatelessWidget {
             label: '回到首页',
             onTap: () => context.go(AppRoutes.home),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── 设备分享卡片（接收者）────────────────────────────────────
+/// 判断设备是否已添加：已添加 → 进入设备；未添加 → 确认后凭口令绑定
+class _DeviceShareCard extends ConsumerStatefulWidget {
+  final ShareResolveResult data;
+  const _DeviceShareCard({required this.data});
+
+  @override
+  ConsumerState<_DeviceShareCard> createState() => _DeviceShareCardState();
+}
+
+class _DeviceShareCardState extends ConsumerState<_DeviceShareCard> {
+  bool _accepting = false;
+
+  String get _mac => widget.data.payload['mac']?.toString() ?? '';
+  String get _deviceId => widget.data.payload['deviceId']?.toString() ?? '';
+  String get _order => widget.data.payload['order']?.toString() ?? '';
+  String get _deviceName {
+    final n = widget.data.payload['deviceName']?.toString() ?? '';
+    if (n.isNotEmpty) return n;
+    return widget.data.title.isNotEmpty ? widget.data.title : '智能设备';
+  }
+
+  bool get _alreadyAdded {
+    final devices = ref.watch(deviceListProvider).devices;
+    return devices.any((d) =>
+        (_mac.isNotEmpty && d.mac.toLowerCase() == _mac.toLowerCase()) ||
+        (_deviceId.isNotEmpty && d.deviceId == _deviceId));
+  }
+
+  void _goDevice() {
+    if (_mac.isEmpty) {
+      context.go(AppRoutes.home);
+      return;
+    }
+    context.go(AppRoutes.deviceDetail(_mac));
+  }
+
+  Future<void> _accept() async {
+    if (_accepting) return;
+    if (_order.isEmpty) {
+      PetToast.error(context, '分享口令缺失，无法添加');
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceContainerLow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('添加设备',
+            style: TextStyle(
+                fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
+        content: Text('确定将「$_deviceName」添加到你的账户吗？',
+            style: TextStyle(fontFamily: AppFonts.primary)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12))),
+            child: const Text('确认添加'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _accepting = true);
+    try {
+      await ref.read(deviceRepositoryProvider).acceptShare(_order);
+      await ref.read(deviceListProvider.notifier).load();
+      if (!mounted) return;
+      PetToast.success(context, '已添加「$_deviceName」');
+      _goDevice();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _accepting = false);
+      final msg = e.toString().replaceAll('Exception: ', '');
+      PetToast.error(context, msg.contains('[iPet]') ? msg : '添加失败，请重试');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final added = _alreadyAdded;
+    return _ShellCard(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _Preview(imageUrl: widget.data.imageUrl, type: 'device'),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _deviceName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.onSurface,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      added ? '已在你的设备列表' : '设备分享',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text(
+            added
+                ? '你已经是该设备的成员，可直接进入查看和控制。'
+                : (widget.data.description.isNotEmpty
+                    ? widget.data.description
+                    : '将设备添加到你的账户，即可一起查看和控制。'),
+            style: TextStyle(
+              fontSize: 15,
+              height: 1.65,
+              color: AppColors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 24),
+          if (added)
+            _PrimaryButton(label: '进入设备', onTap: _goDevice)
+          else if (_accepting)
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                ),
+              ),
+            )
+          else
+            _PrimaryButton(label: '添加该设备', onTap: _accept),
         ],
       ),
     );

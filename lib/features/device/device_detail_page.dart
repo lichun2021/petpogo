@@ -35,12 +35,16 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   String? _error;
   bool _ringing = false; // 响铃进行中
   bool _ledOn = false; // LED 当前状态（本地 toggle，无法从设备读回）
+  bool? _online; // 实时在线态（按 mac 查，优先于 detail.onlineStatus）
 
   @override
   void initState() {
     super.initState();
     _loadAll();
   }
+
+  /// 在线态：优先实时接口结果，回退 detail.onlineStatus
+  bool get _isOnline => _online ?? (_detail?.onlineStatus ?? false);
 
   Future<void> _loadAll() async {
     setState(() {
@@ -54,12 +58,14 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         repo.fetchDeviceDetail(widget.mac),
         petRepo.fetchPetInfo(mac: widget.mac).catchError((_) => PetInfoModel()),
         repo.fetchOtaInfo(widget.mac).catchError((_) => OtaInfoModel()),
+        repo.fetchOnlineState(widget.mac).catchError((_) => false),
       ]);
       if (mounted) {
         setState(() {
           _detail = results[0] as DeviceDetailModel;
           _petInfo = results[1] as PetInfoModel;
           _otaInfo = results[2] as OtaInfoModel;
+          _online = results[3] as bool;
           _loading = false;
         });
       }
@@ -225,7 +231,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   }
 
   Widget _buildStatusHero() {
-    final online = _detail?.onlineStatus ?? false;
+    final online = _isOnline;
     final deviceName = _detail?.name ?? widget.name;
     return GestureDetector(
       onTap: () => _showRemarkDialog(context), // 点击卡片任意区域也可编辑
@@ -787,7 +793,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   // ── 互动（设备功能，重新设计为网格）──────────────────────
   Widget _buildControls(BuildContext context) {
     final hasPet = _petInfo != null && _petInfo!.petName.isNotEmpty;
-    final isOnline = _detail?.onlineStatus == true;
+    final isOnline = _isOnline;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('互动',
           style: TextStyle(
@@ -891,8 +897,8 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
             icon: Icons.search_rounded,
             iconColor: AppColors.primary,
             label: '立即寻找',
-            enabled: _detail?.onlineStatus == true,
-            onTap: _detail?.onlineStatus == true
+            enabled: _isOnline,
+            onTap: _isOnline
                 ? _toggleRing
                 : () => PetToast.warning(context, '设备离线，无法操作'),
           ),
@@ -956,14 +962,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
             }
           },
         ),
-        SizedBox(height: 12),
       ],
-      _ActionButton(
-          icon: Icons.link_off_rounded,
-          label: '解绑设备',
-          color: AppColors.error,
-          fullWidth: true,
-          onTap: () => _showUnbindDialog(context)),
     ]);
   }
 

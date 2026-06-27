@@ -361,7 +361,7 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
             ),
           ],
 
-          // ── 管理按鈕行（仅 OWNER 显示）─────────────────────
+          // ── 操作按钮行（仅 OWNER 显示）─────────────────────
           if (device.isOwner) ...[
             Container(
                 height: 1,
@@ -370,6 +370,87 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
               child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                // ── 解绑按钮 ──
+                GestureDetector(
+                  onTap: () async {
+                    HapticFeedback.selectionClick();
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        backgroundColor: const Color(0xFF1e1e2e),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                        title: Text('解绑设备',
+                            style: TextStyle(
+                                fontFamily: AppFonts.primary,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white)),
+                        content: Text(
+                          '确定要解绑「${device.displayName}」吗？\n解绑后宠物数据将停止同步。',
+                          style: TextStyle(
+                              fontFamily: AppFonts.primary,
+                              fontSize: 13,
+                              color: Colors.white70),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: Text('取消',
+                                style: TextStyle(color: Colors.white54)),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFFEF4444),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Text('确认解绑'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed != true || !context.mounted) return;
+                    try {
+                      await ref
+                          .read(deviceRepositoryProvider)
+                          .unbindDevice(device.mac);
+                      if (context.mounted) {
+                        HapticFeedback.mediumImpact();
+                        ref.read(deviceListProvider.notifier).load();
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('解绑失败，请重试')),
+                        );
+                      }
+                    }
+                  },
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEF4444).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: const Color(0xFFEF4444).withOpacity(0.3)),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.link_off_rounded,
+                          size: 13, color: Color(0xFFEF4444)),
+                      SizedBox(width: 5),
+                      Text('解绑设备',
+                          style: TextStyle(
+                              fontFamily: AppFonts.primary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFEF4444))),
+                    ]),
+                  ),
+                ),
+                SizedBox(width: 10),
+                // ── 管理共享按钮 ──
                 GestureDetector(
                   onTap: () {
                     HapticFeedback.selectionClick();
@@ -407,6 +488,7 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
               ]),
             ),
           ],
+
         ]),
       ),
     );

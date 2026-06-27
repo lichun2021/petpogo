@@ -76,6 +76,31 @@ class DeviceModel {
     updateTime:     (json['updateTime']     as int?)    ?? 0,
   );
 
+  DeviceModel copyWith({
+    String? deviceId,
+    String? mac,
+    String? productKey,
+    String? name,
+    String? deviceNickname,
+    bool? connect,
+    String? uType,
+    String? sharer,
+    int? createTime,
+    int? updateTime,
+  }) =>
+      DeviceModel(
+        deviceId: deviceId ?? this.deviceId,
+        mac: mac ?? this.mac,
+        productKey: productKey ?? this.productKey,
+        name: name ?? this.name,
+        deviceNickname: deviceNickname ?? this.deviceNickname,
+        connect: connect ?? this.connect,
+        uType: uType ?? this.uType,
+        sharer: sharer ?? this.sharer,
+        createTime: createTime ?? this.createTime,
+        updateTime: updateTime ?? this.updateTime,
+      );
+
   @override
   String toString() => 'DeviceModel(id=$deviceId, name=$displayName, online=$connect, role=$roleLabel)';
 }
@@ -186,6 +211,13 @@ class DeviceMemberModel {
 
   /// 显示名：优先 username，否则 account
   String get displayName => username.isNotEmpty ? username : account;
+
+  /// 账号显示：邮箱只显示 @ 前的部分（如 19192987796@qq.com 显示为 19192987796）
+  String get displayAccount {
+    final idx = account.indexOf('@');
+    if (idx > 0) return account.substring(0, idx);
+    return account;
+  }
 
   String get roleLabel {
     switch (type) {
