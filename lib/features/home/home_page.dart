@@ -795,7 +795,8 @@ class _SectionHeader extends StatelessWidget {
             onTap: onAdd,
             child: Padding(
               padding: const EdgeInsets.all(6),
-              child: Icon(Icons.add_rounded, size: 22, color: AppColors.primary),
+              child:
+                  Icon(Icons.add_rounded, size: 22, color: AppColors.primary),
             ),
           ),
         // 文字行动按钮（"全部"）
@@ -991,7 +992,7 @@ class _HomeDeviceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isRobot = _isRobotDevice(device);
+    final isRobot = device.isRobot;
     final accent = device.isOnline ? AppColors.secondary : AppColors.outline;
 
     return Material(
@@ -1220,14 +1221,4 @@ class _TopIconButton extends StatelessWidget {
       ),
     );
   }
-}
-
-bool _isRobotDevice(DeviceModel device) {
-  final key = device.productKey.toLowerCase();
-  final name = device.displayName.toLowerCase();
-  return key.contains('robot') ||
-      key.contains('bot') ||
-      name.contains('机器人') ||
-      name.contains('robot') ||
-      name.contains('bot');
 }

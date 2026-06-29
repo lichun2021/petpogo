@@ -1,10 +1,10 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/peer_api_client.dart';
 import '../models/device_model.dart';
+import '../models/device_product_model.dart';
 
 class DeviceRepository {
   final PeerApiClient _peer;
@@ -52,22 +52,29 @@ class DeviceRepository {
     await _peer.post('/user/device/unbind', params: {'mac': mac});
   }
 
-  /// [临时日志] POST /device/product/list — 打印所有产品 productKey，用于类型绑定研究
-  Future<void> debugLogProductList() async {
-    try {
-      final res = await _peer.post<List<dynamic>>(
-        '/device/product/list',
-        fromInfo: (d) => (d is List) ? d : [],
+  /// POST /device/product/list — 产品目录，用 productKey 关联设备类型。
+  Future<List<DeviceProductModel>> fetchProducts() async {
+    final res = await _peer.post<List<dynamic>>(
+      '/device/product/list',
+      fromInfo: (data) => data is List<dynamic> ? data : const [],
+    );
+    final items = res.info ?? res.list ?? const <dynamic>[];
+    final products = items
+        .whereType<Map>()
+        .map((item) => DeviceProductModel.fromJson(
+              item.cast<String, dynamic>(),
+            ))
+        .where((product) =>
+            product.isEnabled && product.productKey.trim().isNotEmpty)
+        .toList(growable: false);
+    debugPrint('[ProductList] 已加载 ${products.length} 条启用产品');
+    for (final product in products) {
+      debugPrint(
+        '[ProductList] productKey=${product.productKey} '
+        'alias=${product.alias} name=${product.displayName}',
       );
-      final items = res.info ?? res.list ?? [];
-      debugPrint('[ProductList] 共 ${items.length} 条产品:');
-      for (final item in items) {
-        debugPrint('[ProductList] ${jsonEncode(item)}');
-      }
-      if (items.isEmpty) debugPrint('[ProductList] 列表为空或字段在 list 中');
-    } catch (e) {
-      debugPrint('[ProductList] 拉取失败: $e');
     }
+    return products;
   }
 
   /// POST /user/device/member/query — 查询设备共享成员列表
@@ -84,7 +91,8 @@ class DeviceRepository {
   }
 
   /// POST /user/device/member/remove — 移除共享成员
-  Future<void> removeMember({required String deviceId, required String userId}) async {
+  Future<void> removeMember(
+      {required String deviceId, required String userId}) async {
     await _peer.post(
       '/user/device/member/remove',
       params: {'deviceId': deviceId, 'userId': userId},
@@ -237,20 +245,37 @@ final deviceRepositoryProvider = Provider<DeviceRepository>((ref) {
 // ── 设备列表 StateNotifier ────────────────────────────────
 class DeviceListState {
   final List<DeviceModel> devices;
+  final List<DeviceProductModel> products;
   final bool isLoading;
   final String? errorMessage;
   const DeviceListState(
-      {this.devices = const [], this.isLoading = false, this.errorMessage});
+      {this.devices = const [],
+      this.products = const [],
+      this.isLoading = false,
+      this.errorMessage});
 
   DeviceListState copyWith(
           {List<DeviceModel>? devices,
+          List<DeviceProductModel>? products,
           bool? isLoading,
           String? errorMessage}) =>
       DeviceListState(
         devices: devices ?? this.devices,
+        products: products ?? this.products,
         isLoading: isLoading ?? this.isLoading,
         errorMessage: errorMessage,
       );
+
+  DeviceProductModel? productForKey(String productKey) {
+    final normalized = productKey.trim().toUpperCase();
+    if (normalized.isEmpty) return null;
+    for (final product in products) {
+      if (product.productKey.trim().toUpperCase() == normalized) {
+        return product;
+      }
+    }
+    return null;
+  }
 }
 
 class DeviceListNotifier extends StateNotifier<DeviceListState> {
@@ -260,13 +285,23 @@ class DeviceListNotifier extends StateNotifier<DeviceListState> {
   Future<void> load() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      // [临时日志] 打印产品列表，用于确认所有 productKey
-      unawaited(_repo.debugLogProductList());
+      var products = state.products;
+      try {
+        products = await _repo.fetchProducts();
+      } catch (error) {
+        debugPrint('[ProductList] 拉取失败，保留已缓存目录: $error');
+      }
       final list = await _repo.fetchDevices();
-      // 先展示基础列表（快速反馈）
-      state = state.copyWith(devices: list, isLoading: false);
+      final typedDevices = list
+          .map((device) => _attachProduct(device, products))
+          .toList(growable: false);
+      state = state.copyWith(
+        devices: typedDevices,
+        products: products,
+        isLoading: false,
+      );
       // 再用实时接口校正在线态 + 回填成员设备缺失的 productKey
-      await _enrich(list);
+      await _enrich(typedDevices, products);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
@@ -275,7 +310,10 @@ class DeviceListNotifier extends StateNotifier<DeviceListState> {
   /// 列表接口对「被分享设备」可能返回 connect=false 且不含 productKey。
   /// 这里按 mac 调实时在线接口校正在线态，并对缺 productKey 的设备
   /// 用 detail 回填，避免类型判断（项圈/机器人）出错。
-  Future<void> _enrich(List<DeviceModel> base) async {
+  Future<void> _enrich(
+    List<DeviceModel> base,
+    List<DeviceProductModel> products,
+  ) async {
     final enriched = await Future.wait(base.map((d) async {
       if (d.mac.isEmpty) return d;
       var result = d;
@@ -289,14 +327,42 @@ class DeviceListNotifier extends StateNotifier<DeviceListState> {
         try {
           final detail = await _repo.fetchDeviceDetail(d.mac);
           if (detail.productKey.isNotEmpty) {
-            result = result.copyWith(productKey: detail.productKey);
+            result = _attachProduct(
+              result.copyWith(productKey: detail.productKey),
+              products,
+            );
           }
-        } catch (_) {/* 忽略，回退按名称判断 */}
+        } catch (_) {/* 忽略，保留未知产品类型 */}
       }
       return result;
     }));
     if (!mounted) return;
     state = state.copyWith(devices: enriched);
+  }
+
+  DeviceModel _attachProduct(
+    DeviceModel device,
+    List<DeviceProductModel> products,
+  ) {
+    final normalized = device.productKey.trim().toUpperCase();
+    DeviceProductModel? matched;
+    for (final product in products) {
+      if (product.productKey.trim().toUpperCase() == normalized) {
+        matched = product;
+        break;
+      }
+    }
+    if (matched == null) {
+      debugPrint(
+        '[ProductList] 设备 ${device.mac} 未匹配产品 '
+        'productKey=${device.productKey}',
+      );
+      return device;
+    }
+    return device.copyWith(
+      productAlias: matched.alias,
+      productTypeName: matched.displayName,
+    );
   }
 
   void removeDevice(String mac) {

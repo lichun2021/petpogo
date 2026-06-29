@@ -45,30 +45,29 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   double _moveSpeed = 50; // 10~100
   double _deviceVolume = 100; // 设备音量 0~100
 
-
   // ── Agora 视频推流状态 ──────────────────────────────────
   RtcEngine? _engine;
   AgoraTokenInfo? _agoraInfo;
-  int?   _remoteUid;     // ESP32 的 uid（通常 10002）
-  bool   _agoraLoading  = false;
-  bool   _agoraJoined   = false;
-  bool   _micOn         = false;
+  int? _remoteUid; // ESP32 的 uid（通常 10002）
+  bool _agoraLoading = false;
+  bool _agoraJoined = false;
+  bool _micOn = false;
   String? _agoraError;
-  double _kbps         = 0;
-  bool   _videoFrozen  = false; // 视频网络拥塑冻结状态
+  double _kbps = 0;
+  bool _videoFrozen = false; // 视频网络拥塑冻结状态
   Timer? _statsTimer;
 
   // ── 摄影：截图 / 录像 状态 ─────────────────────
   final _cameraKey = GlobalKey(); // RepaintBoundary key 用于截图
-  bool  _takingPhoto    = false;  // 截图进行中
-  bool  _recording      = false;  // 录像进行中
-  bool  _serverStopping = false;  // 当前当前正在停止录制（合成中）
-  bool  _uploadingMedia = false;  // 上传 OSS 中
-  int   _recordSeconds  = 0;      // 录像已进行秒数
+  bool _takingPhoto = false; // 截图进行中
+  bool _recording = false; // 录像进行中
+  bool _serverStopping = false; // 当前当前正在停止录制（合成中）
+  bool _uploadingMedia = false; // 上传 OSS 中
+  int _recordSeconds = 0; // 录像已进行秒数
   static const _maxRecordSec = 30; // App 限制 30s，到时自动调 stopRecording
   Timer? _recordTimer;
-  String? _serverRecordingId;     // 服务端返回的 recording_id
-  String? _serverAccount;         // 登录账号（录制时缓存）
+  String? _serverRecordingId; // 服务端返回的 recording_id
+  String? _serverAccount; // 登录账号（录制时缓存）
   List<MediaItem> _recentMedia = []; // 摄影标签预览
 
   @override
@@ -96,25 +95,33 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     // 提示用户继续在后台处理
 
     // 立即置 null，防止后续 setState 崩溃
-    final engine   = _engine;
+    final engine = _engine;
     final micWasOn = _micOn;
-    _engine      = null;
-    _micOn       = false;
+    _engine = null;
+    _micOn = false;
     _agoraJoined = false;
-    _remoteUid   = null;
+    _remoteUid = null;
 
     if (engine != null) {
       // 每步独立 try/catch — 保证 leaveChannel 无论如何都会执行
       () async {
         // 1. 对讲开着时先关麦克风
         if (micWasOn) {
-          try { await engine.muteLocalAudioStream(true); } catch (_) {}
-          try { await engine.enableLocalAudio(false); } catch (_) {}
+          try {
+            await engine.muteLocalAudioStream(true);
+          } catch (_) {}
+          try {
+            await engine.enableLocalAudio(false);
+          } catch (_) {}
           debugPrint('[Agora] dispose: 本地麦克风已关闭');
         }
         // 2. 静音远端 + 关视频
-        try { await engine.muteAllRemoteAudioStreams(true); } catch (_) {}
-        try { await engine.disableVideo(); } catch (_) {}
+        try {
+          await engine.muteAllRemoteAudioStreams(true);
+        } catch (_) {}
+        try {
+          await engine.disableVideo();
+        } catch (_) {}
         // 3. 停止音量回调
         try {
           await engine.enableAudioVolumeIndication(
@@ -145,19 +152,26 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   /// 初始化引擎 + 加入频道
   Future<void> _startAgora() async {
     if (_agoraLoading || _agoraJoined) return;
-    setState(() { _agoraLoading = true; _agoraError = null; });
+    setState(() {
+      _agoraLoading = true;
+      _agoraError = null;
+    });
     try {
       // 1. 请求权限
-      final statuses = await [Permission.microphone, Permission.camera].request();
-      debugPrint('[🔊音频] 权限状态: mic=${statuses[Permission.microphone]} cam=${statuses[Permission.camera]}');
+      final statuses =
+          await [Permission.microphone, Permission.camera].request();
+      debugPrint(
+          '[🔊音频] 权限状态: mic=${statuses[Permission.microphone]} cam=${statuses[Permission.camera]}');
 
       // 2. 获取 Token（下发 ESP32 参数）
-      final auth  = ref.read(authControllerProvider);
+      final auth = ref.read(authControllerProvider);
       final userId = auth.user?.id ?? '0';
-      final info = await ref.read(deviceRepositoryProvider)
+      final info = await ref
+          .read(deviceRepositoryProvider)
           .getAgoraToken(mac: widget.mac, customerId: userId);
       _agoraInfo = info;
-      debugPrint('[Agora] Token 获取成功 channel=${info.channelName} uid=${info.userId}');
+      debugPrint(
+          '[Agora] Token 获取成功 channel=${info.channelName} uid=${info.userId}');
 
       // 3. 创建引擎
       _engine = createAgoraRtcEngine();
@@ -192,11 +206,13 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       );
       debugPrint('[🔊音频] setAudioProfile 完成');
       debugPrint('[🔊音频] enableLocalVideo(false)...');
-      await _engine!.enableLocalVideo(false);  // APP 不发送本地摄像头
+      await _engine!.enableLocalVideo(false); // APP 不发送本地摄像头
 
       // 开启音量提示（每秒回调一次，用于调试音频是否有数据流入）
       await _engine!.enableAudioVolumeIndication(
-        interval: 1000, smooth: 3, reportVad: false,
+        interval: 1000,
+        smooth: 3,
+        reportVad: false,
       );
       debugPrint('[🔊音频] enableAudioVolumeIndication 已开启（1s 间隔）');
 
@@ -204,7 +220,11 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       debugPrint('[Agora] registerEventHandler...');
       _engine!.registerEventHandler(RtcEngineEventHandler(
         onJoinChannelSuccess: (_, __) {
-          if (mounted) setState(() { _agoraJoined = true; _agoraLoading = false; });
+          if (mounted)
+            setState(() {
+              _agoraJoined = true;
+              _agoraLoading = false;
+            });
           // 加入频道后再开启扬声器（防止提前调用报 -3）
           _engine?.setEnableSpeakerphone(true);
           debugPrint('[🔊音频] 加入频道成功 → setEnableSpeakerphone(true)');
@@ -214,7 +234,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           debugPrint('[🔊音频] 远端用户加入 uid=$uid（ESP32）');
           // 加入后确认没有静音远端
           _engine?.muteRemoteAudioStream(uid: uid, mute: false);
-          debugPrint('[🔊音频] muteRemoteAudioStream(uid=$uid, mute=false) ← 确保不静音');
+          debugPrint(
+              '[🔊音频] muteRemoteAudioStream(uid=$uid, mute=false) ← 确保不静音');
         },
         onUserOffline: (_, uid, __) {
           if (mounted) setState(() => _remoteUid = null);
@@ -228,7 +249,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           final rxAudio = stats.rxAudioKBitRate ?? 0;
           final txAudio = stats.txAudioKBitRate ?? 0;
           if (rxAudio > 0 || txAudio > 0) {
-            debugPrint('[🔊音频] Stats → rxAudio=${rxAudio}kbps txAudio=${txAudio}kbps '
+            debugPrint(
+                '[🔊音频] Stats → rxAudio=${rxAudio}kbps txAudio=${txAudio}kbps '
                 'rxVideo=${stats.rxVideoKBitRate ?? 0}kbps');
           } else {
             debugPrint('[🔊音频] ⚠️ Stats → rxAudio=0 txAudio=0（未收到音频数据！）');
@@ -242,13 +264,29 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           // state: 0=stopped 1=starting 2=decoding 3=frozen 4=failed
           // reason: 0=internal 1=localMuted 2=localUnmuted 3=remoteMuted
           //         4=remoteUnmuted 5=remoteOffline 6=noPacketReceived
-          final stateStr = {0:'stopped',1:'starting',2:'decoding ✅',3:'frozen❄️',4:'failed❌'}[state.value] ?? 'unknown';
-          final reasonStr = {0:'internal',1:'localMuted',2:'localUnmuted',3:'remoteMuted',4:'remoteUnmuted',5:'remoteOffline',6:'noPacketReceived'}[reason.value] ?? 'unknown';
+          final stateStr = {
+                0: 'stopped',
+                1: 'starting',
+                2: 'decoding ✅',
+                3: 'frozen❄️',
+                4: 'failed❌'
+              }[state.value] ??
+              'unknown';
+          final reasonStr = {
+                0: 'internal',
+                1: 'localMuted',
+                2: 'localUnmuted',
+                3: 'remoteMuted',
+                4: 'remoteUnmuted',
+                5: 'remoteOffline',
+                6: 'noPacketReceived'
+              }[reason.value] ??
+              'unknown';
           debugPrint('[🔊音频] → state=$stateStr  reason=$reasonStr');
         },
         // ── 音量回调（有声音时 volume > 0）──
         onAudioVolumeIndication: (_, speakers, __, totalVolume) {
-          if (!mounted) return;  // 页面已销毁，不处理
+          if (!mounted) return; // 页面已销毁，不处理
           for (final s in speakers) {
             if ((s.volume ?? 0) > 0) {
               debugPrint('[🔊音频] 音量回调 uid=${s.uid} volume=${s.volume}');
@@ -262,7 +300,15 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         onAudioRoutingChanged: (routing) {
           if (!mounted) return;
           // -1=default 0=headset 1=earpiece 2=speakerphone 3=bluetooth 4=usb
-          final routeStr = {-1:'default',0:'headset',1:'earpiece',2:'speakerphone ✅',3:'bluetooth',4:'usb_audio'}[routing] ?? 'unknown($routing)';
+          final routeStr = {
+                -1: 'default',
+                0: 'headset',
+                1: 'earpiece',
+                2: 'speakerphone ✅',
+                3: 'bluetooth',
+                4: 'usb_audio'
+              }[routing] ??
+              'unknown($routing)';
           debugPrint('[🔊音频] 音频路由变化 → $routeStr');
         },
         onError: (err, msg) {
@@ -288,9 +334,12 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       debugPrint('[🔊音频] setClientRole → Broadcaster');
       await _engine!.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
       await _engine!.enableLocalAudio(true);
-      await _engine!.muteLocalAudioStream(true);  // 默认静音本地麦克风
-      debugPrint('[🔊音频] enableLocalAudio=true muteLocalAudioStream=true（对讲默认关）');
-      try { await _engine!.leaveChannel(); } catch (_) {} // 防御：确保不在频道中
+      await _engine!.muteLocalAudioStream(true); // 默认静音本地麦克风
+      debugPrint(
+          '[🔊音频] enableLocalAudio=true muteLocalAudioStream=true（对讲默认关）');
+      try {
+        await _engine!.leaveChannel();
+      } catch (_) {} // 防御：确保不在频道中
       debugPrint('[Agora] joinChannel...');
       await _engine!.joinChannel(
         token: info.token,
@@ -306,10 +355,13 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       debugPrint('[Agora] joinChannel 调用完成（等待 onJoinChannelSuccess）');
     } catch (e, st) {
       debugPrint('[Agora] 初始化失败: $e\n$st');
-      if (mounted) setState(() { _agoraLoading = false; _agoraError = e.toString(); });
+      if (mounted)
+        setState(() {
+          _agoraLoading = false;
+          _agoraError = e.toString();
+        });
     }
   }
-
 
   /// 离开频道 + 释放引擎
   Future<void> _stopAgora() async {
@@ -332,7 +384,11 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       await _engine?.muteAllRemoteAudioStreams(true);
       await _engine?.disableVideo();
       await _engine?.leaveChannel();
-      if (mounted) setState(() { _agoraJoined = false; _remoteUid = null; });
+      if (mounted)
+        setState(() {
+          _agoraJoined = false;
+          _remoteUid = null;
+        });
       debugPrint('[Agora] pause: 已离开频道（引擎保留）');
     } catch (e) {
       debugPrint('[Agora] pause 异常（可忽略）: $e');
@@ -347,7 +403,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       await _startAgora();
       return;
     }
-    setState(() { _agoraLoading = true; _agoraError = null; });
+    setState(() {
+      _agoraLoading = true;
+      _agoraError = null;
+    });
     try {
       debugPrint('[Agora] 重新加入频道 channel=${_agoraInfo!.channelName}');
       await _engine!.joinChannel(
@@ -364,7 +423,11 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       debugPrint('[Agora] 重连 joinChannel 调用完成');
     } catch (e) {
       debugPrint('[Agora] 重连失败: $e');
-      if (mounted) setState(() { _agoraLoading = false; _agoraError = e.toString(); });
+      if (mounted)
+        setState(() {
+          _agoraLoading = false;
+          _agoraError = e.toString();
+        });
     }
   }
 
@@ -402,7 +465,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       }
       // 3. 写临时文件
       final tmp = await getTemporaryDirectory();
-      final ts  = DateTime.now().millisecondsSinceEpoch;
+      final ts = DateTime.now().millisecondsSinceEpoch;
       final path = '${tmp.path}/photo_$ts.jpg';
       await File(path).writeAsBytes(bytes);
       // 4. 保存到系统相册
@@ -435,7 +498,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       return;
     }
 
-    setState(() { _recording = true; _recordSeconds = 0; });
+    setState(() {
+      _recording = true;
+      _recordSeconds = 0;
+    });
     try {
       final result = await ref
           .read(consultationRepositoryProvider)
@@ -447,9 +513,11 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           _serverAccount = account;
           debugPrint('[录制] 服务端录制已开始 id=${info.recordingId}');
           // 启动计时（UI 展示用，到 300s 自动提示）
-          _recordTimer =
-              Timer.periodic(const Duration(seconds: 1), (t) {
-            if (!mounted) { t.cancel(); return; }
+          _recordTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+            if (!mounted) {
+              t.cancel();
+              return;
+            }
             if (_recordSeconds >= _maxRecordSec) {
               t.cancel();
               // 服务端到最大时长会自动停止，UI 同步状态
@@ -461,7 +529,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         },
         failure: (err) {
           if (mounted) {
-            setState(() { _recording = false; _recordSeconds = 0; });
+            setState(() {
+              _recording = false;
+              _recordSeconds = 0;
+            });
             PetToast.error(context, '录制启动失败：${err.userMessage}');
           }
         },
@@ -469,7 +540,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     } catch (e) {
       debugPrint('[录制] 开始异常: $e');
       if (mounted) {
-        setState(() { _recording = false; _recordSeconds = 0; });
+        setState(() {
+          _recording = false;
+          _recordSeconds = 0;
+        });
         PetToast.error(context, '录制启动失败');
       }
     }
@@ -482,13 +556,13 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     _recordTimer?.cancel();
 
     final account = _serverAccount ?? '';
-    final secs    = _recordSeconds;
+    final secs = _recordSeconds;
     _serverRecordingId = null;
     _serverAccount = null;
 
     setState(() {
-      _recording      = false;
-      _recordSeconds  = 0;
+      _recording = false;
+      _recordSeconds = 0;
       _serverStopping = true; // 显示「合成中」状态
     });
 
@@ -504,13 +578,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       result.when(
         success: (info) {
           debugPrint('[录制] 合成完成 video=${info.videoUrl}');
-          PetToast.success(context,
-              '🎬 录制完成 (${secs}s)，视频已上传');
+          PetToast.success(context, '🎬 录制完成 (${secs}s)，视频已上传');
           // 刷新媒体列表（视频已在 OSS，通知后端入库）
           _saveServerVideoRecord(
-              videoUrl: info.videoUrl,
-              coverUrl: info.coverUrl,
-              duration: secs);
+              videoUrl: info.videoUrl, coverUrl: info.coverUrl, duration: secs);
         },
         failure: (err) {
           PetToast.error(context, '合成失败：${err.userMessage}');
@@ -533,27 +604,25 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   }) async {
     try {
       await ref.read(mediaRepositoryProvider).saveRecord(
-        type:     2,         // 视频
-        url:      videoUrl,
-        ossKey:   '',        // 服务端已完成 OSS 上传，key 留空
-        fileSize: 0,
-        duration: duration,
-        deviceId: widget.mac,
-      );
+            type: 2, // 视频
+            url: videoUrl,
+            ossKey: '', // 服务端已完成 OSS 上传，key 留空
+            fileSize: 0,
+            duration: duration,
+            deviceId: widget.mac,
+          );
       _loadRecentMedia(); // 刷新媒体库预览
     } catch (e) {
       debugPrint('[录制] 入库失败: $e');
     }
   }
 
-
-
   // ── OSS 上传 + 入库 ────────────────────────────────────
 
   Future<void> _uploadMedia({
     required String localPath,
     required List<int> bytes,
-    required int type,         // 1图片 2视频
+    required int type, // 1图片 2视频
     required int? duration,
   }) async {
     if (_uploadingMedia) return; // 防并发
@@ -568,13 +637,13 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       final fileSize = bytes.length;
       // 通知后端入库
       await ref.read(mediaRepositoryProvider).saveRecord(
-        type:     type,
-        url:      sign.cdnUrl,
-        ossKey:   sign.key,
-        fileSize: fileSize,
-        duration: duration,
-        deviceId: widget.mac,  // 设备 MAC 地址
-      );
+            type: type,
+            url: sign.cdnUrl,
+            ossKey: sign.key,
+            fileSize: fileSize,
+            duration: duration,
+            deviceId: widget.mac, // 设备 MAC 地址
+          );
       // 刷新预览
       _loadRecentMedia();
       if (mounted) PetToast.success(context, '☁️ 上传成功');
@@ -590,10 +659,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   Future<void> _loadRecentMedia() async {
     try {
       final result = await ref.read(mediaRepositoryProvider).fetchList(
-        deviceId: widget.mac,
-        page: 1,
-        pageSize: 6,
-      );
+            deviceId: widget.mac,
+            page: 1,
+            pageSize: 6,
+          );
       if (mounted) setState(() => _recentMedia = result.list);
     } catch (_) {}
   }
@@ -619,17 +688,21 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     final scaledM1 = (m1Speed * base ~/ 100).clamp(0, 100);
 
     // 可读日志（direction: 1=正转↑, 2=反转↓, 0=停止）
-    String dirStr(int d) => d == 1 ? '正转↑' : d == 2 ? '反转↓' : '停止■';
+    String dirStr(int d) => d == 1
+        ? '正转↑'
+        : d == 2
+            ? '反转↓'
+            : '停止■';
     debugPrint('[遥控] 左轮(motor_0): ${dirStr(m0Dir)} speed=$scaledM0 | '
         '右轮(motor_1): ${dirStr(m1Dir)} speed=$scaledM1 | base=$base%');
 
     ref.read(deviceRepositoryProvider).motorControl(
-      mac: widget.mac,
-      motor0Direction: m0Dir,
-      motor0Speed: scaledM0,
-      motor1Direction: m1Dir,
-      motor1Speed: scaledM1,
-    );
+          mac: widget.mac,
+          motor0Direction: m0Dir,
+          motor0Speed: scaledM0,
+          motor1Direction: m1Dir,
+          motor1Speed: scaledM1,
+        );
   }
 
   // ── 设备切换 ──────────────────────────────────────────
@@ -645,7 +718,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         onSelect: (device) {
           Navigator.pop(context);
           if (device.mac == widget.mac) return;
-          final isRobot = _isRobotDevice(device);
+          final isRobot = device.isRobot;
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -657,13 +730,6 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         },
       ),
     );
-  }
-
-  bool _isRobotDevice(DeviceModel d) {
-    final key  = d.productKey.toLowerCase();
-    final name = d.displayName.toLowerCase();
-    return key.contains('robot') || name.contains('机器人') ||
-        name.contains('robot') || key.contains('bot') || name.contains('bot');
   }
 
   @override
@@ -749,12 +815,14 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 // 进入 AI 页前先暂停推流
                 await _pauseAgora();
                 if (!mounted) return;
-                await Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => RobotAiHomePage(
-                    mac: widget.mac,
-                    deviceName: widget.name,
-                  ),
-                ));
+                await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RobotAiHomePage(
+                        mac: widget.mac,
+                        deviceName: widget.name,
+                      ),
+                    ));
                 // 返回后重新连接
                 if (mounted) _rejoinChannel();
               },
@@ -787,7 +855,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           borderRadius: BorderRadius.circular(16),
           child: Stack(fit: StackFit.expand, children: [
             // ── 视频内容区 ──────────────────────────────────
-            if (_agoraJoined && _remoteUid != null && _agoraInfo != null && Platform.isAndroid)
+            if (_agoraJoined &&
+                _remoteUid != null &&
+                _agoraInfo != null &&
+                Platform.isAndroid)
               // Android：显示 Agora JPEG 视频流（用 RepaintBoundary 支持截帧）
               RepaintBoundary(
                 key: _cameraKey,
@@ -795,7 +866,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   controller: VideoViewController.remote(
                     rtcEngine: _engine!,
                     canvas: VideoCanvas(uid: _remoteUid!),
-                    connection: RtcConnection(channelId: _agoraInfo!.channelName),
+                    connection:
+                        RtcConnection(channelId: _agoraInfo!.channelName),
                   ),
                 ),
               )
@@ -806,12 +878,16 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(width: 36, height: 36,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5, color: AppColors.primaryContainer)),
+                    SizedBox(
+                        width: 36,
+                        height: 36,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: AppColors.primaryContainer)),
                     SizedBox(height: 12),
                     Text('连接设备摄像头...',
-                        style: TextStyle(fontFamily: AppFonts.primary,
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
                             fontSize: 13,
                             color: AppColors.onPrimary.withOpacity(0.6))),
                   ],
@@ -828,7 +904,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                         size: 40, color: AppColors.onPrimary.withOpacity(0.5)),
                     SizedBox(height: 8),
                     Text('视频连接失败',
-                        style: TextStyle(fontFamily: AppFonts.primary,
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
                             fontSize: 13,
                             color: AppColors.onPrimary.withOpacity(0.6))),
                     SizedBox(height: 4),
@@ -842,8 +919,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text('点击重试',
-                            style: TextStyle(fontFamily: AppFonts.primary,
-                                fontSize: 12, color: AppColors.primaryContainer)),
+                            style: TextStyle(
+                                fontFamily: AppFonts.primary,
+                                fontSize: 12,
+                                color: AppColors.primaryContainer)),
                       ),
                     ),
                   ],
@@ -860,11 +939,13 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                         size: 48, color: AppColors.onPrimary.withOpacity(0.5)),
                     SizedBox(height: 8),
                     Text('iOS 仅支持音频对讲',
-                        style: TextStyle(fontFamily: AppFonts.primary,
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
                             fontSize: 13,
                             color: AppColors.onPrimary.withOpacity(0.6))),
                     Text('ESP32 H.264 升级后可支持 iOS 视频',
-                        style: TextStyle(fontFamily: AppFonts.primary,
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
                             fontSize: 11,
                             color: AppColors.onPrimary.withOpacity(0.4))),
                   ],
@@ -878,8 +959,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.videocam_rounded,
-                        size: 48,
-                        color: AppColors.onPrimary.withOpacity(0.35)),
+                        size: 48, color: AppColors.onPrimary.withOpacity(0.35)),
                     SizedBox(height: 8),
                     Text('摄像头预览',
                         style: TextStyle(
@@ -893,10 +973,13 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             // 视频冻结提示层（网络拥塑时）
             if (_videoFrozen && _remoteUid != null)
               Positioned(
-                bottom: 8, left: 0, right: 0,
+                bottom: 8,
+                left: 0,
+                right: 0,
                 child: Center(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.black54,
                       borderRadius: BorderRadius.circular(20),
@@ -904,10 +987,15 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        SizedBox(width: 12, height: 12,
-                          child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white70)),
+                        SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 1.5, color: Colors.white70)),
                         SizedBox(width: 8),
-                        Text('网络恢复中...', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                        Text('网络恢复中...',
+                            style:
+                                TextStyle(color: Colors.white70, fontSize: 12)),
                       ],
                     ),
                   ),
@@ -916,7 +1004,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
 
             // 速率标签
             Positioned(
-              top: 10, left: 10,
+              top: 10,
+              left: 10,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -926,18 +1015,19 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 child: Text(
                   '${_kbps.toStringAsFixed(0)}\nKB/s',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontFamily: AppFonts.primary,
-                      fontSize: 9, color: Colors.white, height: 1.3),
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 9,
+                      color: Colors.white,
+                      height: 1.3),
                 ),
               ),
             ),
 
-
-
-
             // 连接状态标签（右上）
             Positioned(
-              top: 10, right: 10,
+              top: 10,
+              right: 10,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -948,17 +1038,22 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Container(
-                    width: 6, height: 6,
+                    width: 6,
+                    height: 6,
                     decoration: BoxDecoration(
-                      color: _remoteUid != null ? Colors.greenAccent : Colors.white38,
+                      color: _remoteUid != null
+                          ? Colors.greenAccent
+                          : Colors.white38,
                       shape: BoxShape.circle,
                     ),
                   ),
                   SizedBox(width: 4),
                   Text(
                     _remoteUid != null ? '已连接' : '等待设备',
-                    style: TextStyle(fontFamily: AppFonts.primary,
-                        fontSize: 9, color: Colors.white),
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 9,
+                        color: Colors.white),
                   ),
                 ]),
               ),
@@ -966,7 +1061,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
 
             // 全屏按鈕（右下）
             Positioned(
-              bottom: 10, right: 10,
+              bottom: 10,
+              right: 10,
               child: GestureDetector(
                 onTap: () {
                   if (_engine == null || _agoraInfo == null) return;
@@ -974,13 +1070,13 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   ref.read(hideBottomNavProvider.notifier).state = true;
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) =>
-                      _FullscreenVideoPage(
-                        engine:      _engine!,
+                    MaterialPageRoute(
+                      builder: (_) => _FullscreenVideoPage(
+                        engine: _engine!,
                         channelName: _agoraInfo!.channelName,
-                        remoteUid:   _remoteUid,
-                        onControl:   _sendMotorControl,
-                        micOn:       _micOn,
+                        remoteUid: _remoteUid,
+                        onControl: _sendMotorControl,
+                        micOn: _micOn,
                         onToggleMic: _toggleMic,
                       ),
                     ),
@@ -990,7 +1086,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   });
                 },
                 child: Container(
-                  width: 32, height: 32,
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
                     color: Colors.black45,
                     borderRadius: BorderRadius.circular(8),
@@ -1010,7 +1107,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   Widget _buildTabBar(double screenH) {
     // 小屏幕时图标缩小：screenH * 0.075 = 48(640屏) ~ 60(800屏)
     final iconSize = (screenH * 0.075).clamp(44.0, 60.0);
-    final iconPad  = screenH < 700 ? 8.0 : 12.0;
+    final iconPad = screenH < 700 ? 8.0 : 12.0;
     final tabs = [
       (Icons.sports_esports_rounded, '遥控'),
       (Icons.favorite_rounded, '逗宠'),
@@ -1034,23 +1131,28 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               AnimatedContainer(
                 duration: Duration(milliseconds: 200),
-                width: iconSize, height: iconSize,
+                width: iconSize,
+                height: iconSize,
                 decoration: BoxDecoration(
                   color: active
                       ? AppColors.primary
                       : AppColors.surfaceContainerLow,
                   shape: BoxShape.circle,
                   boxShadow: active
-                      ? [BoxShadow(
-                          color: AppColors.primaryGlow,
-                          blurRadius: 12,
-                          offset: Offset(0, 4),
-                        )]
+                      ? [
+                          BoxShadow(
+                            color: AppColors.primaryGlow,
+                            blurRadius: 12,
+                            offset: Offset(0, 4),
+                          )
+                        ]
                       : [],
                 ),
                 child: Icon(tabs[i].$1,
                     size: iconSize * 0.43,
-                    color: active ? AppColors.onPrimary : AppColors.onSurfaceVariant),
+                    color: active
+                        ? AppColors.onPrimary
+                        : AppColors.onSurfaceVariant),
               ),
               SizedBox(height: 4),
               Text(tabs[i].$2,
@@ -1058,7 +1160,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                     fontFamily: AppFonts.primary,
                     fontSize: screenH < 700 ? 11 : 12,
                     fontWeight: FontWeight.w600,
-                    color: active ? AppColors.primary : AppColors.onSurfaceVariant,
+                    color:
+                        active ? AppColors.primary : AppColors.onSurfaceVariant,
                   )),
             ]),
           );
@@ -1074,20 +1177,23 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       child: LayoutBuilder(
         builder: (ctx, outer) {
           // 摇杆半径：基于整个卡片尺寸（非剩余空间），让摇杆真正居中
-          final innerW = outer.maxWidth  - 48; // 内边距 24×2
+          final innerW = outer.maxWidth - 48; // 内边距 24×2
           final innerH = outer.maxHeight - 80; // 顶部行 ~46 + 底部留白 ~34
-          final padR   = (innerW.clamp(0, innerH) / 2).clamp(70.0, 130.0);
+          final padR = (innerW.clamp(0, innerH) / 2).clamp(70.0, 130.0);
 
           return Container(
-            width:  outer.maxWidth,
+            width: outer.maxWidth,
             height: outer.maxHeight,
             decoration: BoxDecoration(
               color: AppColors.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(
-                color: AppColors.cardShadow,
-                blurRadius: 16, offset: Offset(0, 4),
-              )],
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.cardShadow,
+                  blurRadius: 16,
+                  offset: Offset(0, 4),
+                )
+              ],
             ),
             child: Stack(
               children: [
@@ -1100,7 +1206,9 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 ),
                 // ② 顶部栏：提示文字（左）+ 设置按钮（右）
                 Positioned(
-                  top: 14, left: 20, right: 14,
+                  top: 14,
+                  left: 20,
+                  right: 14,
                   child: Row(
                     children: [
                       // Text('拖动方向盘控制机器人移动',
@@ -1111,7 +1219,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                       GestureDetector(
                         onTap: () => _showSpeedSheet(context),
                         child: Container(
-                          width: 34, height: 34,
+                          width: 34,
+                          height: 34,
                           decoration: BoxDecoration(
                             color: AppColors.surfaceContainerLow,
                             shape: BoxShape.circle,
@@ -1131,7 +1240,6 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     );
   }
 
-
   // 速度设置弹窗
   void _showSpeedSheet(BuildContext ctx) {
     showModalBottomSheet(
@@ -1145,7 +1253,9 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: 40, height: 4,
+            Container(
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                   color: AppColors.surfaceContainerHigh,
                   borderRadius: BorderRadius.circular(2),
@@ -1155,19 +1265,24 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
               Icon(Icons.speed_rounded, size: 20, color: AppColors.primary),
               SizedBox(width: 10),
               Text('移动速度',
-                  style: TextStyle(fontFamily: AppFonts.primary,
-                      fontSize: 16, fontWeight: FontWeight.w800,
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.onSurface)),
               Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.primaryContainer.withOpacity(0.25),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text('${_moveSpeed.toInt()}%',
-                    style: TextStyle(fontFamily: AppFonts.primary,
-                        fontSize: 14, fontWeight: FontWeight.w800,
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
                         color: AppColors.primary)),
               ),
             ]),
@@ -1182,7 +1297,9 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 thumbShape: RoundSliderThumbShape(enabledThumbRadius: 11),
               ),
               child: Slider(
-                value: _moveSpeed, min: 10, max: 100,
+                value: _moveSpeed,
+                min: 10,
+                max: 100,
                 divisions: 9,
                 onChanged: (v) {
                   setLocal(() {});
@@ -1207,19 +1324,24 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
               Icon(Icons.volume_up_rounded, size: 20, color: AppColors.primary),
               SizedBox(width: 10),
               Text('设备音量',
-                  style: TextStyle(fontFamily: AppFonts.primary,
-                      fontSize: 16, fontWeight: FontWeight.w800,
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.onSurface)),
               Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.primaryContainer.withOpacity(0.25),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text('${_deviceVolume.toInt()}%',
-                    style: TextStyle(fontFamily: AppFonts.primary,
-                        fontSize: 14, fontWeight: FontWeight.w800,
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
                         color: AppColors.primary)),
               ),
             ]),
@@ -1234,7 +1356,9 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 thumbShape: RoundSliderThumbShape(enabledThumbRadius: 11),
               ),
               child: Slider(
-                value: _deviceVolume, min: 0, max: 100,
+                value: _deviceVolume,
+                min: 0,
+                max: 100,
                 divisions: 10,
                 onChanged: (v) {
                   setLocal(() {});
@@ -1268,12 +1392,37 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   // ── 逗宠标签 ──────────────────────────────────────────
   Widget _buildPetPlay() {
     final actions = [
-      ('前进', AppColors.secondary,     AppColors.secondaryFixed,  Icons.arrow_upward_rounded),
-      ('圆环', AppColors.tertiary,      AppColors.tertiaryFixed,   Icons.loop_rounded),
-      ('摇摆', AppColors.primary,       AppColors.primaryContainer,Icons.waves_rounded),
-      ('后退', AppColors.primaryDim,    AppColors.primaryContainer,Icons.arrow_downward_rounded),
-      ('左转', AppColors.secondaryDim,  AppColors.secondaryFixed,  Icons.turn_left_rounded),
-      ('右转', AppColors.secondary,     AppColors.secondaryFixed,  Icons.turn_right_rounded),
+      (
+        '前进',
+        AppColors.secondary,
+        AppColors.secondaryFixed,
+        Icons.arrow_upward_rounded
+      ),
+      ('圆环', AppColors.tertiary, AppColors.tertiaryFixed, Icons.loop_rounded),
+      (
+        '摇摆',
+        AppColors.primary,
+        AppColors.primaryContainer,
+        Icons.waves_rounded
+      ),
+      (
+        '后退',
+        AppColors.primaryDim,
+        AppColors.primaryContainer,
+        Icons.arrow_downward_rounded
+      ),
+      (
+        '左转',
+        AppColors.secondaryDim,
+        AppColors.secondaryFixed,
+        Icons.turn_left_rounded
+      ),
+      (
+        '右转',
+        AppColors.secondary,
+        AppColors.secondaryFixed,
+        Icons.turn_right_rounded
+      ),
     ];
 
     return LayoutBuilder(
@@ -1282,23 +1431,26 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         // SingleChildScrollView padding 20, Container padding 16 → 水平内缩 72
         // crossAxisSpacing = 12，三列两间距 = 24
         const crossSpacing = 12.0;
-        final gridW  = constraints.maxWidth - 72;          // 可用网格总宽
-        final colW   = (gridW - crossSpacing * 2) / 3;     // 实际每列宽
+        final gridW = constraints.maxWidth - 72; // 可用网格总宽
+        final colW = (gridW - crossSpacing * 2) / 3; // 实际每列宽
         // 按钮大小跟随列宽，上限 88（大屏更充实）
-        final btnSize  = colW.clamp(48.0, 88.0);
+        final btnSize = colW.clamp(48.0, 88.0);
         final iconSize = btnSize * 0.44;
         // 每格内容高 = 按钮 + 文字 + 间距，childAspectRatio 基于实际列宽
-        final contentH = btnSize + 6 + 18.0;               // 6=SizedBox, 18=text
-        final ratio    = colW / contentH;                  // 用列宽除以内容高
-        final spacing  = constraints.maxHeight < 380 ? 8.0 : 12.0;
+        final contentH = btnSize + 6 + 18.0; // 6=SizedBox, 18=text
+        final ratio = colW / contentH; // 用列宽除以内容高
+        final spacing = constraints.maxHeight < 380 ? 8.0 : 12.0;
 
         return SingleChildScrollView(
           physics: BouncingScrollPhysics(),
           padding: const EdgeInsets.all(20),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('机器人动作',
-                style: TextStyle(fontFamily: AppFonts.primary,
-                    fontSize: 16, fontWeight: FontWeight.w800,
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
                     color: AppColors.onSurface)),
             SizedBox(height: spacing),
             Container(
@@ -1306,7 +1458,9 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
               decoration: BoxDecoration(
                 color: AppColors.surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 16)],
+                boxShadow: [
+                  BoxShadow(color: AppColors.cardShadow, blurRadius: 16)
+                ],
               ),
               child: GridView.count(
                 crossAxisCount: 3,
@@ -1314,37 +1468,47 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 physics: NeverScrollableScrollPhysics(),
                 mainAxisSpacing: spacing,
                 crossAxisSpacing: crossSpacing,
-                childAspectRatio: ratio,   // ← 基于实际列宽，大屏不再出现巨大间距
+                childAspectRatio: ratio, // ← 基于实际列宽，大屏不再出现巨大间距
                 children: actions.map((a) {
                   return GestureDetector(
                     onTap: () {
                       HapticFeedback.mediumImpact();
                       PetToast.warning(context, '执行动作：${a.$1}');
                     },
-                    child: Column(mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Container(
-                        width: btnSize, height: btnSize,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [a.$2, a.$3],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                    child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: btnSize,
+                            height: btnSize,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [a.$2, a.$3],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius:
+                                  BorderRadius.circular(btnSize * 0.28),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: a.$2.withOpacity(0.35),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 3),
+                                )
+                              ],
+                            ),
+                            child:
+                                Icon(a.$4, color: Colors.white, size: iconSize),
                           ),
-                          borderRadius: BorderRadius.circular(btnSize * 0.28),
-                          boxShadow: [BoxShadow(
-                            color: a.$2.withOpacity(0.35),
-                            blurRadius: 8, offset: Offset(0, 3),
-                          )],
-                        ),
-                        child: Icon(a.$4, color: Colors.white, size: iconSize),
-                      ),
-                      SizedBox(height: 6),
-                      Text(a.$1,
-                          style: TextStyle(fontFamily: AppFonts.primary,
-                              fontSize: 12, fontWeight: FontWeight.w600,
-                              color: AppColors.onSurface)),
-                    ]),
+                          SizedBox(height: 6),
+                          Text(a.$1,
+                              style: TextStyle(
+                                  fontFamily: AppFonts.primary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.onSurface)),
+                        ]),
                   );
                 }).toList(),
               ),
@@ -1354,7 +1518,6 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       },
     );
   }
-
 
   // ── 摄影标签 ──────────────────────────────────────────
   Widget _buildPhotography() {
@@ -1366,20 +1529,26 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       physics: BouncingScrollPhysics(),
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
         // ── 操作按钮行 ─────────────────────────────────
         Row(children: [
-          Expanded(child: _buildCameraBtn(
-            icon: _takingPhoto ? Icons.hourglass_top_rounded : Icons.photo_camera_rounded,
+          Expanded(
+              child: _buildCameraBtn(
+            icon: _takingPhoto
+                ? Icons.hourglass_top_rounded
+                : Icons.photo_camera_rounded,
             label: _takingPhoto ? '处理中...' : '拍照',
             sublabel: _agoraJoined ? '截取当前画面' : '等待视频连接',
             color: AppColors.primary,
             enabled: _agoraJoined && !_takingPhoto && !_recording,
             recording: false,
-            onTap: () { HapticFeedback.mediumImpact(); _takePhoto(); },
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              _takePhoto();
+            },
           )),
           SizedBox(width: 12),
-          Expanded(child: _buildCameraBtn(
+          Expanded(
+              child: _buildCameraBtn(
             icon: _recording ? Icons.stop_rounded : Icons.videocam_rounded,
             label: _recording ? '停止 $mm:$ss' : '录像',
             sublabel: _recording ? '点击提前停止' : '最长 30 秒',
@@ -1398,13 +1567,17 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Row(children: [
-              SizedBox(width: 14, height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 1.5,
-                      color: AppColors.primary)),
+              SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 1.5, color: AppColors.primary)),
               SizedBox(width: 8),
               Text('正在上传到云端...',
-                  style: TextStyle(fontFamily: AppFonts.primary,
-                      fontSize: 12, color: AppColors.onSurfaceVariant)),
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 12,
+                      color: AppColors.onSurfaceVariant)),
             ]),
           ),
 
@@ -1413,16 +1586,20 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         // ── 最近媒体预览 ───────────────────────────────
         Row(children: [
           Text('最近媒体',
-              style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 13, fontWeight: FontWeight.w700,
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.onSurface)),
           Spacer(),
           if (_recentMedia.isNotEmpty)
             GestureDetector(
               onTap: () => _openGallery(),
               child: Text('查看全部 →',
-                  style: TextStyle(fontFamily: AppFonts.primary,
-                      fontSize: 12, color: AppColors.primary)),
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 12,
+                      color: AppColors.primary)),
             ),
         ]),
         SizedBox(height: 8),
@@ -1432,8 +1609,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             height: 80,
             alignment: Alignment.center,
             child: Text('还没有照片或视频，去拍一张吧 📷',
-                style: TextStyle(fontFamily: AppFonts.primary,
-                    fontSize: 12, color: AppColors.onSurfaceVariant)),
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 12,
+                    color: AppColors.onSurfaceVariant)),
           )
         else
           SizedBox(
@@ -1449,7 +1628,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(10),
                     child: SizedBox(
-                      width: 80, height: 80,
+                      width: 80,
+                      height: 80,
                       child: Stack(fit: StackFit.expand, children: [
                         Image.network(
                           item.thumbUrl.isNotEmpty ? item.thumbUrl : item.url,
@@ -1460,8 +1640,9 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                                   color: AppColors.onSurfaceVariant)),
                         ),
                         if (item.isVideo)
-                          Center(child: Icon(Icons.play_circle_rounded,
-                              color: Colors.white70, size: 28)),
+                          Center(
+                              child: Icon(Icons.play_circle_rounded,
+                                  color: Colors.white70, size: 28)),
                       ]),
                     ),
                   ),
@@ -1474,20 +1655,27 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
 
         // ── 媒体库入口 ──────────────────────────────────
         GestureDetector(
-          onTap: () { HapticFeedback.selectionClick(); _openGallery(); },
+          onTap: () {
+            HapticFeedback.selectionClick();
+            _openGallery();
+          },
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: AppColors.primaryGradient,
               borderRadius: BorderRadius.circular(18),
-              boxShadow: [BoxShadow(
-                color: AppColors.primaryGlow,
-                blurRadius: 12, offset: Offset(0, 4),
-              )],
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primaryGlow,
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                )
+              ],
             ),
             child: Row(children: [
               Container(
-                width: 48, height: 48,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(14),
@@ -1496,17 +1684,22 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                     color: AppColors.onPrimary, size: 26),
               ),
               SizedBox(width: 14),
-              Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('媒体库',
-                    style: TextStyle(fontFamily: AppFonts.primary,
-                        fontSize: 15, fontWeight: FontWeight.w800,
-                        color: AppColors.onPrimary)),
-                Text('查看所有拍照和录像（支持设备共享）',
-                    style: TextStyle(fontFamily: AppFonts.primary,
-                        fontSize: 11,
-                        color: AppColors.onPrimary.withOpacity(0.8))),
-              ])),
+              Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text('媒体库',
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.onPrimary)),
+                    Text('查看所有拍照和录像（支持设备共享）',
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 11,
+                            color: AppColors.onPrimary.withOpacity(0.8))),
+                  ])),
               Icon(Icons.arrow_forward_rounded,
                   color: AppColors.onPrimary, size: 20),
             ]),
@@ -1520,23 +1713,29 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     // 进入媒体库前先离开频道，避免后台持续刷 Agora 音视频回调
     if (_agoraJoined) {
       await _engine?.leaveChannel();
-      if (mounted) setState(() { _agoraJoined = false; _remoteUid = null; });
+      if (mounted)
+        setState(() {
+          _agoraJoined = false;
+          _remoteUid = null;
+        });
       debugPrint('[Agora] 进入媒体库，已离开频道');
     }
 
     if (!mounted) return;
-    await Navigator.push(context, MaterialPageRoute(
-      builder: (_) => MediaGalleryPage(
-        deviceId: widget.mac,
-        deviceName: widget.name,
-      ),
-    ));
+    await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MediaGalleryPage(
+            deviceId: widget.mac,
+            deviceName: widget.name,
+          ),
+        ));
 
     // 媒体库返回后重新加入频道
     if (mounted) {
       debugPrint('[Agora] 媒体库返回，重新加入频道...');
       _loadRecentMedia();
-      _rejoinChannel();   // 只 join，不重建引擎
+      _rejoinChannel(); // 只 join，不重建引擎
     }
   }
 
@@ -1568,28 +1767,36 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 : Colors.transparent,
             width: 1.5,
           ),
-          boxShadow: [BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 8, offset: Offset(0, 2),
-          )],
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.cardShadow,
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            )
+          ],
         ),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, size: 30,
+          Icon(icon,
+              size: 30,
               color: enabled
                   ? (recording ? Colors.redAccent : color)
                   : AppColors.onSurfaceVariant),
           SizedBox(height: 6),
           Text(label,
-              style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 13, fontWeight: FontWeight.w700,
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                   color: enabled
                       ? (recording ? Colors.redAccent : AppColors.onSurface)
                       : AppColors.onSurfaceVariant)),
           SizedBox(height: 2),
           Text(sublabel,
               textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 10, color: AppColors.onSurfaceVariant)),
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 10,
+                  color: AppColors.onSurfaceVariant)),
         ]),
       ),
     );
@@ -1615,38 +1822,48 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   // 麦克风图标（麦开时变绿）
                   AnimatedContainer(
                     duration: Duration(milliseconds: 200),
-                    width: micSize, height: micSize,
+                    width: micSize,
+                    height: micSize,
                     decoration: BoxDecoration(
                       gradient: _micOn
                           ? LinearGradient(
                               colors: [Color(0xFF43A047), Color(0xFF66BB6A)],
-                              begin: Alignment.topLeft, end: Alignment.bottomRight)
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight)
                           : AppColors.primaryGradient,
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(
-                        color: _micOn
-                            ? Colors.green.withOpacity(0.4)
-                            : AppColors.primaryGlow,
-                        blurRadius: _micOn ? 40 : 30, spreadRadius: 0,
-                      )],
+                      boxShadow: [
+                        BoxShadow(
+                          color: _micOn
+                              ? Colors.green.withOpacity(0.4)
+                              : AppColors.primaryGlow,
+                          blurRadius: _micOn ? 40 : 30,
+                          spreadRadius: 0,
+                        )
+                      ],
                     ),
                     child: Icon(
                       _micOn ? Icons.mic_rounded : Icons.mic_off_rounded,
-                      size: micSize * 0.43, color: AppColors.onPrimary,
+                      size: micSize * 0.43,
+                      color: AppColors.onPrimary,
                     ),
                   ),
                   SizedBox(height: gap1),
                   Text(
                     isReady ? (_micOn ? '对讲中...' : '连接已建立') : '连接设备中...',
-                    style: TextStyle(fontFamily: AppFonts.primary,
-                        fontSize: 18, fontWeight: FontWeight.w800,
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
                         color: AppColors.onSurface),
                   ),
                   SizedBox(height: 8),
                   Text(
                     isReady ? '点击按钮开启/关闭对讲' : '请稍候...',
-                    style: TextStyle(fontFamily: AppFonts.primary,
-                        fontSize: 14, color: AppColors.onSurfaceVariant),
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 14,
+                        color: AppColors.onSurfaceVariant),
                   ),
                   SizedBox(height: gap2),
                   // 对讲按钮
@@ -1654,29 +1871,40 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                     onTap: isReady ? _toggleMic : null,
                     child: AnimatedContainer(
                       duration: Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 48, vertical: 14),
                       decoration: BoxDecoration(
                         gradient: isReady
                             ? (_micOn
-                                ? LinearGradient(
-                                    colors: [Color(0xFF43A047), Color(0xFF66BB6A)])
+                                ? LinearGradient(colors: [
+                                    Color(0xFF43A047),
+                                    Color(0xFF66BB6A)
+                                  ])
                                 : AppColors.primaryGradient)
                             : null,
                         color: isReady ? null : AppColors.surfaceContainerHigh,
                         borderRadius: BorderRadius.circular(30),
-                        boxShadow: isReady ? [BoxShadow(
-                          color: _micOn
-                              ? Colors.green.withOpacity(0.4)
-                              : AppColors.primaryGlow,
-                          blurRadius: 16, offset: Offset(0, 6),
-                        )] : [],
+                        boxShadow: isReady
+                            ? [
+                                BoxShadow(
+                                  color: _micOn
+                                      ? Colors.green.withOpacity(0.4)
+                                      : AppColors.primaryGlow,
+                                  blurRadius: 16,
+                                  offset: Offset(0, 6),
+                                )
+                              ]
+                            : [],
                       ),
                       child: Text(
                         isReady ? (_micOn ? '关闭对讲' : '开启对讲') : '连接中...',
                         style: TextStyle(
                           fontFamily: AppFonts.primary,
-                          fontSize: 16, fontWeight: FontWeight.w800,
-                          color: isReady ? AppColors.onPrimary : AppColors.onSurfaceVariant,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: isReady
+                              ? AppColors.onPrimary
+                              : AppColors.onSurfaceVariant,
                         ),
                       ),
                     ),
@@ -1689,7 +1917,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                       child: Text(_agoraError!,
                           style: TextStyle(
                               fontFamily: AppFonts.primary,
-                              fontSize: 11, color: Colors.redAccent),
+                              fontSize: 11,
+                              color: Colors.redAccent),
                           textAlign: TextAlign.center),
                     ),
                   ],
@@ -1715,13 +1944,6 @@ class _DeviceSwitcherSheet extends StatelessWidget {
     required this.onSelect,
   });
 
-  bool _isRobot(DeviceModel d) {
-    final key  = d.productKey.toLowerCase();
-    final name = d.displayName.toLowerCase();
-    return key.contains('robot') || name.contains('机器人') ||
-        name.contains('robot') || key.contains('bot') || name.contains('bot');
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1731,21 +1953,26 @@ class _DeviceSwitcherSheet extends StatelessWidget {
       ),
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 40, height: 4,
-            decoration: BoxDecoration(color: AppColors.surfaceContainerHigh,
+        Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+                color: AppColors.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(2))),
         SizedBox(height: 20),
         Align(
           alignment: Alignment.centerLeft,
           child: Text('切换设备',
-              style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 18, fontWeight: FontWeight.w800,
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
                   color: AppColors.onSurface)),
         ),
         SizedBox(height: 16),
         ...devices.map((d) {
           final isSelected = d.mac == currentMac;
-          final isRobot    = _isRobot(d);
+          final isRobot = d.isRobot;
           return GestureDetector(
             onTap: () => onSelect(d),
             child: AnimatedContainer(
@@ -1766,7 +1993,8 @@ class _DeviceSwitcherSheet extends StatelessWidget {
               ),
               child: Row(children: [
                 Container(
-                  width: 44, height: 44,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: isRobot
@@ -1777,34 +2005,50 @@ class _DeviceSwitcherSheet extends StatelessWidget {
                   ),
                   child: Icon(
                     isRobot ? Icons.smart_toy_rounded : Icons.pets_rounded,
-                    color: AppColors.onPrimary, size: 22,
+                    color: AppColors.onPrimary,
+                    size: 22,
                   ),
                 ),
                 SizedBox(width: 14),
-                Expanded(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(d.displayName,
-                      style: TextStyle(fontFamily: AppFonts.primary,
-                          fontSize: 14, fontWeight: FontWeight.w700,
-                          color: isSelected ? AppColors.primary : AppColors.onSurface)),
-                  SizedBox(height: 2),
-                  Row(children: [
-                    Text(isRobot ? '智能宠物机器人' : '智能项圈',
-                        style: TextStyle(fontFamily: AppFonts.primary,
-                            fontSize: 11, color: AppColors.onSurfaceVariant)),
-                    SizedBox(width: 8),
-                    Container(width: 6, height: 6,
-                        decoration: BoxDecoration(
-                          color: d.isOnline ? AppColors.success : AppColors.onSurfaceVariant,
-                          shape: BoxShape.circle,
-                        )),
-                    SizedBox(width: 4),
-                    Text(d.isOnline ? '在线' : '离线',
-                        style: TextStyle(fontFamily: AppFonts.primary,
-                            fontSize: 11,
-                            color: d.isOnline ? AppColors.secondary : AppColors.onSurfaceVariant)),
-                  ]),
-                ])),
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text(d.displayName,
+                          style: TextStyle(
+                              fontFamily: AppFonts.primary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : AppColors.onSurface)),
+                      SizedBox(height: 2),
+                      Row(children: [
+                        Text(isRobot ? '智能宠物机器人' : '智能项圈',
+                            style: TextStyle(
+                                fontFamily: AppFonts.primary,
+                                fontSize: 11,
+                                color: AppColors.onSurfaceVariant)),
+                        SizedBox(width: 8),
+                        Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: d.isOnline
+                                  ? AppColors.success
+                                  : AppColors.onSurfaceVariant,
+                              shape: BoxShape.circle,
+                            )),
+                        SizedBox(width: 4),
+                        Text(d.isOnline ? '在线' : '离线',
+                            style: TextStyle(
+                                fontFamily: AppFonts.primary,
+                                fontSize: 11,
+                                color: d.isOnline
+                                    ? AppColors.secondary
+                                    : AppColors.onSurfaceVariant)),
+                      ]),
+                    ])),
                 if (isSelected)
                   Icon(Icons.check_circle_rounded,
                       color: AppColors.primary, size: 20),
@@ -1823,7 +2067,8 @@ class _TopBarIcon extends StatelessWidget {
   final int badge;
   final VoidCallback onTap;
 
-  const _TopBarIcon({required this.icon, required this.badge, required this.onTap});
+  const _TopBarIcon(
+      {required this.icon, required this.badge, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1831,7 +2076,8 @@ class _TopBarIcon extends StatelessWidget {
       onTap: onTap,
       child: Stack(clipBehavior: Clip.none, children: [
         Container(
-          width: 40, height: 40,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.2),
             shape: BoxShape.circle,
@@ -1840,15 +2086,21 @@ class _TopBarIcon extends StatelessWidget {
         ),
         if (badge > 0)
           Positioned(
-            top: -2, right: -2,
+            top: -2,
+            right: -2,
             child: Container(
-              width: 16, height: 16,
+              width: 16,
+              height: 16,
               decoration: BoxDecoration(
-                color: AppColors.error, shape: BoxShape.circle,
+                color: AppColors.error,
+                shape: BoxShape.circle,
               ),
-              child: Center(child: Text(badge.toString(),
-                  style: TextStyle(fontSize: 9, color: Colors.white,
-                      fontWeight: FontWeight.w800))),
+              child: Center(
+                  child: Text(badge.toString(),
+                      style: TextStyle(
+                          fontSize: 9,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800))),
             ),
           ),
       ]),
@@ -1906,18 +2158,23 @@ class _JoystickPadState extends State<_JoystickPad> {
   void _stop() {
     _periodicTimer?.cancel();
     _periodicTimer = null;
-    setState(() { _knob = Offset.zero; _active = false; });
+    setState(() {
+      _knob = Offset.zero;
+      _active = false;
+    });
     widget.onControl(0, 0, 0, 0);
   }
 
   void _computeAndSend(Offset knob) {
-    final dx =  knob.dx / _maxDist;
+    final dx = knob.dx / _maxDist;
     final dy = -knob.dy / _maxDist;
-    final left  = (dy + dx).clamp(-1.0, 1.0);
+    final left = (dy + dx).clamp(-1.0, 1.0);
     final right = (dy - dx).clamp(-1.0, 1.0);
     widget.onControl(
-      left  >= 0 ? 1 : 2, (left.abs()  * 100).round().clamp(0, 100),
-      right >= 0 ? 1 : 2, (right.abs() * 100).round().clamp(0, 100),
+      left >= 0 ? 1 : 2,
+      (left.abs() * 100).round().clamp(0, 100),
+      right >= 0 ? 1 : 2,
+      (right.abs() * 100).round().clamp(0, 100),
     );
   }
 
@@ -1933,13 +2190,17 @@ class _JoystickPadState extends State<_JoystickPad> {
         var delta = e.localPosition - center;
         final dist = delta.distance;
         if (dist > _maxDist) delta = delta / dist * _maxDist;
-        setState(() { _knob = delta; _active = true; });
+        setState(() {
+          _knob = delta;
+          _active = true;
+        });
         _startTimer(); // 只在 Timer 未启动时才启动，不受 move 事件频率影响
       },
       onPointerUp: (_) => _stop(),
       onPointerCancel: (_) => _stop(),
       child: SizedBox(
-        width: diameter, height: diameter,
+        width: diameter,
+        height: diameter,
         child: Stack(alignment: Alignment.center, children: [
           // 外圆背景
           if (widget.transparent)
@@ -1947,18 +2208,21 @@ class _JoystickPadState extends State<_JoystickPad> {
               child: BackdropFilter(
                 filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                 child: Container(
-                  width: diameter, height: diameter,
+                  width: diameter,
+                  height: diameter,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     // 深色半透明，白/黑背景都清晰
                     color: Colors.black.withOpacity(0.40),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.55), width: 1.8,
+                      color: Colors.white.withOpacity(0.55),
+                      width: 1.8,
                     ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.35),
-                        blurRadius: 20, offset: Offset(0, 6),
+                        blurRadius: 20,
+                        offset: Offset(0, 6),
                       ),
                     ],
                   ),
@@ -1967,36 +2231,55 @@ class _JoystickPadState extends State<_JoystickPad> {
             )
           else
             Container(
-            width: diameter, height: diameter,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.surfaceContainerLow,
-              border: Border.all(
-                color: AppColors.primary.withOpacity(0.2), width: 2,
+              width: diameter,
+              height: diameter,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.surfaceContainerLow,
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.2),
+                  width: 2,
+                ),
+                boxShadow: widget.transparent
+                    ? []
+                    : [
+                        BoxShadow(
+                          color: AppColors.cardShadow,
+                          blurRadius: 12,
+                          offset: Offset(0, 4),
+                        )
+                      ],
               ),
-              boxShadow: widget.transparent ? [] : [BoxShadow(
-                color: AppColors.cardShadow,
-                blurRadius: 12, offset: Offset(0, 4),
-              )],
             ),
-          ),
           // 方向图标
-          Positioned(top: 10, child: Icon(Icons.keyboard_arrow_up_rounded,
-              size: 22, color: widget.transparent
-                  ? Colors.white
-                  : AppColors.primary.withOpacity(0.35))),
-          Positioned(bottom: 10, child: Icon(Icons.keyboard_arrow_down_rounded,
-              size: 22, color: widget.transparent
-                  ? Colors.white
-                  : AppColors.primary.withOpacity(0.35))),
-          Positioned(left: 10, child: Icon(Icons.keyboard_arrow_left_rounded,
-              size: 22, color: widget.transparent
-                  ? Colors.white
-                  : AppColors.primary.withOpacity(0.35))),
-          Positioned(right: 10, child: Icon(Icons.keyboard_arrow_right_rounded,
-              size: 22, color: widget.transparent
-                  ? Colors.white
-                  : AppColors.primary.withOpacity(0.35))),
+          Positioned(
+              top: 10,
+              child: Icon(Icons.keyboard_arrow_up_rounded,
+                  size: 22,
+                  color: widget.transparent
+                      ? Colors.white
+                      : AppColors.primary.withOpacity(0.35))),
+          Positioned(
+              bottom: 10,
+              child: Icon(Icons.keyboard_arrow_down_rounded,
+                  size: 22,
+                  color: widget.transparent
+                      ? Colors.white
+                      : AppColors.primary.withOpacity(0.35))),
+          Positioned(
+              left: 10,
+              child: Icon(Icons.keyboard_arrow_left_rounded,
+                  size: 22,
+                  color: widget.transparent
+                      ? Colors.white
+                      : AppColors.primary.withOpacity(0.35))),
+          Positioned(
+              right: 10,
+              child: Icon(Icons.keyboard_arrow_right_rounded,
+                  size: 22,
+                  color: widget.transparent
+                      ? Colors.white
+                      : AppColors.primary.withOpacity(0.35))),
           // 摇杆头（透明模式用玻璃质感）
           Transform.translate(
             offset: _knob,
@@ -2005,9 +2288,12 @@ class _JoystickPadState extends State<_JoystickPad> {
                     child: BackdropFilter(
                       filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                       child: AnimatedContainer(
-                        duration: _active ? Duration.zero : Duration(milliseconds: 200),
+                        duration: _active
+                            ? Duration.zero
+                            : Duration(milliseconds: 200),
                         curve: Curves.easeOut,
-                        width: _thumbR * 2, height: _thumbR * 2,
+                        width: _thumbR * 2,
+                        height: _thumbR * 2,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           // 深色半透明，白色背景下也清晰
@@ -2015,25 +2301,28 @@ class _JoystickPadState extends State<_JoystickPad> {
                               ? Colors.white.withOpacity(0.30)
                               : Colors.black.withOpacity(0.55),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.80), width: 2.0,
+                            color: Colors.white.withOpacity(0.80),
+                            width: 2.0,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(_active ? 0.5 : 0.3),
+                              color:
+                                  Colors.black.withOpacity(_active ? 0.5 : 0.3),
                               blurRadius: _active ? 22 : 10,
                             ),
                           ],
                         ),
                         child: Icon(Icons.pets_rounded,
-                            color: Colors.white,
-                            size: _active ? 24 : 20),
+                            color: Colors.white, size: _active ? 24 : 20),
                       ),
                     ),
                   )
                 : AnimatedContainer(
-                    duration: _active ? Duration.zero : Duration(milliseconds: 200),
+                    duration:
+                        _active ? Duration.zero : Duration(milliseconds: 200),
                     curve: Curves.easeOut,
-                    width: _thumbR * 2, height: _thumbR * 2,
+                    width: _thumbR * 2,
+                    height: _thumbR * 2,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
@@ -2043,11 +2332,14 @@ class _JoystickPadState extends State<_JoystickPad> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      boxShadow: [BoxShadow(
-                        color: AppColors.primary.withOpacity(_active ? 0.6 : 0.35),
-                        blurRadius: _active ? 18 : 10,
-                        offset: Offset(0, 4),
-                      )],
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary
+                              .withOpacity(_active ? 0.6 : 0.35),
+                          blurRadius: _active ? 18 : 10,
+                          offset: Offset(0, 4),
+                        )
+                      ],
                     ),
                     child: Icon(Icons.pets_rounded,
                         color: AppColors.onPrimary, size: _active ? 24 : 20),
@@ -2088,10 +2380,10 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
   bool _speakerOn = true;
 
   static const _interactItems = [
-    (Icons.music_note_rounded,    '安抚'),
+    (Icons.music_note_rounded, '安抚'),
     (Icons.sports_tennis_rounded, '玩耗'),
-    (Icons.stars_rounded,         '逢趣'),
-    (Icons.restaurant_rounded,    '喜食'),
+    (Icons.stars_rounded, '逢趣'),
+    (Icons.restaurant_rounded, '喜食'),
   ];
 
   @override
@@ -2128,7 +2420,6 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-
           // ── 视频 ───────────────────────────────────────
           if (widget.remoteUid != null && Platform.isAndroid)
             AgoraVideoView(
@@ -2139,8 +2430,9 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
               ),
             )
           else
-            Center(child: Icon(Icons.videocam_off_rounded,
-                size: 64, color: Colors.white24)),
+            Center(
+                child: Icon(Icons.videocam_off_rounded,
+                    size: 64, color: Colors.white24)),
 
           // ── 右上：麦克风 + 扬声器 + 退出全屏（横排，同等大小）──────
           Positioned(
@@ -2239,7 +2531,6 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
               ),
             ),
           ),
-
         ],
       ),
     );
@@ -2269,7 +2560,8 @@ class _GlassBtn extends StatelessWidget {
         child: BackdropFilter(
           filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
-            width: size, height: size,
+            width: size,
+            height: size,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               // 深色半透明底色，白/黑背景都清晰可见
@@ -2283,13 +2575,13 @@ class _GlassBtn extends StatelessWidget {
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.30),
-                  blurRadius: 12, offset: Offset(0, 4),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
                 ),
               ],
             ),
             child: Icon(icon,
-                size: size * 0.45,
-                color: active ? Colors.white : Colors.white),
+                size: size * 0.45, color: active ? Colors.white : Colors.white),
           ),
         ),
       ),
@@ -2303,16 +2595,23 @@ class _QuickBtn extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
-  const _QuickBtn({required this.icon, required this.label,
-      required this.color, required this.onTap});
+  const _QuickBtn(
+      {required this.icon,
+      required this.label,
+      required this.color,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () { HapticFeedback.lightImpact(); onTap(); },
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Container(
-          width: 48, height: 48,
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
             color: color.withOpacity(0.1),
             shape: BoxShape.circle,
@@ -2321,8 +2620,12 @@ class _QuickBtn extends StatelessWidget {
           child: Icon(icon, color: color, size: 22),
         ),
         SizedBox(height: 4),
-        Text(label, style: TextStyle(fontFamily: AppFonts.primary,
-            fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+        Text(label,
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: color)),
       ]),
     );
   }
@@ -2334,8 +2637,11 @@ class _PhotoAction extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
-  const _PhotoAction({required this.icon, required this.label,
-      required this.color, required this.onTap});
+  const _PhotoAction(
+      {required this.icon,
+      required this.label,
+      required this.color,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -2346,12 +2652,17 @@ class _PhotoAction extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(18),
-          boxShadow: [BoxShadow(color: AppColors.cardShadow,
-              blurRadius: 12, offset: Offset(0, 3))],
+          boxShadow: [
+            BoxShadow(
+                color: AppColors.cardShadow,
+                blurRadius: 12,
+                offset: Offset(0, 3))
+          ],
         ),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Container(
-            width: 56, height: 56,
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               shape: BoxShape.circle,
@@ -2359,8 +2670,12 @@ class _PhotoAction extends StatelessWidget {
             child: Icon(icon, size: 28, color: color),
           ),
           SizedBox(height: 10),
-          Text(label, style: TextStyle(fontFamily: AppFonts.primary,
-              fontSize: 14, fontWeight: FontWeight.w700, color: color)),
+          Text(label,
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: color)),
         ]),
       ),
     );
@@ -2405,7 +2720,8 @@ class _AiGlowButtonState extends State<_AiGlowButton>
           // shimmer 光从 -1.0 扫到 2.0（含进出过渡）
           final sweep = _ctrl.value * 3.0 - 1.0;
           return Container(
-            width: 40, height: 26,
+            width: 40,
+            height: 26,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [AppColors.primary, AppColors.primaryContainer],

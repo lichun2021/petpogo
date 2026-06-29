@@ -30,7 +30,7 @@ final castingDeviceProvider = StateProvider<_CastState?>((_) => null);
 // ═══════════════════════════════════════════════════════════
 class MusicCategoryPage extends ConsumerStatefulWidget {
   final MusicCategory? category;
-  final Playlist?      playlist;
+  final Playlist? playlist;
   const MusicCategoryPage({super.key, this.category, this.playlist})
       : assert(category != null || playlist != null);
 
@@ -48,7 +48,10 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
   void initState() {
     super.initState();
     if (widget.category != null) {
-      setState(() { _songs = widget.category!.songs; _loading = false; });
+      setState(() {
+        _songs = widget.category!.songs;
+        _loading = false;
+      });
     } else {
       _loadPlaylist();
     }
@@ -69,38 +72,44 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
   String get _totalDurationText {
     final d = _totalDuration;
     final h = d.inHours, m = d.inMinutes % 60, s = d.inSeconds % 60;
-    if (h > 0) return '$h:${m.toString().padLeft(2,'0')}:${s.toString().padLeft(2,'0')}';
-    return '${m.toString().padLeft(2,'0')}:${s.toString().padLeft(2,'0')}';
+    if (h > 0)
+      return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
   Future<void> _playAll() async {
     if (_songs.isEmpty) return;
     HapticFeedback.mediumImpact();
-    Navigator.push(context, MaterialPageRoute(
-      builder: (_) => MusicPlayerPage(playlist: _songs, initialIndex: 0),
-    ));
+    Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MusicPlayerPage(playlist: _songs, initialIndex: 0),
+        ));
   }
 
   @override
   Widget build(BuildContext context) {
-    // 取第一个在线机器人设备的 MAC（productKey 以 'iPet' / 'robot' 等标识）
+    // 只允许投送到产品目录中标记为 ROBOT 的设备。
     final devices = ref.watch(deviceListProvider).devices;
-    // robot 设备通过 productKey 判断（不区分大小写含 'pet' 或 mac 不为空的设备）
-    final robotDevices = devices.where((d) => d.mac.isNotEmpty).toList();
+    final robotDevices =
+        devices.where((d) => d.isRobot && d.mac.isNotEmpty).toList();
 
     return Scaffold(
       backgroundColor: Color(0xFFF5F5F5),
       appBar: AppBar(
         backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent, elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_rounded, size: 20),
           color: AppColors.onSurface,
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(widget.playlist != null ? '歌单' : '分类',
-            style: TextStyle(fontFamily: AppFonts.primary,
-                fontSize: 17, fontWeight: FontWeight.w700)),
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 17,
+                fontWeight: FontWeight.w700)),
         actions: [
           if (robotDevices.isNotEmpty)
             IconButton(
@@ -122,10 +131,12 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (_, i) => _SongRow(
-                    song: _songs[i], index: i + 1,
+                    song: _songs[i],
+                    index: i + 1,
                     playlist: _songs,
                     robotDevices: robotDevices,
-                    onAddToPlaylist: widget.playlist == null ? null
+                    onAddToPlaylist: widget.playlist == null
+                        ? null
                         : () => _addToPlaylist(_songs[i]),
                   ),
                   childCount: _songs.length,
@@ -139,7 +150,10 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
 
   /// 投送整个歌单的第一首到设备
   void _showCastSheet(BuildContext context, List<DeviceModel> devices) {
-    if (_songs.isEmpty) { PetToast.warning(context, '暂无歌曲'); return; }
+    if (_songs.isEmpty) {
+      PetToast.warning(context, '暂无歌曲');
+      return;
+    }
     final song = _songs.first;
     if (devices.length == 1) {
       _castToDevice(context, devices.first.mac, song);
@@ -155,7 +169,8 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
     }
   }
 
-  Future<void> _castToDevice(BuildContext ctx, String mac, MusicItem song) async {
+  Future<void> _castToDevice(
+      BuildContext ctx, String mac, MusicItem song) async {
     try {
       await ref.read(peerApiClientProvider).soundPlay(mac: mac, url: song.url);
       if (mounted) PetToast.success(ctx, '已投送「${song.name}」到设备 🎵');
@@ -174,21 +189,35 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: coverUrl != null
-              ? CachedNetworkImage(imageUrl: coverUrl, width: 80, height: 80,
-                  fit: BoxFit.cover, errorWidget: (_, __, ___) => _defaultCover())
+              ? CachedNetworkImage(
+                  imageUrl: coverUrl,
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                  errorWidget: (_, __, ___) => _defaultCover())
               : _defaultCover(),
         ),
         SizedBox(width: 14),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_title, style: TextStyle(fontFamily: AppFonts.primary,
-              fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.onSurface)),
+        Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(_title,
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.onSurface)),
           SizedBox(height: 6),
           Text(
             widget.category != null
                 ? '${_songs.length} 首放松心情的精选曲目，专为毛孩子定制'
-                : (widget.playlist != null ? '${widget.playlist!.songCount} 首' : ''),
-            style: TextStyle(fontFamily: AppFonts.primary,
-                fontSize: 12, color: AppColors.onSurfaceVariant),
+                : (widget.playlist != null
+                    ? '${widget.playlist!.songCount} 首'
+                    : ''),
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 12,
+                color: AppColors.onSurfaceVariant),
             maxLines: 3,
           ),
         ])),
@@ -197,37 +226,48 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
   }
 
   Widget _buildPlayAllRow() => Container(
-    color: Colors.white,
-    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-    child: Row(children: [
-      GestureDetector(
-        onTap: _playAll,
-        child: Container(
-          width: 32, height: 32,
-          decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-          child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
-        ),
-      ),
-      SizedBox(width: 12),
-      Text('全部播放', style: TextStyle(fontFamily: AppFonts.primary,
-          fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-      SizedBox(width: 8),
-      Text('共 ${_songs.length} 首  ${'  '}$_totalDurationText',
-          style: TextStyle(fontFamily: AppFonts.primary,
-              fontSize: 11, color: AppColors.onSurfaceVariant)),
-    ]),
-  );
+        color: Colors.white,
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: Row(children: [
+          GestureDetector(
+            onTap: _playAll,
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                  color: AppColors.primary, shape: BoxShape.circle),
+              child:
+                  Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
+            ),
+          ),
+          SizedBox(width: 12),
+          Text('全部播放',
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.onSurface)),
+          SizedBox(width: 8),
+          Text('共 ${_songs.length} 首  ${'  '}$_totalDurationText',
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 11,
+                  color: AppColors.onSurfaceVariant)),
+        ]),
+      );
 
   Widget _defaultCover() => Container(
-    width: 80, height: 80,
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [Color(0xFF6C63FF), Color(0xFF48CAE4)],
-        begin: Alignment.topLeft, end: Alignment.bottomRight,
-      ),
-    ),
-    child: Icon(Icons.music_note_rounded, color: Colors.white, size: 36),
-  );
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF6C63FF), Color(0xFF48CAE4)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Icon(Icons.music_note_rounded, color: Colors.white, size: 36),
+      );
 
   Future<void> _addToPlaylist(MusicItem song) async {
     // TODO: 选择目标歌单 sheet
@@ -237,13 +277,17 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
 
 // ── 歌曲行 ────────────────────────────────────────────────
 class _SongRow extends ConsumerStatefulWidget {
-  final MusicItem        song;
-  final int              index;
-  final List<MusicItem>  playlist;       // 全列表（用于传入播放器）
-  final List<DeviceModel> robotDevices;  // 可投送的设备列表
-  final VoidCallback?    onAddToPlaylist;
-  const _SongRow({required this.song, required this.index,
-      required this.playlist, this.robotDevices = const [], this.onAddToPlaylist});
+  final MusicItem song;
+  final int index;
+  final List<MusicItem> playlist; // 全列表（用于传入播放器）
+  final List<DeviceModel> robotDevices; // 可投送的设备列表
+  final VoidCallback? onAddToPlaylist;
+  const _SongRow(
+      {required this.song,
+      required this.index,
+      required this.playlist,
+      this.robotDevices = const [],
+      this.onAddToPlaylist});
 
   @override
   ConsumerState<_SongRow> createState() => _SongRowState();
@@ -257,7 +301,9 @@ class _SongRowState extends ConsumerState<_SongRow> {
   Future<void> _cast(BuildContext context, String mac) async {
     setState(() => _casting = true);
     try {
-      await ref.read(peerApiClientProvider).soundPlay(mac: mac, url: widget.song.url);
+      await ref
+          .read(peerApiClientProvider)
+          .soundPlay(mac: mac, url: widget.song.url);
       // 记录投送状态
       ref.read(castingDeviceProvider.notifier).state =
           (mac: mac, songId: widget.song.id);
@@ -319,12 +365,14 @@ class _SongRowState extends ConsumerState<_SongRow> {
           onTap: () {
             HapticFeedback.selectionClick();
             final startIdx = widget.playlist.indexOf(widget.song);
-            Navigator.push(context, MaterialPageRoute(
-              builder: (_) => MusicPlayerPage(
-                playlist: widget.playlist,
-                initialIndex: startIdx < 0 ? 0 : startIdx,
-              ),
-            ));
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MusicPlayerPage(
+                    playlist: widget.playlist,
+                    initialIndex: startIdx < 0 ? 0 : startIdx,
+                  ),
+                ));
           },
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -334,34 +382,50 @@ class _SongRowState extends ConsumerState<_SongRow> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: widget.song.iconUrl != null
-                      ? CachedNetworkImage(imageUrl: widget.song.iconUrl!,
-                          width: 44, height: 44, fit: BoxFit.cover,
+                      ? CachedNetworkImage(
+                          imageUrl: widget.song.iconUrl!,
+                          width: 44,
+                          height: 44,
+                          fit: BoxFit.cover,
                           errorWidget: (_, __, ___) => _emptyThumb())
                       : _emptyThumb(),
                 ),
                 if (isPlaying)
                   Container(
-                    width: 44, height: 44,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
                       color: AppColors.primary.withOpacity(0.6),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(Icons.pause_rounded, color: Colors.white, size: 20),
+                    child: Icon(Icons.pause_rounded,
+                        color: Colors.white, size: 20),
                   ),
               ]),
               SizedBox(width: 12),
               // 名称+艺人
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(widget.song.name,
-                    style: TextStyle(fontFamily: AppFonts.primary,
-                        fontSize: 13, fontWeight: FontWeight.w600,
-                        color: isPlaying ? AppColors.primary : AppColors.onSurface),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                if (widget.song.artist != null && widget.song.artist!.isNotEmpty)
-                  Text(widget.song.artist!,
-                      style: TextStyle(fontFamily: AppFonts.primary,
-                          fontSize: 11, color: AppColors.onSurfaceVariant)),
-              ])),
+              Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text(widget.song.name,
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: isPlaying
+                                ? AppColors.primary
+                                : AppColors.onSurface),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    if (widget.song.artist != null &&
+                        widget.song.artist!.isNotEmpty)
+                      Text(widget.song.artist!,
+                          style: TextStyle(
+                              fontFamily: AppFonts.primary,
+                              fontSize: 11,
+                              color: AppColors.onSurfaceVariant)),
+                  ])),
               // 投送/停止按鈕
               if (hasCast)
                 GestureDetector(
@@ -377,16 +441,23 @@ class _SongRowState extends ConsumerState<_SongRow> {
                   child: Padding(
                     padding: const EdgeInsets.all(6),
                     child: (_casting || _stopping)
-                        ? SizedBox(width: 18, height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2,
-                                color: isCasting ? Colors.red.shade400 : AppColors.primary))
+                        ? SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: isCasting
+                                    ? Colors.red.shade400
+                                    : AppColors.primary))
                         : AnimatedSwitcher(
                             duration: const Duration(milliseconds: 200),
                             child: isCasting
-                                ? Icon(Icons.stop_circle_rounded, size: 20,
+                                ? Icon(Icons.stop_circle_rounded,
+                                    size: 20,
                                     key: const ValueKey('stop'),
                                     color: Colors.red.shade400)
-                                : Icon(Icons.cast_rounded, size: 18,
+                                : Icon(Icons.cast_rounded,
+                                    size: 18,
                                     key: const ValueKey('cast'),
                                     color: AppColors.primary.withOpacity(0.75)),
                           ),
@@ -395,16 +466,21 @@ class _SongRowState extends ConsumerState<_SongRow> {
               // 播放/更多
               if (widget.onAddToPlaylist != null)
                 IconButton(
-                  icon: Icon(Icons.more_horiz_rounded, size: 20,
-                      color: AppColors.onSurfaceVariant),
-                  onPressed: widget.onAddToPlaylist, padding: EdgeInsets.zero,
+                  icon: Icon(Icons.more_horiz_rounded,
+                      size: 20, color: AppColors.onSurfaceVariant),
+                  onPressed: widget.onAddToPlaylist,
+                  padding: EdgeInsets.zero,
                   constraints: BoxConstraints(minWidth: 32, minHeight: 32),
                 )
               else
                 Icon(
-                  isPlaying ? Icons.equalizer_rounded : Icons.play_circle_outline_rounded,
+                  isPlaying
+                      ? Icons.equalizer_rounded
+                      : Icons.play_circle_outline_rounded,
                   size: 20,
-                  color: isPlaying ? AppColors.primary : AppColors.onSurfaceVariant,
+                  color: isPlaying
+                      ? AppColors.primary
+                      : AppColors.onSurfaceVariant,
                 ),
             ]),
           ),
@@ -415,10 +491,12 @@ class _SongRowState extends ConsumerState<_SongRow> {
   }
 
   Widget _emptyThumb() => Container(
-    width: 44, height: 44,
-    color: AppColors.primary.withOpacity(0.08),
-    child: Icon(Icons.music_note_rounded, color: AppColors.primary, size: 20),
-  );
+        width: 44,
+        height: 44,
+        color: AppColors.primary.withOpacity(0.08),
+        child:
+            Icon(Icons.music_note_rounded, color: AppColors.primary, size: 20),
+      );
 }
 
 // ── 设备选择底部弹窗 ──────────────────────────────────────
@@ -437,50 +515,63 @@ class _DevicePickerSheet extends StatelessWidget {
       ),
       padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + navBar),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 36, height: 4,
-            decoration: BoxDecoration(color: Colors.grey.shade300,
+        Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+                color: Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(99))),
         const SizedBox(height: 16),
         Row(children: [
           Icon(Icons.cast_rounded, color: AppColors.primary, size: 20),
           const SizedBox(width: 8),
-          Text('选择投送设备', style: TextStyle(
-              fontFamily: AppFonts.primary, fontSize: 15,
-              fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+          Text('选择投送设备',
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.onSurface)),
         ]),
         const SizedBox(height: 12),
         ...devices.map((d) => ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-          leading: Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(
-              color: d.isOnline
-                  ? AppColors.primary.withOpacity(0.10)
-                  : Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.pets_rounded,
-                color: d.isOnline ? AppColors.primary : Colors.grey, size: 20),
-          ),
-          title: Text(d.displayName, style: TextStyle(
-              fontFamily: AppFonts.primary, fontSize: 14,
-              fontWeight: FontWeight.w600)),
-          subtitle: Text(d.isOnline ? '在线' : '离线',
-              style: TextStyle(fontSize: 12,
-                  color: d.isOnline ? Colors.green : Colors.grey)),
-          trailing: d.isOnline
-              ? Icon(Icons.chevron_right_rounded, color: AppColors.primary)
-              : null,
-          onTap: d.isOnline ? () {
-            Navigator.pop(context);
-            onPick(d.mac);
-          } : null,
-        )),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: d.isOnline
+                      ? AppColors.primary.withOpacity(0.10)
+                      : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.pets_rounded,
+                    color: d.isOnline ? AppColors.primary : Colors.grey,
+                    size: 20),
+              ),
+              title: Text(d.displayName,
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600)),
+              subtitle: Text(d.isOnline ? '在线' : '离线',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: d.isOnline ? Colors.green : Colors.grey)),
+              trailing: d.isOnline
+                  ? Icon(Icons.chevron_right_rounded, color: AppColors.primary)
+                  : null,
+              onTap: d.isOnline
+                  ? () {
+                      Navigator.pop(context);
+                      onPick(d.mac);
+                    }
+                  : null,
+            )),
       ]),
     );
   }
 }
-
 
 // ── 迷你播放器 ────────────────────────────────────────────
 class _MiniPlayer extends ConsumerWidget {
@@ -494,24 +585,33 @@ class _MiniPlayer extends ConsumerWidget {
       height: 60,
       decoration: BoxDecoration(
         color: AppColors.primary,
-        boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 12)],
+        boxShadow: [
+          BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 12)
+        ],
       ),
-      child: SafeArea(top: false,
+      child: SafeArea(
+        top: false,
         child: Row(children: [
           SizedBox(width: 16),
           Icon(Icons.music_note_rounded, color: Colors.white, size: 18),
           SizedBox(width: 10),
-          Expanded(child: Text('正在播放',
-              style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white))),
+          Expanded(
+              child: Text('正在播放',
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white))),
           StreamBuilder<bool>(
             stream: player.playingStream,
             builder: (_, snap) {
               final playing = snap.data ?? false;
               return Row(children: [
                 IconButton(
-                  icon: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                      color: Colors.white, size: 26),
+                  icon: Icon(
+                      playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 26),
                   onPressed: () => playing ? player.pause() : player.play(),
                   padding: EdgeInsets.zero,
                 ),

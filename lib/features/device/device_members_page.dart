@@ -7,6 +7,7 @@ import '../../shared/widgets/pet_toast.dart';
 import '../../shared/utils/wechat_share.dart';
 import '../share/data/repository/share_repository.dart';
 import 'data/models/device_model.dart';
+import 'data/models/device_product_model.dart';
 import 'data/repository/device_repository.dart';
 
 // ── 设备成员管理页 ─────────────────────────────────────────
@@ -15,12 +16,16 @@ class DeviceMembersPage extends ConsumerStatefulWidget {
   final String mac;
   final String deviceId;
   final String deviceName;
+  final String productKey;
+  final String productTypeName;
 
   const DeviceMembersPage({
     super.key,
     required this.mac,
     required this.deviceId,
     required this.deviceName,
+    required this.productKey,
+    required this.productTypeName,
   });
 
   @override
@@ -39,18 +44,32 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      final list = await ref
-          .read(deviceRepositoryProvider)
-          .fetchMembers(widget.mac);
-      if (mounted) setState(() { _members = list; _loading = false; });
+      final list =
+          await ref.read(deviceRepositoryProvider).fetchMembers(widget.mac);
+      if (mounted)
+        setState(() {
+          _members = list;
+          _loading = false;
+        });
     } catch (e) {
-      if (mounted) setState(() { _loading = false; _error = e.toString(); });
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _error = e.toString();
+        });
     }
   }
 
   bool _sharing = false;
+
+  String get _deviceTypeName => widget.productTypeName.isNotEmpty
+      ? widget.productTypeName
+      : DeviceProductType.fromProductKey(widget.productKey).displayName;
 
   /// 生成设备分享：push/add 拿口令 → createShare 生成链接 → 弹卡片
   Future<void> _shareDevice() async {
@@ -64,13 +83,15 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
       final result = await ref.read(shareRepositoryProvider).createShare(
             type: 'device',
             targetId: widget.deviceId,
-            title: '邀请你共同管理「${widget.deviceName}」',
-            description: '打开链接，将设备添加到你的账户，即可一起查看和控制。',
+            title: '邀请你共同管理$_deviceTypeName「${widget.deviceName}」',
+            description: '这是一台$_deviceTypeName，打开链接添加后即可一起查看和控制。',
             payload: {
               'order': order,
               'mac': widget.mac,
               'deviceId': widget.deviceId,
               'deviceName': widget.deviceName,
+              'productKey': widget.productKey,
+              'productTypeName': widget.productTypeName,
             },
             expireDays: 1, // 对齐口令 24h 有效期
           );
@@ -104,6 +125,8 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
       builder: (_) => _ShareDeviceSheet(
         shareUrl: shareUrl,
         deviceName: widget.deviceName,
+        productKey: widget.productKey,
+        productTypeName: widget.productTypeName,
       ),
     );
   }
@@ -116,7 +139,8 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           '移除成员',
-          style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700),
+          style: TextStyle(
+              fontFamily: AppFonts.primary, fontWeight: FontWeight.w700),
         ),
         content: Text(
           '确定要将「${member.displayName}」从共享列表中移除吗？',
@@ -131,7 +155,8 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.error,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
             child: const Text('确认移除'),
           ),
@@ -144,9 +169,9 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
 
     try {
       await ref.read(deviceRepositoryProvider).removeMember(
-        deviceId: widget.deviceId,
-        userId: member.userId,
-      );
+            deviceId: widget.deviceId,
+            userId: member.userId,
+          );
       if (mounted) {
         PetToast.show(context, '已移除 ${member.displayName}');
         _load(); // 刷新列表
@@ -234,7 +259,6 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
           ),
           const SizedBox(width: 4),
         ],
-
       ),
       body: _buildBody(),
     );
@@ -243,7 +267,8 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
   Widget _buildBody() {
     if (_loading && _members.isEmpty) {
       return Center(
-        child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5),
+        child: CircularProgressIndicator(
+            color: AppColors.primary, strokeWidth: 2.5),
       );
     }
 
@@ -252,11 +277,15 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.wifi_off_rounded, size: 56, color: AppColors.onSurfaceVariant),
+            Icon(Icons.wifi_off_rounded,
+                size: 56, color: AppColors.onSurfaceVariant),
             const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center,
-                style: TextStyle(fontFamily: AppFonts.primary,
-                    fontSize: 13, color: AppColors.onSurfaceVariant)),
+            Text(_error!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 13,
+                    color: AppColors.onSurfaceVariant)),
             const SizedBox(height: 16),
             OutlinedButton(onPressed: _load, child: const Text('重试')),
           ]),
@@ -267,8 +296,8 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
     if (_members.isEmpty) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.group_off_rounded, size: 72,
-              color: AppColors.onSurfaceVariant.withOpacity(0.3)),
+          Icon(Icons.group_off_rounded,
+              size: 72, color: AppColors.onSurfaceVariant.withOpacity(0.3)),
           const SizedBox(height: 20),
           Text(
             '暂无共享成员',
@@ -398,7 +427,8 @@ class _MemberTile extends StatelessWidget {
                   const SizedBox(width: 6),
                   // 角色标签
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
                       color: roleColor.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(20),
@@ -454,7 +484,8 @@ class _MemberTile extends StatelessWidget {
                 border: Border.all(color: AppColors.error.withOpacity(0.2)),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.person_remove_rounded, size: 13, color: AppColors.error),
+                Icon(Icons.person_remove_rounded,
+                    size: 13, color: AppColors.error),
                 const SizedBox(width: 4),
                 Text(
                   '移除',
@@ -480,7 +511,14 @@ class _MemberTile extends StatelessWidget {
 class _ShareDeviceSheet extends StatelessWidget {
   final String shareUrl;
   final String deviceName;
-  const _ShareDeviceSheet({required this.shareUrl, required this.deviceName});
+  final String productKey;
+  final String productTypeName;
+  const _ShareDeviceSheet({
+    required this.shareUrl,
+    required this.deviceName,
+    required this.productKey,
+    required this.productTypeName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -509,7 +547,8 @@ class _ShareDeviceSheet extends StatelessWidget {
             color: AppColors.primary.withOpacity(0.12),
             borderRadius: BorderRadius.circular(18),
           ),
-          child: Icon(Icons.ios_share_rounded, color: AppColors.primary, size: 26),
+          child:
+              Icon(Icons.ios_share_rounded, color: AppColors.primary, size: 26),
         ),
         const SizedBox(height: 14),
         Text(
@@ -519,6 +558,18 @@ class _ShareDeviceSheet extends StatelessWidget {
             fontSize: 18,
             fontWeight: FontWeight.w800,
             color: AppColors.onSurface,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          productTypeName.isNotEmpty
+              ? productTypeName
+              : DeviceProductType.fromProductKey(productKey).displayName,
+          style: TextStyle(
+            fontFamily: AppFonts.primary,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary,
           ),
         ),
         const SizedBox(height: 6),
@@ -578,8 +629,10 @@ class _ShareDeviceSheet extends StatelessWidget {
                 Navigator.pop(context);
                 await shareWechatWebPage(
                   url: shareUrl,
-                  title: '邀请你共同管理「$deviceName」',
-                  description: '打开链接，将设备添加到你的账户。',
+                  title:
+                      '邀请你共同管理${productTypeName.isNotEmpty ? productTypeName : DeviceProductType.fromProductKey(productKey).displayName}「$deviceName」',
+                  description:
+                      '这是一台${productTypeName.isNotEmpty ? productTypeName : DeviceProductType.fromProductKey(productKey).displayName}，打开链接即可添加。',
                   scene: WechatShareScene.session,
                 );
               },
@@ -613,7 +666,8 @@ class _SheetButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: filled ? AppColors.primary : AppColors.primary.withOpacity(0.08),
+          color:
+              filled ? AppColors.primary : AppColors.primary.withOpacity(0.08),
           borderRadius: BorderRadius.circular(14),
           border: filled
               ? null

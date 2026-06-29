@@ -149,13 +149,13 @@ final appRouter = GoRouter(
     ),
 
     // ── 带参数路由 ────────────────────────────────────────
-    // 设备扫码页（参数：设备类型 KeyTracker / PetPhone）
+    // 设备扫码页（参数：productKey）
     GoRoute(
       path: AppRoutes.scanQrTemplate,
       pageBuilder: (context, state) => _slidePage(
         state,
         ScanQrPage(
-          deviceType: state.pathParameters['deviceType'] ?? 'KeyTracker',
+          productKey: state.pathParameters['productKey'] ?? '',
         ),
       ),
     ),
@@ -166,7 +166,7 @@ final appRouter = GoRouter(
       pageBuilder: (context, state) => _fadeScalePage(
         state,
         BindSuccessPage(
-          deviceType: state.pathParameters['deviceType'] ?? 'KeyTracker',
+          productKey: state.pathParameters['productKey'] ?? '',
         ),
       ),
     ),
@@ -380,8 +380,7 @@ class _NavLogger extends NavigatorObserver {
 // ── 设备详情路由包装 Widget ──────────────────────────────────
 /// push 通知携带 device_mac 时跳转到此，
 /// 从 deviceListProvider 按 mac 查找设备信息，根据 productKey 渲染正确的设备页面：
-///   - PK_IPET_ROBOT / 含 robot/bot → RobotDevicePage（机器人）
-///   - 其他（PK_IPET_ESP32 等）      → DeviceDetailPage（项圈/追踪器）
+/// 产品目录使用 productKey 精确匹配类型，页面不再根据设备名称猜测。
 class _DeviceDetailWrapper extends ConsumerWidget {
   final String mac;
   const _DeviceDetailWrapper({required this.mac});
@@ -413,15 +412,7 @@ class _DeviceDetailWrapper extends ConsumerWidget {
 
   /// 根据 productKey 判断设备类型，渲染对应页面
   Widget _buildDevicePage(DeviceModel device) {
-    final key = device.productKey.toLowerCase();
-    final name = device.displayName.toLowerCase();
-    final isRobot = key.contains('robot') ||
-        key.contains('bot') ||
-        name.contains('机器人') ||
-        name.contains('robot') ||
-        name.contains('bot');
-
-    if (isRobot) {
+    if (device.isRobot) {
       return RobotDevicePage(mac: device.mac, name: device.displayName);
     } else {
       return DeviceDetailPage(mac: device.mac, name: device.displayName);

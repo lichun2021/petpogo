@@ -67,7 +67,7 @@ class PetCirclePetController extends StateNotifier<PetCirclePetState> {
   PetCirclePetController(this._ref) : super(const PetCirclePetState());
 
   Future<void> loadIfNeeded() async {
-    if (state.hasLoaded || state.isLoading) {
+    if ((state.hasLoaded && state.pets.isNotEmpty) || state.isLoading) {
       debugPrint(
           '[萌宠圈][宠物] 跳过加载 hasLoaded=${state.hasLoaded} isLoading=${state.isLoading} count=${state.pets.length}');
       return;
@@ -88,8 +88,12 @@ class PetCirclePetController extends StateNotifier<PetCirclePetState> {
 
       final petRepo = _ref.read(petPeerRepositoryProvider);
 
-      final loadedPets =
-          await Future.wait(deviceState.devices.map((device) async {
+      // 与“我的宠物”保持一致：遍历账号下的所有设备查询宠物。
+      // 机器人无需绑定宠物，未绑定时 PeerApi 会返回空/错误并被自然跳过；
+      // 不能在这里按 productKey 预先过滤，否则共享设备暂时缺 key 时会丢宠物。
+      final devices = deviceState.devices;
+      debugPrint('[萌宠圈][宠物] 开始按设备查询 count=${devices.length}');
+      final loadedPets = await Future.wait(devices.map((device) async {
         try {
           debugPrint(
               '[萌宠圈][宠物] 请求宠物信息 device=${device.displayName} deviceId=${device.deviceId} mac=${device.mac}');
@@ -108,8 +112,13 @@ class PetCirclePetController extends StateNotifier<PetCirclePetState> {
         return null;
       }));
 
+      final uniquePets = <String, PetCirclePet>{};
+      for (final item in loadedPets.whereType<PetCirclePet>()) {
+        uniquePets[item.id] = item;
+      }
+
       state = state.copyWith(
-        pets: loadedPets.whereType<PetCirclePet>().toList(),
+        pets: uniquePets.values.toList(growable: false),
         isLoading: false,
         hasLoaded: true,
         errorMessage: null,

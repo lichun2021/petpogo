@@ -3,12 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pressable.dart';
+import '../device/data/models/device_product_model.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 /// 绑定成功页 — 庆祝动画 + 后续操作引导
 class BindSuccessPage extends StatefulWidget {
-  final String deviceType;
-  const BindSuccessPage({super.key, required this.deviceType});
+  final String productKey;
+  const BindSuccessPage({super.key, required this.productKey});
 
   @override
   State<BindSuccessPage> createState() => _BindSuccessPageState();
@@ -20,14 +21,18 @@ class _BindSuccessPageState extends State<BindSuccessPage>
   late Animation<double> _scale;
   late Animation<double> _fade;
 
-  bool get _isCollar => widget.deviceType == '智能项圈';
+  DeviceProductType get _productType =>
+      DeviceProductType.fromProductKey(widget.productKey);
+  bool get _isCollar => _productType == DeviceProductType.collar;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: Duration(milliseconds: 800));
+    _ctrl =
+        AnimationController(vsync: this, duration: Duration(milliseconds: 800));
     _scale = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
-    _fade  = CurvedAnimation(parent: _ctrl, curve: Interval(0.3, 1.0, curve: Curves.easeOut));
+    _fade = CurvedAnimation(
+        parent: _ctrl, curve: Interval(0.3, 1.0, curve: Curves.easeOut));
     Future.delayed(Duration(milliseconds: 100), () {
       _ctrl.forward();
       HapticFeedback.heavyImpact();
@@ -55,15 +60,20 @@ class _BindSuccessPageState extends State<BindSuccessPage>
               ScaleTransition(
                 scale: _scale,
                 child: Container(
-                  width: 140, height: 140,
+                  width: 140,
+                  height: 140,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [AppColors.primary, AppColors.secondary],
-                      begin: Alignment.topLeft, end: Alignment.bottomRight,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
                     shape: BoxShape.circle,
                     boxShadow: [
-                      BoxShadow(color: AppColors.primaryGlow, blurRadius: 50, spreadRadius: -4),
+                      BoxShadow(
+                          color: AppColors.primaryGlow,
+                          blurRadius: 50,
+                          spreadRadius: -4),
                     ],
                   ),
                   child: Column(
@@ -71,7 +81,8 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                     children: [
                       Text(_isCollar ? '🐾' : '🤖',
                           style: TextStyle(fontSize: 52)),
-                      Icon(Icons.check_circle_rounded, color: Colors.white, size: 28),
+                      Icon(Icons.check_circle_rounded,
+                          color: Colors.white, size: 28),
                     ],
                   ),
                 ),
@@ -84,15 +95,22 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                 opacity: _fade,
                 child: Column(
                   children: [
-                    Text('${widget.deviceType} 绑定成功！',
+                    Text('${_productType.displayName} 绑定成功！',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 28,
-                            fontWeight: FontWeight.w800, color: AppColors.onSurface, letterSpacing: -0.6)),
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.onSurface,
+                            letterSpacing: -0.6)),
                     SizedBox(height: 12),
                     Text('你的设备已与账号关联\n可以在首页查看实时状态',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
-                            color: AppColors.onSurfaceVariant, height: 1.6)),
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 15,
+                            color: AppColors.onSurfaceVariant,
+                            height: 1.6)),
                   ],
                 ),
               ),
@@ -107,23 +125,46 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                   decoration: BoxDecoration(
                     color: AppColors.surfaceContainerLowest,
                     borderRadius: BorderRadius.circular(20),
-                    boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 20, spreadRadius: -6)],
+                    boxShadow: [
+                      BoxShadow(
+                          color: AppColors.cardShadow,
+                          blurRadius: 20,
+                          spreadRadius: -6)
+                    ],
                   ),
-                   child: Column(
+                  child: Column(
                     children: _isCollar
                         ? [
-                            _FeatureRow(icon: Icons.location_on_rounded, label: '实时 GPS 定位', color: AppColors.primary),
+                            _FeatureRow(
+                                icon: Icons.location_on_rounded,
+                                label: '实时 GPS 定位',
+                                color: AppColors.primary),
                             SizedBox(height: 14),
-                            _FeatureRow(icon: Icons.notifications_active_rounded, label: '走失预警通知', color: AppColors.secondary),
+                            _FeatureRow(
+                                icon: Icons.notifications_active_rounded,
+                                label: '走失预警通知',
+                                color: AppColors.secondary),
                             SizedBox(height: 14),
-                            _FeatureRow(icon: Icons.battery_charging_full_rounded, label: '健康监测报告', color: AppColors.tertiary),
+                            _FeatureRow(
+                                icon: Icons.battery_charging_full_rounded,
+                                label: '健康监测报告',
+                                color: AppColors.tertiary),
                           ]
                         : [
-                            _FeatureRow(icon: Icons.smart_toy_rounded, label: 'AI 馬伴互动', color: AppColors.primary),
+                            _FeatureRow(
+                                icon: Icons.smart_toy_rounded,
+                                label: 'AI 馬伴互动',
+                                color: AppColors.primary),
                             SizedBox(height: 14),
-                            _FeatureRow(icon: Icons.videocam_rounded, label: '远程视频监控', color: AppColors.secondary),
+                            _FeatureRow(
+                                icon: Icons.videocam_rounded,
+                                label: '远程视频监控',
+                                color: AppColors.secondary),
                             SizedBox(height: 14),
-                            _FeatureRow(icon: Icons.music_note_rounded, label: '播放舒缓音乐', color: AppColors.tertiary),
+                            _FeatureRow(
+                                icon: Icons.music_note_rounded,
+                                label: '播放舒缓音乐',
+                                color: AppColors.tertiary),
                           ],
                   ),
                 ),
@@ -145,7 +186,9 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                     TextButton(
                       onPressed: () => context.go('/bind-device'),
                       child: Text('继续添加设备',
-                          style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w600,
+                          style: TextStyle(
+                              fontFamily: AppFonts.primary,
+                              fontWeight: FontWeight.w600,
                               color: AppColors.primary)),
                     ),
                   ],
@@ -165,17 +208,26 @@ class _FeatureRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  const _FeatureRow({required this.icon, required this.label, required this.color});
+  const _FeatureRow(
+      {required this.icon, required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Row(children: [
-      Container(width: 36, height: 36,
-          decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+      Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10)),
           child: Icon(icon, color: color, size: 18)),
       SizedBox(width: 14),
-      Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
-          fontWeight: FontWeight.w600, color: AppColors.onSurface)),
+      Text(label,
+          style: TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.onSurface)),
       Spacer(),
       Icon(Icons.check_rounded, color: color, size: 18),
     ]);

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/router/app_routes.dart';
 import '../../features/auth/controller/auth_controller.dart';
 import '../../features/device/data/repository/device_repository.dart';
+import '../../features/device/data/models/device_product_model.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_fonts.dart';
 import '../../shared/widgets/pet_toast.dart';
@@ -258,6 +259,15 @@ class _DeviceShareCardState extends ConsumerState<_DeviceShareCard> {
   String get _mac => widget.data.payload['mac']?.toString() ?? '';
   String get _deviceId => widget.data.payload['deviceId']?.toString() ?? '';
   String get _order => widget.data.payload['order']?.toString() ?? '';
+  String get _productKey => widget.data.payload['productKey']?.toString() ?? '';
+  DeviceProductType get _productType =>
+      DeviceProductType.fromProductKey(_productKey);
+  String get _productTypeName {
+    final name =
+        widget.data.payload['productTypeName']?.toString().trim() ?? '';
+    return name.isNotEmpty ? name : _productType.displayName;
+  }
+
   String get _deviceName {
     final n = widget.data.payload['deviceName']?.toString() ?? '';
     if (n.isNotEmpty) return n;
@@ -342,7 +352,11 @@ class _DeviceShareCardState extends ConsumerState<_DeviceShareCard> {
         children: [
           Row(
             children: [
-              _Preview(imageUrl: widget.data.imageUrl, type: 'device'),
+              _Preview(
+                imageUrl: widget.data.imageUrl,
+                type: 'device',
+                deviceProductType: _productType,
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -367,6 +381,15 @@ class _DeviceShareCardState extends ConsumerState<_DeviceShareCard> {
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _productTypeName,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -498,16 +521,24 @@ class _IconBubble extends StatelessWidget {
 class _Preview extends StatelessWidget {
   final String imageUrl;
   final String type;
+  final DeviceProductType deviceProductType;
 
   const _Preview({
     required this.imageUrl,
     required this.type,
+    this.deviceProductType = DeviceProductType.unknown,
   });
 
   @override
   Widget build(BuildContext context) {
     final placeholder = Icon(
-      _typeIcon(type),
+      type == 'device'
+          ? switch (deviceProductType) {
+              DeviceProductType.collar => Icons.pets_rounded,
+              DeviceProductType.robot => Icons.smart_toy_rounded,
+              DeviceProductType.unknown => Icons.memory_rounded,
+            }
+          : _typeIcon(type),
       color: AppColors.primary,
       size: 30,
     );

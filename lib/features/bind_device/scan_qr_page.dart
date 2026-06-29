@@ -9,8 +9,8 @@ import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 扫码绑定页 ────────────────────────────────────────────
 class ScanQrPage extends ConsumerStatefulWidget {
-  final String deviceType;
-  const ScanQrPage({super.key, required this.deviceType});
+  final String productKey;
+  const ScanQrPage({super.key, required this.productKey});
 
   @override
   ConsumerState<ScanQrPage> createState() => _ScanQrPageState();
@@ -24,7 +24,7 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
   // 状态机
   _ScanState _state = _ScanState.scanning;
   String? _scannedMac;
-  String?  _errorMsg;
+  String? _errorMsg;
 
   @override
   void initState() {
@@ -61,7 +61,7 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
     _cameraCtrl.stop();
     setState(() {
       _scannedMac = mac;
-      _state      = _ScanState.found;
+      _state = _ScanState.found;
     });
   }
 
@@ -69,7 +69,7 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
   String? _extractMac(String raw) {
     // 匹配 MAC 地址格式：XX:XX:XX:XX:XX:XX 或 ipet-xxx 形式
     final macReg = RegExp(r'([0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}');
-    final match  = macReg.firstMatch(raw);
+    final match = macReg.firstMatch(raw);
     if (match != null) return match.group(0);
 
     // iPet 设备 ID 格式：ipet-xxx 直接当 mac
@@ -98,7 +98,7 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
       if (mounted) {
         setState(() {
           _errorMsg = e.toString().replaceAll('Exception: ', '');
-          _state    = _ScanState.error;
+          _state = _ScanState.error;
         });
       }
     }
@@ -108,9 +108,9 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
   void _retry() {
     _cameraCtrl.start();
     setState(() {
-      _state      = _ScanState.scanning;
+      _state = _ScanState.scanning;
       _scannedMac = null;
-      _errorMsg   = null;
+      _errorMsg = null;
     });
   }
 
@@ -131,7 +131,9 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
 
         // ── AppBar ─────────────────────────────────────
         Positioned(
-          top: 0, left: 0, right: 0,
+          top: 0,
+          left: 0,
+          right: 0,
           child: _buildAppBar(context),
         ),
 
@@ -140,7 +142,9 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
 
         // ── 底部说明 + 按钮 ────────────────────────────
         Positioned(
-          left: 24, right: 24, bottom: 60,
+          left: 24,
+          right: 24,
+          bottom: 60,
           child: _buildBottomContent(context),
         ),
       ]),
@@ -165,20 +169,27 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
       padding: EdgeInsets.fromLTRB(4, top, 4, 0),
       child: Row(children: [
         IconButton(
-          icon: Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
+          icon:
+              Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         Expanded(
-          child: Text('扫码绑定设备', textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white, fontFamily: AppFonts.primary,
-                  fontSize: 17, fontWeight: FontWeight.w700)),
+          child: Text('扫码绑定设备',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: Colors.white,
+                  fontFamily: AppFonts.primary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700)),
         ),
         // 手电筒
         IconButton(
           icon: ValueListenableBuilder(
             valueListenable: _cameraCtrl,
             builder: (_, value, __) => Icon(
-              value.torchState == TorchState.on ? Icons.flash_on_rounded : Icons.flash_off_rounded,
+              value.torchState == TorchState.on
+                  ? Icons.flash_on_rounded
+                  : Icons.flash_off_rounded,
               color: Colors.white,
             ),
           ),
@@ -191,7 +202,9 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
   // ── 扫描框 ──────────────────────────────────────────────
   Widget _buildScanBox() {
     const boxSize = 260.0;
-    return SizedBox(width: boxSize, height: boxSize,
+    return SizedBox(
+      width: boxSize,
+      height: boxSize,
       child: Stack(children: [
         // 四角装饰
         ..._buildCorners(boxSize),
@@ -201,35 +214,54 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
             animation: _scanAnim,
             builder: (_, __) => Positioned(
               top: 4 + ((boxSize - 8) * _scanAnim.value),
-              left: 4, right: 4,
-              child: Container(height: 2,
+              left: 4,
+              right: 4,
+              child: Container(
+                height: 2,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Colors.transparent, AppColors.primary, Colors.transparent],
+                    colors: [
+                      Colors.transparent,
+                      AppColors.primary,
+                      Colors.transparent
+                    ],
                   ),
                 ),
               ),
             ),
           ),
         // 成功/绑定中状态
-        if (_state == _ScanState.found || _state == _ScanState.binding || _state == _ScanState.success)
-          Center(child: Container(
-            width: 72, height: 72,
+        if (_state == _ScanState.found ||
+            _state == _ScanState.binding ||
+            _state == _ScanState.success)
+          Center(
+              child: Container(
+            width: 72,
+            height: 72,
             decoration: BoxDecoration(
-              color: _state == _ScanState.success ? Color(0xFF22C55E) : AppColors.primary,
+              color: _state == _ScanState.success
+                  ? Color(0xFF22C55E)
+                  : AppColors.primary,
               shape: BoxShape.circle,
             ),
             child: _state == _ScanState.binding
-                ? CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)
+                ? CircularProgressIndicator(
+                    color: Colors.white, strokeWidth: 2.5)
                 : Icon(
-                    _state == _ScanState.success ? Icons.check_rounded : Icons.qr_code_rounded,
-                    color: Colors.white, size: 36),
+                    _state == _ScanState.success
+                        ? Icons.check_rounded
+                        : Icons.qr_code_rounded,
+                    color: Colors.white,
+                    size: 36),
           )),
         // 错误状态
         if (_state == _ScanState.error)
-          Center(child: Container(
-            width: 72, height: 72,
-            decoration: BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
+          Center(
+              child: Container(
+            width: 72,
+            height: 72,
+            decoration:
+                BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
             child: Icon(Icons.close_rounded, color: Colors.white, size: 36),
           )),
       ]),
@@ -242,12 +274,19 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
       case _ScanState.scanning:
         return Column(mainAxisSize: MainAxisSize.min, children: [
           Text('将设备背面二维码对准扫描框',
-              style: TextStyle(color: Colors.white, fontFamily: AppFonts.primary,
-                  fontSize: 15, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontFamily: AppFonts.primary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600),
+              textAlign: TextAlign.center),
           SizedBox(height: 6),
           Text('支持 QR 码 / MAC 地址条码',
-              style: TextStyle(color: Colors.white54, fontFamily: AppFonts.primary,
-                  fontSize: 13), textAlign: TextAlign.center),
+              style: TextStyle(
+                  color: Colors.white54,
+                  fontFamily: AppFonts.primary,
+                  fontSize: 13),
+              textAlign: TextAlign.center),
           SizedBox(height: 24),
           // 手动输入入口
           GestureDetector(
@@ -259,55 +298,86 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text('手动输入 MAC 地址',
-                  style: TextStyle(color: Colors.white70, fontFamily: AppFonts.primary,
-                      fontSize: 14), textAlign: TextAlign.center),
+                  style: TextStyle(
+                      color: Colors.white70,
+                      fontFamily: AppFonts.primary,
+                      fontSize: 14),
+                  textAlign: TextAlign.center),
             ),
           ),
         ]);
 
       case _ScanState.found:
         return Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('已识别设备', style: TextStyle(color: Colors.white,
-              fontFamily: AppFonts.primary, fontSize: 16, fontWeight: FontWeight.w700),
+          Text('已识别设备',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontFamily: AppFonts.primary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700),
               textAlign: TextAlign.center),
           SizedBox(height: 4),
-          Text(_scannedMac ?? '', style: TextStyle(color: Colors.white60,
-              fontFamily: AppFonts.primary, fontSize: 13), textAlign: TextAlign.center),
+          Text(_scannedMac ?? '',
+              style: TextStyle(
+                  color: Colors.white60,
+                  fontFamily: AppFonts.primary,
+                  fontSize: 13),
+              textAlign: TextAlign.center),
           SizedBox(height: 20),
-          SizedBox(width: double.infinity,
+          SizedBox(
+            width: double.infinity,
             child: FilledButton(
               onPressed: _bindDevice,
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 minimumSize: Size(double.infinity, 52),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
               ),
-              child: Text('确认绑定', style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 15, fontWeight: FontWeight.w700)),
+              child: Text('确认绑定',
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700)),
             ),
           ),
           SizedBox(height: 10),
-          TextButton(onPressed: _retry,
-              child: Text('重新扫描', style: TextStyle(color: Colors.white70,
-                  fontFamily: AppFonts.primary))),
+          TextButton(
+              onPressed: _retry,
+              child: Text('重新扫描',
+                  style: TextStyle(
+                      color: Colors.white70, fontFamily: AppFonts.primary))),
         ]);
 
       case _ScanState.binding:
         return Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('正在绑定设备...', style: TextStyle(color: Colors.white,
-              fontFamily: AppFonts.primary, fontSize: 15), textAlign: TextAlign.center),
+          Text('正在绑定设备...',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontFamily: AppFonts.primary,
+                  fontSize: 15),
+              textAlign: TextAlign.center),
         ]);
 
       case _ScanState.success:
         return Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('绑定成功 🎉', style: TextStyle(color: Color(0xFF4ADE80),
-              fontFamily: AppFonts.primary, fontSize: 18, fontWeight: FontWeight.w700),
+          Text('绑定成功 🎉',
+              style: TextStyle(
+                  color: Color(0xFF4ADE80),
+                  fontFamily: AppFonts.primary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700),
               textAlign: TextAlign.center),
           SizedBox(height: 6),
-          Text(_scannedMac ?? '', style: TextStyle(color: Colors.white54,
-              fontFamily: AppFonts.primary, fontSize: 13), textAlign: TextAlign.center),
+          Text(_scannedMac ?? '',
+              style: TextStyle(
+                  color: Colors.white54,
+                  fontFamily: AppFonts.primary,
+                  fontSize: 13),
+              textAlign: TextAlign.center),
           SizedBox(height: 24),
-          SizedBox(width: double.infinity,
+          SizedBox(
+            width: double.infinity,
             child: FilledButton(
               onPressed: () {
                 // 弹出所有绑定流程页，直接回到底部导航根页面
@@ -316,36 +386,49 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
               style: FilledButton.styleFrom(
                 backgroundColor: Color(0xFF22C55E),
                 minimumSize: Size(double.infinity, 52),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
               ),
-              child: Text('完成', style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 15, fontWeight: FontWeight.w700)),
+              child: Text('完成',
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700)),
             ),
           ),
         ]);
 
       case _ScanState.error:
         return Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(_errorMsg ?? '绑定失败', style: TextStyle(color: Color(0xFFFC8181),
-              fontFamily: AppFonts.primary, fontSize: 14), textAlign: TextAlign.center),
+          Text(_errorMsg ?? '绑定失败',
+              style: TextStyle(
+                  color: Color(0xFFFC8181),
+                  fontFamily: AppFonts.primary,
+                  fontSize: 14),
+              textAlign: TextAlign.center),
           SizedBox(height: 20),
           Row(children: [
-            Expanded(child: OutlinedButton(
+            Expanded(
+                child: OutlinedButton(
               onPressed: _retry,
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white, side: BorderSide(color: Colors.white30),
+                foregroundColor: Colors.white,
+                side: BorderSide(color: Colors.white30),
                 minimumSize: Size(double.infinity, 48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               child: Text('重新扫描'),
             )),
             SizedBox(width: 12),
-            Expanded(child: FilledButton(
+            Expanded(
+                child: FilledButton(
               onPressed: _bindDevice,
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 minimumSize: Size(double.infinity, 48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               child: Text('重试绑定'),
             )),
@@ -371,11 +454,19 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
             borderRadius: BorderRadius.circular(24),
           ),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: 36, height: 4,
-                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2))),
             SizedBox(height: 20),
-            Text('手动输入设备 MAC', style: TextStyle(color: Colors.white,
-                fontFamily: AppFonts.primary, fontSize: 17, fontWeight: FontWeight.w700)),
+            Text('手动输入设备 MAC',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontFamily: AppFonts.primary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700)),
             SizedBox(height: 16),
             TextField(
               controller: ctrl,
@@ -383,8 +474,11 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
               decoration: InputDecoration(
                 hintText: 'e.g. ipet-esp32-Device',
                 hintStyle: TextStyle(color: Colors.white38),
-                filled: true, fillColor: Colors.white12,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                filled: true,
+                fillColor: Colors.white12,
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none),
               ),
             ),
             SizedBox(height: 16),
@@ -394,14 +488,21 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
                 if (mac.isEmpty) return;
                 Navigator.pop(ctx);
                 _cameraCtrl.stop();
-                setState(() { _scannedMac = mac; _state = _ScanState.found; });
+                setState(() {
+                  _scannedMac = mac;
+                  _state = _ScanState.found;
+                });
               },
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 minimumSize: Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
-              child: Text('确认', style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
+              child: Text('确认',
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontWeight: FontWeight.w700)),
             ),
           ]),
         );
@@ -414,10 +515,18 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
     const size = 22.0, thick = 3.0;
     final color = AppColors.primary;
     return [
-      Positioned(top: 0, left: 0,     child: _Corner(size, thick, color, topLeft: true)),
-      Positioned(top: 0, right: 0,    child: _Corner(size, thick, color, topRight: true)),
-      Positioned(bottom: 0, left: 0,  child: _Corner(size, thick, color, bottomLeft: true)),
-      Positioned(bottom: 0, right: 0, child: _Corner(size, thick, color, bottomRight: true)),
+      Positioned(
+          top: 0, left: 0, child: _Corner(size, thick, color, topLeft: true)),
+      Positioned(
+          top: 0, right: 0, child: _Corner(size, thick, color, topRight: true)),
+      Positioned(
+          bottom: 0,
+          left: 0,
+          child: _Corner(size, thick, color, bottomLeft: true)),
+      Positioned(
+          bottom: 0,
+          right: 0,
+          child: _Corner(size, thick, color, bottomRight: true)),
     ];
   }
 }
@@ -431,15 +540,19 @@ class _Corner extends StatelessWidget {
   final Color color;
   final bool topLeft, topRight, bottomLeft, bottomRight;
   const _Corner(this.size, this.thick, this.color,
-      {this.topLeft = false, this.topRight = false,
-       this.bottomLeft = false, this.bottomRight = false});
+      {this.topLeft = false,
+      this.topRight = false,
+      this.bottomLeft = false,
+      this.bottomRight = false});
   @override
   Widget build(BuildContext context) => CustomPaint(
-    size: Size(size, size),
-    painter: _CornerPainter(thick, color,
-        topLeft: topLeft, topRight: topRight,
-        bottomLeft: bottomLeft, bottomRight: bottomRight),
-  );
+        size: Size(size, size),
+        painter: _CornerPainter(thick, color,
+            topLeft: topLeft,
+            topRight: topRight,
+            bottomLeft: bottomLeft,
+            bottomRight: bottomRight),
+      );
 }
 
 class _CornerPainter extends CustomPainter {
@@ -447,19 +560,37 @@ class _CornerPainter extends CustomPainter {
   final Color color;
   final bool topLeft, topRight, bottomLeft, bottomRight;
   _CornerPainter(this.thick, this.color,
-      {this.topLeft = false, this.topRight = false,
-       this.bottomLeft = false, this.bottomRight = false});
+      {this.topLeft = false,
+      this.topRight = false,
+      this.bottomLeft = false,
+      this.bottomRight = false});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final p = Paint()..color = color..strokeWidth = thick
-        ..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final p = Paint()
+      ..color = color
+      ..strokeWidth = thick
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
     final s = size.width;
-    if (topLeft)    { canvas.drawLine(Offset.zero, Offset(s, 0), p); canvas.drawLine(Offset.zero, Offset(0, s), p); }
-    if (topRight)   { canvas.drawLine(Offset(0, 0), Offset(s, 0), p); canvas.drawLine(Offset(s, 0), Offset(s, s), p); }
-    if (bottomLeft) { canvas.drawLine(Offset(0, 0), Offset(0, s), p); canvas.drawLine(Offset(0, s), Offset(s, s), p); }
-    if (bottomRight){ canvas.drawLine(Offset(0, s), Offset(s, s), p); canvas.drawLine(Offset(s, 0), Offset(s, s), p); }
+    if (topLeft) {
+      canvas.drawLine(Offset.zero, Offset(s, 0), p);
+      canvas.drawLine(Offset.zero, Offset(0, s), p);
+    }
+    if (topRight) {
+      canvas.drawLine(Offset(0, 0), Offset(s, 0), p);
+      canvas.drawLine(Offset(s, 0), Offset(s, s), p);
+    }
+    if (bottomLeft) {
+      canvas.drawLine(Offset(0, 0), Offset(0, s), p);
+      canvas.drawLine(Offset(0, s), Offset(s, s), p);
+    }
+    if (bottomRight) {
+      canvas.drawLine(Offset(0, s), Offset(s, s), p);
+      canvas.drawLine(Offset(s, 0), Offset(s, s), p);
+    }
   }
+
   @override
   bool shouldRepaint(covariant CustomPainter _) => false;
 }
@@ -469,11 +600,12 @@ class _OverlayPainter extends CustomPainter {
   final double boxSize;
   final double radius;
   final Color color;
-  const _OverlayPainter({required this.boxSize, required this.radius, required this.color});
+  const _OverlayPainter(
+      {required this.boxSize, required this.radius, required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final cx = size.width  / 2;
+    final cx = size.width / 2;
     final cy = size.height / 2;
     final half = boxSize / 2;
     final path = Path()
@@ -484,6 +616,7 @@ class _OverlayPainter extends CustomPainter {
       ..fillType = PathFillType.evenOdd;
     canvas.drawPath(path, Paint()..color = color);
   }
+
   @override
   bool shouldRepaint(covariant CustomPainter _) => false;
 }

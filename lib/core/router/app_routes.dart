@@ -36,8 +36,8 @@ abstract class AppRoutes {
   static const reportMedical = '/consultation/report/medical';
 
   // ── 带参数路由（用方法生成，杜绝拼错） ──────────────
-  static String scanQr(String deviceType) => '/scan-qr/$deviceType';
-  static String bindSuccess(String deviceType) => '/bind-success/$deviceType';
+  static String scanQr(String productKey) => '/scan-qr/$productKey';
+  static String bindSuccess(String productKey) => '/bind-success/$productKey';
   static String petDetail(String petId) => '/pet-detail/$petId';
   static String postDetail(String postId) => '/post-detail/$postId';
   static String chat(String userId) => '/chat/$userId'; // IM 聊天页
@@ -54,8 +54,8 @@ abstract class AppRoutes {
   }
 
   // ── 路由模板（GoRoute path 用） ─────────────────────
-  static const scanQrTemplate = '/scan-qr/:deviceType';
-  static const bindSuccessTemplate = '/bind-success/:deviceType';
+  static const scanQrTemplate = '/scan-qr/:productKey';
+  static const bindSuccessTemplate = '/bind-success/:productKey';
   static const petDetailTemplate = '/pet-detail/:petId';
   static const postDetailTemplate = '/post-detail/:postId';
   static const chatTemplate = '/chat/:userId'; // IM 聊天页

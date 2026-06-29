@@ -5,6 +5,7 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_avatar.dart';
 import '../device/data/repository/device_repository.dart';
 import '../device/data/models/device_model.dart';
+import '../device/data/models/device_product_model.dart';
 import '../device/device_detail_page.dart';
 import '../device/device_members_page.dart';
 import '../device/robot_device_page.dart';
@@ -181,7 +182,7 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
   @override
   void initState() {
     super.initState();
-    if (_detectType(widget.device) == _DeviceType.collar) {
+    if (widget.device.isCollar) {
       _loadPet();
     } else {
       _petLoading = false;
@@ -210,20 +211,20 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
   @override
   Widget build(BuildContext context) {
     final device = widget.device;
-    final deviceType = _detectType(device);
+    final deviceType = device.productType;
 
     return GestureDetector(
       onTap: () async {
         HapticFeedback.selectionClick();
-        final deviceType = _detectType(device);
+        final deviceType = device.productType;
         await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => deviceType == _DeviceType.robot
+              builder: (_) => deviceType == DeviceProductType.robot
                   ? RobotDevicePage(mac: device.mac, name: device.displayName)
                   : DeviceDetailPage(mac: device.mac, name: device.displayName),
             ));
-        if (deviceType == _DeviceType.collar) {
+        if (deviceType == DeviceProductType.collar) {
           _loadPet();
         }
       },
@@ -266,7 +267,7 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
                             color: Colors.white)),
                     SizedBox(height: 4),
                     Row(children: [
-                      Text(deviceType.label,
+                      Text(device.productDisplayName,
                           style: TextStyle(
                               fontFamily: AppFonts.primary,
                               fontSize: 11,
@@ -329,7 +330,7 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
             ]),
           ),
 
-          if (deviceType == _DeviceType.collar) ...[
+          if (deviceType == DeviceProductType.collar) ...[
             // ── 分割线 ────────────────────────────────────────
             Container(
                 height: 1,
@@ -461,6 +462,8 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
                             mac: device.mac,
                             deviceId: device.deviceId,
                             deviceName: device.displayName,
+                            productKey: device.productKey,
+                            productTypeName: device.productDisplayName,
                           ),
                         ));
                   },
@@ -488,7 +491,6 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
               ]),
             ),
           ],
-
         ]),
       ),
     );
@@ -499,17 +501,17 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
     return GestureDetector(
       onTap: () async {
         HapticFeedback.selectionClick();
-        final deviceType = _detectType(widget.device);
+        final deviceType = widget.device.productType;
         await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => deviceType == _DeviceType.robot
+              builder: (_) => deviceType == DeviceProductType.robot
                   ? RobotDevicePage(
                       mac: widget.device.mac, name: widget.device.displayName)
                   : DeviceDetailPage(
                       mac: widget.device.mac, name: widget.device.displayName),
             ));
-        if (deviceType == _DeviceType.collar) {
+        if (deviceType == DeviceProductType.collar) {
           _loadPet();
         }
       },
@@ -597,21 +599,6 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
       ]),
     );
   }
-
-  _DeviceType _detectType(DeviceModel d) {
-    final key = d.productKey.toLowerCase();
-    final name = d.displayName.toLowerCase();
-    // 机器人判断（名称/productKey 含 robot/机器人）
-    if (key.contains('robot') ||
-        name.contains('机器人') ||
-        name.contains('robot') ||
-        key.contains('bot') ||
-        name.contains('bot')) {
-      return _DeviceType.robot;
-    }
-    // 其余默认为智能项圈
-    return _DeviceType.collar;
-  }
 }
 
 // ── 角色标签 chip ────────────────────────────────────────
@@ -664,41 +651,34 @@ class _RoleBadge extends StatelessWidget {
 }
 
 // ── 设备类型枚举 ──────────────────────────────────────────
-enum _DeviceType { collar, robot }
-
-extension _DeviceTypeX on _DeviceType {
-  String get label {
-    switch (this) {
-      case _DeviceType.collar:
-        return '智能项圈';
-      case _DeviceType.robot:
-        return '智能宠物机器人';
-    }
-  }
-
+extension _DeviceProductTypeUiX on DeviceProductType {
   /// 在线状态下的渐变色：项圈=橙色系，机器人=青色系
   List<Color> get onlineGradient {
     switch (this) {
-      case _DeviceType.collar:
+      case DeviceProductType.collar:
         return [Color(0xFFff784e), Color(0xFFa83206)];
-      case _DeviceType.robot:
+      case DeviceProductType.robot:
         return [Color(0xFF00897B), Color(0xFF006760)];
+      case DeviceProductType.unknown:
+        return [Color(0xFF6B7280), Color(0xFF374151)];
     }
   }
 
   Color get glowColor {
     switch (this) {
-      case _DeviceType.collar:
+      case DeviceProductType.collar:
         return Color(0xFFff784e);
-      case _DeviceType.robot:
+      case DeviceProductType.robot:
         return Color(0xFF7fe6db);
+      case DeviceProductType.unknown:
+        return Color(0xFF9CA3AF);
     }
   }
 }
 
 // ── 设备类型图标 ──────────────────────────────────────────
 class _DeviceTypeIcon extends StatelessWidget {
-  final _DeviceType type;
+  final DeviceProductType type;
   final bool isOnline;
   const _DeviceTypeIcon({required this.type, required this.isOnline});
 
@@ -728,9 +708,12 @@ class _DeviceTypeIcon extends StatelessWidget {
             : [],
       ),
       child: Center(
-        child: type == _DeviceType.collar
-            ? _CollarIcon(color: iconColor)
-            : _RobotIcon(color: iconColor),
+        child: switch (type) {
+          DeviceProductType.collar => _CollarIcon(color: iconColor),
+          DeviceProductType.robot => _RobotIcon(color: iconColor),
+          DeviceProductType.unknown =>
+            Icon(Icons.memory_rounded, color: iconColor, size: 28),
+        },
       ),
     );
   }

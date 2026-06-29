@@ -206,7 +206,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         onSelect: (device) {
           Navigator.pop(context);
           if (device.mac == widget.mac) return;
-          final isRobot = _isRobotDevice(device);
+          final isRobot = device.isRobot;
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -218,16 +218,6 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         },
       ),
     );
-  }
-
-  bool _isRobotDevice(DeviceModel d) {
-    final key = d.productKey.toLowerCase();
-    final name = d.displayName.toLowerCase();
-    return key.contains('robot') ||
-        name.contains('机器人') ||
-        name.contains('robot') ||
-        key.contains('bot') ||
-        name.contains('bot');
   }
 
   Widget _buildStatusHero() {
@@ -1270,16 +1260,6 @@ class _DeviceSwitcherSheet extends StatelessWidget {
     required this.onSelect,
   });
 
-  bool _isRobot(DeviceModel d) {
-    final key = d.productKey.toLowerCase();
-    final name = d.displayName.toLowerCase();
-    return key.contains('robot') ||
-        name.contains('机器人') ||
-        name.contains('robot') ||
-        key.contains('bot') ||
-        name.contains('bot');
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1312,7 +1292,7 @@ class _DeviceSwitcherSheet extends StatelessWidget {
         SizedBox(height: 16),
         ...devices.map((d) {
           final isSelected = d.mac == currentMac;
-          final isRobot = _isRobot(d);
+          final isRobot = d.isRobot;
           return GestureDetector(
             onTap: () {
               HapticFeedback.selectionClick();

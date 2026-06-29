@@ -112,10 +112,14 @@ class _PetCirclePageState extends ConsumerState<PetCirclePage> {
     }
 
     if (petState.pets.isEmpty) {
-      return const _CenteredState(
+      return _CenteredState(
         icon: Icons.pets_rounded,
         title: '还没有宠物',
         message: '绑定设备并完善宠物档案后，AI 记录的日常会出现在这里',
+        actionLabel: '重新同步',
+        onAction: () {
+          ref.read(petCirclePetControllerProvider.notifier).load();
+        },
       );
     }
 
