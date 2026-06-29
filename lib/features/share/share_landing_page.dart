@@ -276,7 +276,12 @@ class _DeviceShareCardState extends ConsumerState<_DeviceShareCard> {
       context.go(AppRoutes.home);
       return;
     }
-    context.go(AppRoutes.deviceDetail(_mac));
+    // 先 go('/') 确保底层有首页作为返回目标，再 push 设备详情页
+    // 避免直接 go(deviceDetail) 后返回黑屏（导航栈为空）
+    context.go(AppRoutes.home);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.push(AppRoutes.deviceDetail(_mac));
+    });
   }
 
   Future<void> _accept() async {

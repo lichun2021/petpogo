@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/peer_api_client.dart';
 import '../models/device_model.dart';
@@ -48,6 +50,24 @@ class DeviceRepository {
   /// POST /user/device/unbind — 解绑设备
   Future<void> unbindDevice(String mac) async {
     await _peer.post('/user/device/unbind', params: {'mac': mac});
+  }
+
+  /// [临时日志] POST /device/product/list — 打印所有产品 productKey，用于类型绑定研究
+  Future<void> debugLogProductList() async {
+    try {
+      final res = await _peer.post<List<dynamic>>(
+        '/device/product/list',
+        fromInfo: (d) => (d is List) ? d : [],
+      );
+      final items = res.info ?? res.list ?? [];
+      debugPrint('[ProductList] 共 ${items.length} 条产品:');
+      for (final item in items) {
+        debugPrint('[ProductList] ${jsonEncode(item)}');
+      }
+      if (items.isEmpty) debugPrint('[ProductList] 列表为空或字段在 list 中');
+    } catch (e) {
+      debugPrint('[ProductList] 拉取失败: $e');
+    }
   }
 
   /// POST /user/device/member/query — 查询设备共享成员列表
@@ -240,6 +260,8 @@ class DeviceListNotifier extends StateNotifier<DeviceListState> {
   Future<void> load() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
+      // [临时日志] 打印产品列表，用于确认所有 productKey
+      unawaited(_repo.debugLogProductList());
       final list = await _repo.fetchDevices();
       // 先展示基础列表（快速反馈）
       state = state.copyWith(devices: list, isLoading: false);

@@ -209,8 +209,8 @@ class DeviceMemberModel {
     this.createTime = 0,
   });
 
-  /// 显示名：优先 username，否则 account
-  String get displayName => username.isNotEmpty ? username : account;
+  /// 显示名：优先 username，否则用 displayAccount（邮箱去掉@domain）
+  String get displayName => username.isNotEmpty ? username : displayAccount;
 
   /// 账号显示：邮箱只显示 @ 前的部分（如 19192987796@qq.com 显示为 19192987796）
   String get displayAccount {
@@ -221,7 +221,7 @@ class DeviceMemberModel {
 
   String get roleLabel {
     switch (type) {
-      case '1': return '主人';
+      case '1': return '我的';
       case '2': return '管理员';
       default:  return '成员';
     }

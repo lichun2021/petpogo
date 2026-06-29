@@ -192,49 +192,47 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
         ),
         centerTitle: true,
         actions: [
-          // 分享按钮
-          Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: IconButton(
-              icon: _sharing
-                  ? SizedBox(
+          // 分享（邀请）按钮 — 贴近刷新按钮
+          IconButton(
+            icon: _sharing
+                ? SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  )
+                : const Icon(Icons.person_add_alt_1_rounded),
+            color: AppColors.primary,
+            tooltip: '分享设备',
+            visualDensity: VisualDensity.compact,
+            onPressed: _sharing ? null : _shareDevice,
+          ),
+          // 刷新按钮：固定 40×40，防止 loading/idle 切换时宽度变化导致分享按鈕位移
+          SizedBox(
+            width: 40,
+            height: 40,
+            child: _loading
+                ? Center(
+                    child: SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         color: AppColors.primary,
                       ),
-                    )
-                  : const Icon(Icons.person_add_alt_1_rounded),
-              color: AppColors.primary,
-              tooltip: '分享设备',
-              onPressed: _sharing ? null : _shareDevice,
-            ),
-          ),
-          // 刷新按钮：固定 48×48，防止 loading/idle 切换时宽度变化导致分享按钮位移
-          Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: SizedBox(
-              width: 48,
-              height: 48,
-              child: _loading
-                  ? Center(
-                      child: SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    )
-                  : IconButton(
-                      icon: const Icon(Icons.refresh_rounded),
-                      color: AppColors.onSurfaceVariant,
-                      onPressed: _load,
                     ),
-            ),
+                  )
+                : IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(Icons.refresh_rounded),
+                    color: AppColors.onSurfaceVariant,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _load,
+                  ),
           ),
+          const SizedBox(width: 4),
         ],
 
       ),
@@ -311,7 +309,7 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
   }
 }
 
-// ── 成员卡片 ──────────────────────────────────────────────
+// ── 成员卡片 ──────────────────────────────────────────────────────
 class _MemberTile extends StatelessWidget {
   final DeviceMemberModel member;
   final VoidCallback onRemove;
@@ -319,34 +317,43 @@ class _MemberTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 角色颜色
-    final Color roleColor;
-    switch (member.type) {
-      case '2':
-        roleColor = const Color(0xFF60A5FA); // 管理员 — 蓝
-      default:
-        roleColor = AppColors.onSurfaceVariant; // 成员 — 灰
-    }
+    final bool isOwner = member.type == '1';
+    final bool isAdmin = member.type == '2';
+
+    // 角色配色
+    final Color roleColor = isOwner
+        ? AppColors.primary
+        : isAdmin
+            ? const Color(0xFF60A5FA)
+            : AppColors.onSurfaceVariant;
+    final IconData roleIcon = isOwner
+        ? Icons.star_rounded
+        : isAdmin
+            ? Icons.admin_panel_settings_rounded
+            : Icons.person_rounded;
+
+    final String initial = member.displayName.isNotEmpty
+        ? member.displayName[0].toUpperCase()
+        : '?';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLow,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.onSurface.withOpacity(0.06),
-        ),
+        border: Border.all(color: AppColors.onSurface.withOpacity(0.06)),
       ),
-      child: Row(children: [
-        // 头像占位（首字母）
+      clipBehavior: Clip.hardEdge,
+      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        const SizedBox(width: 14),
+        // 头像
         Container(
-          width: 42,
-          height: 42,
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                AppColors.primary.withOpacity(0.6),
-                AppColors.primary.withOpacity(0.3),
+                roleColor.withOpacity(0.75),
+                roleColor.withOpacity(0.45),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -355,12 +362,10 @@ class _MemberTile extends StatelessWidget {
           ),
           child: Center(
             child: Text(
-              member.displayName.isNotEmpty
-                  ? member.displayName[0].toUpperCase()
-                  : '?',
+              initial,
               style: TextStyle(
                 fontFamily: AppFonts.primary,
-                fontSize: 17,
+                fontSize: 18,
                 fontWeight: FontWeight.w800,
                 color: Colors.white,
               ),
@@ -368,81 +373,103 @@ class _MemberTile extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        // 名称 + 账号 + 角色
+        // 名称 + 账号
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Flexible(
-                child: Text(
-                  member.displayName,
-                  style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.onSurface,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Text(
+                      member.displayName,
+                      style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onSurface,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-              ),
-              const SizedBox(width: 8),
-              // 角色标签
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: roleColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  member.roleLabel,
-                  style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: roleColor,
+                  const SizedBox(width: 6),
+                  // 角色标签
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: roleColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Icon(roleIcon, size: 10, color: roleColor),
+                        const SizedBox(width: 3),
+                        Text(
+                          member.roleLabel,
+                          style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: roleColor,
+                            height: 1.2,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
-            ]),
-            const SizedBox(height: 3),
-            Text(
-              member.displayAccount,
-              style: TextStyle(
-                fontFamily: AppFonts.primary,
-                fontSize: 12,
-                color: AppColors.onSurfaceVariant,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ]),
-        ),
-        // 移除按钮
-        GestureDetector(
-          onTap: () {
-            HapticFeedback.selectionClick();
-            onRemove();
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: AppColors.error.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.person_remove_rounded, size: 14, color: AppColors.error),
-              const SizedBox(width: 4),
+              const SizedBox(height: 3),
               Text(
-                '移除',
+                member.displayAccount,
                 style: TextStyle(
                   fontFamily: AppFonts.primary,
                   fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.error,
+                  color: AppColors.onSurfaceVariant,
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
-            ]),
+            ],
           ),
         ),
+        const SizedBox(width: 10),
+        // 移除按钮（主人不显示）
+        if (!isOwner)
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              onRemove();
+            },
+            child: Container(
+              margin: const EdgeInsets.only(right: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.error.withOpacity(0.2)),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.person_remove_rounded, size: 13, color: AppColors.error),
+                const SizedBox(width: 4),
+                Text(
+                  '移除',
+                  style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.error,
+                  ),
+                ),
+              ]),
+            ),
+          )
+        else
+          const SizedBox(width: 14),
       ]),
     );
   }

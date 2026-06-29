@@ -29,7 +29,7 @@ class RobotWifiSetupPage extends ConsumerStatefulWidget {
 }
 
 class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
 
   _SetupStep _step = _SetupStep.wifi;
 
