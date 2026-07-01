@@ -14,6 +14,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/api_client.dart';
+import '../../../../core/config/app_config.dart';
 import '../models/ai_result_model.dart';
 
 class AiRepository {
@@ -65,25 +66,25 @@ class AiRepository {
     }
   }
 
-  // ── 步骤3a：语音分析（传 OSS URL 给后端）────────────────
-  /// [audioUrl] : OSS 公开访问 URL（从 getUploadToken 得到的 publicUrl）
-  /// [petId]    : 可选，关联宠物 ID，便于历史记录
+  // ── 步骤3a：语音分析（直连 AI 服务 :8007）─────────────────
+  /// [audioUrl] : OSS 公开访问 URL
+  /// [petId]    : 可选，关联宠物 ID
   Future<AiAnalysisResult> analyzeVoice({
     required String audioUrl,
     String? petId,
   }) async {
     debugPrint('[AI] 语音分析 → $audioUrl');
     final res = await _client.post<Map<String, dynamic>>(
-      '/sdkapi/ai/voice-analyze',
-      data: {
-        'audioUrl': audioUrl,
-        if (petId != null) 'petId': petId,
-      },
+      '${AppConfig.aiConsultBaseUrl}/voice/analyze',
+      data: FormData.fromMap({
+        'url': audioUrl,
+        if (petId != null) 'pet_id': petId,
+      }),
     );
-    return AiAnalysisResult.fromJson(res);
+    return AiAnalysisResult.fromAiDirectJson(res);
   }
 
-  // ── 步骤3b：图像分析（传 OSS URL 给后端）────────────────
+  // ── 步骤3b：图像分析（直连 AI 服务 :8007）─────────────────
   /// [imageUrl] : OSS 公开访问 URL
   /// [petId]    : 可选，关联宠物 ID
   Future<AiAnalysisResult> analyzeImage({
@@ -92,13 +93,13 @@ class AiRepository {
   }) async {
     debugPrint('[AI] 图像分析 → $imageUrl');
     final res = await _client.post<Map<String, dynamic>>(
-      '/sdkapi/ai/image-analyze',
-      data: {
-        'imageUrl': imageUrl,
-        if (petId != null) 'petId': petId,
-      },
+      '${AppConfig.aiConsultBaseUrl}/image/analyze',
+      data: FormData.fromMap({
+        'url': imageUrl,
+        if (petId != null) 'pet_id': petId,
+      }),
     );
-    return AiAnalysisResult.fromJson(res);
+    return AiAnalysisResult.fromAiDirectJson(res);
   }
 
   // ── 便捷方法：一步完成上传 + 分析（语音）────────────────

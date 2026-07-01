@@ -8,7 +8,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -46,11 +45,21 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
 
   // ── 二维码 ───────────────────────────────────────────────
   String _qrData = '';
+  bool _generatingQr = false;
+  int _qrExpireIn = 0;
+  String? _qrError;
+  Timer? _qrCountdownTimer;
+  Timer? _provisionTimeoutTimer;
+  int _qrCountdownSeconds = 15;
+  DateTime? _provisionStartedAt;
+  DateTime? _provisionDeadline;
 
   // ── 轮询 ─────────────────────────────────────────────────
   Timer? _pollTimer;
-  int _pollCount = 0;
-  static const _maxPoll = 10; // 10 轮 × 5s = 50s
+  bool _checkingDevices = false;
+  bool _timeoutShown = false;
+  static const _autoAdvanceDelay = Duration(seconds: 15);
+  static const _provisionTimeout = Duration(seconds: 60);
   String? _boundMac;
   Set<String> _existingMacs = {};
 
@@ -80,6 +89,8 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
   void dispose() {
     _ssidCtrl.dispose();
     _pwdCtrl.dispose();
+    _qrCountdownTimer?.cancel();
+    _provisionTimeoutTimer?.cancel();
     _pollTimer?.cancel();
     _rotateCtrl.dispose();
     _progressCtrl.dispose();
@@ -119,108 +130,116 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
 
   // ── 步骤1→2 生成二维码 ───────────────────────────────────
   Future<void> _generateQr() async {
+    if (_generatingQr) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
     HapticFeedback.mediumImpact();
     final ssid = _ssidCtrl.text.trim();
     final pwd = _pwdCtrl.text;
-    // 读取当前用户 token
-    const storage = FlutterSecureStorage();
-    final token = await storage.read(key: 'auth_token') ?? '';
-    final data = jsonEncode({
-      'ssid': ssid,
-      'password': pwd,
-      'type': 'wifi_config',
-      'productKey': widget.productKey,
-      'token': token,
-    });
-    debugPrint('[QR] 生成二维码内容: $data');
     setState(() {
-      _qrData = data;
-      _step = _SetupStep.qrcode;
+      _generatingQr = true;
+      _qrError = null;
     });
+    try {
+      final repository = ref.read(deviceRepositoryProvider);
+      try {
+        final current = await repository.fetchDevices();
+        _existingMacs = current.map((device) => device.mac).toSet();
+      } catch (error) {
+        _existingMacs = ref
+            .read(deviceListProvider)
+            .devices
+            .map((device) => device.mac)
+            .toSet();
+        debugPrint('[机器人配网] 设备快照请求失败，使用本地缓存: $error');
+      }
+      final credential = await repository.createDeviceQrToken();
+      final data = jsonEncode({
+        's': ssid,
+        'p': pwd,
+        't': credential.token,
+      });
+      debugPrint(
+        '[机器人配网] 临时凭证获取成功 '
+        'expireIn=${credential.expireIn}s qrLength=${data.length}',
+      );
+      if (!mounted) return;
+      final startedAt = DateTime.now();
+      setState(() {
+        _qrData = data;
+        _qrExpireIn = credential.expireIn;
+        _qrCountdownSeconds = _autoAdvanceDelay.inSeconds;
+        _provisionStartedAt = startedAt;
+        _provisionDeadline = startedAt.add(_provisionTimeout);
+        _timeoutShown = false;
+        _step = _SetupStep.qrcode;
+      });
+      _startQrCountdown();
+      _provisionTimeoutTimer?.cancel();
+      _provisionTimeoutTimer = Timer(
+        _provisionTimeout,
+        () => unawaited(_showTimeout()),
+      );
+    } catch (error) {
+      debugPrint('[机器人配网] 获取临时凭证失败: $error');
+      if (!mounted) return;
+      final message = error.toString().replaceFirst('Exception: ', '');
+      setState(() => _qrError = message);
+      PetToast.error(context, '配网二维码生成失败');
+    } finally {
+      if (mounted) setState(() => _generatingQr = false);
+    }
   }
 
   // ── 步骤2→3 开始等待 ──────────────────────────────────────
-  Future<void> _startWaiting() async {
-    HapticFeedback.mediumImpact();
-    try {
-      final current = await ref.read(deviceRepositoryProvider).fetchDevices();
-      _existingMacs = current.map((d) => d.mac).toSet();
-    } catch (_) {
-      _existingMacs = {};
-    }
-    if (!mounted) return;
-    setState(() {
-      _step = _SetupStep.waiting;
-      _pollCount = 0;
+  void _startQrCountdown() {
+    _qrCountdownTimer?.cancel();
+    _qrCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted || _step != _SetupStep.qrcode) {
+        timer.cancel();
+        return;
+      }
+      final startedAt = _provisionStartedAt;
+      if (startedAt == null) {
+        timer.cancel();
+        return;
+      }
+      final elapsed = DateTime.now().difference(startedAt).inSeconds;
+      final remaining = (_autoAdvanceDelay.inSeconds - elapsed)
+          .clamp(0, _autoAdvanceDelay.inSeconds)
+          .toInt();
+      setState(() => _qrCountdownSeconds = remaining);
+      if (remaining == 0) {
+        timer.cancel();
+        unawaited(_startWaiting());
+      }
     });
-    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) => _poll());
+  }
+
+  Future<void> _startWaiting() async {
+    if (_step != _SetupStep.qrcode) return;
+    _qrCountdownTimer?.cancel();
+    final deadline = _provisionDeadline;
+    if (deadline == null || !deadline.isAfter(DateTime.now())) {
+      await _showTimeout();
+      return;
+    }
+    HapticFeedback.mediumImpact();
+    if (!mounted) return;
+    setState(() => _step = _SetupStep.waiting);
+    _updateProgress();
+    await _poll();
+    if (!mounted || _step != _SetupStep.waiting || _timeoutShown) return;
+    _pollTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => unawaited(_poll()),
+    );
   }
 
   Future<void> _poll() async {
-    _pollCount++;
-    // 平滑动画到新进度
-    if (mounted) {
-      final target = (_pollCount / _maxPoll).clamp(0.0, 1.0);
-      _progressAnim = Tween<double>(
-        begin: _progressAnim.value,
-        end: target,
-      ).animate(
-          CurvedAnimation(parent: _progressCtrl, curve: Curves.easeInOut));
-      _progressCtrl.forward(from: 0);
-      setState(() {});
-    }
-    if (_pollCount > _maxPoll) {
-      _pollTimer?.cancel();
-      if (mounted) {
-        // 超时弹窗，确认后回步骤1重新填写 WiFi
-        await showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) => AlertDialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Row(children: [
-              Icon(Icons.wifi_off_rounded, color: AppColors.error, size: 22),
-              const SizedBox(width: 8),
-              Text('配网超时',
-                  style: TextStyle(
-                      fontFamily: AppFonts.primary,
-                      fontWeight: FontWeight.w800)),
-            ]),
-            content: Text(
-              '机器人未能在 50 秒内连接 WiFi\n\n请检查：\n• WiFi 名称和密码是否正确\n• 确保使用 2.4GHz 频段\n• 机器人是否已扫描二维码',
-              style: TextStyle(
-                  fontFamily: AppFonts.primary,
-                  fontSize: 13,
-                  height: 1.6,
-                  color: AppColors.onSurfaceVariant),
-            ),
-            actions: [
-              FilledButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  setState(() {
-                    _step = _SetupStep.wifi;
-                    _pollCount = 0;
-                  });
-                },
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-                child: Text('重新填写 WiFi',
-                    style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontWeight: FontWeight.w700)),
-              ),
-            ],
-          ),
-        );
-      }
-      return;
-    }
+    if (_checkingDevices || _step != _SetupStep.waiting) return;
+    _checkingDevices = true;
+    _updateProgress();
+    var found = false;
     try {
       final devices = await ref.read(deviceRepositoryProvider).fetchDevices();
       final newMac = devices
@@ -229,7 +248,12 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
               widget.productKey.toUpperCase())
           .map((d) => d.mac)
           .firstWhere((m) => !_existingMacs.contains(m), orElse: () => '');
-      if (newMac.isNotEmpty) {
+      final beforeDeadline = DateTime.now().isBefore(
+        _provisionDeadline ?? DateTime.fromMillisecondsSinceEpoch(0),
+      );
+      if (newMac.isNotEmpty && !_timeoutShown && beforeDeadline) {
+        found = true;
+        _provisionTimeoutTimer?.cancel();
         _pollTimer?.cancel();
         await ref.read(deviceListProvider.notifier).load();
         if (mounted) {
@@ -240,10 +264,93 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
           HapticFeedback.heavyImpact();
         }
       }
-    } catch (_) {}
+    } catch (error) {
+      debugPrint('[机器人配网] 检测设备失败: $error');
+    } finally {
+      _checkingDevices = false;
+    }
+    if (!found &&
+        mounted &&
+        _step == _SetupStep.waiting &&
+        !DateTime.now().isBefore(
+          _provisionDeadline ?? DateTime.fromMillisecondsSinceEpoch(0),
+        )) {
+      await _showTimeout();
+    }
+  }
+
+  void _updateProgress() {
+    if (!mounted) return;
+    final startedAt = _provisionStartedAt;
+    if (startedAt == null) return;
+    final elapsed = DateTime.now().difference(startedAt).inMilliseconds;
+    final target =
+        (elapsed / _provisionTimeout.inMilliseconds).clamp(0.0, 1.0).toDouble();
+    _progressAnim = Tween<double>(
+      begin: _progressAnim.value,
+      end: target,
+    ).animate(CurvedAnimation(parent: _progressCtrl, curve: Curves.easeInOut));
+    _progressCtrl.forward(from: 0);
+    setState(() {});
+  }
+
+  Future<void> _showTimeout() async {
+    if (_timeoutShown ||
+        !mounted ||
+        (_step != _SetupStep.qrcode && _step != _SetupStep.waiting)) {
+      return;
+    }
+    _timeoutShown = true;
+    _qrCountdownTimer?.cancel();
+    _provisionTimeoutTimer?.cancel();
+    _pollTimer?.cancel();
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(children: [
+          Icon(Icons.wifi_off_rounded, color: AppColors.error, size: 22),
+          const SizedBox(width: 8),
+          Text('配网超时',
+              style: TextStyle(
+                  fontFamily: AppFonts.primary, fontWeight: FontWeight.w800)),
+        ]),
+        content: Text(
+          '机器人未能在 60 秒内连接 WiFi\n\n请检查：\n• WiFi 名称和密码是否正确\n• 确保使用 2.4GHz 频段\n• 机器人是否已扫描二维码',
+          style: TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 13,
+              height: 1.6,
+              color: AppColors.onSurfaceVariant),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              if (!mounted) return;
+              setState(() {
+                _step = _SetupStep.wifi;
+                _qrCountdownSeconds = _autoAdvanceDelay.inSeconds;
+              });
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text('重新生成二维码',
+                style: TextStyle(
+                    fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _goBack() {
+    _qrCountdownTimer?.cancel();
+    _provisionTimeoutTimer?.cancel();
     _pollTimer?.cancel();
     if (_step == _SetupStep.qrcode || _step == _SetupStep.waiting) {
       setState(() => _step = _SetupStep.wifi);
@@ -609,9 +716,18 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
             width: double.infinity,
             height: 52,
             child: FilledButton.icon(
-              onPressed: _generateQr,
-              icon: const Icon(Icons.qr_code_rounded, size: 20),
-              label: Text('生成配网二维码',
+              onPressed: _generatingQr ? null : _generateQr,
+              icon: _generatingQr
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.qr_code_rounded, size: 20),
+              label: Text(_generatingQr ? '正在获取配网凭证' : '生成配网二维码',
                   style: TextStyle(
                       fontFamily: AppFonts.primary,
                       fontSize: 15,
@@ -623,6 +739,18 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
               ),
             ),
           ),
+          if (_qrError != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              _qrError!,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 12,
+                color: AppColors.error,
+              ),
+            ),
+          ],
         ]),
       ),
     );
@@ -673,6 +801,13 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
                     fontFamily: AppFonts.primary,
                     fontSize: 12,
                     color: AppColors.onSurfaceVariant)),
+            const SizedBox(height: 4),
+            Text('二维码 ${(_qrExpireIn / 60).ceil()} 分钟内有效',
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary)),
           ]),
         ),
         const SizedBox(height: 20),
@@ -701,23 +836,49 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
         ),
         const SizedBox(height: 24),
 
-        SizedBox(
+        Container(
           width: double.infinity,
-          height: 52,
-          child: FilledButton.icon(
-            onPressed: _startWaiting,
-            icon: const Icon(Icons.sensors_rounded, size: 20),
-            label: Text('机器人已扫描，等待连接',
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(children: [
+            Row(children: [
+              Icon(Icons.timer_outlined, size: 19, color: AppColors.primary),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text('请让机器人扫描二维码',
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onSurface)),
+              ),
+              Text('$_qrCountdownSeconds s',
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary)),
+            ]),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: 1 - (_qrCountdownSeconds / _autoAdvanceDelay.inSeconds),
+                minHeight: 6,
+                backgroundColor: AppColors.outlineVariant,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text('15 秒后将自动开始检测设备，无需手动操作',
                 style: TextStyle(
                     fontFamily: AppFonts.primary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700)),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
-            ),
-          ),
+                    fontSize: 11,
+                    color: AppColors.onSurfaceVariant)),
+          ]),
         ),
       ]),
     );

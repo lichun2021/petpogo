@@ -196,6 +196,28 @@ class DeviceDetailModel {
 }
 
 // ── OTA 信息模型 ─────────────────────────────────────────
+/// POST /user/device/qr/token 返回的一次性配网凭证。
+class DeviceQrTokenModel {
+  final String token;
+  final int expireIn;
+
+  const DeviceQrTokenModel({
+    required this.token,
+    required this.expireIn,
+  });
+
+  factory DeviceQrTokenModel.fromJson(Map<String, dynamic> json) {
+    final rawExpireIn = json['expireIn'] ?? json['expire_in'];
+    return DeviceQrTokenModel(
+      token: json['token']?.toString().trim() ?? '',
+      expireIn: rawExpireIn is num
+          ? rawExpireIn.toInt()
+          : int.tryParse(rawExpireIn?.toString() ?? '') ?? 0,
+    );
+  }
+}
+
+/// 设备 OTA 信息。
 class OtaInfoModel {
   final bool isUpgrade;
   final String currentVersion;

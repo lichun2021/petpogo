@@ -99,33 +99,7 @@ class _HomeTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            // children: [
-            //   Text(
-            //     'PetPogo',
-            //     style: TextStyle(
-            //       fontSize: 12,
-            //       fontWeight: FontWeight.w900,
-            //       color: AppColors.secondary,
-            //       height: 1.1,
-            //     ),
-            //   ),
-            //   SizedBox(height: 4),
-            //   Text(
-            //     '今日照看',
-            //     style: TextStyle(
-            //       fontFamily: AppFonts.primary,
-            //       fontSize: 21,
-            //       fontWeight: FontWeight.w900,
-            //       color: AppColors.onSurface,
-            //       height: 1.15,
-            //     ),
-            //   ),
-            // ],
-          ),
-        ),
+        const Spacer(),
         _TopIconButton(
           icon: Icons.person_rounded,
           onTap: () => context.go(AppRoutes.profile),

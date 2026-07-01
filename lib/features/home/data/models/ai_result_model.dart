@@ -132,6 +132,48 @@ class AiAnalysisResult {
     );
   }
 
+  /// 直连 AI 服务（AppConfig.aiConsultBaseUrl :8007）时使用此解析器。
+  ///
+  /// AI 服务响应字段与业务后端不同：
+  ///   - 语音：primary_emotion / top3_emotions / rejected
+  ///   - 图片：primary_emotion / top3_emotions / rejected(可选)
+  ///   - 无 _quota / advice / id 字段
+  factory AiAnalysisResult.fromAiDirectJson(Map<String, dynamic> json) {
+    // success=false → 非宠物 / 拒绝（RejectedResult / NonPetImageResult）
+    final successVal = (json['success'] as bool?) ?? true;
+    if (!successVal) {
+      return AiAnalysisResult(
+        success:       false,
+        reason:        (json['message'] as String?)
+                    ?? (json['reason']  as String?)
+                    ?? '无法识别为宠物',
+        primaryEmotion: const AiEmotionItem(label: '', labelZh: '', confidence: 0),
+        quota:         const AiQuotaInfo(used: 0, limit: -1, remaining: -1),
+      );
+    }
+
+    // success=true：正常情绪分析结果
+    final primaryRaw = json['primary_emotion'] as Map<String, dynamic>? ?? {};
+    final primary    = AiEmotionItem.fromJson(primaryRaw);
+
+    // top3_emotions（语音/图片均用此字段）
+    final top3Raw = json['top3_emotions'] as List? ?? [];
+    final top3    = top3Raw
+        .whereType<Map<String, dynamic>>()
+        .map(AiEmotionItem.fromJson)
+        .toList();
+
+    return AiAnalysisResult(
+      success:       true,
+      primaryEmotion: primary,
+      top3:          top3,
+      advice:        (json['advice'] as String?) ?? '',
+      ensembleSize:  (json['emotion_model_count'] as int?) ?? 0,
+      // 直连 AI 服务不返回配额，limit=-1 表示无限制
+      quota: const AiQuotaInfo(used: 0, limit: -1, remaining: -1),
+    );
+  }
+
   /// 主情绪对应 emoji
   String get primaryEmoji => _emojiMap[primaryEmotion.label] ?? '🐾';
 

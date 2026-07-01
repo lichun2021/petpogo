@@ -279,22 +279,51 @@ class _PetCircleHeader extends StatelessWidget {
       child: SizedBox(
         height: 92,
         child: loading
-            ? const Center(
-                child: _PetHeaderStatus(
-                  icon: Icons.pets_rounded,
-                  title: '正在同步宠物',
-                  message: '从已绑定设备读取宠物档案',
+            ? Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '正在加载宠物...',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
                 ),
               )
             : pets.isEmpty
-                ? _PetHeaderStatus(
-                    icon: errorMessage == null
-                        ? Icons.pets_rounded
-                        : Icons.cloud_off_rounded,
-                    title: errorMessage == null ? '暂无宠物' : '宠物加载失败',
-                    message: errorMessage == null
-                        ? '绑定设备并添加宠物后，这里会显示宠物头像'
-                        : '下拉页面或稍后重试',
+                ? Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          errorMessage == null
+                              ? Icons.pets_rounded
+                              : Icons.cloud_off_rounded,
+                          size: 15,
+                          color: AppColors.onSurface.withValues(alpha: 0.35),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          errorMessage == null ? '暂无宠物，绑定设备后显示' : '宠物加载失败，下拉重试',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.onSurface.withValues(alpha: 0.45),
+                          ),
+                        ),
+                      ],
+                    ),
                   )
                 : ListView.separated(
                     scrollDirection: Axis.horizontal,
@@ -373,78 +402,6 @@ class _PetAvatarTab extends StatelessWidget {
   }
 }
 
-class _PetHeaderStatus extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String message;
-
-  const _PetHeaderStatus({
-    required this.icon,
-    required this.title,
-    required this.message,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 22),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.72),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.82),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.primaryContainer.withValues(alpha: 0.65),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: AppColors.primary, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: AppColors.onSurface,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    message,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: AppColors.onSurfaceVariant,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _PetCirclePostTile extends StatelessWidget {
   final PetCirclePost post;

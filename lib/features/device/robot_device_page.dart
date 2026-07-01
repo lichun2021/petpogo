@@ -1211,11 +1211,6 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   right: 14,
                   child: Row(
                     children: [
-                      // Text('拖动方向盘控制机器人移动',
-                      //     style: TextStyle(fontFamily: AppFonts.primary,
-                      //         fontSize: 11,
-                      //         color: AppColors.onSurfaceVariant)),
-                      // Spacer(),
                       GestureDetector(
                         onTap: () => _showSpeedSheet(context),
                         child: Container(
@@ -1307,15 +1302,6 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 },
               ),
             ),
-            // Row(
-            //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            //   children: [
-            //     Text('慢速 10%', style: TextStyle(fontFamily: AppFonts.primary,
-            //         fontSize: 12, color: AppColors.onSurfaceVariant)),
-            //     Text('快速 100%', style: TextStyle(fontFamily: AppFonts.primary,
-            //         fontSize: 12, color: AppColors.onSurfaceVariant)),
-            //   ],
-            // ),
             SizedBox(height: 8),
 
             // ── 设备音量 ────────────────────────────────
@@ -1373,15 +1359,6 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 },
               ),
             ),
-            // Row(
-            //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            //   children: [
-            //     Text('静音 0%', style: TextStyle(fontFamily: AppFonts.primary,
-            //         fontSize: 12, color: AppColors.onSurfaceVariant)),
-            //     Text('最大 100%', style: TextStyle(fontFamily: AppFonts.primary,
-            //         fontSize: 12, color: AppColors.onSurfaceVariant)),
-            //   ],
-            // ),
             SizedBox(height: 8),
           ]),
         ),

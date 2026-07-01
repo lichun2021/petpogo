@@ -303,98 +303,177 @@ class _UserInfoCardState extends ConsumerState<_UserInfoCard> {
     final likeStr     = stats != null ? '${stats.likeCount}'     : '0';
 
     return Container(
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 24, spreadRadius: -6)],
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primaryContainer.withOpacity(0.55),
+            AppColors.secondaryContainer.withOpacity(0.40),
+            AppColors.surfaceContainerLowest,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          stops: const [0.0, 0.45, 1.0],
+        ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white.withOpacity(0.55), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.12),
+            blurRadius: 28,
+            spreadRadius: -12,
+            offset: const Offset(0, 14),
+          ),
+        ],
       ),
-      child: Row(
+      child: Stack(
         children: [
-          // ── 头像（可点击上传）───────────────────────────────
-          GestureDetector(
-            onTap: _uploadingAvatar ? null : _pickAndUploadAvatar,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 80, height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.surfaceContainerHigh,
-                    border: Border.all(color: Colors.white, width: 3),
-                    boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12)],
-                  ),
-                  child: ClipOval(
-                    child: _uploadingAvatar
-                        ? Center(child: CircularProgressIndicator(strokeWidth: 2.5))
-                        : avatarUrl.isNotEmpty
-                            ? CachedNetworkImage(imageUrl: avatarUrl, fit: BoxFit.cover,
-                                errorWidget: (_, __, ___) =>
-                                    Center(child: Text('🧑', style: TextStyle(fontSize: 38))))
-                            : Center(child: Text('🧑', style: TextStyle(fontSize: 38))),
-                  ),
-                ),
-                // 相机图标覆盖
-                if (!_uploadingAvatar)
-                  Positioned(
-                    bottom: 2, right: 2,
-                    child: Container(
-                      width: 24, height: 24,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      child: Icon(Icons.camera_alt_rounded, size: 12, color: Colors.white),
-                    ),
-                  ),
-              ],
+          // 右上角柔和装饰光晕
+          Positioned(
+            right: -30,
+            top: -30,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.22),
+              ),
             ),
           ),
-
-          SizedBox(width: 20),
-
-          // ── 用户信息 ───────────────────────────────────────
-          Expanded(
+          Padding(
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                GestureDetector(
-                  onTap: () => _showNicknameSheet(context, nickname),
+                // ── 头像 + 昵称 + 手机号 ────────────────────
+                Row(
+                  children: [
+                    // 头像（可点击上传）
+                    GestureDetector(
+                      onTap: _uploadingAvatar ? null : _pickAndUploadAvatar,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                            width: 72, height: 72,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.surfaceContainerHigh,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withOpacity(0.20),
+                                  blurRadius: 14,
+                                  spreadRadius: -2,
+                                ),
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: _uploadingAvatar
+                                  ? Center(child: CircularProgressIndicator(strokeWidth: 2.5))
+                                  : avatarUrl.isNotEmpty
+                                      ? CachedNetworkImage(imageUrl: avatarUrl, fit: BoxFit.cover,
+                                          errorWidget: (_, __, ___) =>
+                                              Center(child: Text('🧑', style: TextStyle(fontSize: 34))))
+                                      : Center(child: Text('🧑', style: TextStyle(fontSize: 34))),
+                            ),
+                          ),
+                          if (!_uploadingAvatar)
+                            Positioned(
+                              bottom: 0, right: 0,
+                              child: Container(
+                                width: 24, height: 24,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                                child: Icon(Icons.camera_alt_rounded, size: 12, color: Colors.white),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    // 昵称 + 手机号
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          GestureDetector(
+                            onTap: () => _showNicknameSheet(context, nickname),
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(nickname,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                          fontFamily: AppFonts.primary, fontSize: 21,
+                                          fontWeight: FontWeight.w900, letterSpacing: -0.4,
+                                          color: AppColors.onSurface)),
+                                ),
+                                SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.6),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(Icons.edit_rounded, size: 12,
+                                      color: AppColors.onSurfaceVariant),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (maskedPhone.isNotEmpty) ...[
+                            SizedBox(height: 5),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.5),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.phone_iphone_rounded, size: 11,
+                                      color: AppColors.onSurfaceVariant),
+                                  SizedBox(width: 4),
+                                  Text(maskedPhone,
+                                      style: TextStyle(
+                                          fontFamily: AppFonts.primary, fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.onSurfaceVariant)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                SizedBox(height: 18),
+
+                // ── 统计数据条 ──────────────────────────────
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.55),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(nickname,
-                          style: TextStyle(
-                              fontFamily: AppFonts.primary, fontSize: 20,
-                              fontWeight: FontWeight.w800, letterSpacing: -0.4,
-                              color: AppColors.onSurface)),
-                      SizedBox(width: 4),
-                      Icon(Icons.edit_rounded, size: 14, color: AppColors.onSurfaceVariant),
+                      Expanded(child: _StatCol(value: postStr,     label: l10n.profilePosts)),
+                      _StatDivider(),
+                      Expanded(child: _StatCol(value: followerStr, label: l10n.profileFollowers)),
+                      _StatDivider(),
+                      Expanded(child: _StatCol(value: likeStr,     label: '获赞')),
                     ],
                   ),
                 ),
-                if (maskedPhone.isNotEmpty) ...[
-                  SizedBox(height: 2),
-                  Text(maskedPhone,
-                      style: TextStyle(
-                          fontFamily: AppFonts.primary, fontSize: 12,
-                          color: AppColors.onSurfaceVariant)),
-                ],
-                SizedBox(height: 12),
-                Row(
-                  children: [
-                    _StatCol(value: postStr,     label: l10n.profilePosts),
-                    SizedBox(width: 20),
-                    _StatCol(value: followerStr, label: l10n.profileFollowers),
-                    SizedBox(width: 20),
-                    _StatCol(value: likeStr,     label: '获赞'),
-                  ],
-                ),
-                // ── AI 次数 ──────────────────────
-                SizedBox(height: 10),
-                _AiQuotaChip(quota: user?.aiQuota),
               ],
             ),
           ),
@@ -404,79 +483,13 @@ class _UserInfoCardState extends ConsumerState<_UserInfoCard> {
   }
 }
 
-// ── AI 配额 chip ──────────────────────────────────────────
-class _AiQuotaChip extends StatelessWidget {
-  final dynamic quota; // AiQuota?
-  const _AiQuotaChip({this.quota});
-
+// 统计项之间的竖分隔线
+class _StatDivider extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    if (quota == null) return const SizedBox.shrink();
-    final isUnlimited = quota.isUnlimited as bool;
-    final used        = quota.used       as int;
-    final limit       = quota.limit      as int;
-    final remaining   = quota.remaining  as int;
-
-    final bool isWarning = !isUnlimited && remaining <= 2;
-    final Color accent = isWarning ? AppColors.error : AppColors.primary;
-    final double fraction = (isUnlimited || limit <= 0) ? 1.0 : (used / limit).clamp(0.0, 1.0);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: accent.withOpacity(0.07),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accent.withOpacity(0.2)),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(
-          isUnlimited ? Icons.all_inclusive_rounded : Icons.auto_awesome_rounded,
-          size: 14, color: accent,
-        ),
-        SizedBox(width: 6),
-        Text('AI 分析', style: TextStyle(
-          fontFamily: AppFonts.primary, fontSize: 12,
-          fontWeight: FontWeight.w700, color: accent,
-        )),
-        SizedBox(width: 8),
-        if (isUnlimited)
-          Text('VIP 无限 ✨', style: TextStyle(
-            fontFamily: AppFonts.primary, fontSize: 11,
-            fontWeight: FontWeight.w600, color: accent,
-          ))
-        else ...[
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: SizedBox(
-              width: 56, height: 5,
-              child: LinearProgressIndicator(
-                value: fraction,
-                backgroundColor: accent.withOpacity(0.15),
-                valueColor: AlwaysStoppedAnimation(accent),
-              ),
-            ),
-          ),
-          SizedBox(width: 7),
-          RichText(text: TextSpan(
-            style: TextStyle(
-              fontFamily: AppFonts.primary, fontSize: 12,
-              fontWeight: FontWeight.w800, color: accent,
-            ),
-            children: [
-              TextSpan(text: '$used'),
-              TextSpan(
-                text: ' / $limit',
-                style: TextStyle(
-                  fontWeight: FontWeight.w500, fontSize: 11,
-                  color: accent.withOpacity(0.6),
-                ),
-              ),
-            ],
-          )),
-        ],
-      ]),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+        width: 1, height: 28,
+        color: AppColors.onSurfaceVariant.withOpacity(0.15),
+      );
 }
 
 class _StatCol extends StatelessWidget {
@@ -486,10 +499,11 @@ class _StatCol extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(value, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 17,
-            fontWeight: FontWeight.w800, color: AppColors.primary)),
+        Text(value, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 18,
+            fontWeight: FontWeight.w900, color: AppColors.primary)),
+        SizedBox(height: 3),
         Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 9,
             fontWeight: FontWeight.w700, letterSpacing: 1.0, color: AppColors.onSurfaceVariant)),
       ],

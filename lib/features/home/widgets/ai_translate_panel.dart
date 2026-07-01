@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/widgets/ai_loading_views.dart';
 import '../controller/ai_controller.dart';
 import '../data/models/ai_result_model.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
@@ -223,16 +224,17 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
                       onPressUp: _stopAndAnalyze,
                       pulseCtrl: _pulseCtrl,
                     ),
-                  AiPhase.uploading => _ProgressView(
+                  AiPhase.uploading => AiUploadProgressView(
                       key: ValueKey('upload'),
                       label: '上传音频中…',
                       progress: state.uploadProgress,
                       icon: '☁️',
                     ),
-                  AiPhase.analyzing => const _SpinnerView(
+                  AiPhase.analyzing => const AiAnalyzingSpinnerView(
                       key: ValueKey('analyze'),
                       label: 'AI 正在聆听中…',
                       icon: '🧠',
+                      rotateDuration: Duration(seconds: 3),
                     ),
                   AiPhase.result => _ResultView(
                       key: ValueKey('result'),
@@ -345,79 +347,6 @@ class _IdleView extends StatelessWidget {
               color: AppColors.onSurfaceVariant,
             ),
           ),
-      ],
-    );
-  }
-}
-
-// ── 上传进度 ──────────────────────────────────────────────
-class _ProgressView extends StatelessWidget {
-  final String label;
-  final double progress;
-  final String icon;
-  const _ProgressView(
-      {super.key,
-      required this.label,
-      required this.progress,
-      required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(icon, style: TextStyle(fontSize: 40)),
-        SizedBox(height: 12),
-        Text(label,
-            style: TextStyle(
-              fontFamily: AppFonts.primary,
-              fontSize: 14,
-              color: AppColors.onSurfaceVariant,
-            )),
-        SizedBox(height: 12),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: progress,
-            backgroundColor: AppColors.surfaceContainerHighest,
-            color: AppColors.primary,
-            minHeight: 6,
-          ),
-        ),
-        SizedBox(height: 4),
-        Text('${(progress * 100).toInt()}%',
-            style: TextStyle(
-              fontFamily: AppFonts.primary,
-              fontSize: 11,
-              color: AppColors.onSurfaceVariant,
-            )),
-      ],
-    );
-  }
-}
-
-// ── AI 分析中（spinner）─────────────────────────────────
-class _SpinnerView extends StatelessWidget {
-  final String label;
-  final String icon;
-  const _SpinnerView({super.key, required this.label, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(icon, style: TextStyle(fontSize: 40))
-            .animate(onPlay: (c) => c.repeat())
-            .rotate(duration: 3.seconds),
-        SizedBox(height: 12),
-        Text(label,
-            style: TextStyle(
-              fontFamily: AppFonts.primary,
-              fontSize: 14,
-              color: AppColors.onSurfaceVariant,
-            )),
-        SizedBox(height: 12),
-        CircularProgressIndicator(
-            color: AppColors.primary, strokeWidth: 2.5),
       ],
     );
   }

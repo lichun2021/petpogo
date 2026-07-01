@@ -31,9 +31,9 @@ class DeviceRepository {
     return res.info!;
   }
 
-  /// GET /user/device/online/state — 在线状态（用 POST 模拟，实际为 GET）
+  /// GET /user/device/online/state — 在线状态（服务端只接受 GET）
   Future<bool> fetchOnlineState(String mac) async {
-    final res = await _peer.post<Map<String, dynamic>>(
+    final res = await _peer.get<Map<String, dynamic>>(
       '/user/device/online/state',
       params: {'mac': mac},
       fromInfo: (d) => d as Map<String, dynamic>,
@@ -50,6 +50,22 @@ class DeviceRepository {
   /// POST /user/device/unbind — 解绑设备
   Future<void> unbindDevice(String mac) async {
     await _peer.post('/user/device/unbind', params: {'mac': mac});
+  }
+
+  /// POST /user/device/qr/token
+  /// Header 中的 ipet token 由 PeerApiClient 统一注入，Body 为空。
+  Future<DeviceQrTokenModel> createDeviceQrToken() async {
+    final res = await _peer.post<DeviceQrTokenModel>(
+      '/user/device/qr/token',
+      fromInfo: (data) => DeviceQrTokenModel.fromJson(
+        (data as Map).cast<String, dynamic>(),
+      ),
+    );
+    final result = res.info;
+    if (result == null || result.token.isEmpty || result.expireIn <= 0) {
+      throw Exception('[iPet] 配网凭证无效');
+    }
+    return result;
   }
 
   /// POST /device/product/list — 产品目录，用 productKey 关联设备类型。

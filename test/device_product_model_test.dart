@@ -41,4 +41,25 @@ void main() {
       expect(device.isCollar, isFalse);
     });
   });
+
+  group('DeviceQrTokenModel', () {
+    test('parses provisioning token and expiry', () {
+      final credential = DeviceQrTokenModel.fromJson({
+        'token': 'temporary-token',
+        'expireIn': 600,
+      });
+
+      expect(credential.token, 'temporary-token');
+      expect(credential.expireIn, 600);
+    });
+
+    test('accepts string expiry from gateway', () {
+      final credential = DeviceQrTokenModel.fromJson({
+        'token': 'temporary-token',
+        'expireIn': '600',
+      });
+
+      expect(credential.expireIn, 600);
+    });
+  });
 }

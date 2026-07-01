@@ -12,7 +12,7 @@ class GlassBottomNav extends StatelessWidget {
   final ValueChanged<int> onTap;
   final List<NavItem> items;
 
-  GlassBottomNav({
+  const GlassBottomNav({
     super.key,
     required this.currentIndex,
     required this.onTap,
@@ -25,7 +25,7 @@ class GlassBottomNav extends StatelessWidget {
       borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface.withOpacity(0.92),
+          color: AppColors.surface.withValues(alpha: 0.92),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           boxShadow: [
             BoxShadow(
@@ -40,14 +40,15 @@ class GlassBottomNav extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: items.asMap().entries.map((e) {
                 final i = e.key;
                 final item = e.value;
-                return NavButton(
-                  item: item,
-                  selected: currentIndex == i,
-                  onTap: () => onTap(i),
+                return Expanded(
+                  child: NavButton(
+                    item: item,
+                    selected: currentIndex == i,
+                    onTap: () => onTap(i),
+                  ),
                 );
               }).toList(),
             ),
@@ -58,13 +59,13 @@ class GlassBottomNav extends StatelessWidget {
   }
 }
 
-// ── 单个导航按钮（带 scale 动画）────────────────────────────
-class NavButton extends StatefulWidget {
+// ── 单个导航按钮（固定尺寸）───────────────────────────────
+class NavButton extends StatelessWidget {
   final NavItem item;
   final bool selected;
   final VoidCallback onTap;
 
-  NavButton({
+  const NavButton({
     super.key,
     required this.item,
     required this.selected,
@@ -72,71 +73,28 @@ class NavButton extends StatefulWidget {
   });
 
   @override
-  State<NavButton> createState() => _NavButtonState();
-}
-
-class _NavButtonState extends State<NavButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 120),
-    );
-    _scale = Tween<double>(begin: 1.0, end: 1.2).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut),
-    );
-  }
-
-  @override
-  void didUpdateWidget(NavButton old) {
-    super.didUpdateWidget(old);
-    if (widget.selected && !old.selected) {
-      _ctrl.forward(from: 0);
-    } else if (!widget.selected && old.selected) {
-      _ctrl.reverse();
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: onTap,
       child: AnimatedContainer(
         duration: Duration(milliseconds: 250),
         curve: Curves.easeOutCubic,
-        padding: EdgeInsets.symmetric(
-          horizontal: widget.selected ? 18 : 14,
-          vertical: 8,
-        ),
+        height: 58,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
         decoration: BoxDecoration(
-          color: widget.selected
-              ? AppColors.primaryContainer.withOpacity(0.25)
+          color: selected
+              ? AppColors.primaryContainer.withValues(alpha: 0.42)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ScaleTransition(
-              scale: _scale,
-              child: Icon(
-                widget.selected ? widget.item.activeIcon : widget.item.icon,
-                color: widget.selected
-                    ? AppColors.primary
-                    : AppColors.onSurfaceVariant,
-                size: 24,
-              ),
+            Icon(
+              selected ? item.activeIcon : item.icon,
+              color: selected ? AppColors.primary : AppColors.onSurfaceVariant,
+              size: 23,
             ),
             SizedBox(height: 2),
             AnimatedDefaultTextStyle(
@@ -144,13 +102,15 @@ class _NavButtonState extends State<NavButton>
               style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontSize: 10,
-                fontWeight:
-                    widget.selected ? FontWeight.w700 : FontWeight.w500,
-                color: widget.selected
-                    ? AppColors.primary
-                    : AppColors.onSurfaceVariant,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color:
+                    selected ? AppColors.primary : AppColors.onSurfaceVariant,
               ),
-              child: Text(widget.item.label),
+              child: Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
