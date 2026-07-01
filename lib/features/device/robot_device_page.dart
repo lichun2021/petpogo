@@ -55,7 +55,17 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   String? _agoraError;
   double _kbps = 0;
   bool _videoFrozen = false; // 视频网络拥塑冻结状态
+  bool _hasVideoStream = false; // 是否真正收到视频流（rxVideoKBitRate > 0）
   Timer? _statsTimer;
+
+  /// 连接状态文案：只有真正收到视频流才算「已连接」
+  String get _connStatusText {
+    if (_agoraLoading) return '连接中...';
+    if (!_agoraJoined) return '等待设备';
+    if (_remoteUid == null) return '等待设备上线';
+    if (!_hasVideoStream) return '等待视频流...';
+    return '已连接';
+  }
 
   // ── 摄影：截图 / 录像 状态 ─────────────────────
   final _cameraKey = GlobalKey(); // RepaintBoundary key 用于截图
@@ -101,6 +111,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     _micOn = false;
     _agoraJoined = false;
     _remoteUid = null;
+    _hasVideoStream = false;
 
     if (engine != null) {
       // 每步独立 try/catch — 保证 leaveChannel 无论如何都会执行
@@ -155,6 +166,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     setState(() {
       _agoraLoading = true;
       _agoraError = null;
+      _hasVideoStream = false;
     });
     try {
       // 1. 请求权限
@@ -238,13 +250,21 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
               '[🔊音频] muteRemoteAudioStream(uid=$uid, mute=false) ← 确保不静音');
         },
         onUserOffline: (_, uid, __) {
-          if (mounted) setState(() => _remoteUid = null);
+          if (mounted)
+            setState(() {
+              _remoteUid = null;
+              _hasVideoStream = false;
+            });
           debugPrint('[🔊音频] 远端用户离线 uid=$uid');
         },
         onRtcStats: (_, stats) {
           if (!mounted) return;
+          final rxVideo = stats.rxVideoKBitRate?.toDouble() ?? 0;
+          // 真正收到视频码率才算「有视频流」（>0 即可，避免抖动误判）
+          final hasStream = rxVideo > 0;
           setState(() {
-            _kbps = stats.rxVideoKBitRate?.toDouble() ?? 0;
+            _kbps = rxVideo;
+            if (hasStream != _hasVideoStream) _hasVideoStream = hasStream;
           });
           final rxAudio = stats.rxAudioKBitRate ?? 0;
           final txAudio = stats.txAudioKBitRate ?? 0;
@@ -388,6 +408,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         setState(() {
           _agoraJoined = false;
           _remoteUid = null;
+          _hasVideoStream = false;
         });
       debugPrint('[Agora] pause: 已离开频道（引擎保留）');
     } catch (e) {
@@ -857,6 +878,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             // ── 视频内容区 ──────────────────────────────────
             if (_agoraJoined &&
                 _remoteUid != null &&
+                _hasVideoStream &&
                 _agoraInfo != null &&
                 Platform.isAndroid)
               // Android：显示 Agora JPEG 视频流（用 RepaintBoundary 支持截帧）
@@ -869,6 +891,31 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                     connection:
                         RtcConnection(channelId: _agoraInfo!.channelName),
                   ),
+                ),
+              )
+            else if (_agoraJoined &&
+                _remoteUid != null &&
+                !_hasVideoStream &&
+                Platform.isAndroid)
+              // 设备已上线，但还没收到视频流（等待推流 / uid 冲突等）
+              Container(
+                color: AppColors.inverseSurface,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                        width: 30,
+                        height: 30,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: AppColors.primaryContainer)),
+                    SizedBox(height: 10),
+                    Text('等待视频流...',
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 12,
+                            color: AppColors.onPrimary.withOpacity(0.6))),
+                  ],
                 ),
               )
             else if (_agoraLoading)
@@ -1049,7 +1096,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                   ),
                   SizedBox(width: 4),
                   Text(
-                    _remoteUid != null ? '已连接' : '等待设备',
+                    _connStatusText,
                     style: TextStyle(
                         fontFamily: AppFonts.primary,
                         fontSize: 9,

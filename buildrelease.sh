@@ -3,9 +3,11 @@
 #  PetPogo 萌宠智伴 - Release 打包脚本
 #
 #  用法：
-#    ./build_release.sh          → 同时打包 APK + IPA
-#    ./build_release.sh --apk    → 仅打包 Android APK
-#    ./build_release.sh --ipa    → 仅打包 iOS IPA
+#    ./buildrelease.sh              → 同时打包 Google Play AAB + IPA
+#    ./buildrelease.sh --apk        → 仅打包通用 Android APK
+#    ./buildrelease.sh --apk-split  → 按 ABI 打包 Android APK
+#    ./buildrelease.sh --aab        → 仅打包 Google Play AAB
+#    ./buildrelease.sh --ipa        → 仅打包 iOS IPA
 #
 #  ⚠️  打 IPA 前请确保：
 #    1. 已在 Xcode 配置好 Bundle Identifier 和 Signing
@@ -32,20 +34,44 @@ OUTPUT_DIR="./release_output"
 # ── 输出路径 ──────────────────────────────────────────────────
 APK_SRC="build/app/outputs/flutter-apk/app-release.apk"
 APK_DST="${OUTPUT_DIR}/petpogo_v${PKG_VERSION}_${BUILD_TIME}.apk"
+AAB_SRC="build/app/outputs/bundle/release/app-release.aab"
+AAB_DST="${OUTPUT_DIR}/petpogo_v${PKG_VERSION}_${BUILD_TIME}.aab"
 
 IPA_SRC="build/ios/ipa/Runner.ipa"
 # 也尝试 build/ios/ipa/*.ipa（不同 Flutter 版本路径略有差异）
 IPA_DST="${OUTPUT_DIR}/petpogo_v${PKG_VERSION}_${BUILD_TIME}.ipa"
 
 # ── 解析参数 ──────────────────────────────────────────────────
-BUILD_APK=true
+BUILD_APK=false
+BUILD_AAB=true
 BUILD_IPA=true
+SPLIT_APK=false
 
-if [ "$1" == "--apk" ]; then
-  BUILD_IPA=false
-elif [ "$1" == "--ipa" ]; then
-  BUILD_APK=false
-fi
+case "$1" in
+  "") ;;
+  --apk)
+    BUILD_APK=true
+    BUILD_AAB=false
+    BUILD_IPA=false
+    ;;
+  --apk-split)
+    BUILD_APK=true
+    BUILD_AAB=false
+    BUILD_IPA=false
+    SPLIT_APK=true
+    ;;
+  --aab)
+    BUILD_IPA=false
+    ;;
+  --ipa)
+    BUILD_AAB=false
+    ;;
+  *)
+    echo "未知参数: $1"
+    echo "用法: ./buildrelease.sh [--apk|--apk-split|--aab|--ipa]"
+    exit 2
+    ;;
+esac
 
 # ── 打印 Banner ───────────────────────────────────────────────
 echo ""
@@ -70,28 +96,67 @@ echo ""
 # STEP 2: 打包 APK
 # ══════════════════════════════════════════════════════════════
 if [ "$BUILD_APK" = true ]; then
-  echo -e "${BLUE}${BOLD}▶ [Android] 开始打包 Release APK...${NC}"
+  if [ "$SPLIT_APK" = true ]; then
+    echo -e "${BLUE}${BOLD}▶ [Android] 开始按 ABI 打包 Release APK...${NC}"
+  else
+    echo -e "${BLUE}${BOLD}▶ [Android] 开始打包通用 Release APK...${NC}"
+  fi
   echo -e "${YELLOW}  ℹ️  App ID: com.junxin.petpogo_and${NC}"
   echo ""
 
-  flutter build apk --release
-
-  if [ -f "${APK_SRC}" ]; then
-    cp "${APK_SRC}" "${APK_DST}"
-    APK_SIZE=$(du -sh "${APK_DST}" | cut -f1)
-    echo ""
-    echo -e "${GREEN}${BOLD}  ✅ APK 打包成功！${NC}"
-    echo -e "${GREEN}  📦 文件路径: ${APK_DST}${NC}"
-    echo -e "${GREEN}  📏 文件大小: ${APK_SIZE}${NC}"
+  if [ "$SPLIT_APK" = true ]; then
+    flutter build apk --release --split-per-abi
+    FOUND_SPLIT=false
+    for ABI in armeabi-v7a arm64-v8a x86_64; do
+      ABI_SRC="build/app/outputs/flutter-apk/app-${ABI}-release.apk"
+      ABI_DST="${OUTPUT_DIR}/petpogo_v${PKG_VERSION}_${BUILD_TIME}_${ABI}.apk"
+      if [ -f "${ABI_SRC}" ]; then
+        cp "${ABI_SRC}" "${ABI_DST}"
+        ABI_SIZE=$(du -sh "${ABI_DST}" | cut -f1)
+        echo -e "${GREEN}  📦 ${ABI}: ${ABI_DST} (${ABI_SIZE})${NC}"
+        FOUND_SPLIT=true
+      fi
+    done
+    if [ "$FOUND_SPLIT" != true ]; then
+      echo -e "${RED}  ❌ 未找到分 ABI APK${NC}"
+      exit 1
+    fi
   else
-    echo -e "${RED}  ❌ APK 文件未找到，打包可能失败${NC}"
+    flutter build apk --release
+    if [ -f "${APK_SRC}" ]; then
+      cp "${APK_SRC}" "${APK_DST}"
+      APK_SIZE=$(du -sh "${APK_DST}" | cut -f1)
+      echo -e "${GREEN}  📦 通用 APK: ${APK_DST} (${APK_SIZE})${NC}"
+    else
+      echo -e "${RED}  ❌ APK 文件未找到，打包可能失败${NC}"
+      exit 1
+    fi
+  fi
+  echo -e "${GREEN}${BOLD}  ✅ APK 打包成功！${NC}"
+  echo ""
+fi
+
+# ══════════════════════════════════════════════════════════════
+# STEP 3: 打包 AAB
+# ══════════════════════════════════════════════════════════════
+if [ "$BUILD_AAB" = true ]; then
+  echo -e "${BLUE}${BOLD}▶ [Android] 开始打包 Google Play AAB...${NC}"
+  flutter build appbundle --release
+  if [ -f "${AAB_SRC}" ]; then
+    cp "${AAB_SRC}" "${AAB_DST}"
+    AAB_SIZE=$(du -sh "${AAB_DST}" | cut -f1)
+    echo -e "${GREEN}${BOLD}  ✅ AAB 打包成功！${NC}"
+    echo -e "${GREEN}  📦 文件路径: ${AAB_DST}${NC}"
+    echo -e "${GREEN}  📏 文件大小: ${AAB_SIZE}${NC}"
+  else
+    echo -e "${RED}  ❌ AAB 文件未找到，打包可能失败${NC}"
     exit 1
   fi
   echo ""
 fi
 
 # ══════════════════════════════════════════════════════════════
-# STEP 3: 打包 IPA
+# STEP 4: 打包 IPA
 # ══════════════════════════════════════════════════════════════
 if [ "$BUILD_IPA" = true ]; then
   echo -e "${BLUE}${BOLD}▶ [iOS] 开始打包 Release IPA...${NC}"
@@ -149,7 +214,14 @@ ls -lh "${OUTPUT_DIR}/" 2>/dev/null
 echo ""
 
 if [ "$BUILD_APK" = true ]; then
-  echo -e "  ${GREEN}📱 Android APK:${NC} ${APK_DST}"
+  if [ "$SPLIT_APK" = true ]; then
+    echo -e "  ${GREEN}📱 分 ABI APK:${NC} ${OUTPUT_DIR}/petpogo_v${PKG_VERSION}_${BUILD_TIME}_<abi>.apk"
+  else
+    echo -e "  ${GREEN}📱 Android APK:${NC} ${APK_DST}"
+  fi
+fi
+if [ "$BUILD_AAB" = true ]; then
+  echo -e "  ${GREEN}🧩 Android AAB:${NC} ${AAB_DST}"
 fi
 if [ "$BUILD_IPA" = true ]; then
   echo -e "  ${GREEN}🍎 iOS IPA:${NC}     ${IPA_DST}"
@@ -159,7 +231,10 @@ echo ""
 echo -e "${YELLOW}  💡 提示：${NC}"
 if [ "$BUILD_APK" = true ]; then
   echo -e "  • APK 可直接安装到 Android 设备（允许未知来源安装）"
-  echo -e "  • 如需上架 Google Play，建议改用 flutter build appbundle"
+  echo -e "  • Google Play 上架请使用: ./buildrelease.sh --aab"
+fi
+if [ "$BUILD_AAB" = true ]; then
+  echo -e "  • AAB 用于 Google Play，商店会按设备 ABI 自动下发"
 fi
 if [ "$BUILD_IPA" = true ]; then
   echo -e "  • IPA 需通过 TestFlight 或 Xcode 安装到已注册设备"

@@ -100,9 +100,22 @@ class AuthRepository {
       debugPrint('[AuthRepo] ✅ 登录成功: ${user.name} (id=${user.id})');
       return Success(user);
     } on DioException catch (e) {
-      final ex = e.error is ApiException
+      var ex = e.error is ApiException
           ? e.error as ApiException
           : ApiException(message: e.message ?? '网络错误');
+      // 密码登录手机号未注册：后端提示对用户不够友好，本地统一改写文案
+      if (path == '/sdkapi/auth/login-pwd') {
+        final msg = ex.message;
+        if (msg.contains('尚未注册') ||
+            msg.contains('未注册') ||
+            msg.contains('不存在')) {
+          ex = ApiException(
+            message: '首次使用请用手机验证码注册登录',
+            statusCode: ex.statusCode,
+            type: ex.type,
+          );
+        }
+      }
       debugPrint('[AuthRepo] ✗ 登录失败: ${ex.message}');
       return Failure(ex);
     } catch (e) {
