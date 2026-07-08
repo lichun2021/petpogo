@@ -13,7 +13,6 @@ import '../../app.dart' show AppL10nX;
 import '../../core/router/app_routes.dart';
 import 'controller/im_controller.dart';
 import 'data/repository/im_repository.dart';
-import 'contacts_page.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 class MessagePage extends ConsumerStatefulWidget {
@@ -47,14 +46,6 @@ class _MessagePageState extends ConsumerState<MessagePage> {
     super.dispose();
   }
 
-  // ── 右上角 "..." → 跳转联系人全屏页 ──────────────────────────
-  void _openContacts() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => ContactsPage()),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n  = context.l10n;
@@ -82,14 +73,6 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                 color: AppColors.onSurface,
               ),
             ),
-            actions: [
-              IconButton(
-                    icon: Icon(Icons.people_outline_rounded, color: AppColors.onSurface, size: 26),
-                    onPressed: _openContacts,
-                    tooltip: '联系人',
-                  ),
-              SizedBox(width: 4),
-            ],
           ),
 
           SliverPadding(

@@ -1,25 +1,136 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../core/config/app_config.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/api_endpoints.dart';
+import '../../core/router/app_routes.dart';
 import '../../core/providers/locale_provider.dart';
 import '../../core/providers/font_provider.dart';
 import '../../core/providers/color_scheme_provider.dart';
-import '../../core/providers/video_quality_provider.dart';
 import '../../shared/theme/color_schemes.dart';
 import '../../shared/widgets/pet_toast.dart';
 import '../../app.dart' show AppL10nX;
 import '../auth/controller/auth_controller.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
-/// 设置页（含修改昵称 / 修改密码）
-class SettingsPage extends ConsumerWidget {
+/// 设置页（账户与会员 / 通用 / 关于 / 外观）
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends ConsumerState<SettingsPage> {
+  String _cacheSize = '...';
+
+  @override
+  void initState() {
+    super.initState();
+    _calcCacheSize();
+  }
+
+  // ── 缓存计算（从 profile 页迁移而来）──
+  Future<void> _calcCacheSize() async {
+    try {
+      final tmp = await getTemporaryDirectory();
+      var bytes = await _dirSize(tmp);
+      if (mounted) setState(() => _cacheSize = _fmtBytes(bytes));
+    } catch (_) {
+      if (mounted) setState(() => _cacheSize = '0 B');
+    }
+  }
+
+  Future<void> _clearCache() async {
+    try {
+      final tmp = await getTemporaryDirectory();
+      await _clearDir(tmp);
+      await _calcCacheSize();
+    } catch (_) {}
+  }
+
+  Future<int> _dirSize(Directory dir) async {
+    var bytes = 0;
+    await for (final e in dir.list(recursive: true, followLinks: false)) {
+      if (e is File) {
+        try {
+          bytes += await e.length();
+        } catch (_) {}
+      }
+    }
+    return bytes;
+  }
+
+  Future<void> _clearDir(Directory dir) async {
+    await for (final e in dir.list(followLinks: false)) {
+      try {
+        if (e is File) {
+          await e.delete();
+        } else if (e is Directory) {
+          await e.delete(recursive: true);
+        }
+      } catch (_) {}
+    }
+  }
+
+  String _fmtBytes(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    if (bytes < 1024 * 1024 * 1024) {
+      return '${(bytes / 1024 / 1024).toStringAsFixed(1)} MB';
+    }
+    return '${(bytes / 1024 / 1024 / 1024).toStringAsFixed(2)} GB';
+  }
+
+  void _showClearConfirm(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceContainerLow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('清除缓存',
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: AppColors.onSurface)),
+        content: Text('将清除图片缓存和临时文件（$_cacheSize），不影响您的数据。',
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 14,
+                color: AppColors.onSurfaceVariant,
+                height: 1.55)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('取消',
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.onSurfaceVariant)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _clearCache();
+            },
+            child: Text('确认清除',
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = context.l10n;
     ref.watch(localeProvider); // 保持对 locale 变化的订阅
     final auth = ref.watch(authControllerProvider);
@@ -44,14 +155,25 @@ class SettingsPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
-          // ── 外观───────────────────────────────────────
-          _buildSectionHeader('外观'),
-          _AppearanceGroup(),
-          SizedBox(height: 20),
-
-          // ── 账户（语言 + 昵称 + 密码）────────────────────
-          _buildSectionHeader('账户'),
+          // ── 账户与会员 ──────────────────────────────────
+          _buildSectionHeader('账户与会员'),
           _buildGroup([
+            _SettingsTile(
+              icon: Icons.workspace_premium_rounded,
+              iconColor: const Color(0xFFB8860B),
+              label: '会员中心',
+              onTap: () => context.push(AppRoutes.membership),
+            ),
+            _SettingsTile(
+              icon: Icons.receipt_long_rounded,
+              label: '订单管理',
+              onTap: () => context.push(AppRoutes.orders),
+            ),
+            _SettingsTile(
+              icon: Icons.autorenew_rounded,
+              label: '续费管理',
+              onTap: () => context.push(AppRoutes.membership),
+            ),
             if (user != null)
               _SettingsTile(
                 icon: Icons.lock_rounded,
@@ -59,7 +181,24 @@ class SettingsPage extends ConsumerWidget {
                 onTap: () => _showPasswordSheet(context, ref),
               ),
           ]),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
+
+          // ── 通用 ──────────────────────────────────────────
+          _buildSectionHeader('通用'),
+          _buildGroup([
+            _SettingsTile(
+              icon: Icons.cleaning_services_rounded,
+              label: '清除缓存',
+              trailing: _cacheSize,
+              onTap: () => _showClearConfirm(context),
+            ),
+          ]),
+          const SizedBox(height: 20),
+
+          // ── 外观 ──────────────────────────────────────────
+          _buildSectionHeader('外观'),
+          const _AppearanceGroup(),
+          const SizedBox(height: 20),
 
           // ── 关于 ──────────────────────────────────────────
           _buildSectionHeader(l10n.settingsSectionAbout),
@@ -81,15 +220,26 @@ class SettingsPage extends ConsumerWidget {
               onTap: () => _showFeedbackSheet(context, ref),
             ),
           ]),
-          SizedBox(height: 32),
+          const SizedBox(height: 32),
 
-          // ── 退出登录 ──────────────────────────────────
-          if (auth.isLoggedIn)
+          // ── 退出登录 / 更换账号 ──────────────────────────
+          if (auth.isLoggedIn) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _LogoutButton(l10n: l10n, ref: ref),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _LogoutButton(l10n: l10n, ref: ref),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _SwitchAccountButton(l10n: l10n, ref: ref),
+                  ),
+                ],
+              ),
             ),
-          SizedBox(height: 40),
+          ],
+          const SizedBox(height: 40),
         ],
       ),
     );
@@ -168,10 +318,8 @@ class _AppearanceGroup extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentFont    = ref.watch(fontFamilyProvider);
     final currentScheme  = ref.watch(colorSchemeProvider);
-    final currentQuality = ref.watch(videoQualityProvider);
     final fontNotifier    = ref.read(fontFamilyProvider.notifier);
     final schemeNotifier  = ref.read(colorSchemeProvider.notifier);
-    final qualityNotifier = ref.read(videoQualityProvider.notifier);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -535,46 +683,55 @@ class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final String? trailing;
+  final Color? iconColor; // 可选：自定义图标颜色（默认 primary）
   final VoidCallback onTap;
-  const _SettingsTile(
-      {required this.icon,
-      required this.label,
-      this.trailing,
-      required this.onTap});
+  const _SettingsTile({
+    required this.icon,
+    required this.label,
+    this.trailing,
+    this.iconColor,
+    required this.onTap,
+  });
 
   @override
-  Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        splashColor: AppColors.primary.withOpacity(0.06),
-        child: ListTile(
-          leading: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.primaryContainer.withOpacity(0.18),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: AppColors.primary, size: 18),
+  Widget build(BuildContext context) {
+    final color = iconColor ?? AppColors.primary;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      splashColor: AppColors.primary.withValues(alpha: 0.06),
+      child: ListTile(
+        leading: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
           ),
-          title: Text(label,
-              style: TextStyle(
-                  fontFamily: AppFonts.primary,
-                  fontSize: 15,
-                  color: AppColors.onSurface)),
-          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+          child: Icon(icon, color: color, size: 18),
+        ),
+        title: Text(label,
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 15,
+                color: AppColors.onSurface)),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
             if (trailing != null)
               Text(trailing!,
                   style: TextStyle(
                       fontFamily: AppFonts.primary,
                       fontSize: 13,
                       color: AppColors.onSurfaceVariant)),
-            SizedBox(width: 4),
+            const SizedBox(width: 4),
             Icon(Icons.chevron_right_rounded,
                 color: AppColors.onSurfaceVariant, size: 20),
-          ]),
+          ],
         ),
-      );
+      ),
+    );
+  }
 }
 
 // ── 退出登录按钮 ───────────────────────────────────────────
@@ -627,6 +784,63 @@ class _LogoutButton extends ConsumerWidget {
               color: AppColors.error)),
       style: OutlinedButton.styleFrom(
         side: BorderSide(color: AppColors.error.withOpacity(0.3)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(48)),
+        minimumSize: Size(double.infinity, 52),
+      ),
+    );
+  }
+}
+
+// ── 更换账号按钮（退出后跳登录页）──────────────────────────
+class _SwitchAccountButton extends ConsumerWidget {
+  final dynamic l10n;
+  final WidgetRef ref;
+  const _SwitchAccountButton({required this.l10n, required this.ref});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return OutlinedButton.icon(
+      onPressed: () => showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: AppColors.surfaceContainerLowest,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text('更换账号',
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.onSurface)),
+          content: Text('将退出当前账号并返回登录页，是否继续？',
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  color: AppColors.onSurfaceVariant)),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(l10n.commonCancel,
+                    style: TextStyle(color: AppColors.onSurfaceVariant))),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await ref.read(authControllerProvider.notifier).logout();
+              },
+              child: Text('更换账号',
+                  style: TextStyle(
+                      color: AppColors.primary, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      ),
+      icon: Icon(Icons.swap_horiz_rounded, color: AppColors.primary, size: 18),
+      label: Text('更换账号',
+          style: TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary)),
+      style: OutlinedButton.styleFrom(
+        side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(48)),
         minimumSize: Size(double.infinity, 52),
       ),

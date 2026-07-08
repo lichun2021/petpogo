@@ -386,6 +386,37 @@ class DeviceListNotifier extends StateNotifier<DeviceListState> {
       devices: state.devices.where((d) => d.mac != mac).toList(),
     );
   }
+
+  /// 兜底回填产品类型：扫码绑定后，后端列表接口可能不返回 productKey，
+  /// 导致设备类型识别成 unknown/机器人。这里按 mac 找到设备，强制用已知
+  /// 的 productKey 关联产品目录回填 alias + productTypeName。
+  void ensureProductType(String mac, String productKey) {
+    final products = state.products;
+    final matched = products.firstWhere(
+      (p) => p.productKey.trim().toUpperCase() ==
+          productKey.trim().toUpperCase(),
+      orElse: () => const DeviceProductModel(
+        id: 0,
+        productKey: '',
+        alias: '',
+        name: '',
+        productTypeName: '',
+        status: 0,
+      ),
+    );
+    if (matched.productKey.isEmpty) return; // 目录里没有这个 productKey
+    final devices = state.devices.map((d) {
+      if (d.mac != mac) return d;
+      // 已经回填且一致，跳过
+      if (d.productAlias == matched.alias) return d;
+      return d.copyWith(
+        productKey: productKey,
+        productAlias: matched.alias,
+        productTypeName: matched.displayName,
+      );
+    }).toList();
+    state = state.copyWith(devices: devices);
+  }
 }
 
 final deviceListProvider =

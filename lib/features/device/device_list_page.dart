@@ -461,7 +461,56 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
       await ref.read(deviceRepositoryProvider).unbindDevice(device.mac);
       if (context.mounted) {
         HapticFeedback.mediumImpact();
-        ref.read(deviceListProvider.notifier).load();
+        // 刷新列表（重新从后端拉取）
+        await ref.read(deviceListProvider.notifier).load();
+        // 弹"解绑成功"确认
+        if (!context.mounted) return;
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (dctx) => AlertDialog(
+            backgroundColor: AppColors.surfaceContainerLow,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.check_circle_rounded,
+                    color: Color(0xFF22C55E), size: 48),
+                const SizedBox(height: 12),
+                Text('设备已解绑',
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.onSurface)),
+                const SizedBox(height: 4),
+                Text('「${device.displayName}」已成功解绑',
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 13,
+                        color: AppColors.onSurfaceVariant)),
+              ],
+            ),
+            actionsAlignment: MainAxisAlignment.center,
+            actions: [
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(dctx),
+                  style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: Text('知道了',
+                      style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) {

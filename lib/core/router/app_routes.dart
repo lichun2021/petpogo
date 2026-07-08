@@ -22,6 +22,12 @@ abstract class AppRoutes {
   static const bindDevice = '/bind-device';
   static const login = '/login'; // 登录页
 
+  // ── 会员 / 积分 / 签到 / 订单 ──────────────────────────
+  static const membership = '/membership'; // 会员计划
+  static const points = '/points'; // 积分明细
+  static const checkIn = '/check-in'; // 每日签到
+  static const orders = '/orders'; // 订单管理
+
   // ── 宠小伊 AI 问诊 ──────────────────────────────────────
   /// 主聊天页（extra: 宠物 petId 字符串）
   static const consultation = '/consultation';

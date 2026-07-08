@@ -29,6 +29,10 @@ import '../../features/community/community_page.dart';
 import '../../features/pet_circle/pet_circle_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/profile/settings_page.dart';
+import '../../features/profile/membership_page.dart';
+import '../../features/profile/points_page.dart';
+import '../../features/profile/check_in_page.dart';
+import '../../features/profile/orders_page.dart';
 import '../../features/pet/add_pet_page.dart';
 import '../../features/pet/pet_detail_page.dart';
 import '../../features/pet/pet_members_page.dart';
@@ -135,6 +139,10 @@ final appRouter = GoRouter(
     //  子页面 — 从底部滑入（符合 iOS/Android 平台习惯）
     // ══════════════════════════════════════════════════════
     _slide(AppRoutes.settings, const SettingsPage()),
+    _slide(AppRoutes.membership, const MembershipPage()),
+    _slide(AppRoutes.points, const PointsPage()),
+    _slide(AppRoutes.checkIn, const CheckInPage()),
+    _slide(AppRoutes.orders, const OrdersPage()),
     _slide(AppRoutes.addPet, const AddPetPage()),
     _slide(AppRoutes.bindDevice, const SelectDevicePage()),
 

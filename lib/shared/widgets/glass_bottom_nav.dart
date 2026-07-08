@@ -21,17 +21,26 @@ class GlassBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+    return ClipRect(
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface.withValues(alpha: 0.92),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          color: AppColors.surfaceContainerLowest,
+          border: Border(
+            top: BorderSide(
+              color: AppColors.outlineVariant.withValues(alpha: 0.55),
+              width: 0.8,
+            ),
+          ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.ambientShadow,
-              blurRadius: 40,
-              offset: Offset(0, -10),
+              color: AppColors.ambientShadow.withValues(alpha: 0.22),
+              blurRadius: 26,
+              offset: const Offset(0, -8),
+            ),
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.05),
+              blurRadius: 18,
+              offset: const Offset(0, -2),
             ),
           ],
         ),

@@ -205,12 +205,7 @@ class _HomeHero extends ConsumerWidget {
         : pets.isEmpty
             ? l10n.homeSubtitle
             : '今天先看看 $primaryPetTitle 的状态。';
-    final quota = auth.user?.aiQuota;
-    final quotaText = quota == null
-        ? '--'
-        : quota.isUnlimited
-            ? '不限'
-            : quota.remaining.toString();
+    final points = auth.user?.points ?? 0;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
@@ -287,9 +282,9 @@ class _HomeHero extends ConsumerWidget {
                 color: AppColors.secondary,
               ),
               _HeroMetricData(
-                label: 'AI 次数',
-                value: quotaText,
-                icon: Icons.auto_awesome_rounded,
+                label: '积分',
+                value: points.toString(),
+                icon: Icons.account_balance_wallet_rounded,
                 color: AppColors.tertiary,
               ),
             ],

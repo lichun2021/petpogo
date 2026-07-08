@@ -107,10 +107,14 @@ class UserInfo {
   final String id;             // string id
   final String avatar;
   final String imUserSig;
-  final bool   isVip;
+  final String? vipLevel;      // null/'free' = 非会员，'pro'/'pro_max' = 会员
   final String? vipExpireAt;
   final AiQuota aiQuota;
   final String peerGatewayUrl; // iPet 硬件网关地址
+  // ── 积分（后端 /sdkapi/points/summary 提供，本地缓存最近一次）──
+  final int points;            // 总可用余额 = permanent + gifted
+  final int permanentPoints;   // 永久积分（不过期）
+  final int giftedPoints;      // 赠送积分（有到期）
 
   const UserInfo({
     required this.token,
@@ -120,11 +124,17 @@ class UserInfo {
     required this.id,
     this.avatar = '',
     this.imUserSig = '',
-    this.isVip = false,
+    this.vipLevel,
     this.vipExpireAt,
     this.aiQuota = const AiQuota(),
     this.peerGatewayUrl = '',
+    this.points = 0,
+    this.permanentPoints = 0,
+    this.giftedPoints = 0,
   });
+
+  /// 是否为付费会员（vipLevel 为 pro / pro_max）
+  bool get isVip => vipLevel == 'pro' || vipLevel == 'pro_max';
 
   factory UserInfo.fromLoginResponse(LoginResponse res) => UserInfo(
     token:          res.token,
@@ -134,7 +144,8 @@ class UserInfo {
     id:             res.id,
     avatar:         res.avatar,
     imUserSig:      res.imUserSig,
-    isVip:          res.isVip,
+    // 兼容旧登录响应：isVip=true 视为 pro 会员
+    vipLevel:       res.isVip ? 'pro' : null,
     vipExpireAt:    res.vipExpireAt,
     aiQuota:        res.aiQuota,
     peerGatewayUrl: res.peerGatewayUrl,
@@ -149,9 +160,12 @@ class UserInfo {
     'id':              id,
     'avatar':          avatar,
     'imUserSig':       imUserSig,
-    'isVip':           isVip ? '1' : '0',
+    'vipLevel':        vipLevel ?? '',
     'vipExpireAt':     vipExpireAt ?? '',
     'peerGatewayUrl':  peerGatewayUrl,
+    'points':          points.toString(),
+    'permanentPoints': permanentPoints.toString(),
+    'giftedPoints':    giftedPoints.toString(),
     ...aiQuota.toStorageMap(),
   };
 
@@ -164,16 +178,21 @@ class UserInfo {
     id:             map['id']              ?? '',
     avatar:         map['avatar']          ?? '',
     imUserSig:      map['imUserSig']       ?? '',
-    isVip:          (map['isVip'] ?? '0') == '1',
+    vipLevel:       (map['vipLevel']?.isNotEmpty ?? false) ? map['vipLevel'] : null,
     vipExpireAt:    (map['vipExpireAt']?.isNotEmpty ?? false) ? map['vipExpireAt'] : null,
     aiQuota:        AiQuota.fromStorageMap(map),
     peerGatewayUrl: map['peerGatewayUrl']  ?? '',
+    points:          int.tryParse(map['points'] ?? '0') ?? 0,
+    permanentPoints: int.tryParse(map['permanentPoints'] ?? '0') ?? 0,
+    giftedPoints:    int.tryParse(map['giftedPoints'] ?? '0') ?? 0,
   );
 
   /// 从 profile 接口返回的 JSON 更新（不改 token / imUserSig）
   factory UserInfo.fromProfileJson(UserInfo current, Map<String, dynamic> json) {
-    final isVip = (json['isVip'] as bool?) ?? current.isVip;
     final qJson = json['aiQuota'] as Map<String, dynamic>? ?? {};
+    // vipLevel：后端可能返回 vipLevel 字符串；兼容旧的 isVip bool
+    final rawLevel = json['vipLevel'] as String?;
+    final boolFromOld = json['isVip'] as bool? ?? current.isVip;
     return UserInfo(
       token:       current.token,
       account:     current.account,
@@ -182,9 +201,12 @@ class UserInfo {
       imUserSig:   current.imUserSig,
       name:        (json['nickname'] as String?) ?? current.name,
       avatar:      (json['avatar']   as String?) ?? current.avatar,
-      isVip:       isVip,
+      vipLevel:    rawLevel ?? (boolFromOld ? 'pro' : current.vipLevel),
       vipExpireAt: json['vipExpireAt'] as String? ?? current.vipExpireAt,
       aiQuota:     qJson.isNotEmpty ? AiQuota.fromJson(qJson) : current.aiQuota,
+      points:          (json['points'] as num?)?.toInt() ?? current.points,
+      permanentPoints: (json['permanentPoints'] as num?)?.toInt() ?? current.permanentPoints,
+      giftedPoints:    (json['giftedPoints'] as num?)?.toInt() ?? current.giftedPoints,
     );
   }
 
@@ -196,10 +218,13 @@ class UserInfo {
     String?   avatar,
     String?   token,
     String?   imUserSig,
-    bool?     isVip,
+    String?   vipLevel,
     String?   vipExpireAt,
     AiQuota?  aiQuota,
     String?   peerGatewayUrl,
+    int?      points,
+    int?      permanentPoints,
+    int?      giftedPoints,
   }) => UserInfo(
     token:          token          ?? this.token,
     account:        account,
@@ -208,9 +233,12 @@ class UserInfo {
     id:             id,
     avatar:         avatar         ?? this.avatar,
     imUserSig:      imUserSig      ?? this.imUserSig,
-    isVip:          isVip          ?? this.isVip,
+    vipLevel:       vipLevel       ?? this.vipLevel,
     vipExpireAt:    vipExpireAt    ?? this.vipExpireAt,
     aiQuota:        aiQuota        ?? this.aiQuota,
     peerGatewayUrl: peerGatewayUrl ?? this.peerGatewayUrl,
+    points:          points          ?? this.points,
+    permanentPoints: permanentPoints ?? this.permanentPoints,
+    giftedPoints:    giftedPoints    ?? this.giftedPoints,
   );
 }

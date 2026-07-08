@@ -1,3 +1,13 @@
+/// 设备绑定流程类型。
+///
+/// 新增产品时只需在此处加一行映射，绑定入口（SelectDevicePage）
+/// 会自动按产品目录 API 返回的产品动态渲染，无需改二分判断。
+enum BindFlow {
+  scanQr,   // 扫设备背面二维码（项圈）
+  wifiSetup, // 手机生成 WiFi 二维码让设备扫（机器人）
+  manual,   // 手动输入（兜底，未识别类型）
+}
+
 enum DeviceProductType {
   collar,
   robot,
@@ -34,6 +44,18 @@ enum DeviceProductType {
         return '机器人';
       case DeviceProductType.unknown:
         return '智能设备';
+    }
+  }
+
+  /// 该产品类型对应的绑定流程。新增产品时在这里加一行即可。
+  BindFlow get bindFlow {
+    switch (this) {
+      case DeviceProductType.collar:
+        return BindFlow.scanQr;
+      case DeviceProductType.robot:
+        return BindFlow.wifiSetup;
+      case DeviceProductType.unknown:
+        return BindFlow.manual;
     }
   }
 }

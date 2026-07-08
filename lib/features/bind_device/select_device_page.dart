@@ -10,16 +10,77 @@ import 'scan_qr_page.dart';
 import 'robot_wifi_setup_page.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
-class SelectDevicePage extends ConsumerWidget {
+/// 选择要绑定的设备类型。
+///
+/// 设计：从 `/device/product/list` 拉取产品目录，按每个产品的
+/// [DeviceProductType.bindFlow] 路由到对应的绑定页面。新增产品时
+/// 只需在 `DeviceProductType.bindFlow` 加一行映射，本页无需改动。
+class SelectDevicePage extends ConsumerStatefulWidget {
   const SelectDevicePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final products = ref.watch(deviceListProvider);
-    final collarName =
-        products.productForKey(DeviceProductKeys.collar)?.displayName ?? '项圈';
-    final robotName =
-        products.productForKey(DeviceProductKeys.robot)?.displayName ?? '机器人';
+  ConsumerState<SelectDevicePage> createState() => _SelectDevicePageState();
+}
+
+class _SelectDevicePageState extends ConsumerState<SelectDevicePage> {
+  List<DeviceProductModel> _products = const [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    try {
+      // 优先用 deviceListProvider 已缓存的目录（首页进来一般已加载）
+      final cached = ref.read(deviceListProvider).products;
+      if (cached.isNotEmpty) {
+        if (mounted) setState(() { _products = cached; _loading = false; });
+        return;
+      }
+      final fresh = await ref.read(deviceRepositoryProvider).fetchProducts();
+      if (mounted) setState(() { _products = fresh; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _onTapProduct(DeviceProductModel product) {
+    HapticFeedback.mediumImpact();
+    final flow = product.type.bindFlow;
+    switch (flow) {
+      case BindFlow.scanQr:
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ScanQrPage(productKey: product.productKey),
+          ),
+        );
+        break;
+      case BindFlow.wifiSetup:
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RobotWifiSetupPage(productKey: product.productKey),
+          ),
+        );
+        break;
+      case BindFlow.manual:
+        // 未识别类型，统一走扫码兜底（手动输入 MAC）
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ScanQrPage(productKey: product.productKey),
+          ),
+        );
+        break;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -37,237 +98,197 @@ class SelectDevicePage extends ConsumerWidget {
                 fontSize: 18)),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('选择设备类型',
-                style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                    color: AppColors.onSurface)),
-            SizedBox(height: 6),
-            Text('选择要添加的智能设备，不同设备配网方式不同',
-                style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 14,
-                    color: AppColors.onSurfaceVariant)),
-            SizedBox(height: 28),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(strokeWidth: 2.5))
+          : _products.isEmpty
+              ? _buildEmpty()
+              : _buildList(),
+    );
+  }
 
-            // ── 智能项圈（4G，扫设备背面二维码）─────────────────
-            _DeviceCard(
-              emoji: '🐾',
-              iconWidget: Stack(alignment: Alignment.center, children: [
-                Icon(Icons.circle_outlined,
-                    color: AppColors.secondary.withOpacity(0.5), size: 32),
-                Icon(Icons.pets_rounded, color: AppColors.secondary, size: 16),
-              ]),
-              iconBg: AppColors.secondaryContainer.withOpacity(0.35),
-              name: collarName,
-              desc: '给宠物佩戴，实时 GPS 定位 + 健康监测',
-              features: ['实时定位', '走失预警', '活动轨迹', '健康监测'],
-              tag: '扫码绑定',
-              tagColor: AppColors.secondary,
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.secondaryContainer.withOpacity(0.4),
-                  AppColors.surfaceContainerLowest
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              onTap: () {
-                HapticFeedback.mediumImpact();
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ScanQrPage(
-                        productKey: DeviceProductKeys.collar,
-                      ),
-                    ));
-              },
-            ).animate().fadeIn().slideY(begin: 0.1),
-
-            SizedBox(height: 16),
-
-            // ── 智能宠物机器人（WiFi，手机生成二维码让机器人扫）────
-            _DeviceCard(
-              emoji: '🤖',
-              iconWidget: Icon(Icons.smart_toy_rounded,
-                  color: AppColors.primary, size: 30),
-              iconBg: AppColors.primaryContainer.withOpacity(0.3),
-              name: robotName,
-              desc: '放置家中，互动陪伴 + 远程监控',
-              features: ['远程互动', 'AI 陪伴', '视频监控', '定位'],
-              tag: 'WiFi 配网',
-              tagColor: AppColors.primary,
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primaryContainer.withOpacity(0.25),
-                  AppColors.surfaceContainerLowest
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              onTap: () {
-                HapticFeedback.mediumImpact();
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const RobotWifiSetupPage(
-                        productKey: DeviceProductKeys.robot,
-                      ),
-                    ));
-              },
-            ).animate().fadeIn().slideY(begin: 0.1, delay: 80.ms),
-
-            Spacer(),
-
-            // 提示信息
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(children: [
-                Icon(Icons.info_outline_rounded,
-                    size: 18, color: AppColors.primary),
-                SizedBox(width: 10),
-                Expanded(
-                    child: Text('项圈：扫设备背面二维码绑定\n机器人：填写 WiFi 后让机器人扫码配网',
-                        style: TextStyle(
-                            fontFamily: AppFonts.primary,
-                            fontSize: 13,
-                            color: AppColors.onSurfaceVariant,
-                            height: 1.6))),
-              ]),
-            ).animate().fadeIn(delay: 200.ms),
-          ],
+  Widget _buildEmpty() => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.cloud_off_rounded,
+                  size: 56, color: AppColors.onSurfaceVariant),
+              const SizedBox(height: 14),
+              Text('产品目录加载失败',
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 15,
+                      color: AppColors.onSurfaceVariant)),
+              const SizedBox(height: 16),
+              OutlinedButton(onPressed: _loadProducts, child: const Text('重试')),
+            ],
+          ),
         ),
+      );
+
+  Widget _buildList() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('选择设备类型',
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                  color: AppColors.onSurface)),
+          const SizedBox(height: 6),
+          Text('不同设备配网方式不同，请选择对应类型',
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 14,
+                  color: AppColors.onSurfaceVariant)),
+          const SizedBox(height: 28),
+          // ── 动态产品列表 ──
+          ..._products.map((p) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _ProductCard(
+                  product: p,
+                  onTap: () => _onTapProduct(p),
+                ).animate().fadeIn().slideY(begin: 0.1),
+              )),
+          const Spacer(),
+          // 提示
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(children: [
+              Icon(Icons.info_outline_rounded,
+                  size: 18, color: AppColors.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                  child: Text(
+                      _products.map((p) => '${p.displayName}：${_flowHint(p.type.bindFlow)}').join('\n'),
+                      style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 13,
+                          color: AppColors.onSurfaceVariant,
+                          height: 1.6))),
+            ]),
+          ).animate().fadeIn(delay: 200.ms),
+        ],
       ),
     );
   }
+
+  String _flowHint(BindFlow flow) {
+    switch (flow) {
+      case BindFlow.scanQr:
+        return '扫设备背面二维码绑定';
+      case BindFlow.wifiSetup:
+        return '填写 WiFi 后让设备扫码配网';
+      case BindFlow.manual:
+        return '手动输入 MAC 绑定';
+    }
+  }
 }
 
-class _DeviceCard extends StatelessWidget {
-  final String emoji, name, desc;
-  final Widget iconWidget;
-  final Color iconBg;
-  final List<String> features;
-  final Gradient gradient;
+/// 单个产品卡片 —— 图标/配色/标签全部从产品类型推导，不再硬编码。
+class _ProductCard extends StatelessWidget {
+  final DeviceProductModel product;
   final VoidCallback onTap;
-  final String? tag;
-  final Color? tagColor;
-
-  const _DeviceCard({
-    required this.emoji,
-    required this.iconWidget,
-    required this.iconBg,
-    required this.name,
-    required this.desc,
-    required this.features,
-    required this.gradient,
-    required this.onTap,
-    this.tag,
-    this.tagColor,
-  });
+  const _ProductCard({required this.product, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    final type = product.type;
+    final isCollar = type == DeviceProductType.collar;
+    final isRobot = type == DeviceProductType.robot;
+    final accent = isCollar
+        ? AppColors.secondary
+        : isRobot
+            ? AppColors.primary
+            : AppColors.onSurfaceVariant;
+
     return PressableButton(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          gradient: gradient,
+          gradient: LinearGradient(
+            colors: [
+              accent.withValues(alpha: isCollar ? 0.4 : 0.25),
+              AppColors.surfaceContainerLowest,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-                color: AppColors.cardShadow, blurRadius: 20, spreadRadius: -4)
+                color: AppColors.cardShadow, blurRadius: 20, spreadRadius: -4),
           ],
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            // 图标
-            Container(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              // 图标（按类型选）
+              Container(
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                    color: iconBg, borderRadius: BorderRadius.circular(16)),
-                child: Center(child: iconWidget)),
-            const SizedBox(width: 14),
-            // 名称 + 描述
-            Expanded(
+                    color: accent.withValues(alpha: isCollar ? 0.35 : 0.3),
+                    borderRadius: BorderRadius.circular(16)),
+                child: Center(child: _buildIcon(type, accent)),
+              ),
+              const SizedBox(width: 14),
+              // 名称 + 描述
+              Expanded(
                 child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  // 名字行：emoji + 名字（Flexible）+ 标签（固定宽）
-                  Row(children: [
-                    Text(emoji, style: const TextStyle(fontSize: 15)),
-                    const SizedBox(width: 5),
-                    Flexible(
-                      child: Text(name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontFamily: AppFonts.primary,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.onSurface)),
-                    ),
-                    if (tag != null) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: (tagColor ?? AppColors.primary)
-                              .withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                              color: (tagColor ?? AppColors.primary)
-                                  .withValues(alpha: 0.3)),
-                        ),
-                        child: Text(tag!,
-                            softWrap: false,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Flexible(
+                        child: Text(product.displayName,
                             maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                                 fontFamily: AppFonts.primary,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: tagColor ?? AppColors.primary)),
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.onSurface)),
                       ),
-                    ],
-                  ]),
-                  const SizedBox(height: 3),
-                  // 描述独占整行，不夹标签
-                  Text(desc,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          fontFamily: AppFonts.primary,
-                          fontSize: 12,
-                          color: AppColors.onSurfaceVariant,
-                          height: 1.4)),
-                ])),
-            const SizedBox(width: 6),
-            Icon(Icons.arrow_forward_ios_rounded,
-                size: 13, color: AppColors.onSurfaceVariant),
-          ]),
-          SizedBox(height: 14),
-          Wrap(
+                      const SizedBox(width: 6),
+                      _FlowTag(flow: type.bindFlow),
+                    ]),
+                    const SizedBox(height: 3),
+                    Text(_desc(type),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 12,
+                            color: AppColors.onSurfaceVariant,
+                            height: 1.4)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  size: 13, color: AppColors.onSurfaceVariant),
+            ]),
+            const SizedBox(height: 14),
+            Wrap(
               spacing: 5,
               runSpacing: 5,
-              children: features
+              children: _features(type)
                   .map((f) => Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.55),
+                          color: Colors.white.withValues(alpha: 0.55),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(f,
@@ -277,9 +298,78 @@ class _DeviceCard extends StatelessWidget {
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.onSurface)),
                       ))
-                  .toList()),
-        ]),
+                  .toList(),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildIcon(DeviceProductType type, Color color) {
+    switch (type) {
+      case DeviceProductType.collar:
+        return Stack(alignment: Alignment.center, children: [
+          Icon(Icons.circle_outlined, color: color.withValues(alpha: 0.5), size: 32),
+          Icon(Icons.pets_rounded, color: color, size: 16),
+        ]);
+      case DeviceProductType.robot:
+        return Icon(Icons.smart_toy_rounded, color: color, size: 30);
+      case DeviceProductType.unknown:
+        return Icon(Icons.memory_rounded, color: color, size: 28);
+    }
+  }
+
+  String _desc(DeviceProductType type) {
+    switch (type) {
+      case DeviceProductType.collar:
+        return '给宠物佩戴，实时 GPS 定位 + 健康监测';
+      case DeviceProductType.robot:
+        return '放置家中，互动陪伴 + 远程监控';
+      case DeviceProductType.unknown:
+        return '智能设备';
+    }
+  }
+
+  List<String> _features(DeviceProductType type) {
+    switch (type) {
+      case DeviceProductType.collar:
+        return ['实时定位', '走失预警', '活动轨迹', '健康监测'];
+      case DeviceProductType.robot:
+        return ['远程互动', 'AI 陪伴', '视频监控', '定位'];
+      case DeviceProductType.unknown:
+        return ['智能设备'];
+    }
+  }
+}
+
+/// 流程标签（扫码绑定 / WiFi 配网 / 手动）
+class _FlowTag extends StatelessWidget {
+  final BindFlow flow;
+  const _FlowTag({required this.flow});
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, color) = switch (flow) {
+      BindFlow.scanQr => ('扫码绑定', AppColors.secondary),
+      BindFlow.wifiSetup => ('WiFi 配网', AppColors.primary),
+      BindFlow.manual => ('手动绑定', AppColors.onSurfaceVariant),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(label,
+          softWrap: false,
+          maxLines: 1,
+          style: TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: color)),
     );
   }
 }

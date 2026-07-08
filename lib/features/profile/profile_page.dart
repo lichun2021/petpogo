@@ -1,9 +1,7 @@
-import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:path_provider/path_provider.dart';
 import '../../shared/utils/image_pick_helper.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_toast.dart';
@@ -29,112 +27,57 @@ class ProfilePage extends ConsumerStatefulWidget {
 
 class _ProfilePageState extends ConsumerState<ProfilePage> {
   bool _loaded = false;
-  String _cacheSize = '...';   // 显示缓存大小
+  bool _uploadingAvatar = false;
+  bool _showAllFeatures = false;
+
+  // ── 昵称编辑 ──
+  void _showNicknameSheet(BuildContext context, WidgetRef ref) {
+    final user = ref.read(authControllerProvider).user;
+    final ctrl = TextEditingController(text: user?.name ?? '');
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surfaceContainerLowest,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => _NicknameInlineSheet(ctrl: ctrl, ref: ref, onSaved: () {
+        ref.read(authControllerProvider.notifier).refreshUser();
+      }),
+    );
+  }
+
+  // ── 头像上传 ──
+  Future<void> _pickAndUploadAvatar(BuildContext context, WidgetRef ref) async {
+    if (_uploadingAvatar) return;
+    final file = await ImagePickHelper.pickAndCropAvatar(context);
+    if (file == null || !mounted) return;
+
+    setState(() => _uploadingAvatar = true);
+    try {
+      final repo = ref.read(postRepositoryProvider);
+      final sign = await repo.getOssSign(fileType: 'image', folder: 'avatars');
+      await repo.uploadToOss(uploadUrl: sign.uploadUrl, file: file, contentType: 'image/jpeg');
+      final ok = await ref.read(authControllerProvider.notifier).updateAvatar(sign.cdnUrl ?? '');
+      if (mounted) {
+        PetToast.show(context, ok ? '头像更新成功 🎉' : '头像更新失败，请重试');
+      }
+    } catch (e) {
+      if (mounted) PetToast.error(context, '上传失败，请重试');
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    _calcCacheSize();
   }
 
-  // ── 计算当前缓存大小 ──────────────────────────────
-  Future<void> _calcCacheSize() async {
-    try {
-      int bytes = 0;
-      // 临时目录
-      final tmp = await getTemporaryDirectory();
-      bytes += await _dirSize(tmp);
-      if (mounted) setState(() => _cacheSize = _fmtBytes(bytes));
-    } catch (_) {
-      if (mounted) setState(() => _cacheSize = '0 B');
-    }
-  }
-
-  // ── 清除缓存 ──────────────────────────────────
-  Future<void> _clearCache() async {
-    try {
-      // 图片内存缓存
-      PaintingBinding.instance.imageCache.clear();
-      // CachedNetworkImage 磁盘缓存
-      await CachedNetworkImage.evictFromCache('');
-      // 临时目录文件
-      final tmp = await getTemporaryDirectory();
-      await _clearDir(tmp);
-      if (!mounted) return;
-      await _calcCacheSize();
-      PetToast.success(context, '缓存已清除 ✨');
-    } catch (e) {
-      if (mounted) PetToast.error(context, '清除失败: $e');
-    }
-  }
-
-  Future<int> _dirSize(Directory dir) async {
-    int total = 0;
-    try {
-      await for (final e in dir.list(recursive: true, followLinks: false)) {
-        if (e is File) total += await e.length();
-      }
-    } catch (_) {}
-    return total;
-  }
-
-  Future<void> _clearDir(Directory dir) async {
-    try {
-      await for (final e in dir.list()) {
-        try { await e.delete(recursive: true); } catch (_) {}
-      }
-    } catch (_) {}
-  }
-
-  String _fmtBytes(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    return '${(bytes / 1024 / 1024).toStringAsFixed(1)} MB';
-  }
-
-  // ── 确认弹窗 ──────────────────────────────────
-  void _showClearConfirm() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('清除缓存',
-            style: TextStyle(fontFamily: AppFonts.primary,
-                fontSize: 17, fontWeight: FontWeight.w800,
-                color: AppColors.onSurface)),
-        content: Text('将清除图片缓存和临时文件（$_cacheSize），不影响您的数据。',
-            style: TextStyle(fontFamily: AppFonts.primary,
-                fontSize: 14, color: AppColors.onSurfaceVariant,
-                height: 1.55)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('取消', style: TextStyle(
-                fontFamily: AppFonts.primary,
-                fontWeight: FontWeight.w600,
-                color: AppColors.onSurfaceVariant)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _clearCache();
-            },
-            child: Text('确认清除', style: TextStyle(
-                fontFamily: AppFonts.primary,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary)),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     final l10n     = context.l10n;
     final auth     = ref.watch(authControllerProvider);
-    final stats    = ref.watch(userStatsProvider).stats;
 
     // 登录后首次刷新数据
     if (auth.isLoggedIn && !_loaded) {
@@ -153,69 +96,53 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       backgroundColor: AppColors.surface,
       body: CustomScrollView(
         slivers: [
-          // ── AppBar 固定 ─────────────────────────────
+          // ── AppBar：右上角设置入口 ─────────────────────
           SliverAppBar(
-            pinned: true,          // 固定顶部
+            pinned: true,
             floating: false,
-            backgroundColor: AppColors.surface.withOpacity(0.95),
+            backgroundColor: AppColors.surface,
             surfaceTintColor: Colors.transparent,
             elevation: 0,
             shadowColor: Colors.transparent,
-            title: const SizedBox.shrink(), // 隐藏标题
+            title: const SizedBox.shrink(),
             actions: [
-              IconButton(icon: Icon(Icons.notifications_rounded, color: AppColors.onSurfaceVariant), onPressed: () {}),
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceContainerHighest, shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 2),
-                  ),
-                  child: Icon(Icons.person_rounded, size: 20, color: AppColors.onSurface),
-                ),
+              IconButton(
+                icon: const Icon(Icons.notifications_rounded, size: 22),
+                color: AppColors.onSurfaceVariant,
+                onPressed: () {},
               ),
+              IconButton(
+                icon: const Icon(Icons.settings_rounded, size: 22),
+                color: AppColors.onSurfaceVariant,
+                tooltip: l10n.profileSettings,
+                onPressed: () => context.push(AppRoutes.settings),
+              ),
+              const SizedBox(width: 8),
             ],
           ),
 
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                // ── 顶部横排资料条 ──
+                _ProfileHeader(
+                  user: auth.user,
+                  uploadingAvatar: _uploadingAvatar,
+                  onTapEdit: () => _showNicknameSheet(context, ref),
+                  onTapAvatar: () => _pickAndUploadAvatar(context, ref),
+                ),
+                const SizedBox(height: 24),
 
-                _UserInfoCard(l10n: l10n, user: auth.user, stats: stats),
-                SizedBox(height: 28),
-
-                // ── 菜单 ─────────────────────────────
-                _MenuGroup(items: [
-                  _MenuItemData(icon: Icons.pets_rounded,           label: l10n.profileMyPets,
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PetListPage()))),
-                  _MenuItemData(icon: Icons.devices_rounded,        label: l10n.profileBoundDevices,
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DeviceListPage()))),
-                  _MenuItemData(icon: Icons.music_note_rounded,      label: '宠物音乐',
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PetMusicPage()))),
-                  _MenuItemData(icon: Icons.grid_view_rounded,      label: l10n.profileMyPosts,       onTap: () {}),
-                  _MenuItemData(icon: Icons.settings_rounded,       label: l10n.profileSettings,      onTap: () => context.push('/settings')),
-                  _MenuItemData(
-                    icon: Icons.cleaning_services_rounded,
-                    label: '清除缓存',
-                    trailing: _cacheSize,
-                    onTap: _showClearConfirm,
-                  ),
-                ]),
-
-                SizedBox(height: 32),
-
-                Center(
-                  child: TextButton.icon(
-                    onPressed: () async {
-                      await ref.read(authControllerProvider.notifier).logout();
-                    },
-                    icon: Icon(Icons.logout_rounded, color: AppColors.error, size: 18),
-                    label: Text(l10n.profileLogout,
-                        style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
-                            fontWeight: FontWeight.w700, color: AppColors.error, letterSpacing: 0.2)),
-                  ),
+                // ── 功能区：默认 6 个，点击更多展开 ──
+                _FeatureGrid(
+                  user: auth.user,
+                  expanded: _showAllFeatures,
+                  onToggleExpanded: () =>
+                      setState(() => _showAllFeatures = !_showAllFeatures),
+                  onNav: (route) => context.push(route),
+                  onNavPush: (page) =>
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => page)),
                 ),
               ]),
             ),
@@ -226,678 +153,481 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 }
 
-class _UserInfoCard extends ConsumerStatefulWidget {
-  final dynamic l10n;
+// ════════════════════════════════════════════════════════════
+//  顶部横排资料条（极简风，贴合页面背景）
+// ════════════════════════════════════════════════════════════
+class _ProfileHeader extends StatelessWidget {
   final UserInfo? user;
-  final dynamic stats;
-  const _UserInfoCard({required this.l10n, required this.user, this.stats});
-
-  @override
-  ConsumerState<_UserInfoCard> createState() => _UserInfoCardState();
-}
-
-class _UserInfoCardState extends ConsumerState<_UserInfoCard> {
-  bool _uploadingAvatar = false;
-
-  void _showNicknameSheet(BuildContext context, String current) {
-    final ctrl = TextEditingController(text: current);
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surfaceContainerLowest,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (ctx) => _NicknameInlineSheet(ctrl: ctrl, ref: ref, onSaved: () {
-        // 刷新用户信息
-        ref.read(authControllerProvider.notifier).refreshUser();
-      }),
-    );
-  }
-
-  Future<void> _pickAndUploadAvatar() async {
-    final file = await ImagePickHelper.pickAndCropAvatar(context);
-    if (file == null || !mounted) return;
-
-    setState(() => _uploadingAvatar = true);
-    try {
-      final repo = ref.read(postRepositoryProvider);
-      final sign = await repo.getOssSign(fileType: 'image', folder: 'avatars');
-      await repo.uploadToOss(uploadUrl: sign.uploadUrl, file: file, contentType: 'image/jpeg');
-      final ok = await ref.read(authControllerProvider.notifier).updateAvatar(sign.cdnUrl ?? '');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(ok ? '头像更新成功 🎉' : '头像更新失败，请重试'),
-          backgroundColor: ok ? AppColors.primary : AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('上传失败：$e'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ));
-      }
-    } finally {
-      if (mounted) setState(() => _uploadingAvatar = false);
-    }
-  }
+  final bool uploadingAvatar;
+  final VoidCallback onTapEdit;
+  final VoidCallback onTapAvatar;
+  const _ProfileHeader({
+    required this.user,
+    required this.uploadingAvatar,
+    required this.onTapEdit,
+    required this.onTapAvatar,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final l10n      = widget.l10n;
-    final user      = widget.user;
-    final stats     = widget.stats;
-    final nickname    = user?.name.isNotEmpty == true ? user!.name : '宠友';
-    final phone       = user?.account ?? '';
-    final maskedPhone = phone.length == 11
-        ? '${phone.substring(0, 3)}****${phone.substring(7)}'
-        : phone;
-    final avatarUrl   = user?.avatar ?? '';
+    final nickname = (user?.name.isNotEmpty ?? false) ? user!.name : '宠友';
+    final isVip = user?.isVip ?? false;
+    final vipLevel = user?.vipLevel;
+    final vipLabel = vipLevel == 'pro_max'
+        ? 'Pro Max'
+        : vipLevel == 'pro'
+            ? 'Pro'
+            : '';
 
-    final postStr     = stats != null ? '${stats.postCount}'     : '0';
-    final followerStr = stats != null ? '${stats.followerCount}' : '0';
-    final likeStr     = stats != null ? '${stats.likeCount}'     : '0';
-
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primaryContainer.withOpacity(0.55),
-            AppColors.secondaryContainer.withOpacity(0.40),
-            AppColors.surfaceContainerLowest,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          stops: const [0.0, 0.45, 1.0],
-        ),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withOpacity(0.55), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.12),
-            blurRadius: 28,
-            spreadRadius: -12,
-            offset: const Offset(0, 14),
-          ),
-        ],
-      ),
-      child: Stack(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
         children: [
-          // 右上角柔和装饰光晕
-          Positioned(
-            right: -30,
-            top: -30,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.22),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // 头像
+          GestureDetector(
+            onTap: onTapAvatar,
+            child: Stack(
+              clipBehavior: Clip.none,
               children: [
-                // ── 头像 + 昵称 + 手机号 ────────────────────
-                Row(
-                  children: [
-                    // 头像（可点击上传）
-                    GestureDetector(
-                      onTap: _uploadingAvatar ? null : _pickAndUploadAvatar,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Container(
-                            width: 72, height: 72,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.surfaceContainerHigh,
-                              border: Border.all(color: Colors.white, width: 3),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary.withOpacity(0.20),
-                                  blurRadius: 14,
-                                  spreadRadius: -2,
-                                ),
-                              ],
-                            ),
-                            child: ClipOval(
-                              child: _uploadingAvatar
-                                  ? Center(child: CircularProgressIndicator(strokeWidth: 2.5))
-                                  : avatarUrl.isNotEmpty
-                                      ? CachedNetworkImage(imageUrl: avatarUrl, fit: BoxFit.cover,
-                                          errorWidget: (_, __, ___) =>
-                                              Center(child: Text('🧑', style: TextStyle(fontSize: 34))))
-                                      : Center(child: Text('🧑', style: TextStyle(fontSize: 34))),
-                            ),
-                          ),
-                          if (!_uploadingAvatar)
-                            Positioned(
-                              bottom: 0, right: 0,
-                              child: Container(
-                                width: 24, height: 24,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
-                                ),
-                                child: Icon(Icons.camera_alt_rounded, size: 12, color: Colors.white),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(width: 16),
-                    // 昵称 + 手机号
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          GestureDetector(
-                            onTap: () => _showNicknameSheet(context, nickname),
-                            child: Row(
-                              children: [
-                                Flexible(
-                                  child: Text(nickname,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                          fontFamily: AppFonts.primary, fontSize: 21,
-                                          fontWeight: FontWeight.w900, letterSpacing: -0.4,
-                                          color: AppColors.onSurface)),
-                                ),
-                                SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.all(3),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.6),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(Icons.edit_rounded, size: 12,
-                                      color: AppColors.onSurfaceVariant),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (maskedPhone.isNotEmpty) ...[
-                            SizedBox(height: 5),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.5),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.phone_iphone_rounded, size: 11,
-                                      color: AppColors.onSurfaceVariant),
-                                  SizedBox(width: 4),
-                                  Text(maskedPhone,
-                                      style: TextStyle(
-                                          fontFamily: AppFonts.primary, fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.onSurfaceVariant)),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                SizedBox(height: 18),
-
-                // ── 统计数据条 ──────────────────────────────
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  width: 62,
+                  height: 62,
+                  padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.55),
-                    borderRadius: BorderRadius.circular(20),
+                    color: AppColors.surfaceContainerLowest,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                        color: AppColors.outlineVariant.withValues(alpha: 0.8),
+                        width: 1),
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(child: _StatCol(value: postStr,     label: l10n.profilePosts)),
-                      _StatDivider(),
-                      Expanded(child: _StatCol(value: followerStr, label: l10n.profileFollowers)),
-                      _StatDivider(),
-                      Expanded(child: _StatCol(value: likeStr,     label: '获赞')),
-                    ],
+                  child: ClipOval(
+                    child: user?.avatar.isNotEmpty == true
+                        ? CachedNetworkImage(
+                            imageUrl: user!.avatar,
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => Container(
+                                color: AppColors.surfaceContainerHighest),
+                            errorWidget: (_, __, ___) => _avatarPlaceholder(),
+                          )
+                        : _avatarPlaceholder(),
+                  ),
+                ),
+                Positioned(
+                  right: -2,
+                  bottom: -2,
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.surface,
+                        width: 2,
+                      ),
+                    ),
+                    child: Center(
+                      child: uploadingAvatar
+                          ? SizedBox(
+                              width: 10,
+                              height: 10,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.6,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppColors.onPrimary),
+                              ),
+                            )
+                          : Icon(Icons.camera_alt_rounded,
+                              size: 12, color: AppColors.onPrimary),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 14),
+          // 昵称 + VIP 徽章
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        nickname,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.onSurface,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ),
+                    if (isVip && vipLabel.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      _VipBadge(label: vipLabel),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'ID：${user?.id ?? user?.merchantId ?? ''}',
+                  style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 12,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // 编辑入口
+          GestureDetector(
+            onTap: onTapEdit,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('编辑',
+                      style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onSurfaceVariant)),
+                  Icon(Icons.chevron_right_rounded,
+                      size: 14, color: AppColors.onSurfaceVariant),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
-}
 
-// 统计项之间的竖分隔线
-class _StatDivider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => Container(
-        width: 1, height: 28,
-        color: AppColors.onSurfaceVariant.withOpacity(0.15),
+  Widget _avatarPlaceholder() => Container(
+        color: AppColors.surfaceContainerHighest,
+        child: Icon(Icons.person_rounded,
+            size: 30, color: AppColors.onSurfaceVariant),
       );
 }
 
-class _StatCol extends StatelessWidget {
-  final String value, label;
-  const _StatCol({required this.value, required this.label});
+class _VipBadge extends StatelessWidget {
+  final String label;
+  const _VipBadge({required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(value, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 18,
-            fontWeight: FontWeight.w900, color: AppColors.primary)),
-        SizedBox(height: 3),
-        Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 9,
-            fontWeight: FontWeight.w700, letterSpacing: 1.0, color: AppColors.onSurfaceVariant)),
-      ],
-    );
-  }
-}
-
-// ── 宠物卡片可滑动容器（PageView + 圆点指示）──────────────────
-class _PetPageView extends StatefulWidget {
-  final List pets;
-  final String Function(String) speciesLabel;
-  const _PetPageView({required this.pets, required this.speciesLabel});
-
-  @override
-  State<_PetPageView> createState() => _PetPageViewState();
-}
-
-class _PetPageViewState extends State<_PetPageView> {
-  int _page = 0;
-  late final PageController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = PageController(viewportFraction: 1.0);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final pets = widget.pets;
-    return Column(
-      children: [
-        SizedBox(
-          height: 88,  // 紧凑高度
-          child: PageView.builder(
-            controller: _ctrl,
-            itemCount: pets.length,
-            onPageChanged: (i) => setState(() => _page = i),
-            itemBuilder: (_, i) {
-              final pet = pets[i] as dynamic;
-              return GestureDetector(
-                  onTap: () => Navigator.of(context).pushNamed('/pet-detail'),
-                  child: _PetCard(
-                    name:          pet.name as String,
-                    breed:         pet.breed as String,
-                    type:          widget.speciesLabel(pet.type as String),
-                    typeColor:     pet.type == 'cat'
-                        ? AppColors.secondaryContainer
-                        : AppColors.tertiaryContainer,
-                    typeTextColor: pet.type == 'cat'
-                        ? AppColors.onSecondaryContainer
-                        : AppColors.onTertiaryFixed,
-                    emoji:         pet.emoji as String,
-                    gender:        pet.gender as String,
-                    birthday:      pet.birthday as String,
-                  ),
-              );
-            },
-          ),
-        ),
-        // 圆点指示（只有多宠物时显示）
-        if (pets.length > 1) ...[
-          SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(pets.length, (i) => AnimatedContainer(
-              duration: Duration(milliseconds: 250),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width:  i == _page ? 18 : 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: i == _page
-                    ? AppColors.primary
-                    : AppColors.onSurfaceVariant.withOpacity(0.25),
-                borderRadius: BorderRadius.circular(999),
-              ),
-            )),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-
-// ── 宠物卡片（渐变设计）────────────────────────────────────
-class _PetCard extends StatelessWidget {
-  final String name, breed, type, emoji, gender, birthday;
-  final Color typeColor, typeTextColor;
-
-  const _PetCard({
-    required this.name,
-    required this.breed,
-    required this.type,
-    required this.typeColor,
-    required this.typeTextColor,
-    required this.emoji,
-    this.gender = '',
-    this.birthday = '',
-  });
-
-  // 物种对应渐变色
-  List<Color> get _gradients => type == '猫'
-      ? [Color(0xFF6EC6F5), Color(0xFF4A90D9)]
-      : [Color(0xFFFFB347), Color(0xFFE07B39)];
-
-  String _ageText() {
-    if (birthday.isEmpty) return '';
-    try {
-      final birth = DateTime.parse(birthday);
-      final now   = DateTime.now();
-      int age = now.year - birth.year;
-      if (now.month < birth.month ||
-          (now.month == birth.month && now.day < birth.day)) age--;
-      if (age <= 0) {
-        final months = (now.year - birth.year) * 12 + now.month - birth.month;
-        return months <= 0 ? '刚出生' : '$months个月';
-      }
-      return '$age岁';
-    } catch (_) { return ''; }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final age    = _ageText();
-    final isMale = gender == 'male';
-    final isFemale = gender == 'female';
-    final gLabel = isMale ? '♂ 公' : isFemale ? '♀ 母' : '';
-    final gColor = isMale ? Color(0xFF1A6BB5) : Color(0xFFB51A6B);
-    final gBg    = isMale ? Color(0xFFDCEEFF) : Color(0xFFFFDCEE);
-
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          colors: _gradients,
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: _gradients.first.withOpacity(0.45),
-            blurRadius: 24, spreadRadius: -4, offset: Offset(0, 8),
-          ),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.workspace_premium_rounded,
+              size: 10, color: Colors.white),
+          const SizedBox(width: 2),
+          Text(label,
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white)),
         ],
       ),
-      child: Stack(
-        children: [
-          // ── 装饰圆圈（背景） ──────────────────────
-          Positioned(
-            right: -18, top: -18,
-            child: Container(
-              width: 100, height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.10),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 30, bottom: -30,
-            child: Container(
-              width: 80, height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.07),
-              ),
-            ),
-          ),
+    );
+  }
+}
 
-          // ── 内容 ──────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-            child: Row(
-              children: [
-                // 左：emoji + 光晕
-                Column(
+// ════════════════════════════════════════════════════════════
+//  功能区：两列信息卡，默认最多 6 个功能
+// ════════════════════════════════════════════════════════════
+class _FeatureGrid extends StatelessWidget {
+  final UserInfo? user;
+  final bool expanded;
+  final VoidCallback onToggleExpanded;
+  final ValueChanged<String> onNav;          // 走 AppRoutes（push）
+  final ValueChanged<Widget> onNavPush;      // 走 Navigator.push（传页面实例）
+  const _FeatureGrid({
+    required this.user,
+    required this.expanded,
+    required this.onToggleExpanded,
+    required this.onNav,
+    required this.onNavPush,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final points = user?.points ?? 0;
+    final items = <_FeatureItem>[
+      _FeatureItem(
+        icon: Icons.pets_rounded,
+        label: '我的宠物',
+        subtitle: '宠物档案',
+        color: const Color(0xFF6758EA),
+        onTap: () => onNavPush(PetListPage()),
+      ),
+      _FeatureItem(
+        icon: Icons.devices_rounded,
+        label: '我的设备',
+        subtitle: '硬件管理',
+        color: const Color(0xFF17834D),
+        onTap: () => onNavPush(DeviceListPage()),
+      ),
+      _FeatureItem(
+        icon: Icons.grid_view_rounded,
+        label: '我的帖子',
+        subtitle: '发布记录',
+        color: const Color(0xFFEA580C),
+        onTap: () => PetToast.show(context, '我的帖子功能即将上线'),
+      ),
+      _FeatureItem(
+        icon: Icons.music_note_rounded,
+        label: '宠物音乐',
+        subtitle: '舒缓歌单',
+        color: const Color(0xFF0EA5E9),
+        onTap: () => onNavPush(PetMusicPage()),
+      ),
+      _FeatureItem(
+        icon: Icons.calendar_month_rounded,
+        label: '每日签到',
+        subtitle: '做任务领章卡',
+        color: const Color(0xFFEC4899),
+        badge: '待签', // TODO: 接签到状态后判断是否显示
+        onTap: () => onNav(AppRoutes.checkIn),
+      ),
+      _FeatureItem(
+        icon: Icons.workspace_premium_rounded,
+        label: '会员计划',
+        subtitle: '解锁更多权益',
+        color: const Color(0xFFB8860B),
+        onTap: () => onNav(AppRoutes.membership),
+      ),
+      _FeatureItem(
+        icon: Icons.account_balance_wallet_rounded,
+        label: '积分明细',
+        subtitle: '当前 $points 分',
+        color: const Color(0xFF16A34A),
+        onTap: () => onNav(AppRoutes.points),
+      ),
+    ];
+    final hasMore = items.length > 6;
+    final visibleItems = hasMore && !expanded ? items.take(6).toList() : items;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 展开/收起只靠 AnimatedSize 平滑改变高度，
+        // 不再用 AnimatedSwitcher 整体淡入淡出（那会抖动）。
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 12,
+              childAspectRatio: 2.42,
+            ),
+            itemCount: visibleItems.length,
+            itemBuilder: (_, i) => _FeatureTile(item: visibleItems[i]),
+          ),
+        ),
+        if (hasMore) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _FeatureMoreButton(
+              expanded: expanded,
+              onTap: onToggleExpanded,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _FeatureMoreButton extends StatelessWidget {
+  final bool expanded;
+  final VoidCallback onTap;
+  const _FeatureMoreButton({required this.expanded, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 文字颜色随展开状态平滑过渡
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
+              child: Text(expanded ? '收起' : '更多'),
+            ),
+            const SizedBox(width: 2),
+            // 箭头方向旋转过渡
+            AnimatedRotation(
+              turns: expanded ? -0.5 : 0,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              child: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 17,
+                color: AppColors.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FeatureItem {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+  final String? badge;          // 右上角小气泡（如"待签"）
+  const _FeatureItem({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+    this.badge,
+  });
+}
+
+class _FeatureTile extends StatelessWidget {
+  final _FeatureItem item;
+  const _FeatureTile({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: item.onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          padding: const EdgeInsets.fromLTRB(14, 9, 10, 9),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.outlineVariant.withValues(alpha: 0.35),
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 44, height: 44,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.22),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.white.withOpacity(0.30),
-                            blurRadius: 10, spreadRadius: 1,
-                          ),
-                        ],
+                    Text(
+                      item.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.onSurface,
                       ),
-                      child: Center(
-                        child: Text(emoji,
-                            style: TextStyle(fontSize: 22)),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
-
-                SizedBox(width: 16),
-
-                // 右：信息
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // 名字 + 性别
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Text(name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                    fontFamily: AppFonts.primary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white,
-                                    letterSpacing: -0.3)),
-                          ),
-                          if (gLabel.isNotEmpty) ...[
-                            SizedBox(width: 8),
-                            Padding(
-                              padding: const EdgeInsets.only(right: 10),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 9, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: gBg,
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text(gLabel,
-                                    style: TextStyle(
-                                        fontFamily: AppFonts.primary,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        color: gColor)),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-
-                      // 品种
-                      if (breed.isNotEmpty) ...[
-                        SizedBox(height: 3),
-                        Text(breed,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                fontFamily: AppFonts.primary,
-                                fontSize: 12,
-                                color: Colors.white.withOpacity(0.80))),
-                      ],
-
-                      SizedBox(height: 4),
-
-                      // 年龄 + 生日 chips（白底半透明）
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 6,
-                        children: [
-                          if (age.isNotEmpty)
-                            _WhiteChip(
-                                icon: Icons.cake_rounded, label: age),
-                          if (birthday.isNotEmpty)
-                            _WhiteChip(
-                                icon: Icons.calendar_today_rounded,
-                                label: birthday.length >= 10
-                                    ? birthday.substring(0, 10)
-                                    : birthday),
-                        ],
-                      ),
-                    ],
+              ),
+              const SizedBox(width: 6),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: item.color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Icon(item.icon, size: 22, color: item.color),
                   ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// 白色半透明小 chip（用于渐变卡片上）
-class _WhiteChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _WhiteChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-    decoration: BoxDecoration(
-      color: Colors.white.withOpacity(0.25),
-      borderRadius: BorderRadius.circular(999),
-    ),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 11, color: Colors.white),
-      SizedBox(width: 4),
-      Text(label,
-          style: TextStyle(
-              fontFamily: AppFonts.primary,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Colors.white)),
-    ]),
-  );
-}
-
-
-
-
-class _MenuGroup extends StatelessWidget {
-  final List<_MenuItemData> items;
-  const _MenuGroup({required this.items});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: BorderRadius.circular(20)),
-      child: Column(
-        children: items.asMap().entries.map((e) => _MenuItemRow(
-          data: e.value, isFirst: e.key == 0, isLast: e.key == items.length - 1,
-        )).toList(),
-      ),
-    );
-  }
-}
-
-class _MenuItemData {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final String? trailing;   // 右侧额外文字（如缓存大小）
-  const _MenuItemData({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.trailing,
-  });
-}
-
-class _MenuItemRow extends StatelessWidget {
-  final _MenuItemData data;
-  final bool isFirst, isLast;
-  const _MenuItemRow({required this.data, required this.isFirst, required this.isLast});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.vertical(
-        top: isFirst ? const Radius.circular(20) : Radius.zero,
-        bottom: isLast ? const Radius.circular(20) : Radius.zero,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: data.onTap,
-          splashColor: AppColors.primaryGlow,
-          highlightColor: AppColors.surfaceContainerHigh,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 17),
-            child: Row(
-              children: [
-                Container(
-                  width: 40, height: 40,
-                  decoration: BoxDecoration(color: AppColors.surfaceContainerLowest,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 8)]),
-                  child: Icon(data.icon, size: 20, color: AppColors.primary),
-                ),
-                SizedBox(width: 16),
-                Expanded(child: Text(data.label,
-                    style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
-                        fontWeight: FontWeight.w600, color: AppColors.onSurface))),
-                if (data.trailing != null) ...[
-                  Text(data.trailing!,
-                      style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
-                          color: AppColors.onSurfaceVariant)),
-                  SizedBox(width: 4),
+                  if (item.badge != null)
+                    Positioned(
+                      top: -7,
+                      right: -8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: AppColors.surfaceContainerLowest,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Text(item.badge!,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                height: 1.2)),
+                      ),
+                    ),
                 ],
-                Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant, size: 20),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

@@ -116,13 +116,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                   child: SizedBox(
                     height: 56,
                     child: Row(children: [
-                      SizedBox(width: 16),
-                      Icon(Icons.pets_rounded, color: AppColors.primary, size: 22),
                       Spacer(),
-                      IconButton(
-                        icon: Icon(Icons.search_rounded, color: AppColors.onSurfaceVariant),
-                        onPressed: () {},
-                      ),
                       IconButton(
                         icon: Container(
                           padding: const EdgeInsets.all(4),
@@ -133,14 +127,6 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                           child: Icon(Icons.add_rounded, color: Colors.white, size: 18),
                         ),
                         onPressed: _openPublish,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: CircleAvatar(
-                          radius: 16,
-                          backgroundColor: AppColors.surfaceContainerHighest,
-                          child: Icon(Icons.person_rounded, size: 18, color: AppColors.onSurfaceVariant),
-                        ),
                       ),
                     ]),
                   ),

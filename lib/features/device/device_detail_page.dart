@@ -1044,13 +1044,66 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                       await ref
                           .read(deviceRepositoryProvider)
                           .unbindDevice(widget.mac);
-                      ref
-                          .read(deviceListProvider.notifier)
-                          .removeDevice(widget.mac);
-                      if (mounted)
-                        Navigator.pop(context); // 退出设备详情页（用页面 context）
+                      // 刷新设备列表（从后端重新拉取，确保一致）
+                      await ref.read(deviceListProvider.notifier).load();
+                      if (!mounted) return;
+                      // 3. 弹"解绑成功"确认
+                      await showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (dctx) => AlertDialog(
+                          backgroundColor: AppColors.surfaceContainerLow,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20)),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.check_circle_rounded,
+                                  color: Color(0xFF22C55E), size: 48),
+                              const SizedBox(height: 12),
+                              Text('设备已解绑',
+                                  style: TextStyle(
+                                      fontFamily: AppFonts.primary,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.onSurface)),
+                              const SizedBox(height: 4),
+                              Text('「${widget.name}」已成功解绑',
+                                  style: TextStyle(
+                                      fontFamily: AppFonts.primary,
+                                      fontSize: 13,
+                                      color: AppColors.onSurfaceVariant)),
+                            ],
+                          ),
+                          actionsAlignment: MainAxisAlignment.center,
+                          actions: [
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton(
+                                onPressed: () => Navigator.pop(dctx),
+                                style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12))),
+                                child: Text('知道了',
+                                    style: TextStyle(
+                                        fontFamily: AppFonts.primary,
+                                        fontWeight: FontWeight.w700)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                      // 4. 确认后退出设备详情页
+                      if (mounted) Navigator.pop(context);
                     } catch (e) {
                       debugPrint('[DeviceDetail] 解绑失败: $e');
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('解绑失败，请重试')),
+                        );
+                      }
                     }
                   },
                   style: FilledButton.styleFrom(

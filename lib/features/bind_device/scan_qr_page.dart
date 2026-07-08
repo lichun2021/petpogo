@@ -5,6 +5,10 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_toast.dart';
 import '../device/data/repository/device_repository.dart';
+import '../shell/main_shell.dart' show hideBottomNavProvider;
+import '../device/data/models/device_product_model.dart';
+import '../device/device_detail_page.dart';
+import '../device/robot_device_page.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 扫码绑定页 ────────────────────────────────────────────
@@ -29,6 +33,10 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
   @override
   void initState() {
     super.initState();
+    // 进入扫码页时隐藏底部导航，避免在全屏相机界面上残留导航条
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(hideBottomNavProvider.notifier).state = true;
+    });
     _scanAnim = AnimationController(vsync: this, duration: Duration(seconds: 2))
       ..repeat(reverse: true);
     _cameraCtrl = MobileScannerController(
@@ -39,9 +47,18 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
 
   @override
   void dispose() {
+    // 退出扫码页时恢复底部导航（兜底：覆盖系统手势返回）
+    try {
+      ref.read(hideBottomNavProvider.notifier).state = false;
+    } catch (_) {}
     _scanAnim.dispose();
     _cameraCtrl.dispose();
     super.dispose();
+  }
+
+  /// 离开页面（返回/跳转）时恢复底部导航
+  void _restoreBottomNav() {
+    ref.read(hideBottomNavProvider.notifier).state = false;
   }
 
   // ── 扫描回调 ────────────────────────────────────────────
@@ -93,7 +110,30 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
       await ref.read(deviceRepositoryProvider).bindDevice(mac: _scannedMac!);
       // 刷新首页设备列表
       await ref.read(deviceListProvider.notifier).load();
-      if (mounted) setState(() => _state = _ScanState.success);
+      // 兜底：后端列表可能不返回 productKey，强制回填当前扫码页已知的产品类型，
+      // 避免"绑定项圈却显示成机器人"。
+      ref
+          .read(deviceListProvider.notifier)
+          .ensureProductType(_scannedMac!, widget.productKey);
+      if (!mounted) return;
+      PetToast.show(context, '绑定成功 🎉');
+      // 恢复底部导航（跳转目标页在 shell 内）
+      _restoreBottomNav();
+      // 成功后跳设备详情页；popUntil(isFirst) 把绑定流程页全部出栈，
+      // 只保留首页（MainShell）在栈底 → 从详情页返回时直接回到首页。
+      final isRobot =
+          DeviceProductType.fromProductKey(widget.productKey) ==
+              DeviceProductType.robot;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => isRobot
+              ? RobotDevicePage(
+                  mac: _scannedMac!, name: _scannedMac!)
+              : DeviceDetailPage(
+                  mac: _scannedMac!, name: _scannedMac!),
+        ),
+        (route) => route.isFirst,
+      );
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -129,13 +169,8 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
         // 暗色遮罩（扫描框外）
         _buildMask(),
 
-        // ── AppBar ─────────────────────────────────────
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: _buildAppBar(context),
-        ),
+        // ── 顶部浮层（返回 + 手电筒，不用导航条）─────────
+        _buildTopBar(context),
 
         // ── 扫描框 ─────────────────────────────────────
         Center(child: _buildScanBox()),
@@ -162,40 +197,62 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
     );
   }
 
-  // ── AppBar ──────────────────────────────────────────────
-  Widget _buildAppBar(BuildContext context) {
-    final top = MediaQuery.of(context).padding.top;
-    return Container(
-      padding: EdgeInsets.fromLTRB(4, top, 4, 0),
-      child: Row(children: [
-        IconButton(
-          icon:
-              Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        Expanded(
-          child: Text('扫码绑定设备',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: Colors.white,
-                  fontFamily: AppFonts.primary,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700)),
-        ),
-        // 手电筒
-        IconButton(
-          icon: ValueListenableBuilder(
-            valueListenable: _cameraCtrl,
-            builder: (_, value, __) => Icon(
-              value.torchState == TorchState.on
-                  ? Icons.flash_on_rounded
-                  : Icons.flash_off_rounded,
-              color: Colors.white,
-            ),
+  // ── 顶部浮层返回按钮（不用 AppBar 导航条）──────────────
+  Widget _buildTopBar(BuildContext context) {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+          child: Row(
+            children: [
+              // 返回按钮（圆形半透明底）
+              GestureDetector(
+                onTap: () {
+                  _restoreBottomNav();
+                  Navigator.pop(context);
+                },
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white, size: 18),
+                ),
+              ),
+              const Spacer(),
+              // 手电筒
+              GestureDetector(
+                onTap: () => _cameraCtrl.toggleTorch(),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    shape: BoxShape.circle,
+                  ),
+                  child: ValueListenableBuilder(
+                    valueListenable: _cameraCtrl,
+                    builder: (_, value, __) => Icon(
+                      value.torchState == TorchState.on
+                          ? Icons.flash_on_rounded
+                          : Icons.flash_off_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          onPressed: () => _cameraCtrl.toggleTorch(),
         ),
-      ]),
+      ),
     );
   }
 

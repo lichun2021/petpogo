@@ -117,4 +117,41 @@ abstract class ApiEndpoints {
 
   /// 结束录制并合成 MP4   POST /video/recording/stop
   static const recordingStop = '/video/recording/stop';
+
+  // ── 积分系统 ────────────────────────────────────────────
+  /// 积分余额（周积分/永久积分/总计）  GET /sdkapi/points/balance
+  static const pointsBalance = '/sdkapi/points/balance';
+
+  /// 积分流水（分页）  GET /sdkapi/points/list
+  static const pointsList = '/sdkapi/points/list';
+
+  /// 积分消费规则  GET /sdkapi/points/rules
+  static const pointsRules = '/sdkapi/points/rules';
+
+  // ── 购买计划（会员）─────────────────────────────────────
+  /// 计划列表（Free/Pro/ProMax）  GET /sdkapi/plan/list
+  static const planList = '/sdkapi/plan/list';
+
+  /// 生成购买订单（占位订单，需后台人工确认）  POST /sdkapi/plan/order
+  static const planOrder = '/sdkapi/plan/order';
+
+  /// 查询订单状态（轮询用）  GET /sdkapi/plan/order/:orderId
+  static String planOrderDetail(String orderId) => '/sdkapi/plan/order/$orderId';
+
+  // ── 每日签到 ────────────────────────────────────────────
+  /// 签到状态 + 奖励档位  GET /sdkapi/checkin/status
+  static const checkInStatus = '/sdkapi/checkin/status';
+
+  /// 月签到日历（每天 status + 补签配额 + 奖励按钮）  GET /sdkapi/checkin/calendar
+  static const checkInCalendar = '/sdkapi/checkin/calendar';
+
+  /// 执行签到  POST /sdkapi/checkin/signin
+  static const checkInSignIn = '/sdkapi/checkin/signin';
+
+  /// 领取签到奖励  POST /sdkapi/checkin/claim
+  static const checkInClaim = '/sdkapi/checkin/claim';
+
+  /// 补签（会员配额）POST /sdkapi/checkin/makeup
+  /// body: { date: 'YYYY-MM-DD' }，配额用尽返回 402 → 引导看广告
+  static const checkInMakeup = '/sdkapi/checkin/makeup';
 }

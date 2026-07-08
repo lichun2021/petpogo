@@ -137,15 +137,15 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
   Widget build(BuildContext context) {
     final state = ref.watch(aiVoiceControllerProvider);
 
-    // 分析完成后弹 SnackBar 提示剩余次数
+    // 分析完成后弹 SnackBar 提示（积分扣减文案，具体数值待后端接口）
     ref.listen(aiVoiceControllerProvider, (prev, next) {
       if (prev?.phase == AiPhase.analyzing &&
           (next.phase == AiPhase.result || next.phase == AiPhase.notPet)) {
         final quota = next.result?.quota;
         if (quota != null) {
           final msg = quota.isUnlimited
-              ? '分析完成 • VIP 无限次数✨'
-              : '分析完成 • 今日剩余 ${quota.remaining} 次';
+              ? '分析完成 ✨（Pro 无限）'
+              : '分析完成 ✨';
           _showSnack(msg, color: AppColors.primary);
         }
       }
@@ -471,7 +471,7 @@ class _ResultView extends StatelessWidget {
           SizedBox(height: 8),
         ],
 
-        // 配额剩余
+        // 配额（积分模式）
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
@@ -482,11 +482,9 @@ class _ResultView extends StatelessWidget {
               size: 14,
               color: AppColors.onSurfaceVariant,
             ),
-            SizedBox(width: 4),
+            const SizedBox(width: 4),
             Text(
-              result.quota.isUnlimited
-                  ? 'VIP 无限次'
-                  : '今日剩余 ${result.quota.remaining} 次',
+              result.quota.isUnlimited ? 'Pro 无限' : '消耗积分',
               style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontSize: 11,
