@@ -31,6 +31,7 @@ import '../../features/profile/profile_page.dart';
 import '../../features/profile/settings_page.dart';
 import '../../features/pet/add_pet_page.dart';
 import '../../features/pet/pet_detail_page.dart';
+import '../../features/pet/pet_members_page.dart';
 import '../../features/bind_device/select_device_page.dart';
 import '../../features/bind_device/scan_qr_page.dart';
 import '../../features/bind_device/bind_success_page.dart';
@@ -180,6 +181,24 @@ final appRouter = GoRouter(
           petId: state.pathParameters['petId'] ?? '',
         ),
       ),
+    ),
+
+    // 宠物成员管理页（参数：宠物 ID）
+    GoRoute(
+      path: AppRoutes.petMembersTemplate,
+      pageBuilder: (context, state) {
+        final petIdStr = state.pathParameters['petId'] ?? '0';
+        final petId = int.tryParse(petIdStr) ?? 0;
+        final extra = state.extra as Map<String, dynamic>?;
+        return _slidePage(
+          state,
+          PetMembersPage(
+            petId: petId,
+            petName: extra?['petName']?.toString() ?? '',
+            petAvatar: extra?['petAvatar']?.toString() ?? '',
+          ),
+        );
+      },
     ),
 
     // IM 聊天页（参数：对方 userId = merchantId 字符串）

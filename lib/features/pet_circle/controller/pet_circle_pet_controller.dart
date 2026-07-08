@@ -79,46 +79,72 @@ class PetCirclePetController extends StateNotifier<PetCirclePetState> {
     debugPrint('[萌宠圈][宠物] 开始加载宠物列表');
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      final deviceState = await _ensureDevices();
-      debugPrint(
-          '[萌宠圈][宠物] 设备列表 ready count=${deviceState.devices.length} error=${deviceState.errorMessage ?? '-'}');
-      if (deviceState.errorMessage != null && deviceState.devices.isEmpty) {
-        throw Exception(deviceState.errorMessage);
-      }
-
       final petRepo = _ref.read(petPeerRepositoryProvider);
 
-      // 与“我的宠物”保持一致：遍历账号下的所有设备查询宠物。
-      // 机器人无需绑定宠物，未绑定时 PeerApi 会返回空/错误并被自然跳过；
-      // 不能在这里按 productKey 预先过滤，否则共享设备暂时缺 key 时会丢宠物。
-      final devices = deviceState.devices;
-      debugPrint('[萌宠圈][宠物] 开始按设备查询 count=${devices.length}');
-      final loadedPets = await Future.wait(devices.map((device) async {
-        try {
-          debugPrint(
-              '[萌宠圈][宠物] 请求宠物信息 device=${device.displayName} deviceId=${device.deviceId} mac=${device.mac}');
-          final pet = await petRepo.fetchPetInfo(
-            deviceId: device.deviceId.isEmpty ? null : device.deviceId,
-            mac: device.deviceId.isEmpty ? device.mac : null,
-          );
-          debugPrint(
-              '[萌宠圈][宠物] 宠物信息返回 device=${device.displayName} petId=${pet.petId} name=${pet.petName} avatar=${pet.avatar.isNotEmpty}');
-          if (pet.petId.isNotEmpty && pet.petName.isNotEmpty) {
-            return PetCirclePet(pet: pet, device: device);
-          }
-        } catch (e) {
-          debugPrint('[萌宠圈] 设备 ${device.displayName} 未绑定宠物或读取失败: $e');
-        }
-        return null;
-      }));
+      // 使用新接口 /pet/info/list — 直接获取用户所有宠物，不依赖设备
+      debugPrint('[萌宠圈][宠物] 调用 /pet/info/list');
+      final pets = await petRepo.fetchPetList();
+      debugPrint('[萌宠圈][宠物] 宠物列表返回 count=${pets.length}');
 
-      final uniquePets = <String, PetCirclePet>{};
-      for (final item in loadedPets.whereType<PetCirclePet>()) {
-        uniquePets[item.id] = item;
+      // 获取设备列表用于关联显示
+      final deviceState = await _ensureDevices();
+      debugPrint(
+          '[萌宠圈][宠物] 设备列表 count=${deviceState.devices.length}');
+
+      // 构建 deviceId -> DeviceModel 映射
+      final deviceMap = <String, DeviceModel>{};
+      for (final device in deviceState.devices) {
+        if (device.deviceId.isNotEmpty) {
+          deviceMap[device.deviceId] = device;
+        }
+      }
+
+      // 将宠物与设备关联
+      final petList = <PetCirclePet>[];
+      for (final pet in pets) {
+        if (pet.petId.isNotEmpty && pet.petName.isNotEmpty) {
+          // 如果有设备ID，尝试查找设备
+          DeviceModel? device;
+          if (pet.deviceId.isNotEmpty) {
+            device = deviceMap[pet.deviceId];
+            if (device == null) {
+              debugPrint(
+                  '[萌宠圈][宠物] 警告: 宠物 ${pet.petName} 的设备ID ${pet.deviceId} 在设备列表中未找到');
+            }
+          }
+
+          // 显示所有宠物（包括未绑定设备的）
+          // 如果没有找到设备，创建一个虚拟设备用于显示
+          if (device == null && pet.deviceId.isNotEmpty) {
+            // 有deviceId但找不到设备，创建虚拟设备
+            device = DeviceModel(
+              deviceId: pet.deviceId,
+              mac: '',
+              name: '未知设备',
+              productKey: '',
+              uType: '3', // 成员
+            );
+          } else if (device == null && pet.deviceId.isEmpty) {
+            // 未绑定设备，创建虚拟设备
+            device = DeviceModel(
+              deviceId: '',
+              mac: '',
+              name: '未绑定设备',
+              productKey: '',
+              uType: '3',
+            );
+          }
+
+          if (device != null) {
+            petList.add(PetCirclePet(pet: pet, device: device));
+            debugPrint(
+                '[萌宠圈][宠物] 添加宠物 petId=${pet.petId} name=${pet.petName} device=${device.displayName}');
+          }
+        }
       }
 
       state = state.copyWith(
-        pets: uniquePets.values.toList(growable: false),
+        pets: petList,
         isLoading: false,
         hasLoaded: true,
         errorMessage: null,

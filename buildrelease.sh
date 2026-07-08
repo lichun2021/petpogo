@@ -53,6 +53,13 @@ case "$1" in
     BUILD_APK=true
     BUILD_AAB=false
     BUILD_IPA=false
+    SPLIT_APK=true  # 默认使用分架构 APK（体积更小）
+    ;;
+  --apk-universal)
+    BUILD_APK=true
+    BUILD_AAB=false
+    BUILD_IPA=false
+    SPLIT_APK=false  # 通用 APK（包含所有架构）
     ;;
   --apk-split)
     BUILD_APK=true

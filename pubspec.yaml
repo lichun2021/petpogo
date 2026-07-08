@@ -28,7 +28,6 @@ dependencies:
 
   # Network
   dio: ^5.4.3
-  pretty_dio_logger: ^1.3.1
 
   # Tencent IM SDK（仅 API，UI 保持 PetPogo 自有风格）
   tencent_cloud_chat_sdk: ^8.0.0
@@ -37,7 +36,6 @@ dependencies:
 
   # Local Storage
   flutter_secure_storage: ^10.1.0
-  hive_flutter: ^1.1.0
 
   # UI & Animations
   google_fonts: ^8.1.0
@@ -51,7 +49,6 @@ dependencies:
 
   # Media
   image_picker: ^1.1.2
-  image_cropper: ^9.0.0
   # 高德地图（flutter_map + 高德瓦片 URL）
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
@@ -65,7 +62,7 @@ dependencies:
   record: ^6.0.0
   path_provider: ^2.1.2        # 获取临时目录存储录音文件
   just_audio: ^0.10.5
-  agora_rtc_engine: ^6.3.2    # 机器人视频推流（ESP32 JPEG 流，仅 Android）
+  agora_rtc_engine: ^6.3.2    # 机器人视频推流（通过原生配置使用 Lite 版本）
 
   # QR Scanner & Generator
   mobile_scanner: ^7.2.0
@@ -78,7 +75,6 @@ dependencies:
   url_launcher: ^6.3.0
   permission_handler: ^12.0.1
   network_info_plus: ^6.0.0
-  package_info_plus: ^9.0.1
 
   # Icons
   cupertino_icons: ^1.0.6
@@ -95,7 +91,6 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   build_runner: ^2.4.9
   riverpod_generator: ^2.4.0
-  hive_generator: ^2.0.1
 
 flutter:
   uses-material-design: true

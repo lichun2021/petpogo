@@ -6,41 +6,37 @@ import '../../shared/theme/app_fonts.dart';
 import '../../shared/widgets/pet_toast.dart';
 import '../../shared/utils/wechat_share.dart';
 import '../share/data/repository/share_repository.dart';
-import 'data/models/device_model.dart';
-import 'data/models/device_product_model.dart';
-import 'data/repository/device_repository.dart';
+import 'data/models/pet_share_model.dart';
+import 'data/repository/pet_share_repository.dart';
 
-// ── 设备成员管理页 ─────────────────────────────────────────
-/// 仅 OWNER 设备可进入，展示所有共享成员并支持移除
-class DeviceMembersPage extends ConsumerStatefulWidget {
-  final String mac;
-  final String deviceId;
-  final String deviceName;
-  final String productKey;
-  final String productTypeName;
+// ── 宠物成员管理页 ─────────────────────────────────────────
+/// 展示宠物的所有共享成员并支持移除
+class PetMembersPage extends ConsumerStatefulWidget {
+  final int petId;
+  final String petName;
+  final String petAvatar;
 
-  const DeviceMembersPage({
+  const PetMembersPage({
     super.key,
-    required this.mac,
-    required this.deviceId,
-    required this.deviceName,
-    required this.productKey,
-    required this.productTypeName,
+    required this.petId,
+    required this.petName,
+    this.petAvatar = '',
   });
 
   @override
-  ConsumerState<DeviceMembersPage> createState() => _DeviceMembersPageState();
+  ConsumerState<PetMembersPage> createState() => _PetMembersPageState();
 }
 
-class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
-  List<DeviceMemberModel> _members = [];
+class _PetMembersPageState extends ConsumerState<PetMembersPage> {
+  List<PetMemberModel> _members = [];
   bool _loading = true;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    // 延迟加载，让UI先显示
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   Future<void> _load() async {
@@ -49,49 +45,46 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
       _error = null;
     });
     try {
-      final list =
-          await ref.read(deviceRepositoryProvider).fetchMembers(widget.mac);
-      if (mounted)
+      final list = await ref
+          .read(petShareRepositoryProvider)
+          .fetchMembers(widget.petId);
+      if (mounted) {
         setState(() {
           _members = list;
           _loading = false;
         });
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _error = e.toString();
         });
+      }
     }
   }
 
   bool _sharing = false;
 
-  String get _deviceTypeName => widget.productTypeName.isNotEmpty
-      ? widget.productTypeName
-      : DeviceProductType.fromProductKey(widget.productKey).displayName;
-
-  /// 生成设备分享：push/add 拿口令 → createShare 生成链接 → 弹卡片
-  Future<void> _shareDevice() async {
+  /// 生成宠物分享：创建口令 → createShare 生成链接 → 弹卡片
+  Future<void> _sharePet() async {
     if (_sharing) return;
     setState(() => _sharing = true);
     HapticFeedback.selectionClick();
     try {
-      final repo = ref.read(deviceRepositoryProvider);
-      final order = await repo.createShareOrder(deviceId: widget.deviceId);
+      final repo = ref.read(petShareRepositoryProvider);
+      final order = await repo.createShare(petId: widget.petId);
 
       final result = await ref.read(shareRepositoryProvider).createShare(
-            type: 'device',
-            targetId: widget.deviceId,
-            title: '邀请你共同管理$_deviceTypeName「${widget.deviceName}」',
-            description: '这是一台$_deviceTypeName，打开链接添加后即可一起查看和控制。',
+            type: 'pet',
+            targetId: widget.petId.toString(),
+            title: '邀请你共同管理宠物「${widget.petName}」',
+            description: '这是一只可爱的宠物，打开链接添加后即可一起查看和管理。',
+            imageUrl: widget.petAvatar.isNotEmpty ? widget.petAvatar : null,
             payload: {
               'order': order,
-              'mac': widget.mac,
-              'deviceId': widget.deviceId,
-              'deviceName': widget.deviceName,
-              'productKey': widget.productKey,
-              'productTypeName': widget.productTypeName,
+              'petId': widget.petId,
+              'petName': widget.petName,
             },
             expireDays: 1, // 对齐口令 24h 有效期
           );
@@ -110,7 +103,8 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
     } catch (e) {
       if (mounted) {
         final msg = e.toString().replaceAll('Exception: ', '');
-        PetToast.error(context, msg.contains('[iPet]') ? msg : '生成分享失败，请重试');
+        PetToast.error(
+            context, msg.contains('[PetShare]') ? msg : '生成分享失败，请重试');
       }
     } finally {
       if (mounted) setState(() => _sharing = false);
@@ -122,16 +116,15 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => _ShareDeviceSheet(
+      builder: (_) => _SharePetSheet(
         shareUrl: shareUrl,
-        deviceName: widget.deviceName,
-        productKey: widget.productKey,
-        productTypeName: widget.productTypeName,
+        petName: widget.petName,
+        petAvatar: widget.petAvatar,
       ),
     );
   }
 
-  Future<void> _remove(DeviceMemberModel member) async {
+  Future<void> _remove(PetMemberModel member) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -168,13 +161,13 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
     HapticFeedback.mediumImpact();
 
     try {
-      await ref.read(deviceRepositoryProvider).removeMember(
-            deviceId: widget.deviceId,
+      await ref.read(petShareRepositoryProvider).removeMember(
+            petId: widget.petId,
             userId: member.userId,
           );
       if (mounted) {
         PetToast.show(context, '已移除 ${member.displayName}');
-        _load(); // 刷新列表
+        _load();
       }
     } catch (e) {
       if (mounted) PetToast.error(context, '移除失败，请重试');
@@ -206,7 +199,7 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
               ),
             ),
             Text(
-              widget.deviceName,
+              widget.petName,
               style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontSize: 11,
@@ -217,7 +210,7 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
         ),
         centerTitle: true,
         actions: [
-          // 分享（邀请）按钮 — 贴近刷新按钮
+          // 分享（邀请）按钮
           IconButton(
             icon: _sharing
                 ? SizedBox(
@@ -230,11 +223,11 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
                   )
                 : const Icon(Icons.person_add_alt_1_rounded),
             color: AppColors.primary,
-            tooltip: '分享设备',
+            tooltip: '分享宠物',
             visualDensity: VisualDensity.compact,
-            onPressed: _sharing ? null : _shareDevice,
+            onPressed: _sharing ? null : _sharePet,
           ),
-          // 刷新按钮：固定 40×40，防止 loading/idle 切换时宽度变化导致分享按鈕位移
+          // 刷新按钮
           SizedBox(
             width: 40,
             height: 40,
@@ -310,7 +303,7 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            '可通过分享功能邀请他人共同管理设备',
+            '可通过分享功能邀请他人共同管理宠物',
             style: TextStyle(
               fontFamily: AppFonts.primary,
               fontSize: 13,
@@ -340,14 +333,14 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
 
 // ── 成员卡片 ──────────────────────────────────────────────────────
 class _MemberTile extends StatelessWidget {
-  final DeviceMemberModel member;
+  final PetMemberModel member;
   final VoidCallback onRemove;
   const _MemberTile({required this.member, required this.onRemove});
 
   @override
   Widget build(BuildContext context) {
-    final bool isOwner = member.type == '1';
-    final bool isAdmin = member.type == '2';
+    final bool isOwner = member.isOwner;
+    final bool isAdmin = member.isAdmin;
 
     // 角色配色
     final Color roleColor = isOwner
@@ -515,18 +508,16 @@ class _MemberTile extends StatelessWidget {
   }
 }
 
-// ── 分享设备底部弹窗 ──────────────────────────────────────
-/// 展示生成的分享链接，支持复制 / 微信分享
-class _ShareDeviceSheet extends StatelessWidget {
+// ── 分享宠物底部弹窗 ──────────────────────────────────────
+class _SharePetSheet extends StatelessWidget {
   final String shareUrl;
-  final String deviceName;
-  final String productKey;
-  final String productTypeName;
-  const _ShareDeviceSheet({
+  final String petName;
+  final String petAvatar;
+
+  const _SharePetSheet({
     required this.shareUrl,
-    required this.deviceName,
-    required this.productKey,
-    required this.productTypeName,
+    required this.petName,
+    this.petAvatar = '',
   });
 
   @override
@@ -557,11 +548,11 @@ class _ShareDeviceSheet extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
           ),
           child:
-              Icon(Icons.ios_share_rounded, color: AppColors.primary, size: 26),
+              Icon(Icons.pets_rounded, color: AppColors.primary, size: 26),
         ),
         const SizedBox(height: 14),
         Text(
-          '分享「$deviceName」',
+          '分享「$petName」',
           style: TextStyle(
             fontFamily: AppFonts.primary,
             fontSize: 18,
@@ -571,9 +562,7 @@ class _ShareDeviceSheet extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          productTypeName.isNotEmpty
-              ? productTypeName
-              : DeviceProductType.fromProductKey(productKey).displayName,
+          '宠物分享',
           style: TextStyle(
             fontFamily: AppFonts.primary,
             fontSize: 12,
@@ -583,7 +572,7 @@ class _ShareDeviceSheet extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          '链接 24 小时内有效，对方打开即可添加设备',
+          '链接 24 小时内有效，对方打开即可添加宠物',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: AppFonts.primary,
@@ -638,10 +627,8 @@ class _ShareDeviceSheet extends StatelessWidget {
                 Navigator.pop(context);
                 await shareWechatWebPage(
                   url: shareUrl,
-                  title:
-                      '邀请你共同管理${productTypeName.isNotEmpty ? productTypeName : DeviceProductType.fromProductKey(productKey).displayName}「$deviceName」',
-                  description:
-                      '这是一台${productTypeName.isNotEmpty ? productTypeName : DeviceProductType.fromProductKey(productKey).displayName}，打开链接即可添加。',
+                  title: '邀请你共同管理宠物「$petName」',
+                  description: '这是一只可爱的宠物，打开链接即可添加。',
                   scene: WechatShareScene.session,
                 );
               },

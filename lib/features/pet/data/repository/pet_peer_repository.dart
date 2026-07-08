@@ -8,6 +8,18 @@ class PetPeerRepository {
 
   // ── 宠物信息 ──────────────────────────────────────────
 
+  /// POST /pet/info/list — 获取当前用户宠物列表
+  /// 返回所有未删除宠物，不依赖设备，按创建时间倒序
+  Future<List<PetInfoModel>> fetchPetList() async {
+    final res = await _peer.post<List<dynamic>>(
+      '/pet/info/list',
+      fromInfo: (d) => d as List<dynamic>,
+    );
+    return (res.info ?? [])
+        .map((e) => PetInfoModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   /// POST /pet/info/get — 获取宠物信息
   Future<PetInfoModel> fetchPetInfo({String? mac, String? deviceId}) async {
     final params = <String, dynamic>{};

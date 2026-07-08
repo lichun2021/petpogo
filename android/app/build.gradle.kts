@@ -38,6 +38,12 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
+        // ── ABI 分包配置（减小单个 APK 体积）────────────────────────────────────────────
+        // 只打包 arm64-v8a（现代手机）和 armeabi-v7a（老设备兼容）
+        ndk {
+            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
+        }
+
         // ── 极光推送基础配置 ──────────────────────────────────────────────────────────────
         manifestPlaceholders["JPUSH_PKGNAME"] = "com.junxin.petpogo_and"
         manifestPlaceholders["JPUSH_APPKEY"]  = "bbff354f334f7c5e340b9c38"
@@ -86,13 +92,28 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // 启用代码混淆和资源压缩
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
         debug {
             // 使用 release 签名，这样 debug 包也能调通微信 SDK（签名一致）
             // 热重载、调试功能不受影响
             signingConfig = signingConfigs.getByName("release")
+        }
+    }
+
+    // ── APK 分包配置（按 CPU 架构生成多个小 APK）────────────────────────────────────
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = true  // 同时生成一个包含所有架构的通用 APK（测试用）
         }
     }
 }
@@ -109,4 +130,11 @@ dependencies {
     implementation("cn.jiguang.sdk.plugin:vivo:6.1.0")    // VIVO/iQOO
     implementation("cn.jiguang.sdk.plugin:huawei:6.1.0")  // 华为/鸿蒙（HMS Push）
     implementation("cn.jiguang.sdk.plugin:honor:6.1.0")   // 荣耀（独立生态）
+
+    // ── Agora RTC Lite 版本（体积更小，仅保留核心音视频功能）────────────────────────
+    // 排除完整 SDK，引入 Lite 版本
+    configurations.all {
+        exclude(group = "io.agora.rtc", module = "full-sdk")
+        exclude(group = "io.agora.rtc", module = "full-rtc-basic")
+    }
 }

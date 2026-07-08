@@ -3,26 +3,21 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_avatar.dart';
+import '../../shared/widgets/pet_toast.dart';
 import '../device/data/repository/device_repository.dart';
 import '../device/data/models/device_model.dart';
 import '../device/device_list_page.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/bind_pet_sheet.dart';
+import '../pet/pet_members_page.dart';
 import '../pet_circle/controller/pet_circle_pet_controller.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ════════════════════════════════════════════════════════════
-//  宠物列表页 — 宠物依附于设备（PeerApi）
-//  从设备列表中加载每台设备绑定的宠物
+//  宠物列表页 — 使用 /pet/info/list 接口
+//  不依赖设备，显示用户所有宠物（包括未绑定设备的）
 // ════════════════════════════════════════════════════════════
-
-// ── 宠物 + 所属设备的组合模型 ────────────────────────────
-class _PetWithDevice {
-  final PetInfoModel pet;
-  final DeviceModel device;
-  const _PetWithDevice({required this.pet, required this.device});
-}
 
 class PetListPage extends ConsumerStatefulWidget {
   const PetListPage({super.key});
@@ -32,7 +27,8 @@ class PetListPage extends ConsumerStatefulWidget {
 }
 
 class _PetListPageState extends ConsumerState<PetListPage> {
-  List<_PetWithDevice> _pets = [];
+  List<PetInfoModel> _pets = [];
+  Map<String, DeviceModel> _deviceMap = {}; // deviceId -> DeviceModel
   bool _loading = true;
   String? _error;
 
@@ -48,34 +44,32 @@ class _PetListPageState extends ConsumerState<PetListPage> {
       _error = null;
     });
     try {
-      // 1. 获取设备列表
-      final devices = ref.read(deviceListProvider).devices;
       final petRepo = ref.read(petPeerRepositoryProvider);
 
-      // 2. 并发拉取每个设备的宠物
-      final results = <_PetWithDevice>[];
-      await Future.wait(devices.map((d) async {
-        try {
-          final pet = await petRepo.fetchPetInfo(deviceId: d.deviceId);
-          if (pet.petName.isNotEmpty) {
-            results.add(_PetWithDevice(pet: pet, device: d));
-          }
-        } catch (_) {
-          // 该设备未绑定宠物，跳过
-        }
-      }));
+      // 1. 获取宠物列表（新接口）
+      final pets = await petRepo.fetchPetList();
 
-      if (mounted)
+      // 2. 获取设备列表，用于显示设备名称
+      final devices = ref.read(deviceListProvider).devices;
+      final deviceMap = <String, DeviceModel>{};
+      for (final d in devices) {
+        deviceMap[d.deviceId] = d;
+      }
+
+      if (mounted) {
         setState(() {
-          _pets = results;
+          _pets = pets;
+          _deviceMap = deviceMap;
           _loading = false;
         });
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _error = e.toString();
         });
+      }
     }
   }
 
@@ -166,7 +160,13 @@ class _PetListPageState extends ConsumerState<PetListPage> {
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
         itemCount: _pets.length,
         separatorBuilder: (_, __) => SizedBox(height: 14),
-        itemBuilder: (_, i) => _PetCard(data: _pets[i], onRefresh: _refresh),
+        itemBuilder: (_, i) => _PetCard(
+          pet: _pets[i],
+          device: _pets[i].deviceId.isNotEmpty
+              ? _deviceMap[_pets[i].deviceId]
+              : null,
+          onRefresh: _refresh,
+        ),
       ),
     );
   }
@@ -181,7 +181,7 @@ class _PetListPageState extends ConsumerState<PetListPage> {
         Text('🐾', style: TextStyle(fontSize: 72)),
         SizedBox(height: 20),
         Text(
-          hasDevices ? '设备还没有绑定宠物' : '还没有绑定任何设备',
+          '还没有添加宠物',
           style: TextStyle(
               fontFamily: AppFonts.primary,
               fontSize: 18,
@@ -225,125 +225,198 @@ class _PetListPageState extends ConsumerState<PetListPage> {
 
 // ── 宠物卡片 ──────────────────────────────────────────────
 class _PetCard extends ConsumerWidget {
-  final _PetWithDevice data;
+  final PetInfoModel pet;
+  final DeviceModel? device; // 可能为null（未绑定设备）
   final VoidCallback onRefresh;
-  const _PetCard({required this.data, required this.onRefresh});
+
+  const _PetCard({
+    required this.pet,
+    this.device,
+    required this.onRefresh,
+  });
 
   void _openEdit(BuildContext context, WidgetRef ref) {
-    PetBindHelper.showEdit(
+    // 如果有设备，传递mac；否则通过petId编辑
+    if (device != null) {
+      PetBindHelper.showEdit(
+        context,
+        mac: device!.mac,
+        pet: pet,
+      ).then((saved) {
+        if (saved) {
+          ref.read(petCirclePetControllerProvider.notifier).load();
+          onRefresh();
+        }
+      });
+    } else {
+      // TODO: 未绑定设备的宠物编辑逻辑
+      // 可以使用petId直接编辑
+      PetToast.show(context, '未绑定设备的宠物暂不支持编辑');
+    }
+  }
+
+  void _openMembers(BuildContext context) {
+    if (pet.petId.isEmpty) {
+      PetToast.error(context, '宠物ID无效');
+      return;
+    }
+
+    final petIdInt = int.tryParse(pet.petId);
+    if (petIdInt == null) {
+      PetToast.error(context, '宠物ID格式错误');
+      return;
+    }
+
+    Navigator.push(
       context,
-      mac: data.device.mac,
-      pet: data.pet,
-    ).then((saved) {
-      if (saved) {
-        ref.read(petCirclePetControllerProvider.notifier).load();
-        onRefresh();
-      }
-    });
+      MaterialPageRoute(
+        builder: (_) => PetMembersPage(
+          petId: petIdInt,
+          petName: pet.petName,
+          petAvatar: pet.avatar,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceContainerLow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('删除宠物',
+            style: TextStyle(
+                fontFamily: AppFonts.primary, fontWeight: FontWeight.w800)),
+        content: Text('确定要删除「${pet.petName}」吗？删除后数据不可恢复。',
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                color: AppColors.onSurfaceVariant)),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('取消',
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    color: AppColors.onSurfaceVariant)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('删除',
+                style: TextStyle(fontFamily: AppFonts.primary)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      // 只传 petId，避免后端把设备关联一起删（与 device_detail_page 写法一致）
+      await ref.read(petPeerRepositoryProvider).deletePet(
+            petId: pet.petId.isNotEmpty ? pet.petId : null,
+          );
+      if (!context.mounted) return;
+      PetToast.success(context, '宠物已删除');
+      ref.read(petCirclePetControllerProvider.notifier).load();
+      onRefresh();
+    } catch (e) {
+      if (!context.mounted) return;
+      PetToast.error(context, '删除失败，请重试');
+    }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final pet = data.pet;
-    final device = data.device;
-
     final isMale = pet.sex == 'GG' || pet.sex == 'GG_sterilization';
     final isFemale = pet.sex == 'MM' || pet.sex == 'MM_sterilization';
-    final gLabel = isMale
-        ? '♂ 公'
-        : isFemale
-            ? '♀ 母'
-            : '';
-    final gColor = isMale ? Color(0xFF1565C0) : Color(0xFFC2185B);
-    final gBg = isMale ? Color(0xFFDCEEFF) : Color(0xFFFFDCEE);
+    final gLabel = isMale ? '♂ 公' : isFemale ? '♀ 母' : '';
+    final gColor = isMale ? const Color(0xFF1565C0) : const Color(0xFFC2185B);
+    final gBg =
+        isMale ? const Color(0xFFDCEEFF) : const Color(0xFFFFDCEE);
 
-    final isCat =
-        pet.breed.contains('猫') || pet.breed.toLowerCase().contains('cat');
-    final gradient = isCat
-        ? [Color(0xFF6EC6F5), Color(0xFF4A90D9)]
-        : [Color(0xFFFFB347), Color(0xFFE07B39)];
+    // 信息行：年龄 · 体重（用 · 分隔，没有就不显示）
+    final infoParts = <String>[
+      if (pet.age > 0) '${pet.age}岁',
+      if (pet.weight.isNotEmpty) '${pet.weight}kg',
+    ];
+    final infoText = infoParts.join(' · ');
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-            colors: gradient,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight),
-        borderRadius: BorderRadius.circular(22),
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.outlineVariant, width: 1),
         boxShadow: [
           BoxShadow(
-              color: gradient.first.withOpacity(0.35),
-              blurRadius: 20,
-              spreadRadius: -4,
-              offset: Offset(0, 6))
+            color: AppColors.cardShadow,
+            blurRadius: 12,
+            spreadRadius: -4,
+            offset: const Offset(0, 3),
+          ),
         ],
       ),
-      child: Stack(children: [
-        Positioned(
-            right: -20,
-            top: -20,
-            child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.10)))),
-        Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 14, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── 顶部：头像 + 名字/性别/品种 + 操作按钮 ──
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Row(children: [
-                  // 头像（可点击编辑）
-                  GestureDetector(
-                    onTap: () => _openEdit(context, ref),
-                    child: Stack(alignment: Alignment.bottomRight, children: [
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.2),
-                            border: Border.all(
-                                color: Colors.white.withOpacity(0.5),
-                                width: 2)),
-                        clipBehavior: Clip.antiAlias,
-                        child: PetAvatar(imageUrl: pet.avatar, size: 60),
-                      ),
-                      Container(
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: gradient.first, width: 1.5),
-                        ),
-                        child: Icon(Icons.edit_rounded,
-                            size: 11, color: gradient.first),
-                      ),
-                    ]),
+                // 头像
+                GestureDetector(
+                  onTap: () => _openEdit(context, ref),
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color: AppColors.outlineVariant, width: 1),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: PetAvatar(imageUrl: pet.avatar, size: 56),
                   ),
-                  SizedBox(width: 14),
-                  Expanded(
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                        Row(children: [
-                          Expanded(
-                              child: Text(pet.petName,
-                                  style: TextStyle(
-                                      fontFamily: AppFonts.primary,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
-                                      letterSpacing: -0.3))),
-                          if (gLabel.isNotEmpty)
+                ),
+                const SizedBox(width: 12),
+                // 名字 / 性别 / 品种
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              pet.petName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontFamily: AppFonts.primary,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.onSurface,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                          ),
+                          if (gLabel.isNotEmpty) ...[
+                            const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 9, vertical: 4),
+                                  horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                  color: gBg,
-                                  borderRadius: BorderRadius.circular(12)),
+                                color: gBg,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                               child: Text(gLabel,
                                   style: TextStyle(
                                       fontFamily: AppFonts.primary,
@@ -351,84 +424,125 @@ class _PetCard extends ConsumerWidget {
                                       fontWeight: FontWeight.w800,
                                       color: gColor)),
                             ),
-                          // 编辑按钮（右上角）
-                          SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () => _openEdit(context, ref),
-                            child: Container(
-                              padding: const EdgeInsets.all(5),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.18),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(Icons.edit_rounded,
-                                  size: 14, color: Colors.white),
-                            ),
-                          ),
-                        ]),
-                        if (pet.breed.isNotEmpty) ...[
-                          SizedBox(height: 3),
-                          Text(pet.breed,
-                              style: TextStyle(
-                                  fontFamily: AppFonts.primary,
-                                  fontSize: 12,
-                                  color: Colors.white.withOpacity(0.8))),
+                          ],
                         ],
-                      ])),
-                ]),
-                SizedBox(height: 12),
-                Wrap(spacing: 8, runSpacing: 4, children: [
-                  if (pet.age > 0) _Chip(Icons.cake_rounded, '${pet.age}岁'),
-                  if (pet.weight.isNotEmpty)
-                    _Chip(Icons.monitor_weight_outlined, '${pet.weight}kg'),
-                  if (pet.sex.isNotEmpty)
-                    _Chip(Icons.pets_rounded, pet.sexDisplay),
-                ]),
-                SizedBox(height: 10),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(20)),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.router_rounded, size: 12, color: Colors.white70),
-                    SizedBox(width: 5),
-                    Text(device.displayName,
-                        style: TextStyle(
+                      ),
+                      if (pet.breed.isNotEmpty ||
+                          pet.sexDisplay.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          [
+                            pet.breed,
+                            if (pet.sexDisplay.isNotEmpty) pet.sexDisplay,
+                          ].join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
                             fontFamily: AppFonts.primary,
-                            fontSize: 11,
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w600)),
-                  ]),
+                            fontSize: 12,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // 操作按钮：成员管理 + 编辑 + 删除
+                _IconBtn(
+                  icon: Icons.group_outlined,
+                  color: const Color(0xFF60A5FA),
+                  onTap: () => _openMembers(context),
+                ),
+                const SizedBox(width: 6),
+                _IconBtn(
+                  icon: Icons.edit_outlined,
+                  color: AppColors.primary,
+                  onTap: () => _openEdit(context, ref),
+                ),
+                const SizedBox(width: 6),
+                _IconBtn(
+                  icon: Icons.delete_outline_rounded,
+                  color: AppColors.error,
+                  onTap: () => _confirmDelete(context, ref),
                 ),
               ],
-            )),
-      ]),
+            ),
+            // ── 年龄·体重 信息行（有内容才显示）──
+            if (infoText.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.only(left: 68),
+                child: Text(
+                  infoText,
+                  style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+            // ── 底部分隔线 + 设备标签 ──
+            const SizedBox(height: 10),
+            Divider(height: 1, thickness: 1, color: AppColors.outlineVariant),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(
+                  device != null
+                      ? Icons.router_rounded
+                      : Icons.link_off_rounded,
+                  size: 13,
+                  color: device != null
+                      ? AppColors.primary
+                      : AppColors.onSurfaceVariant,
+                ),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    device?.displayName ?? '未绑定设备',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
-class _Chip extends StatelessWidget {
+/// 卡片内的小图标按钮（描边圆形，hover 态）
+class _IconBtn extends StatelessWidget {
   final IconData icon;
-  final String label;
-  const _Chip(this.icon, this.label);
+  final Color color;
+  final VoidCallback onTap;
+  const _IconBtn({required this.icon, required this.color, required this.onTap});
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 34,
+        height: 34,
         decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.22),
-            borderRadius: BorderRadius.circular(20)),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 10, color: Colors.white),
-          SizedBox(width: 4),
-          Text(label,
-              style: TextStyle(
-                  fontFamily: AppFonts.primary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white)),
-        ]),
-      );
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.22), width: 1),
+        ),
+        child: Icon(icon, size: 17, color: color),
+      ),
+    );
+  }
 }

@@ -45,6 +45,7 @@ abstract class AppRoutes {
   static String addFriendByQr(String userId) =>
       '/add-friend-qr/$userId'; // 扫码后加好友
   static String deviceDetail(String mac) => '/device/$mac'; // 设备详情（push 跳转）
+  static String petMembers(int petId) => '/pet-members/$petId'; // 宠物成员管理
   static String shareLanding({required String code, String? type}) {
     final params = {
       'code': code,
@@ -57,6 +58,7 @@ abstract class AppRoutes {
   static const scanQrTemplate = '/scan-qr/:productKey';
   static const bindSuccessTemplate = '/bind-success/:productKey';
   static const petDetailTemplate = '/pet-detail/:petId';
+  static const petMembersTemplate = '/pet-members/:petId'; // 宠物成员管理
   static const postDetailTemplate = '/post-detail/:postId';
   static const chatTemplate = '/chat/:userId'; // IM 聊天页
   static const addFriendByQrTemplate = '/add-friend-qr/:userId'; // 扫码加好友

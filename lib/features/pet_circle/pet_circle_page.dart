@@ -60,7 +60,7 @@ class _PetCirclePageState extends ConsumerState<PetCirclePage> {
     final selectedPet = _findPet(pets, circleState.selectedPetId);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF7F6),
+      backgroundColor: AppColors.surface,
       body: Column(
         children: [
           _PetCircleHeader(
@@ -90,14 +90,8 @@ class _PetCirclePageState extends ConsumerState<PetCirclePage> {
     required PetCircleState circleState,
     required PetCirclePet? selectedPet,
   }) {
-    if (petState.isLoading && petState.pets.isEmpty) {
-      return const _CenteredState(
-        icon: Icons.pets_rounded,
-        title: '正在加载宠物',
-        message: '稍等一下，正在同步你的宠物列表',
-        loading: true,
-      );
-    }
+    // 宠物列表加载中，但不阻塞内容显示（除非完全没有宠物且是首次加载）
+    // 如果已经有宠物数据，即使在刷新也继续显示内容
 
     if (petState.errorMessage != null && petState.pets.isEmpty) {
       return _CenteredState(
@@ -112,6 +106,17 @@ class _PetCirclePageState extends ConsumerState<PetCirclePage> {
     }
 
     if (petState.pets.isEmpty) {
+      // 宠物列表为空时才显示加载状态
+      if (petState.isLoading) {
+        return const _CenteredState(
+          icon: Icons.pets_rounded,
+          title: '正在加载宠物',
+          message: '稍等一下，正在同步你的宠物列表',
+          loading: true,
+        );
+      }
+
+      // 加载完成，确实没有宠物
       return _CenteredState(
         icon: Icons.pets_rounded,
         title: '还没有宠物',
@@ -123,6 +128,7 @@ class _PetCirclePageState extends ConsumerState<PetCirclePage> {
       );
     }
 
+    // 有宠物数据，显示帖子列表（独立加载状态）
     if (circleState.isLoading && circleState.posts.isEmpty) {
       return const _TimelineSkeleton();
     }
@@ -271,62 +277,58 @@ class _PetCircleHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFF2F0F5),
+      // 同色系比内容区略深一档，自然区分「宠物选择条 / 内容」两层，不显割裂
+      color: AppColors.surfaceContainerLow,
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 10,
-        bottom: 10,
+        top: MediaQuery.of(context).padding.top + 6,
+        bottom: 8,
       ),
       child: SizedBox(
         height: 92,
-        child: loading
+        child: pets.isEmpty
             ? Center(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.primary.withValues(alpha: 0.6),
+                    if (loading) ...[
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary.withValues(alpha: 0.6),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '正在加载宠物...',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.onSurface.withValues(alpha: 0.5),
+                      const SizedBox(width: 8),
+                      Text(
+                        '正在加载宠物...',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.onSurface.withValues(alpha: 0.5),
+                        ),
                       ),
-                    ),
+                    ] else ...[
+                      Icon(
+                        errorMessage == null
+                            ? Icons.pets_rounded
+                            : Icons.cloud_off_rounded,
+                        size: 15,
+                        color: AppColors.onSurface.withValues(alpha: 0.35),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        errorMessage == null ? '暂无宠物，绑定设备后显示' : '宠物加载失败，下拉重试',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.onSurface.withValues(alpha: 0.45),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               )
-            : pets.isEmpty
-                ? Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          errorMessage == null
-                              ? Icons.pets_rounded
-                              : Icons.cloud_off_rounded,
-                          size: 15,
-                          color: AppColors.onSurface.withValues(alpha: 0.35),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          errorMessage == null ? '暂无宠物，绑定设备后显示' : '宠物加载失败，下拉重试',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.onSurface.withValues(alpha: 0.45),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.separated(
-                    scrollDirection: Axis.horizontal,
+            : ListView.separated(
+                scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     itemCount: pets.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 18),
@@ -365,6 +367,7 @@ class _PetAvatarTab extends StatelessWidget {
       child: SizedBox(
         width: 64,
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedContainer(

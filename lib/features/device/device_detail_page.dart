@@ -1023,6 +1023,24 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                   onPressed: () async {
                     Navigator.pop(ctx); // 关 dialog（用 dialog 自己的 ctx）
                     try {
+                      // 1. 先解绑宠物（如果有）
+                      try {
+                        // 先查询宠物信息获取 deviceId
+                        final pet = await ref
+                            .read(petPeerRepositoryProvider)
+                            .fetchPetInfo(mac: widget.mac);
+                        if (pet.petId.isNotEmpty) {
+                          await ref
+                              .read(petPeerRepositoryProvider)
+                              .deletePet(petId: pet.petId);
+                          debugPrint('[设备解绑] 宠物已解绑: ${pet.petName}');
+                        }
+                      } catch (e) {
+                        // 如果宠物不存在或已解绑，忽略错误继续解绑设备
+                        debugPrint('[设备解绑] 宠物解绑跳过: $e');
+                      }
+
+                      // 2. 再解绑设备
                       await ref
                           .read(deviceRepositoryProvider)
                           .unbindDevice(widget.mac);
