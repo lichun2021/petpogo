@@ -1,8 +1,10 @@
 /// 购买计划页（Free / Pro / ProMax）
 ///
 /// 后端接口（已对齐）：
-///   GET  /sdkapi/plan/list → { list: [{ id, plan_type, name, price, duration_days, weekly_points_grant, permanent_points_grant, description }] }
-///   POST /sdkapi/plan/order { planId } → { orderId, planId, amount, status }
+///   GET  /sdkapi/plan/list → { list: [{ id, plan_type, name, price_monthly,
+///          price_yearly, grant_period_days, period_grant_amount,
+///          period_grant_type_code, weekly_makeup_quota, description }] }
+///   POST /sdkapi/plan/order { planId, period } → { orderId, planId, period, amount, status }
 ///   plan_type: 0=Free 1=Pro 2=ProMax
 ///   status: 0=待支付 1=已支付 2=已取消
 ///
@@ -27,9 +29,39 @@ class MembershipPage extends ConsumerStatefulWidget {
 
 class _MembershipPageState extends ConsumerState<MembershipPage> {
   String? _selectedPlanId;
+  String _billingPeriod = 'monthly';
   bool _ordering = false;
   bool _disposed = false;
   String _orderStatusText = ''; // 订单轮询时的提示文案
+
+  int _asInt(dynamic value) =>
+      value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+
+  int _priceCents(Map<String, dynamic> plan, String period) {
+    final value = plan[period == 'yearly' ? 'price_yearly' : 'price_monthly'];
+    final amount =
+        value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
+    return (amount * 100).round();
+  }
+
+  String _formatMoney(int cents) {
+    if (cents % 100 == 0) return (cents ~/ 100).toString();
+    return (cents / 100).toStringAsFixed(2);
+  }
+
+  int _planType(Map<String, dynamic> plan) => _asInt(plan['plan_type']);
+
+  String _planId(Map<String, dynamic> plan) => plan['id']?.toString() ?? '';
+
+  bool _isCurrentPlan(Map<String, dynamic> plan) {
+    final level = ref.read(authControllerProvider).user?.vipLevel;
+    final currentType = level == 'pro_max'
+        ? 2
+        : level == 'pro'
+            ? 1
+            : 0;
+    return _planType(plan) == currentType;
+  }
 
   @override
   void dispose() {
@@ -56,11 +88,11 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
       });
       // 默认选中 Pro（plan_type=1）
       final pro = _plans.firstWhere(
-        (p) => p['plan_type'] == 1,
+        (p) => _planType(p) == 1,
         orElse: () => _plans.isEmpty ? <String, dynamic>{} : _plans.first,
       );
       if (pro.isNotEmpty) {
-        _selectedPlanId = pro['id'] as String;
+        setState(() => _selectedPlanId = _planId(pro));
       }
     } catch (e) {
       if (!mounted) return;
@@ -68,18 +100,13 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
       setState(() {
         _plans = _mockPlans()['list'].cast<Map<String, dynamic>>();
         _plansLoading = false;
+        final pro = _plans.firstWhere((p) => _planType(p) == 1,
+            orElse: () => _plans.first);
+        _selectedPlanId = _planId(pro);
       });
-      final pro = _plans.firstWhere((p) => p['plan_type'] == 1,
-          orElse: () => _plans.first);
-      _selectedPlanId = pro['id'] as String;
+
       debugPrint('[会员] plan/list 失败，回退 mock: $e');
     }
-  }
-
-  String get _currentPlanId {
-    final user = ref.read(authControllerProvider).user;
-    // TODO: 后端如果提供「当前订阅计划」接口，在此读取；目前默认 free
-    return user?.vipLevel == 'pro' ? '2' : '1';
   }
 
   @override
@@ -116,73 +143,85 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                        child: _BillingPeriodSelector(
+                          period: _billingPeriod,
+                          onChanged: (period) =>
+                              setState(() => _billingPeriod = period),
+                        ),
+                      ),
                       // ── 套餐选择 ──
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
                         child: Text('选择套餐',
                             style: TextStyle(
-                          fontFamily: AppFonts.primary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.onSurface)),
-                ),
-                ..._plans.map((p) => Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-                      child: _PlanCard(
-                        plan: p,
-                        selected: _selectedPlanId == p['id'],
-                        isCurrent: _currentPlanId == p['id'],
-                        onTap: () =>
-                            setState(() => _selectedPlanId = p['id'] as String),
+                                fontFamily: AppFonts.primary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.onSurface)),
                       ),
-                    )),
-                const SizedBox(height: 20),
-                // ── 积分赠送对比 ──
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                  child: Text('积分赠送',
-                      style: TextStyle(
-                          fontFamily: AppFonts.primary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.onSurface)),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _GrantTable(plans: _plans),
-                ),
-                const SizedBox(height: 16),
-                // ── 说明 ──
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceContainerHighest
-                        .withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.info_outline_rounded,
-                          size: 16, color: AppColors.onSurfaceVariant),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          '购买后积分自动发放到账。周积分每周一重置，永久积分不过期。\n订单提交后需后台确认支付后生效。',
-                          style: TextStyle(
-                              fontFamily: AppFonts.primary,
-                              fontSize: 11,
-                              color: AppColors.onSurfaceVariant,
-                              height: 1.6),
+                      ..._plans.map((p) => Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+                            child: _PlanCard(
+                              plan: p,
+                              period: _billingPeriod,
+                              selected: _selectedPlanId == _planId(p),
+                              isCurrent: _isCurrentPlan(p),
+                              onTap: () =>
+                                  setState(() => _selectedPlanId = _planId(p)),
+                            ),
+                          )),
+                      const SizedBox(height: 20),
+                      // ── 积分赠送对比 ──
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                        child: Text('计划详情',
+                            style: TextStyle(
+                                fontFamily: AppFonts.primary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.onSurface)),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: _GrantTable(
+                          plans: _plans,
+                          period: _billingPeriod,
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      // ── 说明 ──
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainerHighest
+                              .withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.info_outline_rounded,
+                                size: 16, color: AppColors.onSurfaceVariant),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Free 计划赠送积分 7 天有效；Pro 与 ProMax 计划赠送积分永久有效。\n积分按计划周期自动发放，订单提交后需后台确认支付后生效。',
+                                style: TextStyle(
+                                    fontFamily: AppFonts.primary,
+                                    fontSize: 11,
+                                    color: AppColors.onSurfaceVariant,
+                                    height: 1.6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 100),
                     ],
                   ),
-                ),
-                const SizedBox(height: 100),
-              ],
-            ),
           ),
         ],
       ),
@@ -197,9 +236,9 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
       (p) => p['id'] == _selectedPlanId,
       orElse: () => _plans.first,
     );
-    final planType = selected['plan_type'] as int;
-    final price = (selected['price'] as num).toDouble();
-    final isCurrent = _currentPlanId == selected['id'];
+    final planType = _planType(selected);
+    final priceCents = _priceCents(selected, _billingPeriod);
+    final isCurrent = _isCurrentPlan(selected);
     final isFree = planType == 0;
 
     return SafeArea(
@@ -218,13 +257,13 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('¥$price',
+                  Text('¥${_formatMoney(priceCents)}',
                       style: TextStyle(
                           fontFamily: AppFonts.primary,
                           fontSize: 24,
                           fontWeight: FontWeight.w900,
                           color: AppColors.primary)),
-                  Text('${selected['duration_days'] ?? 30} 天',
+                  Text(_billingPeriod == 'yearly' ? '年付' : '月付',
                       style: TextStyle(
                           fontFamily: AppFonts.primary,
                           fontSize: 11,
@@ -237,9 +276,8 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
               child: SizedBox(
                 height: 52,
                 child: FilledButton(
-                  onPressed: (isCurrent || isFree || _ordering)
-                      ? null
-                      : _onOrder,
+                  onPressed:
+                      (isCurrent || isFree || _ordering) ? null : _onOrder,
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     disabledBackgroundColor:
@@ -305,8 +343,11 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
     HapticFeedback.mediumImpact();
     try {
       // 1. 创建订单
-      final order =
-          await ref.read(pointsRepositoryProvider).createOrder(planId: planId);
+      final selectedPeriod = _billingPeriod;
+      final order = await ref.read(pointsRepositoryProvider).createOrder(
+            planId: planId,
+            period: selectedPeriod,
+          );
       if (!mounted) return;
       final orderId = order['orderId']?.toString() ?? '';
       if (orderId.isEmpty) {
@@ -373,28 +414,146 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
   }
 }
 
+class _BillingPeriodSelector extends StatelessWidget {
+  final String period;
+  final ValueChanged<String> onChanged;
+  const _BillingPeriodSelector({
+    required this.period,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerHighest.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          _BillingPeriodOption(
+            label: '月付',
+            selected: period == 'monthly',
+            onTap: () => onChanged('monthly'),
+          ),
+          _BillingPeriodOption(
+            label: '年付',
+            badge: '更优惠',
+            selected: period == 'yearly',
+            onTap: () => onChanged('yearly'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BillingPeriodOption extends StatelessWidget {
+  final String label;
+  final String? badge;
+  final bool selected;
+  final VoidCallback onTap;
+  const _BillingPeriodOption({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.badge,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Material(
+        color: selected ? AppColors.surface : Colors.transparent,
+        borderRadius: BorderRadius.circular(11),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(11),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 9),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(label,
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: selected
+                            ? AppColors.primary
+                            : AppColors.onSurfaceVariant)),
+                if (badge != null) ...[
+                  const SizedBox(width: 5),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFB8860B).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Text(badge!,
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFFB8860B))),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ── 套餐卡片 ──────────────────────────────────────────────
 class _PlanCard extends StatelessWidget {
   final Map<String, dynamic> plan;
   final bool selected;
   final bool isCurrent;
+  final String period;
   final VoidCallback onTap;
   const _PlanCard({
     required this.plan,
     required this.selected,
     required this.isCurrent,
+    required this.period,
     required this.onTap,
   });
 
+  int _asInt(dynamic value) =>
+      value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+
+  int _priceCents(String key) {
+    final value = plan[key];
+    final amount =
+        value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
+    return (amount * 100).round();
+  }
+
+  String _money(int cents) {
+    if (cents % 100 == 0) return (cents ~/ 100).toString();
+    return (cents / 100).toStringAsFixed(2);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final planType = plan['plan_type'] as int; // 0/1/2
-    final name = plan['name'] as String;
-    final price = (plan['price'] as num).toDouble();
-    final duration = plan['duration_days'] as int?;
-    final weekly = plan['weekly_points_grant'] as int? ?? 0;
-    final permanent = plan['permanent_points_grant'] as int? ?? 0;
-    final desc = plan['description'] as String? ?? '';
+    final planType = _asInt(plan['plan_type']);
+    final name = plan['name']?.toString() ?? '';
+    final monthlyCents = _priceCents('price_monthly');
+    final yearlyCents = _priceCents('price_yearly');
+    final priceCents = period == 'yearly' ? yearlyCents : monthlyCents;
+    final grantPeriod = _asInt(plan['grant_period_days']);
+    final grantAmount = _asInt(plan['period_grant_amount']);
+    final makeupQuota = _asInt(plan['weekly_makeup_quota']);
+    final grantType = plan['period_grant_type_code']?.toString() ?? '';
+    final desc = plan['description']?.toString() ?? '';
+    final pointsValidity = planType == 0 ? '赠送积分 7 天有效' : '赠送积分永久有效';
+    final yearlySaving = monthlyCents * 12 - yearlyCents;
+    final isYearly = period == 'yearly' && priceCents > 0;
 
     final accent = planType == 2
         ? const Color(0xFFB8860B) // ProMax 金
@@ -498,13 +657,26 @@ class _PlanCard extends StatelessWidget {
               ],
               const Spacer(),
               // 价格
-              if (price > 0)
-                Text('¥$price',
-                    style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: accent))
+              if (priceCents > 0)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('¥${_money(priceCents)}/${isYearly ? '年' : '月'}',
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: accent)),
+                    if (isYearly) ...[
+                      const SizedBox(height: 2),
+                      Text('折合 ¥${_money((yearlyCents / 12).round())}/月',
+                          style: TextStyle(
+                              fontFamily: AppFonts.primary,
+                              fontSize: 10,
+                              color: AppColors.onSurfaceVariant)),
+                    ],
+                  ],
+                )
               else
                 Text('免费',
                     style: TextStyle(
@@ -533,18 +705,30 @@ class _PlanCard extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 4,
                 children: [
-                  if (weekly > 0)
+                  if (grantAmount > 0) ...[
                     _GrantChip(
-                        icon: Icons.date_range_rounded,
-                        text: '每周 $weekly 积分'),
-                  if (permanent > 0)
+                      icon: grantType == 'permanent'
+                          ? Icons.all_inclusive_rounded
+                          : Icons.card_giftcard_rounded,
+                      text: '每 $grantPeriod 天赠送 $grantAmount 积分',
+                    ),
                     _GrantChip(
-                        icon: Icons.all_inclusive_rounded,
-                        text: '永久 $permanent 积分'),
-                  if (duration != null && price > 0)
+                      icon: planType == 0
+                          ? Icons.schedule_rounded
+                          : Icons.all_inclusive_rounded,
+                      text: pointsValidity,
+                    ),
+                  ],
+                  if (makeupQuota > 0)
                     _GrantChip(
-                        icon: Icons.calendar_month_rounded,
-                        text: '$duration 天'),
+                      icon: Icons.history_rounded,
+                      text: '每周可补签 $makeupQuota 次',
+                    ),
+                  if (isYearly && yearlySaving > 0)
+                    _GrantChip(
+                      icon: Icons.savings_rounded,
+                      text: '年付省 ¥${_money(yearlySaving)}',
+                    ),
                 ],
               ),
             ),
@@ -580,7 +764,23 @@ class _GrantChip extends StatelessWidget {
 // ── 积分赠送对比表 ────────────────────────────────────────
 class _GrantTable extends StatelessWidget {
   final List<Map<String, dynamic>> plans;
-  const _GrantTable({required this.plans});
+  final String period;
+  const _GrantTable({required this.plans, required this.period});
+
+  int _asInt(dynamic value) =>
+      value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+
+  int _priceCents(Map<String, dynamic> plan) {
+    final value = plan[period == 'yearly' ? 'price_yearly' : 'price_monthly'];
+    final amount =
+        value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
+    return (amount * 100).round();
+  }
+
+  String _money(int cents) {
+    if (cents % 100 == 0) return (cents ~/ 100).toString();
+    return (cents / 100).toStringAsFixed(2);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -623,29 +823,34 @@ class _GrantTable extends StatelessWidget {
           ),
           _Row(
               label: '价格',
+              values: plans.map((p) {
+                final cents = _priceCents(p);
+                return cents == 0
+                    ? '免费'
+                    : '¥${_money(cents)}/${period == 'yearly' ? '年' : '月'}';
+              }).toList()),
+          _Row(
+              label: '积分周期',
               values: plans
-                  .map((p) => (p['price'] as num).toDouble() == 0
-                      ? '免费'
-                      : '¥${p['price']}')
+                  .map((p) => '每${_asInt(p['grant_period_days'])}天')
                   .toList()),
           _Row(
-              label: '周期',
-              values: plans
-                  .map((p) => (p['duration_days'] as int?) == null
-                      ? '永久'
-                      : '${p['duration_days']}天')
-                  .toList()),
-          _Row(
-              label: '每周积分',
+              label: '赠送积分',
               highlight: true,
               values: plans
-                  .map((p) => '${p['weekly_points_grant'] ?? 0}')
+                  .map((p) => '${_asInt(p['period_grant_amount'])}')
                   .toList()),
           _Row(
-              label: '永久积分',
+              label: '积分有效期',
               highlight: true,
               values: plans
-                  .map((p) => '${p['permanent_points_grant'] ?? 0}')
+                  .map((p) => _asInt(p['plan_type']) == 0 ? '7天' : '永久')
+                  .toList()),
+          _Row(
+              label: '每周补签',
+              highlight: true,
+              values: plans
+                  .map((p) => '${_asInt(p['weekly_makeup_quota'])}次')
                   .toList(),
               isLast: true),
         ],
@@ -715,48 +920,41 @@ Map<String, dynamic> _mockPlans() {
         'id': '1',
         'plan_type': 0,
         'name': 'Free',
-        'price': 0,
+        'price_monthly': 0,
+        'price_yearly': 0,
         'duration_days': null,
-        'weekly_points_grant': 70,
-        'permanent_points_grant': 0,
+        'grant_period_days': 7,
+        'period_grant_amount': 70,
+        'period_grant_type_code': 'plan_free',
+        'weekly_makeup_quota': 1,
         'description': '基础功能，适合体验',
       },
       {
         'id': '2',
         'plan_type': 1,
         'name': 'Pro',
-        'price': 30,
+        'price_monthly': 30,
+        'price_yearly': 299,
         'duration_days': 30,
-        'weekly_points_grant': 700,
-        'permanent_points_grant': 100,
+        'grant_period_days': 30,
+        'period_grant_amount': 700,
+        'period_grant_type_code': 'plan_pro',
+        'weekly_makeup_quota': 3,
         'description': '更多积分额度，畅享 AI 分析',
       },
       {
         'id': '3',
         'plan_type': 2,
         'name': 'ProMax',
-        'price': 98,
+        'price_monthly': 98,
+        'price_yearly': 899,
         'duration_days': 30,
-        'weekly_points_grant': 2000,
-        'permanent_points_grant': 300,
+        'grant_period_days': 30,
+        'period_grant_amount': 2000,
+        'period_grant_type_code': 'plan_promax',
+        'weekly_makeup_quota': 5,
         'description': '最高积分额度 + 永久积分赠送',
       },
     ],
   };
-}
-
-Map<String, dynamic> _mockOrderResult() {
-  return {
-    'orderId': '1001',
-    'planId': '2',
-    'amount': 30,
-    'status': 0, // 0=待支付
-  };
-}
-
-/// mock 轮询订单状态：第 3 次轮询时返回已支付（模拟后台确认）
-/// 后端接通后删除此方法，直接读接口返回的 status
-int _mockPollStatus(String orderId, int attempt) {
-  if (attempt >= 2) return 1; // 第 3 次轮询（attempt=2）模拟已支付
-  return 0; // 待支付
 }

@@ -13,6 +13,7 @@ import '../../core/providers/font_provider.dart';
 import '../../core/providers/color_scheme_provider.dart';
 import '../../shared/theme/color_schemes.dart';
 import '../../shared/widgets/pet_toast.dart';
+import '../../shared/widgets/doc_reader_page.dart';
 import '../../app.dart' show AppL10nX;
 import '../auth/controller/auth_controller.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
@@ -211,8 +212,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
             _SettingsTile(
               icon: Icons.article_rounded,
-              label: l10n.settingsTerms,
-              onTap: () {},
+              label: '服务条款',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DocReaderPage(
+                    title: '服务条款',
+                    assetPath: 'assets/docs/terms.html',
+                  ),
+                ),
+              ),
+            ),
+            _SettingsTile(
+              icon: Icons.privacy_tip_outlined,
+              label: '隐私政策',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DocReaderPage(
+                    title: '隐私政策',
+                    assetPath: 'assets/docs/privacy.html',
+                  ),
+                ),
+              ),
             ),
             _SettingsTile(
               icon: Icons.feedback_outlined,
@@ -316,10 +338,10 @@ class _AppearanceGroup extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentFont    = ref.watch(fontFamilyProvider);
-    final currentScheme  = ref.watch(colorSchemeProvider);
-    final fontNotifier    = ref.read(fontFamilyProvider.notifier);
-    final schemeNotifier  = ref.read(colorSchemeProvider.notifier);
+    final currentFont = ref.watch(fontFamilyProvider);
+    final currentScheme = ref.watch(colorSchemeProvider);
+    final fontNotifier = ref.read(fontFamilyProvider.notifier);
+    final schemeNotifier = ref.read(colorSchemeProvider.notifier);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -329,9 +351,7 @@ class _AppearanceGroup extends ConsumerWidget {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-                color: AppColors.cardShadow,
-                blurRadius: 10,
-                spreadRadius: -4),
+                color: AppColors.cardShadow, blurRadius: 10, spreadRadius: -4),
           ],
         ),
         child: Column(
@@ -341,42 +361,56 @@ class _AppearanceGroup extends ConsumerWidget {
               icon: Icons.text_fields_rounded,
               label: '字体',
               value: currentFont,
-              items: kFontOptions.map<DropdownMenuItem<String>>((o) => DropdownMenuItem<String>(
-                value: o.family,
-                child: Text(o.name,
-                    style: TextStyle(
-                        fontFamily: o.family,
-                        fontFamilyFallback: const [],
-                        fontSize: 14,
-                        color: AppColors.onSurface)),
-              )).toList(),
-              onChanged: (v) { if (v != null) fontNotifier.setFont(v); },
+              items: kFontOptions
+                  .map<DropdownMenuItem<String>>(
+                      (o) => DropdownMenuItem<String>(
+                            value: o.family,
+                            child: Text(o.name,
+                                style: TextStyle(
+                                    fontFamily: o.family,
+                                    fontFamilyFallback: const [],
+                                    fontSize: 14,
+                                    color: AppColors.onSurface)),
+                          ))
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) fontNotifier.setFont(v);
+              },
             ),
-            Divider(height: 1, indent: 52,
+            Divider(
+                height: 1,
+                indent: 52,
                 color: AppColors.outlineVariant.withOpacity(0.2)),
             // ―― 配色 ――
             _DropdownRow(
               icon: Icons.palette_outlined,
               label: '配色',
               value: currentScheme,
-              items: kColorSchemes.map<DropdownMenuItem<String>>((s) => DropdownMenuItem<String>(
-                value: s.key,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(s.emoji, style: TextStyle(fontSize: 16)),
-                    SizedBox(width: 6),
-                    Text(s.name,
-                        style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
-                            fontSize: 14,
-                            color: AppColors.onSurface)),
-                  ],
-                ),
-              )).toList(),
-              onChanged: (v) { if (v != null) schemeNotifier.setScheme(v); },
+              items: kColorSchemes
+                  .map<DropdownMenuItem<String>>(
+                      (s) => DropdownMenuItem<String>(
+                            value: s.key,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(s.emoji, style: TextStyle(fontSize: 16)),
+                                SizedBox(width: 6),
+                                Text(s.name,
+                                    style: TextStyle(
+                                        fontFamily: 'Plus Jakarta Sans',
+                                        fontSize: 14,
+                                        color: AppColors.onSurface)),
+                              ],
+                            ),
+                          ))
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) schemeNotifier.setScheme(v);
+              },
             ),
-            Divider(height: 1, indent: 52,
+            Divider(
+                height: 1,
+                indent: 52,
                 color: AppColors.outlineVariant.withOpacity(0.2)),
             // ―― 录像质量 ――
             // _DropdownRow(
@@ -435,7 +469,8 @@ class _DropdownRow<T> extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 32, height: 32,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               color: AppColors.primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
@@ -469,7 +504,6 @@ class _DropdownRow<T> extends StatelessWidget {
     );
   }
 }
-
 
 class _PasswordSheet extends ConsumerStatefulWidget {
   final WidgetRef ref;
@@ -522,8 +556,7 @@ class _PasswordSheetState extends ConsumerState<_PasswordSheet> {
         final messenger = ScaffoldMessenger.of(context);
         Navigator.pop(context);
         messenger.showSnackBar(
-          SnackBar(
-              content: Text('密码已更新'), behavior: SnackBarBehavior.floating),
+          SnackBar(content: Text('密码已更新'), behavior: SnackBarBehavior.floating),
         );
       },
       failure: (err) {
@@ -917,7 +950,8 @@ class _FeedbackSheetState extends ConsumerState<_FeedbackSheet> {
         children: [
           Center(
             child: Container(
-              width: 36, height: 4,
+              width: 36,
+              height: 4,
               decoration: BoxDecoration(
                 color: AppColors.outline.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
@@ -929,14 +963,18 @@ class _FeedbackSheetState extends ConsumerState<_FeedbackSheet> {
             Icon(Icons.feedback_outlined, color: AppColors.primary, size: 22),
             SizedBox(width: 8),
             Text('意见反馈',
-                style: TextStyle(fontFamily: AppFonts.primary,
-                    fontSize: 18, fontWeight: FontWeight.w800,
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
                     color: AppColors.onSurface)),
           ]),
           SizedBox(height: 20),
           Text('反馈类型',
-              style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 13, fontWeight: FontWeight.w700,
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.onSurfaceVariant)),
           SizedBox(height: 10),
           Row(
@@ -965,7 +1003,8 @@ class _FeedbackSheetState extends ConsumerState<_FeedbackSheet> {
                         style: TextStyle(
                           fontFamily: AppFonts.primary,
                           fontSize: 13,
-                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                          fontWeight:
+                              selected ? FontWeight.w700 : FontWeight.w500,
                           color: selected ? color : AppColors.onSurfaceVariant,
                         )),
                   ),
@@ -975,8 +1014,10 @@ class _FeedbackSheetState extends ConsumerState<_FeedbackSheet> {
           ),
           SizedBox(height: 18),
           Text('反馈内容',
-              style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 13, fontWeight: FontWeight.w700,
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.onSurfaceVariant)),
           SizedBox(height: 8),
           Container(
@@ -988,19 +1029,25 @@ class _FeedbackSheetState extends ConsumerState<_FeedbackSheet> {
               controller: _contentCtrl,
               maxLines: 4,
               onChanged: (_) => setState(() {}),
-              style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 14, color: AppColors.onSurface),
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 14,
+                  color: AppColors.onSurface),
               decoration: InputDecoration(
                 hintText: '请输入您的建议或反馈（1 ~ 50 字）',
-                hintStyle: TextStyle(fontFamily: AppFonts.primary,
-                    fontSize: 13, color: AppColors.onSurfaceVariant),
+                hintStyle: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 13,
+                    color: AppColors.onSurfaceVariant),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.all(14),
                 suffix: Text('$charCount/50',
                     style: TextStyle(
                       fontFamily: AppFonts.primary,
                       fontSize: 11,
-                      color: nearLimit ? AppColors.error : AppColors.onSurfaceVariant,
+                      color: nearLimit
+                          ? AppColors.error
+                          : AppColors.onSurfaceVariant,
                     )),
               ),
             ),

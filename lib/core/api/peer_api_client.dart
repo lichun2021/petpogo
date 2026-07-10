@@ -177,13 +177,33 @@ Map<String, dynamic> _decodeResponseMap(dynamic data, String path) {
   );
 }
 
+/// debugPrint 默认截断 800 字符，用此函数分段打印长内容保证完整显示
+void _logLong(String msg, {int chunkSize = 500}) {
+  if (msg.length <= chunkSize) {
+    debugPrint(msg);
+    return;
+  }
+  var offset = 0;
+  var first = true;
+  while (offset < msg.length) {
+    final chunk = msg.substring(offset, (offset + chunkSize).clamp(0, msg.length));
+    if (first) {
+      debugPrint(chunk);
+      first = false;
+    } else {
+      debugPrint('│  $chunk');
+    }
+    offset += chunkSize;
+  }
+}
+
 class _PeerLogInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     debugPrint('\n┌─── [PeerAPI 请求] ─────────────────────────────');
     debugPrint('│ ${options.method} ${options.uri}');
     debugPrint('│ Content-Type: ${options.headers['Content-Type']}');
-    debugPrint('│ Body: ${_redactForLog(options.data)}');
+    _logLong('│ Body: ${_redactForLog(options.data)}');
     debugPrint('└───────────────────────────────────────────────');
     handler.next(options);
   }
@@ -194,7 +214,7 @@ class _PeerLogInterceptor extends Interceptor {
     debugPrint(
         '│ ${response.requestOptions.method} ${response.requestOptions.path}');
     debugPrint('│ ${response.statusCode} ${response.statusMessage ?? ''}');
-    debugPrint('│ Body: ${_redactForLog(response.data)}');
+    _logLong('│ Body: ${_redactForLog(response.data)}');
     debugPrint('└───────────────────────────────────────────────');
     handler.next(response);
   }
@@ -208,12 +228,12 @@ class _PeerLogInterceptor extends Interceptor {
     debugPrint('│ 类型: ${err.type}');
     debugPrint('│ 状态码: ${res?.statusCode} ${res?.statusMessage ?? ''}');
     debugPrint('│ 请求头: ${_redactForLog(req.headers)}');
-    debugPrint('│ 请求体: ${_redactForLog(req.data)}');
+    _logLong('│ 请求体: ${_redactForLog(req.data)}');
     debugPrint(
         '│ 允许的方法(Allow): ${res?.headers.map['allow'] ?? res?.headers.map['Allow']}');
     debugPrint('│ 响应头: ${res?.headers.map}');
-    debugPrint('│ 响应体: ${_redactForLog(res?.data)}');
-    debugPrint('│ message: ${err.message}');
+    _logLong('│ 响应体: ${_redactForLog(res?.data)}');
+    _logLong('│ message: ${err.message}');
     debugPrint('└───────────────────────────────────────────────');
     handler.next(err);
   }

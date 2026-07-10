@@ -7,7 +7,7 @@
 ///
 ///  用法（两种模式自动判断）：
 ///    // ① 本地 asset
-///    DocReaderPage(title: '隐私政策', src: 'assets/docs/隐私政策.html')
+///    DocReaderPage(title: '隐私政策', src: 'assets/docs/privacy.html')
 ///
 ///    // ② 远程网页
 ///    DocReaderPage(title: '帮助中心', src: 'https://example.com/help')
@@ -25,7 +25,7 @@ class DocReaderPage extends StatefulWidget {
   final String title;
 
   /// 数据来源：
-  ///   - asset 路径：'assets/docs/隐私政策.html'（不以 http 开头）
+  ///   - asset 路径：'assets/docs/privacy.html'（不以 http 开头）
   ///   - 网页 URL ：'https://example.com/help'（以 http 开头）
   final String src;
 
@@ -103,9 +103,17 @@ class _DocReaderPageState extends State<DocReaderPage> {
 $body
 </div>
 ''';
-      if (mounted) setState(() { _htmlContent = styled; _assetLoading = false; });
+      if (mounted)
+        setState(() {
+          _htmlContent = styled;
+          _assetLoading = false;
+        });
     } catch (e) {
-      if (mounted) setState(() { _assetError = '文档加载失败：$e'; _assetLoading = false; });
+      if (mounted)
+        setState(() {
+          _assetError = '文档加载失败：$e';
+          _assetLoading = false;
+        });
     }
   }
 
@@ -186,7 +194,8 @@ $body
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
+              Icon(Icons.error_outline_rounded,
+                  color: AppColors.error, size: 48),
               const SizedBox(height: 12),
               Text(_assetError!,
                   textAlign: TextAlign.center,
@@ -198,7 +207,10 @@ $body
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () {
-                  setState(() { _assetLoading = true; _assetError = null; });
+                  setState(() {
+                    _assetLoading = true;
+                    _assetError = null;
+                  });
                   _loadAsset();
                 },
                 child: const Text('重试'),
@@ -262,9 +274,12 @@ $body
 
   /// Color → CSS hex（flutter_widget_from_html 需要字符串）
   String _hex(Color c) {
-    final r = (c.r * 255).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
-    final g = (c.g * 255).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
-    final b = (c.b * 255).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+    final r =
+        (c.r * 255).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+    final g =
+        (c.g * 255).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+    final b =
+        (c.b * 255).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
     return '#$r$g$b';
   }
 }

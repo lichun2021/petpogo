@@ -14,6 +14,7 @@ import '../pet/controller/pet_controller.dart';
 import '../pet/pet_list_page.dart';
 import '../music/pet_music_page.dart';
 import 'data/user_stats_provider.dart';
+import 'data/points_repository.dart';
 import '../../core/router/app_routes.dart';
 import '../../core/api/api_client.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
@@ -29,6 +30,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   bool _loaded = false;
   bool _uploadingAvatar = false;
   bool _showAllFeatures = false;
+  Map<String, dynamic>? _pointsBalance;
+
+  int _asInt(dynamic value) =>
+      value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+
+  Future<void> _loadPointsBalance() async {
+    try {
+      final balance = await ref.read(pointsRepositoryProvider).fetchBalance();
+      if (!mounted) return;
+      setState(() => _pointsBalance = balance);
+    } catch (e) {
+      debugPrint('[积分] 我的页面余额加载失败: $e');
+    }
+  }
 
   // ── 昵称编辑 ──
   void _showNicknameSheet(BuildContext context, WidgetRef ref) {
@@ -40,9 +55,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       backgroundColor: AppColors.surfaceContainerLowest,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (ctx) => _NicknameInlineSheet(ctrl: ctrl, ref: ref, onSaved: () {
-        ref.read(authControllerProvider.notifier).refreshUser();
-      }),
+      builder: (ctx) => _NicknameInlineSheet(
+          ctrl: ctrl,
+          ref: ref,
+          onSaved: () {
+            ref.read(authControllerProvider.notifier).refreshUser();
+          }),
     );
   }
 
@@ -56,16 +74,36 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     try {
       final repo = ref.read(postRepositoryProvider);
       final sign = await repo.getOssSign(fileType: 'image', folder: 'avatars');
-      await repo.uploadToOss(uploadUrl: sign.uploadUrl, file: file, contentType: 'image/jpeg');
-      final ok = await ref.read(authControllerProvider.notifier).updateAvatar(sign.cdnUrl ?? '');
-      if (mounted) {
-        PetToast.show(context, ok ? '头像更新成功 🎉' : '头像更新失败，请重试');
-      }
+      await repo.uploadToOss(
+          uploadUrl: sign.uploadUrl, file: file, contentType: 'image/jpeg');
+      final ok = await ref
+          .read(authControllerProvider.notifier)
+          .updateAvatar(sign.cdnUrl ?? '');
+      if (!context.mounted) return;
+      PetToast.show(context, ok ? '头像更新成功 🎉' : '头像更新失败，请重试');
     } catch (e) {
-      if (mounted) PetToast.error(context, '上传失败，请重试');
+      if (!context.mounted) return;
+      PetToast.error(context, '上传失败，请重试');
     } finally {
       if (mounted) setState(() => _uploadingAvatar = false);
     }
+  }
+
+  Future<void> _openGiftedPointsPage() async {
+    await context.push(AppRoutes.giftedPoints);
+    if (!mounted) return;
+    _loadPointsBalance();
+  }
+
+  void _openPointsRulesPage() {
+    context.push(AppRoutes.pointsRules);
+  }
+
+  Future<void> _openPointsPage() async {
+    await context.push(AppRoutes.points);
+    if (!mounted) return;
+    ref.read(authControllerProvider.notifier).refreshUser();
+    _loadPointsBalance();
   }
 
   @override
@@ -73,11 +111,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     super.initState();
   }
 
-
   @override
   Widget build(BuildContext context) {
-    final l10n     = context.l10n;
-    final auth     = ref.watch(authControllerProvider);
+    final l10n = context.l10n;
+    final auth = ref.watch(authControllerProvider);
 
     // 登录后首次刷新数据
     if (auth.isLoggedIn && !_loaded) {
@@ -87,6 +124,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         ref.read(petControllerProvider.notifier).loadPets();
         // 拉取最新配额（包含 aiQuota）
         ref.read(authControllerProvider.notifier).refreshUser();
+        _loadPointsBalance();
       });
     }
 
@@ -132,22 +170,244 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   onTapEdit: () => _showNicknameSheet(context, ref),
                   onTapAvatar: () => _pickAndUploadAvatar(context, ref),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
-                // ── 功能区：默认 6 个，点击更多展开 ──
+                // ── 积分概览：余额、赠送积分、流水入口 ──
+                _PointsOverviewCard(
+                  points: _pointsBalance == null
+                      ? auth.user?.points ?? 0
+                      : _asInt(_pointsBalance?['total']),
+                  permanentPoints: _pointsBalance == null
+                      ? auth.user?.permanentPoints ?? 0
+                      : _asInt(_pointsBalance?['permanent']),
+                  giftedPoints: _pointsBalance == null
+                      ? auth.user?.giftedPoints ?? 0
+                      : _asInt(_pointsBalance?['expiring']),
+                  onTapTotal: _openPointsPage,
+                  onTapGifted: _openGiftedPointsPage,
+                  onTapRules: _openPointsRulesPage,
+                ),
+                const SizedBox(height: 20),
+
+                // ── 功能区 ──
                 _FeatureGrid(
-                  user: auth.user,
                   expanded: _showAllFeatures,
                   onToggleExpanded: () =>
                       setState(() => _showAllFeatures = !_showAllFeatures),
                   onNav: (route) => context.push(route),
-                  onNavPush: (page) =>
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => page)),
+                  onNavPush: (page) => Navigator.push(
+                      context, MaterialPageRoute(builder: (_) => page)),
                 ),
               ]),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  积分概览卡
+// ════════════════════════════════════════════════════════════
+class _PointsOverviewCard extends StatelessWidget {
+  final int points;
+  final int permanentPoints;
+  final int giftedPoints;
+  final VoidCallback onTapTotal;
+  final VoidCallback onTapGifted;
+  final VoidCallback onTapRules;
+  const _PointsOverviewCard({
+    required this.points,
+    required this.permanentPoints,
+    required this.giftedPoints,
+    required this.onTapTotal,
+    required this.onTapGifted,
+    required this.onTapRules,
+  });
+
+  String _formatPoints(int value) {
+    final digits = value.toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+      buffer.write(digits[i]);
+    }
+    return buffer.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFF8E7), Color(0xFFFFFDF7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF3D9A4)),
+      ),
+      child: Column(
+        children: [
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: _PointsCardEntry(
+                    label: '总积分',
+                    value: _formatPoints(points),
+                    subtitle: '积分明细',
+                    onTap: onTapTotal,
+                    prominent: true,
+                  ),
+                ),
+                const _PointsCardDivider(),
+                Expanded(
+                  child: _PointsCardEntry(
+                    label: '永久积分',
+                    value: _formatPoints(permanentPoints),
+                    subtitle: '永久有效',
+                  ),
+                ),
+                const _PointsCardDivider(),
+                Expanded(
+                  child: _PointsCardEntry(
+                    label: '赠送积分',
+                    value: _formatPoints(giftedPoints),
+                    subtitle: '到期明细',
+                    onTap: onTapGifted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Material(
+          //   color: Colors.transparent,
+          //   child: InkWell(
+          //     onTap: onTapRules,
+          //     child: Padding(
+          //       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+          //       child: Row(children: [
+          //         const Icon(Icons.rule_rounded,
+          //             size: 16, color: Color(0xFFB7791F)),
+          //         const SizedBox(width: 6),
+          //         Expanded(
+          //           child: Text('积分消费规则',
+          //               style: TextStyle(
+          //                   fontFamily: AppFonts.primary,
+          //                   fontSize: 11,
+          //                   fontWeight: FontWeight.w700,
+          //                   color: const Color(0xFFB7791F))),
+          //         ),
+          //         const Icon(Icons.chevron_right_rounded,
+          //             size: 16, color: Color(0xFFB7791F)),
+          //       ]),
+          //     ),
+          //   ),
+          // ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PointsCardEntry extends StatelessWidget {
+  final String label;
+  final String? value;
+  final String? subtitle;
+  final VoidCallback? onTap;
+  final bool prominent;
+  const _PointsCardEntry({
+    required this.label,
+    this.value,
+    this.subtitle,
+    this.onTap,
+    this.prominent = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFFB7791F);
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (value != null) ...[
+                  Text(
+                    value!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: prominent ? 22 : 15,
+                      height: 1.1,
+                      fontWeight: prominent ? FontWeight.w900 : FontWeight.w600,
+                      color: AppColors.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                ],
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: onTap == null
+                              ? AppColors.onSurfaceVariant
+                              : accent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 3),
+                  Text(subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 9,
+                          color: AppColors.onSurfaceVariant)),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PointsCardDivider extends StatelessWidget {
+  const _PointsCardDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 1,
+        height: 32,
+        color: const Color(0xFFE8D3AA),
       ),
     );
   }
@@ -363,13 +623,11 @@ class _VipBadge extends StatelessWidget {
 //  功能区：两列信息卡，默认最多 6 个功能
 // ════════════════════════════════════════════════════════════
 class _FeatureGrid extends StatelessWidget {
-  final UserInfo? user;
   final bool expanded;
   final VoidCallback onToggleExpanded;
-  final ValueChanged<String> onNav;          // 走 AppRoutes（push）
-  final ValueChanged<Widget> onNavPush;      // 走 Navigator.push（传页面实例）
+  final ValueChanged<String> onNav; // 走 AppRoutes（push）
+  final ValueChanged<Widget> onNavPush; // 走 Navigator.push（传页面实例）
   const _FeatureGrid({
-    required this.user,
     required this.expanded,
     required this.onToggleExpanded,
     required this.onNav,
@@ -378,7 +636,7 @@ class _FeatureGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final points = user?.points ?? 0;
+    const collapsedItemCount = 6;
     final items = <_FeatureItem>[
       _FeatureItem(
         icon: Icons.pets_rounded,
@@ -423,16 +681,10 @@ class _FeatureGrid extends StatelessWidget {
         color: const Color(0xFFB8860B),
         onTap: () => onNav(AppRoutes.membership),
       ),
-      _FeatureItem(
-        icon: Icons.account_balance_wallet_rounded,
-        label: '积分明细',
-        subtitle: '当前 $points 分',
-        color: const Color(0xFF16A34A),
-        onTap: () => onNav(AppRoutes.points),
-      ),
     ];
-    final hasMore = items.length > 6;
-    final visibleItems = hasMore && !expanded ? items.take(6).toList() : items;
+    final hasMore = items.length > collapsedItemCount;
+    final visibleItems =
+        hasMore && !expanded ? items.take(collapsedItemCount).toList() : items;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -524,7 +776,7 @@ class _FeatureItem {
   final String subtitle;
   final Color color;
   final VoidCallback onTap;
-  final String? badge;          // 右上角小气泡（如"待签"）
+  final String? badge; // 右上角小气泡（如"待签"）
   const _FeatureItem({
     required this.icon,
     required this.label,
@@ -646,17 +898,27 @@ class _GuestProfileView extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 100, height: 100,
-              decoration: BoxDecoration(color: AppColors.surfaceContainerLow, shape: BoxShape.circle),
-              child: Center(child: Icon(Icons.person_rounded, size: 48, color: AppColors.onSurfaceVariant)),
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLow, shape: BoxShape.circle),
+              child: Center(
+                  child: Icon(Icons.person_rounded,
+                      size: 48, color: AppColors.onSurfaceVariant)),
             ),
             SizedBox(height: 20),
             Text(l10n.profileGuestMode,
-                style: TextStyle(fontFamily: AppFonts.primary, fontSize: 20,
-                    fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.onSurface)),
             SizedBox(height: 8),
             Text(l10n.profileGuestSubtitle,
-                style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14, color: AppColors.onSurfaceVariant)),
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 14,
+                    color: AppColors.onSurfaceVariant)),
             SizedBox(height: 28),
             ElevatedButton(
                 onPressed: () => context.push(AppRoutes.login),
@@ -673,10 +935,12 @@ class _NicknameInlineSheet extends ConsumerStatefulWidget {
   final TextEditingController ctrl;
   final WidgetRef ref;
   final VoidCallback onSaved;
-  const _NicknameInlineSheet({required this.ctrl, required this.ref, required this.onSaved});
+  const _NicknameInlineSheet(
+      {required this.ctrl, required this.ref, required this.onSaved});
 
   @override
-  ConsumerState<_NicknameInlineSheet> createState() => _NicknameInlineSheetState();
+  ConsumerState<_NicknameInlineSheet> createState() =>
+      _NicknameInlineSheetState();
 }
 
 class _NicknameInlineSheetState extends ConsumerState<_NicknameInlineSheet> {
@@ -685,8 +949,14 @@ class _NicknameInlineSheetState extends ConsumerState<_NicknameInlineSheet> {
 
   Future<void> _submit() async {
     final name = widget.ctrl.text.trim();
-    if (name.isEmpty) { setState(() => _error = '昵称不能为空'); return; }
-    setState(() { _loading = true; _error = null; });
+    if (name.isEmpty) {
+      setState(() => _error = '昵称不能为空');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final client = ref.read(apiClientProvider);
       await client.put<Map<String, dynamic>>(
@@ -698,7 +968,10 @@ class _NicknameInlineSheetState extends ConsumerState<_NicknameInlineSheet> {
       Navigator.pop(context);
       widget.onSaved();
     } catch (e) {
-      setState(() { _loading = false; _error = e.toString(); });
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
     }
   }
 
@@ -711,11 +984,15 @@ class _NicknameInlineSheetState extends ConsumerState<_NicknameInlineSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('修改昵称', style: TextStyle(fontFamily: AppFonts.primary,
-              fontSize: 18, fontWeight: FontWeight.w800)),
+          Text('修改昵称',
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800)),
           SizedBox(height: 20),
           Container(
-            decoration: BoxDecoration(color: AppColors.surfaceContainerLow,
+            decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(14)),
             child: TextField(
               controller: widget.ctrl,
@@ -723,34 +1000,47 @@ class _NicknameInlineSheetState extends ConsumerState<_NicknameInlineSheet> {
               style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15),
               decoration: InputDecoration(
                 hintText: '输入新昵称',
-                hintStyle: TextStyle(color: AppColors.onSurfaceVariant,
-                    fontFamily: AppFonts.primary, fontSize: 14),
-                prefixIcon: Icon(Icons.person_rounded, color: AppColors.primary, size: 20),
+                hintStyle: TextStyle(
+                    color: AppColors.onSurfaceVariant,
+                    fontFamily: AppFonts.primary,
+                    fontSize: 14),
+                prefixIcon: Icon(Icons.person_rounded,
+                    color: AppColors.primary, size: 20),
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
             ),
           ),
           if (_error != null) ...[
             SizedBox(height: 8),
-            Text(_error!, style: TextStyle(color: AppColors.error, fontSize: 13)),
+            Text(_error!,
+                style: TextStyle(color: AppColors.error, fontSize: 13)),
           ],
           SizedBox(height: 20),
           SizedBox(
-            width: double.infinity, height: 52,
+            width: double.infinity,
+            height: 52,
             child: ElevatedButton(
               onPressed: _loading ? null : _submit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999)),
                 elevation: 0,
               ),
               child: _loading
-                  ? SizedBox(width: 20, height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : Text('保存', style: TextStyle(fontFamily: AppFonts.primary,
-                      fontSize: 16, fontWeight: FontWeight.w700)),
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : Text('保存',
+                      style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700)),
             ),
           ),
           SizedBox(height: 8),

@@ -8,9 +8,25 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/router/app_routes.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_fonts.dart';
 import 'data/points_repository.dart';
+
+int _asInt(dynamic value) =>
+    value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+
+String _asString(dynamic value, {String fallback = ''}) {
+  final text = value?.toString().trim() ?? '';
+  return text.isEmpty ? fallback : text;
+}
+
+String? _parseableDate(dynamic value) {
+  final text = value?.toString().trim();
+  if (text == null || text.isEmpty) return null;
+  return text.contains('T') ? text : text.replaceFirst(' ', 'T');
+}
 
 class PointsPage extends ConsumerStatefulWidget {
   const PointsPage({super.key});
@@ -23,7 +39,6 @@ class _PointsPageState extends ConsumerState<PointsPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   Map<String, dynamic>? _balance; // null = 加载中
-  Map<String, dynamic>? _rulesData;
   List<Map<String, dynamic>> _allTx = [];
   int _page = 1;
   static const _limit = 20;
@@ -47,15 +62,12 @@ class _PointsPageState extends ConsumerState<PointsPage>
     final repo = ref.read(pointsRepositoryProvider);
     try {
       final balance = repo.fetchBalance();
-      final rules = repo.fetchRules();
       final txList = repo.fetchTransactions(page: 1, limit: _limit);
       final b = await balance;
-      final r = await rules;
       final t = await txList;
       if (!mounted) return;
       setState(() {
         _balance = b;
-        _rulesData = {'list': r};
         _allTx = t;
         _page = 1;
         _hasMore = t.length >= _limit;
@@ -65,7 +77,6 @@ class _PointsPageState extends ConsumerState<PointsPage>
       // 回退 mock（开发期）
       setState(() {
         _balance = _mockBalance();
-        _rulesData = _mockRules();
         _allTx = _mockTransactions();
       });
       debugPrint('[积分] 接口失败，回退 mock: $e');
@@ -120,12 +131,15 @@ class _PointsPageState extends ConsumerState<PointsPage>
                     fontWeight: FontWeight.w700)),
             centerTitle: true,
             actions: [
-              IconButton(
-                icon: const Icon(Icons.help_outline_rounded, size: 20),
-                color: AppColors.onSurfaceVariant,
-                tooltip: '积分规则',
-                onPressed: _showRules,
+              TextButton.icon(
+                onPressed: () => context.push(AppRoutes.pointsRules),
+                icon: const Icon(Icons.rule_rounded, size: 18),
+                label: const Text('规则'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.onSurfaceVariant,
+                ),
               ),
+              const SizedBox(width: 6),
             ],
           ),
           SliverToBoxAdapter(
@@ -135,7 +149,13 @@ class _PointsPageState extends ConsumerState<PointsPage>
                     child: Center(
                         child: CircularProgressIndicator(strokeWidth: 2.5)),
                   )
-                : _BalanceCard(balance: _balance!),
+                : _BalanceCard(
+                    balance: _balance!,
+                    onTapGifted: () async {
+                      await context.push(AppRoutes.giftedPoints);
+                      if (mounted) _loadAll();
+                    },
+                  ),
           ),
         ],
         body: Column(children: [
@@ -197,28 +217,19 @@ class _PointsPageState extends ConsumerState<PointsPage>
       ),
     );
   }
-
-  void _showRules() {
-    if (_rulesData == null) return;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _RulesSheet(data: _rulesData!),
-    );
-  }
 }
 
 // ── 余额卡 ────────────────────────────────────────────────
 class _BalanceCard extends StatelessWidget {
   final Map<String, dynamic> balance;
-  const _BalanceCard({required this.balance});
+  final VoidCallback onTapGifted;
+  const _BalanceCard({required this.balance, required this.onTapGifted});
 
   @override
   Widget build(BuildContext context) {
-    final total = balance['total'] as int;
-    final permanent = balance['permanent'] as int;
-    final weekly = balance['weekly'] as int;
+    final total = _asInt(balance['total']);
+    final permanent = _asInt(balance['permanent']);
+    final expiring = _asInt(balance['expiring']);
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
@@ -268,9 +279,10 @@ class _BalanceCard extends StatelessWidget {
                 color: Colors.white.withValues(alpha: 0.2)),
             Expanded(
               child: _SubStat(
-                  label: '周积分',
-                  value: weekly,
-                  icon: Icons.date_range_rounded),
+                  label: '赠送积分',
+                  value: expiring,
+                  icon: Icons.schedule_rounded,
+                  onTap: onTapGifted),
             ),
           ]),
           const SizedBox(height: 10),
@@ -286,7 +298,7 @@ class _BalanceCard extends StatelessWidget {
               const SizedBox(width: 5),
               Expanded(
                 child: Text(
-                  '周积分每周一重置，永久积分不过期',
+                  '总积分 = 永久积分 + 赠送积分；赠送积分按各自到期时间失效',
                   style: TextStyle(
                       fontFamily: AppFonts.primary,
                       fontSize: 11,
@@ -305,23 +317,43 @@ class _SubStat extends StatelessWidget {
   final String label;
   final int value;
   final IconData icon;
-  const _SubStat(
-      {required this.label, required this.value, required this.icon});
+  final VoidCallback? onTap;
+  const _SubStat({
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.85)),
-        const SizedBox(width: 5),
-        Text('$label $value',
-            style: TextStyle(
-                fontFamily: AppFonts.primary,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Colors.white.withValues(alpha: 0.95))),
-      ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.85)),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text('$label $value',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white.withValues(alpha: 0.95))),
+              ),
+              if (onTap != null)
+                const Icon(Icons.chevron_right_rounded,
+                    size: 14, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -350,8 +382,7 @@ class _TxListState extends State<_TxList> {
   void initState() {
     super.initState();
     _scroll.addListener(() {
-      if (_scroll.position.pixels >=
-          _scroll.position.maxScrollExtent - 200) {
+      if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 200) {
         if (widget.hasMore && !widget.loadingMore) widget.onLoadMore();
       }
     });
@@ -386,9 +417,10 @@ class _TxListState extends State<_TxList> {
     return ListView.separated(
       controller: _scroll,
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 30),
-      itemCount: widget.items.length + (widget.hasMore || widget.loadingMore ? 1 : 0),
-      separatorBuilder: (_, __) =>
-          Divider(height: 1, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+      itemCount:
+          widget.items.length + (widget.hasMore || widget.loadingMore ? 1 : 0),
+      separatorBuilder: (_, __) => Divider(
+          height: 1, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
       itemBuilder: (_, i) {
         // 最后一项：加载更多指示器
         if (i >= widget.items.length) {
@@ -409,12 +441,13 @@ class _TxListState extends State<_TxList> {
           );
         }
         final tx = widget.items[i];
-        // direction: 1=获得 2=消耗
-        final isIncome = tx['direction'] == 1;
-        final amount = tx['amount'] as int;
-        final pointsType = tx['points_type'] as int; // 1=周 2=永久
-        final reason = tx['reason'] as String? ?? '';
-        final refType = tx['ref_type'] as String? ?? '';
+        final isIncome = _asInt(tx['direction']) == 1;
+        final amount = _asInt(tx['amount']);
+        final typeCode = _typeCode(tx);
+        final reason = _asString(tx['reason']);
+        final refType = _asString(tx['ref_type']);
+        final createdAt = _asString(tx['created_at']);
+        final expireAt = _parseableDate(tx['expire_at']);
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Row(children: [
@@ -422,14 +455,16 @@ class _TxListState extends State<_TxList> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: (isIncome ? AppColors.primary : AppColors.onSurfaceVariant)
-                    .withValues(alpha: 0.1),
+                color:
+                    (isIncome ? AppColors.primary : AppColors.onSurfaceVariant)
+                        .withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 _iconForRefType(refType, isIncome),
                 size: 18,
-                color: isIncome ? AppColors.primary : AppColors.onSurfaceVariant,
+                color:
+                    isIncome ? AppColors.primary : AppColors.onSurfaceVariant,
               ),
             ),
             const SizedBox(width: 12),
@@ -437,7 +472,8 @@ class _TxListState extends State<_TxList> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(reason.isNotEmpty ? reason : (isIncome ? '积分收入' : '积分消耗'),
+                  Text(
+                      reason.isNotEmpty ? reason : (isIncome ? '积分收入' : '积分消耗'),
                       style: TextStyle(
                           fontFamily: AppFonts.primary,
                           fontSize: 14,
@@ -445,19 +481,20 @@ class _TxListState extends State<_TxList> {
                           color: AppColors.onSurface)),
                   const SizedBox(height: 2),
                   Row(children: [
-                    Text(_fmtTime(tx['created_at'] as String),
+                    Text(_fmtTime(createdAt),
                         style: TextStyle(
                             fontFamily: AppFonts.primary,
                             fontSize: 11,
                             color: AppColors.onSurfaceVariant)),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 5, vertical: 1),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Text(pointsType == 2 ? '永久' : '周',
+                      child: Text(_typeLabel(typeCode),
                           style: TextStyle(
                               fontFamily: AppFonts.primary,
                               fontSize: 9,
@@ -465,6 +502,21 @@ class _TxListState extends State<_TxList> {
                               color: AppColors.onSurfaceVariant)),
                     ),
                   ]),
+                  if (expireAt != null) ...[
+                    const SizedBox(height: 2),
+                    Text('${_fmtDate(expireAt)}到期',
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 10,
+                            color: AppColors.onSurfaceVariant)),
+                  ] else if (typeCode == 'permanent') ...[
+                    const SizedBox(height: 2),
+                    Text('永久有效',
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 10,
+                            color: AppColors.onSurfaceVariant)),
+                  ],
                 ],
               ),
             ),
@@ -497,6 +549,29 @@ class _TxListState extends State<_TxList> {
     );
   }
 
+  String _typeCode(Map<String, dynamic> tx) {
+    final typeCode = _asString(tx['type_code']);
+    if (typeCode.isNotEmpty) return typeCode;
+    return _asInt(tx['points_type']) == 2 ? 'permanent' : 'gifted';
+  }
+
+  String _typeLabel(String typeCode) {
+    switch (typeCode) {
+      case 'permanent':
+        return '永久';
+      case 'checkin':
+        return '签到';
+      case 'plan_free':
+        return 'Free';
+      case 'plan_pro':
+        return 'Pro';
+      case 'plan_promax':
+        return 'ProMax';
+      default:
+        return '赠送';
+    }
+  }
+
   IconData _iconForRefType(String refType, bool isIncome) {
     if (isIncome) {
       switch (refType) {
@@ -504,7 +579,10 @@ class _TxListState extends State<_TxList> {
         case 'checkin_reward':
           return Icons.calendar_month_rounded;
         case 'plan_grant':
+        case 'plan_order':
+        case 'plan_period':
           return Icons.workspace_premium_rounded;
+        case 'admin_adjust':
         case 'recharge':
           return Icons.account_balance_wallet_rounded;
         default:
@@ -525,135 +603,33 @@ class _TxListState extends State<_TxList> {
     }
   }
 
-  String _fmtTime(String iso) {
+  String _fmtTime(String value) {
     try {
+      final iso = value.contains('T') ? value : value.replaceFirst(' ', 'T');
       final d = DateTime.parse(iso).toLocal();
       String two(int n) => n.toString().padLeft(2, '0');
       return '${d.month}/${d.day} ${two(d.hour)}:${two(d.minute)}';
     } catch (_) {
-      return iso;
+      return value;
     }
   }
-}
 
-// ── 积分规则弹窗 ─────────────────────────────────────────
-class _RulesSheet extends StatelessWidget {
-  final Map<String, dynamic> data;
-  const _RulesSheet({required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    final ruleList = (data['list'] as List).cast<Map<String, dynamic>>();
-    final bottomPad = MediaQuery.of(context).viewPadding.bottom;
-
-    return SafeArea(
-      top: false,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-        padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + bottomPad),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                      color: AppColors.outlineVariant,
-                      borderRadius: BorderRadius.circular(2))),
-            ),
-            const SizedBox(height: 14),
-            Text('积分规则',
-                style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.onSurface)),
-            const SizedBox(height: 4),
-            Text('以下为积分消费规则',
-                style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 12,
-                    color: AppColors.onSurfaceVariant)),
-            const SizedBox(height: 12),
-            ...ruleList.map((r) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 7),
-                  child: Row(children: [
-                    Icon(Icons.bolt_rounded,
-                        size: 16, color: AppColors.primary),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(r['name'] as String,
-                              style: TextStyle(
-                                  fontFamily: AppFonts.primary,
-                                  fontSize: 13,
-                                  color: AppColors.onSurface)),
-                          if ((r['unit_basis'] as String?) == 'per_call')
-                            Text('每次调用',
-                                style: TextStyle(
-                                    fontFamily: AppFonts.primary,
-                                    fontSize: 10,
-                                    color: AppColors.onSurfaceVariant)),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      '-${r['unit_points']}',
-                      style: TextStyle(
-                          fontFamily: AppFonts.primary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.onSurface),
-                    ),
-                  ]),
-                )),
-            const SizedBox(height: 14),
-            SizedBox(
-              height: 46,
-              child: FilledButton(
-                onPressed: () => Navigator.pop(context),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-                child: Text('我知道了',
-                    style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontWeight: FontWeight.w700)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  String _fmtDate(String value) {
+    try {
+      final d = DateTime.parse(value).toLocal();
+      return '${d.year}/${d.month}/${d.day}';
+    } catch (_) {
+      return value;
+    }
   }
 }
 
 // ── Mock 数据（对齐后端字段）──────────────────────────────
 Map<String, dynamic> _mockBalance() {
   return {
-    'weekly': 65,     // 周积分
-    'permanent': 100, // 永久积分
+    'expiring': 65,
+    'permanent': 100,
     'total': 165,
-  };
-}
-
-Map<String, dynamic> _mockRules() {
-  return {
-    'list': [
-      {'consume_type': 'image_analyze', 'name': '图片情绪分析', 'unit_points': 5, 'unit_basis': 'per_call'},
-      {'consume_type': 'voice_analyze', 'name': '语音情绪分析', 'unit_points': 5, 'unit_basis': 'per_call'},
-      {'consume_type': 'consult', 'name': 'AI 问诊', 'unit_points': 8, 'unit_basis': 'per_call'},
-    ],
   };
 }
 
@@ -661,8 +637,8 @@ List<Map<String, dynamic>> _mockTransactions() {
   return [
     {
       'id': '123',
-      'direction': 2,        // 1=获得 2=消耗
-      'points_type': 1,      // 1=周 2=永久
+      'direction': 2, // 1=获得 2=消耗
+      'points_type': 1, // 1=周 2=永久
       'amount': 5,
       'balance_after': 60,
       'reason': '图片情绪分析',
@@ -683,8 +659,8 @@ List<Map<String, dynamic>> _mockTransactions() {
     },
     {
       'id': '121',
-      'direction': 1,        // 获得
-      'points_type': 2,      // 永久
+      'direction': 1, // 获得
+      'points_type': 2, // 永久
       'amount': 100,
       'balance_after': 100,
       'reason': '开通 Pro 计划赠送',
@@ -694,8 +670,8 @@ List<Map<String, dynamic>> _mockTransactions() {
     },
     {
       'id': '120',
-      'direction': 1,        // 获得
-      'points_type': 2,      // 永久（连续签到奖励）
+      'direction': 1, // 获得
+      'points_type': 2, // 永久（连续签到奖励）
       'amount': 10,
       'balance_after': 65,
       'reason': '连续签到 3 天奖励',
@@ -706,7 +682,7 @@ List<Map<String, dynamic>> _mockTransactions() {
     {
       'id': '119',
       'direction': 1,
-      'points_type': 1,      // 周
+      'points_type': 1, // 周
       'amount': 2,
       'balance_after': 55,
       'reason': '每日签到',

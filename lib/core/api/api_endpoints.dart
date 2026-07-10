@@ -136,7 +136,8 @@ abstract class ApiEndpoints {
   static const planOrder = '/sdkapi/plan/order';
 
   /// 查询订单状态（轮询用）  GET /sdkapi/plan/order/:orderId
-  static String planOrderDetail(String orderId) => '/sdkapi/plan/order/$orderId';
+  static String planOrderDetail(String orderId) =>
+      '/sdkapi/plan/order/$orderId';
 
   // ── 每日签到 ────────────────────────────────────────────
   /// 签到状态 + 奖励档位  GET /sdkapi/checkin/status

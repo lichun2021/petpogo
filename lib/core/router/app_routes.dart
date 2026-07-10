@@ -25,6 +25,8 @@ abstract class AppRoutes {
   // ── 会员 / 积分 / 签到 / 订单 ──────────────────────────
   static const membership = '/membership'; // 会员计划
   static const points = '/points'; // 积分明细
+  static const giftedPoints = '/gifted-points'; // 赠送积分到期详情
+  static const pointsRules = '/points-rules'; // 积分消费规则
   static const checkIn = '/check-in'; // 每日签到
   static const orders = '/orders'; // 订单管理
 

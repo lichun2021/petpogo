@@ -258,13 +258,7 @@ class _PetMembersPageState extends ConsumerState<PetMembersPage> {
   }
 
   Widget _buildBody() {
-    if (_loading && _members.isEmpty) {
-      return Center(
-        child: CircularProgressIndicator(
-            color: AppColors.primary, strokeWidth: 2.5),
-      );
-    }
-
+    // 有错误且没有数据时显示错误
     if (_error != null && _members.isEmpty) {
       return Center(
         child: Padding(
@@ -286,7 +280,17 @@ class _PetMembersPageState extends ConsumerState<PetMembersPage> {
       );
     }
 
+    // 没有成员时显示空状态
     if (_members.isEmpty) {
+      // 如果正在加载，显示加载中
+      if (_loading) {
+        return Center(
+          child: CircularProgressIndicator(
+              color: AppColors.primary, strokeWidth: 2.5),
+        );
+      }
+
+      // 否则显示空状态
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.group_off_rounded,
@@ -315,6 +319,7 @@ class _PetMembersPageState extends ConsumerState<PetMembersPage> {
       );
     }
 
+    // 有数据时显示列表
     return RefreshIndicator(
       color: AppColors.primary,
       onRefresh: _load,

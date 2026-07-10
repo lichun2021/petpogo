@@ -31,6 +31,8 @@ import '../../features/profile/profile_page.dart';
 import '../../features/profile/settings_page.dart';
 import '../../features/profile/membership_page.dart';
 import '../../features/profile/points_page.dart';
+import '../../features/profile/gifted_points_page.dart';
+import '../../features/profile/points_rules_page.dart';
 import '../../features/profile/check_in_page.dart';
 import '../../features/profile/orders_page.dart';
 import '../../features/pet/add_pet_page.dart';
@@ -141,6 +143,8 @@ final appRouter = GoRouter(
     _slide(AppRoutes.settings, const SettingsPage()),
     _slide(AppRoutes.membership, const MembershipPage()),
     _slide(AppRoutes.points, const PointsPage()),
+    _slide(AppRoutes.giftedPoints, const GiftedPointsPage()),
+    _slide(AppRoutes.pointsRules, const PointsRulesPage()),
     _slide(AppRoutes.checkIn, const CheckInPage()),
     _slide(AppRoutes.orders, const OrdersPage()),
     _slide(AppRoutes.addPet, const AddPetPage()),

@@ -20,7 +20,6 @@ import 'data/country_repository.dart';
 import 'controller/auth_controller.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
-
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
@@ -29,14 +28,14 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
-  final _phoneCtrl    = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  final _codeCtrl     = TextEditingController();
-  final _searchCtrl   = TextEditingController();
+  final _codeCtrl = TextEditingController();
+  final _searchCtrl = TextEditingController();
 
   bool _obscure = true;
   bool _isSmsLogin = true;
-  bool _agreedToTerms = false;   // 是否同意协议
+  bool _agreedToTerms = false; // 是否同意协议
 
   bool _isSendingSms = false;
   int _countdown = 0;
@@ -55,7 +54,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void _startCountdown() {
-    setState(() { _countdown = 60; });
+    setState(() {
+      _countdown = 60;
+    });
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (_countdown > 0) {
         setState(() => _countdown--);
@@ -103,7 +104,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         PetToast.warning(context, '请输入验证码');
         return;
       }
-      ref.read(authControllerProvider.notifier)
+      ref
+          .read(authControllerProvider.notifier)
           .loginWithSms(phone: phone, code: code, nationNum: nationNum);
     } else {
       final password = _passwordCtrl.text.trim();
@@ -111,7 +113,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         PetToast.warning(context, '请输入密码');
         return;
       }
-      ref.read(authControllerProvider.notifier)
+      ref
+          .read(authControllerProvider.notifier)
           .loginWithPwd(phone: phone, password: password, nationNum: nationNum);
     }
   }
@@ -145,7 +148,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         debugPrint('[LoginPage] 登录成功，等待路由守卫跳转');
       } else if (next.status == AuthStatus.error && next.errorMessage != null) {
         PetToast.error(context, next.errorMessage!);
-        if (!_isSmsLogin && (next.errorMessage!.contains('未注册') || next.errorMessage!.contains('验证码登录'))) {
+        if (!_isSmsLogin &&
+            (next.errorMessage!.contains('未注册') ||
+                next.errorMessage!.contains('验证码登录'))) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('该手机号未注册，请先用验证码登录/注册',
@@ -172,218 +177,246 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             constraints: BoxConstraints(
               maxWidth: MediaQuery.of(context).size.width - 56, // 减去两侧 padding
             ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Logo ────────────────────────────────────
-              Row(children: [
-                Icon(Icons.pets_rounded, color: AppColors.primary, size: 36),
-                SizedBox(width: 10),
-                Text('萌宠智伴',
-                    style: TextStyle(fontFamily: AppFonts.primary,
-                        fontSize: 28, fontWeight: FontWeight.w800,
-                        color: AppColors.primary)),
-              ]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Logo ────────────────────────────────────
+                Row(children: [
+                  Icon(Icons.pets_rounded, color: AppColors.primary, size: 36),
+                  SizedBox(width: 10),
+                  Text('萌宠智伴',
+                      style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary)),
+                ]),
 
-              SizedBox(height: 32),
+                SizedBox(height: 32),
 
-              // ── 标题 ─────────────────────────────────────
-              Text('欢迎回来 👋',
-                  style: TextStyle(fontFamily: AppFonts.primary,
-                      fontSize: 28, fontWeight: FontWeight.w800,
-                      color: AppColors.onSurface)),
-              SizedBox(height: 20),
+                // ── 标题 ─────────────────────────────────────
+                Text('欢迎回来 👋',
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.onSurface)),
+                SizedBox(height: 20),
 
-
-              // ── 切换登录方式 ──────────────────────────────
-              Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => setState(() => _isSmsLogin = true),
-                    child: Text('短信登录',
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: _isSmsLogin ? FontWeight.w800 : FontWeight.w600,
-                            color: _isSmsLogin ? AppColors.primary : AppColors.onSurfaceVariant)),
-                  ),
-                  SizedBox(width: 24),
-                  GestureDetector(
-                    onTap: () => setState(() => _isSmsLogin = false),
-                    child: Text('密码登录',
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: !_isSmsLogin ? FontWeight.w800 : FontWeight.w600,
-                            color: !_isSmsLogin ? AppColors.primary : AppColors.onSurfaceVariant)),
-                  ),
-                ],
-              ),
-              SizedBox(height: 24),
-
-              // ── 手机号输入框（带国家选择器前缀）─────────────
-              const _FieldLabel('手机号'),
-              SizedBox(height: 8),
-              TextField(
-                controller: _phoneCtrl,
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.next,
-                autofillHints: const <String>[],
-                style: TextStyle(fontFamily: AppFonts.primary,
-                    fontSize: 15, color: AppColors.onSurface),
-                decoration: _inputDecorationWithCountry(
-                  hint: '请输入手机号',
-                  country: _selectedCountry,
-                  onCountryTap: () => countriesAsync.whenData(
-                      (list) => _showCountryPicker(list)),
-                ),
-              ),
-
-              SizedBox(height: 20),
-
-              // ── 验证码 / 密码输入框 ────────────────────────────────
-              if (_isSmsLogin) ...[
-                const _FieldLabel('验证码'),
-                SizedBox(height: 8),
+                // ── 切换登录方式 ──────────────────────────────
                 Row(
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _codeCtrl,
-                        keyboardType: TextInputType.number,
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: (_) => _submit(),
-                        style: TextStyle(fontFamily: AppFonts.primary,
-                            fontSize: 15, color: AppColors.onSurface),
-                        decoration: _inputDecoration(
-                          hint: '请输入验证码',
-                          prefixIcon: Icons.message_outlined,
-                        ),
-                      ),
+                    GestureDetector(
+                      onTap: () => setState(() => _isSmsLogin = true),
+                      child: Text('短信登录',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: _isSmsLogin
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
+                              color: _isSmsLogin
+                                  ? AppColors.primary
+                                  : AppColors.onSurfaceVariant)),
                     ),
-                    SizedBox(width: 12),
-                    SizedBox(
-                      width: 96,
-                      height: 52,
-                      child: OutlinedButton(
-                        onPressed: (_countdown > 0 || _isSendingSms) ? null : _sendSms,
-                        style: OutlinedButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          side: BorderSide(
-                            color: (_countdown > 0 || _isSendingSms)
-                                ? AppColors.outline
-                                : AppColors.primary,
-                          ),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
-                        ),
-                        child: _isSendingSms
-                            ? SizedBox(
-                                width: 18, height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.primary,
-                                ))
-                            : Text(
-                                _countdown > 0 ? '${_countdown}s 后重发' : '获取验证码',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: _countdown > 0
-                                      ? AppColors.onSurfaceVariant
-                                      : AppColors.primary,
-                                ),
-                              ),
-                      ),
+                    SizedBox(width: 24),
+                    GestureDetector(
+                      onTap: () => setState(() => _isSmsLogin = false),
+                      child: Text('密码登录',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: !_isSmsLogin
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
+                              color: !_isSmsLogin
+                                  ? AppColors.primary
+                                  : AppColors.onSurfaceVariant)),
                     ),
                   ],
                 ),
-              ] else ...[
-                const _FieldLabel('密码'),
+                SizedBox(height: 24),
+
+                // ── 手机号输入框（带国家选择器前缀）─────────────
+                const _FieldLabel('手机号'),
                 SizedBox(height: 8),
                 TextField(
-                  controller: _passwordCtrl,
-                  obscureText: _obscure,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _submit(),
-                  style: TextStyle(fontFamily: AppFonts.primary,
-                      fontSize: 15, color: AppColors.onSurface),
-                  decoration: _inputDecoration(
-                    hint: '请输入密码',
-                    prefixIcon: Icons.lock_outline_rounded,
-                    suffix: GestureDetector(
-                      onTap: () => setState(() => _obscure = !_obscure),
-                      child: Icon(_obscure
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                          size: 20, color: AppColors.onSurfaceVariant),
-                    ),
+                  controller: _phoneCtrl,
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const <String>[],
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 15,
+                      color: AppColors.onSurface),
+                  decoration: _inputDecorationWithCountry(
+                    hint: '请输入手机号',
+                    country: _selectedCountry,
+                    onCountryTap: () => countriesAsync
+                        .whenData((list) => _showCountryPicker(list)),
                   ),
                 ),
-                SizedBox(height: 8),
-                Row(children: [
-                  Icon(Icons.info_outline_rounded,
-                      size: 13, color: AppColors.onSurfaceVariant),
-                  SizedBox(width: 4),
-                  Text('首次登录初始密码为 123456，建议登录后修改',
-                      style: TextStyle(fontFamily: AppFonts.primary,
-                          fontSize: 11, color: AppColors.onSurfaceVariant)),
-                ]),
-              ],
 
-              SizedBox(height: 28),
+                SizedBox(height: 20),
 
-              // ── 协议勾选 ──────────────────────────────────
-              _AgreementRow(
-                agreed: _agreedToTerms,
-                onChanged: (v) => setState(() => _agreedToTerms = v),
-              ),
-
-              SizedBox(height: 20),
-
-              // ── 登录按钮 ──────────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: auth.isLoading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _agreedToTerms
-                        ? AppColors.primary
-                        : AppColors.primary.withOpacity(0.45),
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
-                    elevation: 0,
-                    // 不固定高度，改用 minimumSize + 垂直 padding 让字体自然展开
-                    minimumSize: const Size(double.infinity, 54),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                  ),
-                  child: auth.isLoading
-                      ? const SizedBox(
-                          width: 22, height: 22,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2.5),
-                        )
-                      : Text(
-                          '登录 / 注册',
+                // ── 验证码 / 密码输入框 ────────────────────────────────
+                if (_isSmsLogin) ...[
+                  const _FieldLabel('验证码'),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _codeCtrl,
+                          keyboardType: TextInputType.number,
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _submit(),
                           style: TextStyle(
-                            fontFamily: AppFonts.primary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                            // 固定行高为 1.0 防止自定义字体 ascender/descender 被裁
-                            height: 1.0,
-                          ),
-                          strutStyle: const StrutStyle(
-                            forceStrutHeight: true,
-                            height: 1.2,
+                              fontFamily: AppFonts.primary,
+                              fontSize: 15,
+                              color: AppColors.onSurface),
+                          decoration: _inputDecoration(
+                            hint: '请输入验证码',
+                            prefixIcon: Icons.message_outlined,
                           ),
                         ),
+                      ),
+                      SizedBox(width: 12),
+                      SizedBox(
+                        width: 96,
+                        height: 52,
+                        child: OutlinedButton(
+                          onPressed: (_countdown > 0 || _isSendingSms)
+                              ? null
+                              : _sendSms,
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            side: BorderSide(
+                              color: (_countdown > 0 || _isSendingSms)
+                                  ? AppColors.outline
+                                  : AppColors.primary,
+                            ),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
+                          ),
+                          child: _isSendingSms
+                              ? SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.primary,
+                                  ))
+                              : Text(
+                                  _countdown > 0
+                                      ? '${_countdown}s 后重发'
+                                      : '获取验证码',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: _countdown > 0
+                                        ? AppColors.onSurfaceVariant
+                                        : AppColors.primary,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  const _FieldLabel('密码'),
+                  SizedBox(height: 8),
+                  TextField(
+                    controller: _passwordCtrl,
+                    obscureText: _obscure,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _submit(),
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 15,
+                        color: AppColors.onSurface),
+                    decoration: _inputDecoration(
+                      hint: '请输入密码',
+                      prefixIcon: Icons.lock_outline_rounded,
+                      suffix: GestureDetector(
+                        onTap: () => setState(() => _obscure = !_obscure),
+                        child: Icon(
+                            _obscure
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            size: 20,
+                            color: AppColors.onSurfaceVariant),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Row(children: [
+                    Icon(Icons.info_outline_rounded,
+                        size: 13, color: AppColors.onSurfaceVariant),
+                    SizedBox(width: 4),
+                    Text('首次登录初始密码为 123456，建议登录后修改',
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 11,
+                            color: AppColors.onSurfaceVariant)),
+                  ]),
+                ],
+
+                SizedBox(height: 28),
+
+                // ── 协议勾选 ──────────────────────────────────
+                _AgreementRow(
+                  agreed: _agreedToTerms,
+                  onChanged: (v) => setState(() => _agreedToTerms = v),
                 ),
-              ),
-            ],
-          ),
+
+                SizedBox(height: 20),
+
+                // ── 登录按钮 ──────────────────────────────────
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: auth.isLoading ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _agreedToTerms
+                          ? AppColors.primary
+                          : AppColors.primary.withOpacity(0.45),
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor:
+                          AppColors.primary.withOpacity(0.5),
+                      elevation: 0,
+                      // 不固定高度，改用 minimumSize + 垂直 padding 让字体自然展开
+                      minimumSize: const Size(double.infinity, 54),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: auth.isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2.5),
+                          )
+                        : Text(
+                            '登录 / 注册',
+                            style: TextStyle(
+                              fontFamily: AppFonts.primary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                              // 固定行高为 1.0 防止自定义字体 ascender/descender 被裁
+                              height: 1.0,
+                            ),
+                            strutStyle: const StrutStyle(
+                              forceStrutHeight: true,
+                              height: 1.2,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
           ), // ConstrainedBox
         ),
       ),
@@ -397,8 +430,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }) =>
       InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(fontFamily: AppFonts.primary,
-            fontSize: 14, color: AppColors.onSurfaceVariant.withOpacity(0.6)),
+        hintStyle: TextStyle(
+            fontFamily: AppFonts.primary,
+            fontSize: 14,
+            color: AppColors.onSurfaceVariant.withOpacity(0.6)),
         prefixIcon: GestureDetector(
           onTap: onCountryTap,
           child: Padding(
@@ -406,8 +441,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(country.flagEmoji,
-                    style: TextStyle(fontSize: 20)),
+                Text(country.flagEmoji, style: TextStyle(fontSize: 20)),
                 Icon(Icons.arrow_drop_down_rounded,
                     size: 14, color: AppColors.onSurfaceVariant),
               ],
@@ -417,7 +451,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
         filled: true,
         fillColor: AppColors.surfaceContainerLow,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide.none),
@@ -436,13 +471,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }) =>
       InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(fontFamily: AppFonts.primary,
-            fontSize: 14, color: AppColors.onSurfaceVariant.withOpacity(0.6)),
-        prefixIcon: Icon(prefixIcon, size: 20, color: AppColors.onSurfaceVariant),
+        hintStyle: TextStyle(
+            fontFamily: AppFonts.primary,
+            fontSize: 14,
+            color: AppColors.onSurfaceVariant.withOpacity(0.6)),
+        prefixIcon:
+            Icon(prefixIcon, size: 20, color: AppColors.onSurfaceVariant),
         suffixIcon: suffix,
         filled: true,
         fillColor: AppColors.surfaceContainerLow,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide.none),
@@ -498,8 +537,7 @@ class _AgreementRow extends StatelessWidget {
               ),
             ),
             child: agreed
-                ? const Icon(Icons.check_rounded,
-                    size: 14, color: Colors.white)
+                ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
                 : null,
           ),
           const SizedBox(width: 10),
@@ -521,7 +559,7 @@ class _AgreementRow extends StatelessWidget {
                       onTap: () => _openDoc(
                         context,
                         '服务条款',
-                        'assets/docs/服务条款.html',
+                        'assets/docs/terms.html',
                       ),
                       child: Text(
                         '《服务条款》',
@@ -541,7 +579,7 @@ class _AgreementRow extends StatelessWidget {
                       onTap: () => _openDoc(
                         context,
                         '隐私政策',
-                        'assets/docs/隐私政策.html',
+                        'assets/docs/privacy.html',
                       ),
                       child: Text(
                         '《隐私政策》',
@@ -604,11 +642,13 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
     setState(() {
       _filtered = q.isEmpty
           ? widget.countries
-          : widget.countries.where((c) =>
-              c.country.toLowerCase().contains(q) ||
-              c.countryEn.toLowerCase().contains(q) ||
-              c.phoneId.contains(q) ||
-              c.countryId.toLowerCase().contains(q)).toList();
+          : widget.countries
+              .where((c) =>
+                  c.country.toLowerCase().contains(q) ||
+                  c.countryEn.toLowerCase().contains(q) ||
+                  c.phoneId.contains(q) ||
+                  c.countryId.toLowerCase().contains(q))
+              .toList();
     });
   }
 
@@ -625,7 +665,8 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
           // ── 顶部把手 ──
           SizedBox(height: 12),
           Container(
-            width: 36, height: 4,
+            width: 36,
+            height: 4,
             decoration: BoxDecoration(
               color: Colors.grey.shade300,
               borderRadius: BorderRadius.circular(2),
@@ -635,8 +676,10 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Text('选择国家/地区',
-                style: TextStyle(fontFamily: AppFonts.primary,
-                    fontSize: 16, fontWeight: FontWeight.w700,
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.onSurface)),
           ),
           SizedBox(height: 12),
@@ -649,8 +692,10 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
               style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14),
               decoration: InputDecoration(
                 hintText: '搜索国家名称或区号',
-                hintStyle: TextStyle(fontFamily: AppFonts.primary,
-                    fontSize: 14, color: Colors.grey.shade400),
+                hintStyle: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 14,
+                    color: Colors.grey.shade400),
                 prefixIcon: Icon(Icons.search_rounded, size: 20),
                 filled: true,
                 fillColor: Colors.grey.shade100,
@@ -678,8 +723,8 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                       final c = _filtered[i];
                       final isSelected = c == widget.selected;
                       return ListTile(
-                        leading: Text(c.flagEmoji,
-                            style: TextStyle(fontSize: 22)),
+                        leading:
+                            Text(c.flagEmoji, style: TextStyle(fontSize: 22)),
                         title: Text(c.country,
                             style: TextStyle(
                                 fontFamily: AppFonts.primary,
@@ -725,8 +770,10 @@ class _FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(text,
-        style: TextStyle(fontFamily: AppFonts.primary,
-            fontSize: 13, fontWeight: FontWeight.w700,
+        style: TextStyle(
+            fontFamily: AppFonts.primary,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
             color: AppColors.onSurface));
   }
 }

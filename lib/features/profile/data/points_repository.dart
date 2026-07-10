@@ -1,9 +1,9 @@
 // ════════════════════════════════════════════════════════════
 //  积分 / 会员 / 签到 Repository
 //
-//  所有接口走业务后端 ApiClient（/sdkapi/*），响应统一为
-//  {code:int, info:object|null, tip:string}。code==0 取 info，
-//  code!=0 抛 ApiException。
+//  所有接口走业务后端 ApiClient（/sdkapi/*）。兼容业务接口直接返回
+//  数据对象，以及 {code:int, info:object|null, tip:string} 包装格式。
+//  包装格式下 code!=0 抛 ApiException。
 //
 //  对应接口契约见 lib/features/profile/*_page.dart 顶部注释。
 // ════════════════════════════════════════════════════════════
@@ -17,26 +17,30 @@ class PointsRepository {
   PointsRepository(this._client);
 
   /// 统一响应解包
-  /// {code, info, tip} → code==0 返回 info，否则抛 ApiException
-  /// 若 info 不是 Map（可能为 null），返回空 Map
+  /// 兼容直接数据对象与 {code, info, tip} 包装格式。
   Map<String, dynamic> _unwrap(Map<String, dynamic> data) {
-    final code = data['code'] as int? ?? 0;
+    if (!data.containsKey('code')) return data;
+
+    final rawCode = data['code'];
+    final code =
+        rawCode is num ? rawCode.toInt() : int.tryParse('$rawCode') ?? 0;
     if (code != 0) {
-      final tip = (data['tip'] as String?) ?? '请求失败';
-      throw ApiException(message: tip, type: ApiErrorType.server);
+      final tip = data['tip']?.toString().trim();
+      throw ApiException(
+        message: tip == null || tip.isEmpty ? '请求失败' : tip,
+        type: ApiErrorType.server,
+      );
     }
+
     final info = data['info'];
     if (info is Map) return info.cast<String, dynamic>();
     return const {};
   }
 
-  /// 保留原始响应（不抛异常），用于需要判断特定业务码的场景
-  /// 例如 makeup 的 402 配额用尽
-  Map<String, dynamic> _unwrapRaw(Map<String, dynamic> data) => data;
-
   // ── 积分 ────────────────────────────────────────────────
 
-  /// GET /sdkapi/points/balance → { weekly, permanent, total }
+  /// GET /sdkapi/points/balance
+  /// → { expiring, permanent, total, batches:[{id,typeCode,remaining,expireAt,reason}] }
   Future<Map<String, dynamic>> fetchBalance() async {
     final res = await _client.get<Map<String, dynamic>>(
       ApiEndpoints.pointsBalance,
@@ -76,7 +80,9 @@ class PointsRepository {
 
   // ── 购买计划（会员）──────────────────────────────────────
 
-  /// GET /sdkapi/plan/list → { list:[{id,plan_type,name,price,duration_days,...}] }
+  /// GET /sdkapi/plan/list
+  /// → { list:[{id,plan_type,name,price_monthly,price_yearly,grant_period_days,
+  ///             period_grant_amount,period_grant_type_code,weekly_makeup_quota,...}] }
   Future<List<Map<String, dynamic>>> fetchPlans() async {
     final res = await _client.get<Map<String, dynamic>>(ApiEndpoints.planList);
     final info = _unwrap(res);
@@ -87,11 +93,15 @@ class PointsRepository {
         .toList(growable: false);
   }
 
-  /// POST /sdkapi/plan/order { planId } → { orderId, planId, amount, status }
-  Future<Map<String, dynamic>> createOrder({required String planId}) async {
+  /// POST /sdkapi/plan/order { planId, period }
+  /// → { orderId, planId, planName, period, amount, status }
+  Future<Map<String, dynamic>> createOrder({
+    required String planId,
+    required String period,
+  }) async {
     final res = await _client.post<Map<String, dynamic>>(
       ApiEndpoints.planOrder,
-      data: {'planId': planId},
+      data: {'planId': planId, 'period': period},
     );
     return _unwrap(res);
   }
@@ -108,7 +118,7 @@ class PointsRepository {
   // ── 签到 ────────────────────────────────────────────────
 
   /// GET /sdkapi/checkin/calendar?month=YYYY-MM
-  /// → { month, calendar:[...], currentStreak, signedInToday, monthlyMakeupQuota,
+  /// → { month, calendar:[...], currentStreak, signedInToday, weeklyMakeupQuota,
   ///     usedMakeupCount, remainingMakeupQuota, rewardButtons:[...] }
   Future<Map<String, dynamic>> fetchCalendar({String? month}) async {
     final params = <String, dynamic>{};
@@ -150,8 +160,8 @@ class PointsRepository {
   /// → { success, date, streakCount, usedMakeupCount, remainingQuota }
   ///
   /// 错误：
-  ///   400 — date 格式无效 / 只能补过去 3 天 / 已签到
-  ///   402 — 本月配额用尽（前端引导看广告）
+  ///   400 — date 格式无效 / 只能补过去 2 天 / 已签到
+  ///   402 — 本周配额用尽（前端引导看广告）
   ///
   /// 抛出 ApiException（含 statusCode），调用方按 statusCode 判断。
   Future<Map<String, dynamic>> makeup({required String date}) async {

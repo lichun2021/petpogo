@@ -282,6 +282,27 @@ class _AuthInterceptor extends Interceptor {
 // ── 开发日志拦截器 ────────────────────────────────────────
 /// 完整打印每个请求的 进/出 参数，方便开发调试
 /// 使用 debugPrint 确保日志能被 ./log.sh 捕获
+
+/// debugPrint 默认截断 800 字符，用此函数分段打印长内容保证完整显示
+void _logLong(String msg, {int chunkSize = 500}) {
+  if (msg.length <= chunkSize) {
+    debugPrint(msg);
+    return;
+  }
+  var offset = 0;
+  var first = true;
+  while (offset < msg.length) {
+    final chunk = msg.substring(offset, (offset + chunkSize).clamp(0, msg.length));
+    if (first) {
+      debugPrint(chunk);
+      first = false;
+    } else {
+      debugPrint('│  $chunk');
+    }
+    offset += chunkSize;
+  }
+}
+
 class _DevLogInterceptor extends Interceptor {
   // 记录请求开始时间，用于计算耗时
   final _startTimes = <String, DateTime>{};
@@ -303,7 +324,7 @@ class _DevLogInterceptor extends Interceptor {
       debugPrint('│ Query: ${options.queryParameters}');
     }
     if (options.data != null) {
-      debugPrint('│ Body: ${options.data}');
+      _logLong('│ Body: ${options.data}');
     }
     debugPrint('└─────────────────────────────────────────────');
     handler.next(options);
@@ -319,7 +340,7 @@ class _DevLogInterceptor extends Interceptor {
     if (response.requestOptions.responseType == ResponseType.stream) {
       debugPrint('│ Body: <streaming>');
     } else {
-      debugPrint('│ Body: ${response.data}');
+      _logLong('│ Body: ${response.data}');
     }
     debugPrint('└─────────────────────────────────────────────');
     handler.next(response);
@@ -334,8 +355,8 @@ class _DevLogInterceptor extends Interceptor {
     debugPrint('│ ${err.requestOptions.method} ${err.requestOptions.uri}');
     debugPrint('│ Type: ${err.type}');
     debugPrint('│ Status: ${err.response?.statusCode}');
-    debugPrint('│ Body: ${err.response?.data}');
-    debugPrint('│ Msg: ${err.message}');
+    _logLong('│ Body: ${err.response?.data}');
+    _logLong('│ Msg: ${err.message}');
     debugPrint('└─────────────────────────────────────────────');
     handler.next(err);
   }
