@@ -208,7 +208,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               icon: Icons.info_outline_rounded,
               label: l10n.settingsVersion,
               trailing: AppConfig.appVersion,
-              onTap: () {},
             ),
             _SettingsTile(
               icon: Icons.article_rounded,
@@ -717,13 +716,13 @@ class _SettingsTile extends StatelessWidget {
   final String label;
   final String? trailing;
   final Color? iconColor; // 可选：自定义图标颜色（默认 primary）
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   const _SettingsTile({
     required this.icon,
     required this.label,
     this.trailing,
     this.iconColor,
-    required this.onTap,
+    this.onTap,
   });
 
   @override
@@ -758,8 +757,9 @@ class _SettingsTile extends StatelessWidget {
                       fontSize: 13,
                       color: AppColors.onSurfaceVariant)),
             const SizedBox(width: 4),
-            Icon(Icons.chevron_right_rounded,
-                color: AppColors.onSurfaceVariant, size: 20),
+            if (onTap != null)
+              Icon(Icons.chevron_right_rounded,
+                  color: AppColors.onSurfaceVariant, size: 20),
           ],
         ),
       ),

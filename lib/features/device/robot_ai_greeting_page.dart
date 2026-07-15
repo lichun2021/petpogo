@@ -6,8 +6,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 
-import 'package:dio/dio.dart';
-import 'package:gal/gal.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +28,7 @@ import '../../shared/theme/app_fonts.dart';
 import '../../features/consultation/data/repository/consultation_repository.dart';
 
 import '../../shared/utils/oss_uploader.dart';
+import '../../shared/utils/remote_media_saver.dart';
 import '../../shared/widgets/pet_toast.dart';
 import '../share/data/repository/share_repository.dart';
 import 'data/models/capture_model.dart';
@@ -1694,27 +1693,14 @@ class _GreetingDetailSheetState extends ConsumerState<_GreetingDetailSheet> {
     if (url.isEmpty) return;
     setState(() => _downloading = true);
     try {
-      final hasAccess = await Gal.hasAccess(toAlbum: true);
-      if (!hasAccess) {
-        final ok = await Gal.requestAccess(toAlbum: true);
-        if (!ok) {
-          if (mounted) PetToast.error(context, '无相册权限，请在设置中开启');
-          return;
-        }
-      }
-      final tmp = await getTemporaryDirectory();
-      final isVideo = widget.item.responseUrl.isNotEmpty;
-      final ext = isVideo ? 'mp4' : 'jpg';
-      final path =
-          '${tmp.path}/greeting_${DateTime.now().millisecondsSinceEpoch}.$ext';
-      await Dio().download(url, path);
-      if (isVideo) {
-        await Gal.putVideo(path, album: 'PetPogo');
-      } else {
-        await Gal.putImage(path, album: 'PetPogo');
-      }
-      await File(path).delete();
+      await saveRemoteMediaToGallery(
+        url: url,
+        isVideo: widget.item.responseUrl.isNotEmpty,
+        fileNamePrefix: 'greeting',
+      );
       if (mounted) PetToast.success(context, '已保存到相册');
+    } on GalleryAccessDeniedException {
+      if (mounted) PetToast.error(context, '无相册权限，请在设置中开启');
     } catch (_) {
       if (mounted) PetToast.error(context, '保存失败，请重试');
     } finally {

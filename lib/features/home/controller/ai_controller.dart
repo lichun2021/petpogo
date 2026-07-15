@@ -18,12 +18,12 @@ import '../data/repository/ai_repository.dart';
 
 // ── 状态枚举 ───────────────────────────────────────────────
 enum AiPhase {
-  idle,       // 待机
-  uploading,  // 上传到 OSS
-  analyzing,  // 后端 AI 分析中
-  result,     // 显示情绪结果
-  notPet,     // 识别到非宠物（success=false，配额已扣减）
-  error,      // 网络/服务器错误
+  idle, // 待机
+  uploading, // 上传到 OSS
+  analyzing, // 后端 AI 分析中
+  result, // 显示情绪结果
+  notPet, // 识别到非宠物（success=false，配额已扣减）
+  error, // 网络/服务器错误
 }
 
 // ── 状态类 ───────────────────────────────────────────────
@@ -35,7 +35,7 @@ class AiAnalyzeState {
   final String? notPetReason;
 
   const AiAnalyzeState({
-    this.phase          = AiPhase.idle,
+    this.phase = AiPhase.idle,
     this.uploadProgress = 0.0,
     this.result,
     this.errorMessage,
@@ -48,13 +48,14 @@ class AiAnalyzeState {
     AiAnalysisResult? result,
     String? errorMessage,
     String? notPetReason,
-  }) => AiAnalyzeState(
-    phase:          phase          ?? this.phase,
-    uploadProgress: uploadProgress ?? this.uploadProgress,
-    result:         result         ?? this.result,
-    errorMessage:   errorMessage,
-    notPetReason:   notPetReason,
-  );
+  }) =>
+      AiAnalyzeState(
+        phase: phase ?? this.phase,
+        uploadProgress: uploadProgress ?? this.uploadProgress,
+        result: result ?? this.result,
+        errorMessage: errorMessage,
+        notPetReason: notPetReason,
+      );
 }
 
 // ── Controller ────────────────────────────────────────────
@@ -67,8 +68,8 @@ class AiAnalyzeController extends StateNotifier<AiAnalyzeState> {
   // ── 分析完成后回写配额到 authControllerProvider ─────────
   void _syncQuota(AiQuotaInfo quotaInfo) {
     final quota = AiQuota(
-      used:      quotaInfo.used,
-      limit:     quotaInfo.limit,
+      used: quotaInfo.used,
+      limit: quotaInfo.limit,
       remaining: quotaInfo.remaining,
     );
     _ref.read(authControllerProvider.notifier).updateAiQuota(quota);
@@ -76,16 +77,27 @@ class AiAnalyzeController extends StateNotifier<AiAnalyzeState> {
 
   // ── 语音分析 ────────────────────────────────────────────────
   Future<void> analyzeVoice(File audioFile, {String? petId}) async {
+    final account =
+        _ref.read(authControllerProvider).user?.account.trim() ?? '';
+    if (account.isEmpty) {
+      state = const AiAnalyzeState(
+        phase: AiPhase.error,
+        errorMessage: '无法获取登录账号，请重新登录',
+      );
+      return;
+    }
     state = const AiAnalyzeState(phase: AiPhase.uploading, uploadProgress: 0);
     try {
       final result = await _repo.uploadAndAnalyzeVoice(
         file: audioFile,
+        account: account,
         petId: petId,
         onProgress: (stage, p) {
           if (stage == 'upload') {
             state = state.copyWith(phase: AiPhase.uploading, uploadProgress: p);
           } else if (stage == 'analyzing') {
-            state = state.copyWith(phase: AiPhase.analyzing, uploadProgress: 1.0);
+            state =
+                state.copyWith(phase: AiPhase.analyzing, uploadProgress: 1.0);
           }
         },
       );
@@ -100,26 +112,40 @@ class AiAnalyzeController extends StateNotifier<AiAnalyzeState> {
         );
         return;
       }
-      state = AiAnalyzeState(phase: AiPhase.result, result: result, uploadProgress: 1.0);
-      debugPrint('[AiCtrl] 语音分析完成: ${result.primaryEmotion.labelZh} (剩余: ${result.quota.remaining})');
+      state = AiAnalyzeState(
+          phase: AiPhase.result, result: result, uploadProgress: 1.0);
+      debugPrint(
+          '[AiCtrl] 语音分析完成: ${result.primaryEmotion.labelZh} (剩余: ${result.quota.remaining})');
     } catch (e) {
-      state = AiAnalyzeState(phase: AiPhase.error, errorMessage: _parseError(e));
+      state =
+          AiAnalyzeState(phase: AiPhase.error, errorMessage: _parseError(e));
       debugPrint('[AiCtrl] 语音分析失败: $e');
     }
   }
 
   // ── 图像分析 ────────────────────────────────────────────────
   Future<void> analyzeImage(File imageFile, {String? petId}) async {
+    final account =
+        _ref.read(authControllerProvider).user?.account.trim() ?? '';
+    if (account.isEmpty) {
+      state = const AiAnalyzeState(
+        phase: AiPhase.error,
+        errorMessage: '无法获取登录账号，请重新登录',
+      );
+      return;
+    }
     state = const AiAnalyzeState(phase: AiPhase.uploading, uploadProgress: 0);
     try {
       final result = await _repo.uploadAndAnalyzeImage(
         file: imageFile,
+        account: account,
         petId: petId,
         onProgress: (stage, p) {
           if (stage == 'upload') {
             state = state.copyWith(phase: AiPhase.uploading, uploadProgress: p);
           } else if (stage == 'analyzing') {
-            state = state.copyWith(phase: AiPhase.analyzing, uploadProgress: 1.0);
+            state =
+                state.copyWith(phase: AiPhase.analyzing, uploadProgress: 1.0);
           }
         },
       );
@@ -134,10 +160,13 @@ class AiAnalyzeController extends StateNotifier<AiAnalyzeState> {
         );
         return;
       }
-      state = AiAnalyzeState(phase: AiPhase.result, result: result, uploadProgress: 1.0);
-      debugPrint('[AiCtrl] 图像分析完成: ${result.primaryEmotion.labelZh} (剩余: ${result.quota.remaining})');
+      state = AiAnalyzeState(
+          phase: AiPhase.result, result: result, uploadProgress: 1.0);
+      debugPrint(
+          '[AiCtrl] 图像分析完成: ${result.primaryEmotion.labelZh} (剩余: ${result.quota.remaining})');
     } catch (e) {
-      state = AiAnalyzeState(phase: AiPhase.error, errorMessage: _parseError(e));
+      state =
+          AiAnalyzeState(phase: AiPhase.error, errorMessage: _parseError(e));
       debugPrint('[AiCtrl] 图像分析失败: $e');
     }
   }

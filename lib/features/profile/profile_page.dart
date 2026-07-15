@@ -147,7 +147,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               IconButton(
                 icon: const Icon(Icons.notifications_rounded, size: 22),
                 color: AppColors.onSurfaceVariant,
-                onPressed: () {},
+                tooltip: '通知中心',
+                onPressed: () => PetToast.warning(context, '通知中心即将上线'),
               ),
               IconButton(
                 icon: const Icon(Icons.settings_rounded, size: 22),

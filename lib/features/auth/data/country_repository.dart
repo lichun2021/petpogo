@@ -9,17 +9,15 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/config/app_config.dart';
 import 'models/country_model.dart';
-
-/// iPet 对方后台公网地址（国家列表等公开接口）
-const _kPeerPublicUrl = 'http://49.234.39.11:8006';
 
 class CountryRepository {
   late final Dio _dio;
 
   CountryRepository() {
     _dio = Dio(BaseOptions(
-      baseUrl: _kPeerPublicUrl,
+      baseUrl: AppConfig.peerPublicBaseUrl,
       connectTimeout: const Duration(seconds: 8),
       receiveTimeout: const Duration(seconds: 8),
     ));
@@ -45,7 +43,8 @@ class CountryRepository {
   /// 获取默认国家（中国大陆）
   Future<CountryInfo> fetchDefault() async {
     try {
-      final res = await _dio.get<Map<String, dynamic>>('/world/country/default');
+      final res =
+          await _dio.get<Map<String, dynamic>>('/world/country/default');
       final info = res.data;
       if (info != null) {
         // default 接口返回的是不带 code 封装的直接对象

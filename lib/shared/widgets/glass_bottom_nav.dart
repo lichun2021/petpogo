@@ -4,9 +4,6 @@ import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 玻璃态底部导航栏 ──────────────────────────────────────
 /// 底部导航栏 UI 组件
-///
-/// 职责：纯 UI，接收当前选中索引和点击回调，无业务逻辑。
-/// 由 [MainShell] 使用，Tab 切换逻辑在 MainShell 里。
 class GlassBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -49,14 +46,13 @@ class GlassBottomNav extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
             child: Row(
-              children: items.asMap().entries.map((e) {
-                final i = e.key;
-                final item = e.value;
+              children: items.asMap().entries.map((entry) {
+                final index = entry.key;
                 return Expanded(
                   child: NavButton(
-                    item: item,
-                    selected: currentIndex == i,
-                    onTap: () => onTap(i),
+                    item: entry.value,
+                    selected: currentIndex == index,
+                    onTap: () => onTap(index),
                   ),
                 );
               }).toList(),
@@ -68,7 +64,6 @@ class GlassBottomNav extends StatelessWidget {
   }
 }
 
-// ── 单个导航按钮（固定尺寸）───────────────────────────────
 class NavButton extends StatelessWidget {
   final NavItem item;
   final bool selected;
@@ -83,53 +78,65 @@ class NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
-        height: 58,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppColors.primaryContainer.withValues(alpha: 0.42)
-              : Colors.transparent,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: item.label,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              selected ? item.activeIcon : item.icon,
-              color: selected ? AppColors.primary : AppColors.onSurfaceVariant,
-              size: 23,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+            height: 58,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+            decoration: BoxDecoration(
+              color: selected
+                  ? AppColors.primaryContainer.withValues(alpha: 0.42)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
             ),
-            SizedBox(height: 2),
-            AnimatedDefaultTextStyle(
-              duration: Duration(milliseconds: 200),
-              style: TextStyle(
-                fontFamily: AppFonts.primary,
-                fontSize: 10,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color:
-                    selected ? AppColors.primary : AppColors.onSurfaceVariant,
-              ),
-              child: Text(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+            child: ExcludeSemantics(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    selected ? item.activeIcon : item.icon,
+                    color: selected
+                        ? AppColors.primary
+                        : AppColors.onSurfaceVariant,
+                    size: 23,
+                  ),
+                  const SizedBox(height: 2),
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
+                    style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 11,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: selected
+                          ? AppColors.primary
+                          : AppColors.onSurfaceVariant,
+                    ),
+                    child: Text(
+                      item.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ── 数据类 ────────────────────────────────────────────────
-/// 单个 Tab 的图标和文字描述
 class NavItem {
   final IconData icon;
   final IconData activeIcon;

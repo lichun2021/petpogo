@@ -40,10 +40,13 @@ class AppConfig {
   // 完整登录 URL = baseUrl + '/auth/login'
 
   // ──────────────────────────────────────────────
-  // 宠小伊 AI 问诊（独立后端 — 临时明文 HTTP，上线前换 HTTPS 域名）
+  // 宠小伊 AI 问诊（独立 HTTPS 后端）
   // ──────────────────────────────────────────────
   /// 完整 URL 由 Repository 拼接：[aiConsultBaseUrl] + [ApiEndpoints.aiConsult*]
-  static const String aiConsultBaseUrl = 'http://49.234.39.11:8007';
+  static const String aiConsultBaseUrl = 'https://ai.jxpetai.com';
+
+  /// iPet 登录前公开接口与登录后硬件网关统一入口。
+  static const String peerPublicBaseUrl = 'https://peer.jxpetai.com';
 
   // ──────────────────────────────────────────────
   // App 信息

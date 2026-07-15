@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../shared/theme/app_colors.dart';
+import '../../shared/widgets/pet_toast.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 /// 宠物详情页 — 健康卡、AI识别历史、设备关联
@@ -37,7 +38,8 @@ class PetDetailPage extends StatelessWidget {
                   decoration: BoxDecoration(color: Colors.black26, shape: BoxShape.circle),
                   child: Icon(Icons.edit_rounded, size: 18, color: Colors.white),
                 ),
-                onPressed: () {},
+                tooltip: '编辑宠物',
+                onPressed: () => PetToast.warning(context, '宠物编辑即将上线'),
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(

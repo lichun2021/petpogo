@@ -1,7 +1,7 @@
 /// ════════════════════════════════════════════════════════════
 ///  宠小伊 AI 问诊 — 数据模型
 ///
-///  后端：http://49.234.39.11:8007 (v0.4+)
+///  后端：https://ai.jxpetai.com (v0.4+)
 ///  API 统一响应格式：{ code: int, info: object|null, tip: string }
 ///  Repository 层负责解包，Model 只处理 info 内的业务字段。
 ///
@@ -30,8 +30,8 @@ class ConsultationSession {
   factory ConsultationSession.fromJson(Map<String, dynamic> json) {
     return ConsultationSession(
       sessionId: (json['session_id'] as String?) ?? '',
-      petId:     (json['pet_id'] as String?) ?? '',
-      petInfo:   PetInfoSnapshot.fromJson(
+      petId: (json['pet_id'] as String?) ?? '',
+      petInfo: PetInfoSnapshot.fromJson(
         (json['pet_info'] as Map?)?.cast<String, dynamic>() ?? const {},
       ),
     );
@@ -61,9 +61,9 @@ class PetInfoSnapshot {
 
   factory PetInfoSnapshot.fromJson(Map<String, dynamic> json) {
     return PetInfoSnapshot(
-      name:   (json['name'] as String?) ?? '',
-      breed:  (json['breed'] as String?) ?? '',
-      age:    (json['age'] as String?) ?? '',
+      name: (json['name'] as String?) ?? '',
+      breed: (json['breed'] as String?) ?? '',
+      age: (json['age'] as String?) ?? '',
       gender: (json['gender'] as String?) ?? '',
       weight: (json['weight'] as String?) ?? '',
     );
@@ -143,7 +143,7 @@ class ConsultationTurn {
 
   factory ConsultationTurn.fromJson(Map<String, dynamic> json) {
     return ConsultationTurn(
-      userInput:    (json['user_input'] as String?) ?? '',
+      userInput: (json['user_input'] as String?) ?? '',
       consultation: (json['consultation'] as String?) ?? '',
     );
   }
@@ -158,6 +158,7 @@ class ConsultationReport {
   final String symptomSummary;
   final String medicalSolutions;
   final List<DiseaseCard> diseaseCards;
+
   /// 诊断依据（diagnostic_basis 字段）
   final String diagnosticBasis;
 
@@ -173,11 +174,11 @@ class ConsultationReport {
   factory ConsultationReport.fromJson(Map<String, dynamic> json) {
     final cards = (json['disease_card'] as List?) ?? const [];
     return ConsultationReport(
-      report:           (json['report'] as String?) ?? '',
-      primaryDisease:   (json['primary_disease'] as String?) ?? '',
-      symptomSummary:   (json['symptom_summary'] as String?) ?? '',
+      report: (json['report'] as String?) ?? '',
+      primaryDisease: (json['primary_disease'] as String?) ?? '',
+      symptomSummary: (json['symptom_summary'] as String?) ?? '',
       medicalSolutions: (json['medical_solutions'] as String?) ?? '',
-      diagnosticBasis:  (json['diagnostic_basis'] as String?) ?? '',
+      diagnosticBasis: (json['diagnostic_basis'] as String?) ?? '',
       diseaseCards: cards
           .whereType<Map>()
           .map((e) => DiseaseCard.fromJson(e.cast<String, dynamic>()))
@@ -236,14 +237,19 @@ class DiseaseCard {
 
     return DiseaseCard(
       // 英文 key 优先，兼容旧版中文 key
-      name:       (json['name'] as String?)      ?? (json['疾病名称'] as String?) ?? '',
+      name: (json['name'] as String?) ?? (json['疾病名称'] as String?) ?? '',
       probability: probInt,
-      riskLevel:  (json['risk_level'] as String?) ?? (json['疾病类型'] as String?) ?? '',
-      definition: (json['definition'] as String?) ?? (json['定义'] as String?)    ?? '',
-      cause:      (json['cause'] as String?)      ?? (json['病因'] as String?)     ?? '',
-      symptoms:   (json['symptoms'] as String?)   ?? (json['临床表现'] as String?)  ?? '',
-      diagnosis:  (json['diagnosis'] as String?)  ?? (json['诊断'] as String?)     ?? '',
-      treatment:  (json['treatment'] as String?)  ?? (json['治疗方向'] as String?)  ?? '',
+      riskLevel:
+          (json['risk_level'] as String?) ?? (json['疾病类型'] as String?) ?? '',
+      definition:
+          (json['definition'] as String?) ?? (json['定义'] as String?) ?? '',
+      cause: (json['cause'] as String?) ?? (json['病因'] as String?) ?? '',
+      symptoms:
+          (json['symptoms'] as String?) ?? (json['临床表现'] as String?) ?? '',
+      diagnosis:
+          (json['diagnosis'] as String?) ?? (json['诊断'] as String?) ?? '',
+      treatment:
+          (json['treatment'] as String?) ?? (json['治疗方向'] as String?) ?? '',
     );
   }
 
@@ -272,7 +278,7 @@ class ConsultationSessionSummary {
   factory ConsultationSessionSummary.fromJson(Map<String, dynamic> json) {
     return ConsultationSessionSummary(
       sessionId: (json['session_id'] as String?) ?? '',
-      title:     json['title'] as String?,
+      title: json['title'] as String?,
       createdAt: (json['created_at'] as String?) ?? '',
       updatedAt: (json['updated_at'] as String?) ?? '',
     );
@@ -304,10 +310,10 @@ class HistoryTurn {
 
   factory HistoryTurn.fromJson(Map<String, dynamic> json) {
     return HistoryTurn(
-      turnIndex:    (json['turn_index'] as int?) ?? 0,
-      userInput:    (json['user_input'] as String?) ?? '',
+      turnIndex: (json['turn_index'] as int?) ?? 0,
+      userInput: (json['user_input'] as String?) ?? '',
       consultation: (json['consultation'] as String?) ?? '',
-      createdAt:    (json['created_at'] as String?) ?? '',
+      createdAt: (json['created_at'] as String?) ?? '',
     );
   }
 }
@@ -334,8 +340,8 @@ class SessionHistory {
     final turns = (json['turns'] as List?) ?? const [];
     return SessionHistory(
       sessionId: (json['session_id'] as String?) ?? '',
-      petId:     (json['pet_id'] as String?) ?? '',
-      title:     json['title'] as String?,
+      petId: (json['pet_id'] as String?) ?? '',
+      title: json['title'] as String?,
       createdAt: (json['created_at'] as String?) ?? '',
       updatedAt: (json['updated_at'] as String?) ?? '',
       turns: turns
@@ -404,14 +410,14 @@ class AiOutputParser {
     if (base.isNotEmpty && base.last.tag == null) {
       final lastPlain = base.last.content;
       for (final tag in _knownTags) {
-        final openTag  = '<$tag>';
+        final openTag = '<$tag>';
         final closeTag = '</$tag>';
         final oi = lastPlain.indexOf(openTag);
         if (oi >= 0 && !lastPlain.substring(oi).contains(closeTag)) {
           // 把 plain 段拆成 [before] + [incomplete tag content]
-          final before     = lastPlain.substring(0, oi);
+          final before = lastPlain.substring(0, oi);
           final tagContent = lastPlain.substring(oi + openTag.length);
-          final result     = base.sublist(0, base.length - 1);
+          final result = base.sublist(0, base.length - 1);
           if (before.trim().isNotEmpty) {
             result.add(TaggedSegment(tag: null, content: before));
           }
@@ -429,7 +435,6 @@ class AiOutputParser {
   }
 }
 
-
 class TaggedSegment {
   final String? tag;
   final String content;
@@ -444,8 +449,8 @@ String decodeSseData(String raw) {
     if (decoded is String) return decoded;
     if (decoded is Map) {
       for (final k in const [
-        'text',       // delta 事件
-        'full_text',  // done 事件
+        'text', // delta 事件
+        'full_text', // done 事件
         'user_input', // start 事件
         'data',
         'message',

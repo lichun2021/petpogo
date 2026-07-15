@@ -1,5 +1,4 @@
 import 'dart:ui' as ui;
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -7,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/utils/coord_transform.dart';
+import '../../shared/utils/map_services.dart';
 import '../../shared/widgets/pet_avatar.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
@@ -15,36 +15,17 @@ import 'package:petpogo_app/shared/theme/app_fonts.dart';
 // ── 逆地理编码（Nominatim，WGS84 坐标）───────────────────────
 Future<String> _reverseGeocode(double lat, double lng) async {
   try {
-    final dio = Dio();
-    dio.options.headers['User-Agent'] = 'PetPogoApp/1.0';
-    final resp = await dio.get(
-      'https://nominatim.openstreetmap.org/reverse',
-      queryParameters: {
-        'format': 'json',
-        'lat': lat.toStringAsFixed(7),
-        'lon': lng.toStringAsFixed(7),
-        'accept-language': 'zh-CN,zh',
-        'zoom': 18,
-      },
-    ).timeout(Duration(seconds: 8));
-    final data = resp.data;
-    if (data is Map) {
-      final display = data['display_name']?.toString() ?? '';
-      if (display.isNotEmpty) {
-        final parts = display.split(', ');
-        if (parts.length > 1 && parts.last == '中国') parts.removeLast();
-        return parts.take(4).join(' '); // 取前4段，不要太长
-      }
+    final display = await fetchNominatimDisplayName(LatLng(lat, lng));
+    if (display.isNotEmpty) {
+      final parts = display.split(', ');
+      if (parts.length > 1 && parts.last == '中国') parts.removeLast();
+      return parts.take(4).join(' ');
     }
   } catch (e) {
     debugPrint('[Location] geocode error: $e');
   }
-  return ''; // 失败返回空，BottomCard 降级显示坐标
+  return '';
 }
-
-// ── 高德瓦片（同 fence_add_flow.dart，GCJ02 坐标系）─────────
-const _amapTileUrl =
-    'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}';
 
 // ── 宠物位置页 ────────────────────────────────────────────
 class PetLocationPage extends ConsumerStatefulWidget {
@@ -176,7 +157,7 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
             children: [
               // 高德矢量瓦片（中文标注）
               TileLayer(
-                urlTemplate: _amapTileUrl,
+                urlTemplate: amapTileUrl,
                 subdomains: ['1', '2', '3', '4'],
                 userAgentPackageName: 'com.junxin.petpogo_and',
                 maxZoom: 18,

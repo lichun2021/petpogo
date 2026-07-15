@@ -12,6 +12,7 @@ class PressableButton extends StatefulWidget {
   final Duration duration;
   final BorderRadius? borderRadius;
   final bool haptic;
+  final String? semanticLabel;
 
   PressableButton({
     super.key,
@@ -21,6 +22,7 @@ class PressableButton extends StatefulWidget {
     this.duration = const Duration(milliseconds: 100),
     this.borderRadius,
     this.haptic = true,
+    this.semanticLabel,
   });
 
   @override
@@ -47,10 +49,11 @@ class _PressableButtonState extends State<PressableButton>
     super.dispose();
   }
 
-  void _onTapDown(_) => _ctrl.forward();
+  void _onTapDown(TapDownDetails _) => _ctrl.forward();
 
-  void _onTapUp(_) {
-    _ctrl.reverse();
+  void _onTapUp(TapUpDetails _) => _ctrl.reverse();
+
+  void _onTap() {
     if (widget.haptic) HapticFeedback.lightImpact();
     widget.onTap?.call();
   }
@@ -59,11 +62,24 @@ class _PressableButtonState extends State<PressableButton>
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: widget.onTap != null ? _onTapDown : null,
-      onTapUp: widget.onTap != null ? _onTapUp : null,
-      onTapCancel: widget.onTap != null ? _onTapCancel : null,
-      child: ScaleTransition(scale: _scale, child: widget.child),
+    final enabled = widget.onTap != null;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: widget.semanticLabel,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: enabled ? _onTapDown : null,
+        onTapUp: enabled ? _onTapUp : null,
+        onTap: enabled ? _onTap : null,
+        onTapCancel: enabled ? _onTapCancel : null,
+        child: ScaleTransition(
+          scale: _scale,
+          child: widget.semanticLabel == null
+              ? widget.child
+              : ExcludeSemantics(child: widget.child),
+        ),
+      ),
     );
   }
 }
@@ -179,6 +195,7 @@ class PrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return PressableButton(
       onTap: isLoading ? null : onPressed,
+      semanticLabel: label,
       child: Container(
         width: width ?? double.infinity,
         height: 52,
@@ -208,7 +225,7 @@ class PrimaryButton extends StatelessWidget {
                   height: 22,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    color: Colors.white,
+                    color: AppColors.onPrimary,
                   ),
                 )
               : Row(
@@ -224,7 +241,7 @@ class PrimaryButton extends StatelessWidget {
                         fontFamily: AppFonts.primary,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: AppColors.onPrimary,
                         letterSpacing: 0.2,
                       ),
                     ),

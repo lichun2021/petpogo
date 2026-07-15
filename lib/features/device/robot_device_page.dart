@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
@@ -56,6 +56,9 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   double _kbps = 0;
   bool _videoFrozen = false; // 视频网络拥塑冻结状态
   bool _hasVideoStream = false; // 是否真正收到视频流（rxVideoKBitRate > 0）
+  int? _motorStreamId;
+  bool _creatingMotorStream = false;
+  int _motorStreamGeneration = 0;
   Timer? _statsTimer;
 
   /// 连接状态文案：只有真正收到视频流才算「已连接」
@@ -107,15 +110,18 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     // 立即置 null，防止后续 setState 崩溃
     final engine = _engine;
     final micWasOn = _micOn;
+    final motorStreamId = _motorStreamId;
     _engine = null;
     _micOn = false;
     _agoraJoined = false;
+    _resetMotorStream();
     _remoteUid = null;
     _hasVideoStream = false;
 
     if (engine != null) {
       // 每步独立 try/catch — 保证 leaveChannel 无论如何都会执行
       () async {
+        await _sendMotorStopOverAgora(engine, motorStreamId);
         // 1. 对讲开着时先关麦克风
         if (micWasOn) {
           try {
@@ -159,6 +165,67 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   }
 
   // ── Agora 工具方法 ──────────────────────────────────────
+
+  void _resetMotorStream() {
+    _motorStreamGeneration++;
+    _motorStreamId = null;
+    _creatingMotorStream = false;
+  }
+
+  Future<void> _createMotorStream() async {
+    final engine = _engine;
+    if (engine == null ||
+        !_agoraJoined ||
+        _motorStreamId != null ||
+        _creatingMotorStream) {
+      return;
+    }
+    final generation = _motorStreamGeneration;
+    _creatingMotorStream = true;
+    try {
+      final streamId = await engine.createDataStream(
+        const DataStreamConfig(syncWithAudio: false, ordered: true),
+      );
+      if (streamId < 0) {
+        throw StateError('createDataStream failed: $streamId');
+      }
+      if (!mounted ||
+          engine != _engine ||
+          !_agoraJoined ||
+          generation != _motorStreamGeneration) {
+        return;
+      }
+      _motorStreamId = streamId;
+      debugPrint('[Agora] 马达 Data Stream 创建成功 id=$streamId');
+    } catch (e) {
+      debugPrint('[Agora] 马达 Data Stream 创建失败: $e');
+    } finally {
+      if (generation == _motorStreamGeneration) {
+        _creatingMotorStream = false;
+      }
+    }
+  }
+
+  Future<void> _sendMotorStopOverAgora(RtcEngine? engine, int? streamId) async {
+    if (engine == null || streamId == null) return;
+    final payload = buildMotorControlPayload(
+      motor0Direction: 0,
+      motor0Speed: 0,
+      motor1Direction: 0,
+      motor1Speed: 0,
+    );
+    final bytes = Uint8List.fromList(utf8.encode(jsonEncode(payload)));
+    try {
+      await engine.sendStreamMessage(
+        streamId: streamId,
+        data: bytes,
+        length: bytes.length,
+      );
+      debugPrint('[Agora] 离开频道前已发送马达停止');
+    } catch (e) {
+      debugPrint('[Agora] 离开频道前发送马达停止失败: $e');
+    }
+  }
 
   /// 初始化引擎 + 加入频道
   Future<void> _startAgora() async {
@@ -232,14 +299,21 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       debugPrint('[Agora] registerEventHandler...');
       _engine!.registerEventHandler(RtcEngineEventHandler(
         onJoinChannelSuccess: (_, __) {
-          if (mounted)
+          if (mounted) {
             setState(() {
               _agoraJoined = true;
               _agoraLoading = false;
             });
+          }
+          _createMotorStream();
           // 加入频道后再开启扬声器（防止提前调用报 -3）
           _engine?.setEnableSpeakerphone(true);
           debugPrint('[🔊音频] 加入频道成功 → setEnableSpeakerphone(true)');
+        },
+        onLeaveChannel: (_, __) {
+          // 所有主动 leave 路径都会在调用前完成停止和 stream 清理。
+          // 这里不改写状态，避免旧频道延迟回调覆盖快速重连后的新会话。
+          debugPrint('[Agora] onLeaveChannel');
         },
         onUserJoined: (_, uid, __) {
           if (mounted) setState(() => _remoteUid = uid);
@@ -358,6 +432,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       debugPrint(
           '[🔊音频] enableLocalAudio=true muteLocalAudioStream=true（对讲默认关）');
       try {
+        _resetMotorStream();
         await _engine!.leaveChannel();
       } catch (_) {} // 防御：确保不在频道中
       debugPrint('[Agora] joinChannel...');
@@ -385,8 +460,12 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
 
   /// 离开频道 + 释放引擎
   Future<void> _stopAgora() async {
-    await _engine?.leaveChannel();
-    await _engine?.release();
+    final engine = _engine;
+    final streamId = _motorStreamId;
+    await _sendMotorStopOverAgora(engine, streamId);
+    _resetMotorStream();
+    await engine?.leaveChannel();
+    await engine?.release();
     _engine = null;
     _agoraJoined = false;
     _remoteUid = null;
@@ -403,6 +482,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       }
       await _engine?.muteAllRemoteAudioStreams(true);
       await _engine?.disableVideo();
+      await _sendMotorStopOverAgora(_engine, _motorStreamId);
+      _resetMotorStream();
       await _engine?.leaveChannel();
       if (mounted)
         setState(() {
@@ -702,7 +783,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     setState(() => _micOn = next);
   }
 
-  // ── 电机控制（PeerApiSpeed 接口）──────────────────────
+  // ── 电机控制（通话中 Agora Data Stream，未通话 Shadow）─────
   void _sendMotorControl(int m0Dir, int m0Speed, int m1Dir, int m1Speed) {
     final base = _moveSpeed.toInt();
     final scaledM0 = (m0Speed * base ~/ 100).clamp(0, 100);
@@ -716,6 +797,37 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             : '停止■';
     debugPrint('[遥控] 左轮(motor_0): ${dirStr(m0Dir)} speed=$scaledM0 | '
         '右轮(motor_1): ${dirStr(m1Dir)} speed=$scaledM1 | base=$base%');
+
+    final payload = buildMotorControlPayload(
+      motor0Direction: m0Dir,
+      motor0Speed: scaledM0,
+      motor1Direction: m1Dir,
+      motor1Speed: scaledM1,
+    );
+
+    if (_agoraJoined) {
+      final engine = _engine;
+      final streamId = _motorStreamId;
+      if (engine == null || streamId == null) {
+        debugPrint('[Agora] 马达指令未发送：Data Stream 尚未就绪');
+        return;
+      }
+      final bytes = Uint8List.fromList(utf8.encode(jsonEncode(payload)));
+      if (bytes.length > 512) {
+        debugPrint('[Agora] 马达指令超过 512 字节，已丢弃');
+        return;
+      }
+      engine
+          .sendStreamMessage(
+        streamId: streamId,
+        data: bytes,
+        length: bytes.length,
+      )
+          .catchError((Object e) {
+        debugPrint('[Agora] 马达指令发送失败: $e');
+      });
+      return;
+    }
 
     ref.read(deviceRepositoryProvider).motorControl(
           mac: widget.mac,
@@ -1736,6 +1848,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   Future<void> _openGallery() async {
     // 进入媒体库前先离开频道，避免后台持续刷 Agora 音视频回调
     if (_agoraJoined) {
+      await _sendMotorStopOverAgora(_engine, _motorStreamId);
+      _resetMotorStream();
       await _engine?.leaveChannel();
       if (mounted)
         setState(() {

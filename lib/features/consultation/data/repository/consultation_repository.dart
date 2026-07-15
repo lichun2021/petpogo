@@ -1,7 +1,7 @@
 /// ════════════════════════════════════════════════════════════
 ///  宠小伊 AI 问诊 — ConsultationRepository
 ///
-///  后端：AppConfig.aiConsultBaseUrl (49.234.39.11:8007)
+///  后端：AppConfig.aiConsultBaseUrl (https://ai.jxpetai.com)
 ///
 ///  v0.4 API 变更（已全量适配）：
 ///    ① 统一响应格式 {code, info, tip}，通过 _unwrap() 统一解包
@@ -312,9 +312,9 @@ class RecordingStartInfo {
   factory RecordingStartInfo.fromJson(Map<String, dynamic> j) =>
       RecordingStartInfo(
         recordingId: j['recording_id'] as String? ?? '',
-        account:     j['account']      as String? ?? '',
-        deviceNo:    j['device_no']    as String? ?? '',
-        startedAt:   j['started_at']   as String? ?? '',
+        account: j['account'] as String? ?? '',
+        deviceNo: j['device_no'] as String? ?? '',
+        startedAt: j['started_at'] as String? ?? '',
       );
 }
 
@@ -332,11 +332,10 @@ class RecordingStopInfo {
   factory RecordingStopInfo.fromJson(Map<String, dynamic> j) =>
       RecordingStopInfo(
         recordingId: j['recording_id'] as String? ?? '',
-        videoUrl:    j['video_url']    as String? ?? '',
-        coverUrl:    j['cover_url']    as String? ?? '',
+        videoUrl: j['video_url'] as String? ?? '',
+        coverUrl: j['cover_url'] as String? ?? '',
       );
 }
-
 
 // ── Riverpod Provider ─────────────────────────────────────
 final consultationRepositoryProvider = Provider<ConsultationRepository>((ref) {

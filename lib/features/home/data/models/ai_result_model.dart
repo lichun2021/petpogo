@@ -22,10 +22,10 @@ class AiEmotionItem {
   });
 
   factory AiEmotionItem.fromJson(Map<String, dynamic> json) => AiEmotionItem(
-    label:      (json['label']      as String?) ?? 'unknown',
-    labelZh:    (json['label_zh']   as String?) ?? '未知',
-    confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
-  );
+        label: (json['label'] as String?) ?? 'unknown',
+        labelZh: (json['label_zh'] as String?) ?? '未知',
+        confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
+      );
 
   String get percentText => '${(confidence * 100).toStringAsFixed(0)}%';
 }
@@ -33,8 +33,8 @@ class AiEmotionItem {
 // ── AI 配额（随每次分析结果一起返回）─────────────────────
 class AiQuotaInfo {
   final int used;
-  final int limit;      // -1 = VIP 无限
-  final int remaining;  // -1 = VIP 无限
+  final int limit; // -1 = VIP 无限
+  final int remaining; // -1 = VIP 无限
 
   const AiQuotaInfo({
     required this.used,
@@ -45,10 +45,10 @@ class AiQuotaInfo {
   bool get isUnlimited => limit == -1;
 
   factory AiQuotaInfo.fromJson(Map<String, dynamic> json) => AiQuotaInfo(
-    used:      (json['used']      as int?) ?? 0,
-    limit:     (json['limit']     as int?) ?? 10,
-    remaining: (json['remaining'] as int?) ?? 0,
-  );
+        used: (json['used'] as int?) ?? 0,
+        limit: (json['limit'] as int?) ?? 10,
+        remaining: (json['remaining'] as int?) ?? 0,
+      );
 }
 
 // ── 统一 AI 分析结果 ──────────────────────────────────────
@@ -85,54 +85,55 @@ class AiAnalysisResult {
   final AiQuotaInfo quota;
 
   const AiAnalysisResult({
-    this.success        = true,
+    this.success = true,
     this.reason,
-    this.id             = '',
+    this.id = '',
     required this.primaryEmotion,
-    this.top3           = const [],
-    this.advice         = '',
-    this.ensembleSize   = 0,
-    this.processingMs   = 0,
+    this.top3 = const [],
+    this.advice = '',
+    this.ensembleSize = 0,
+    this.processingMs = 0,
     required this.quota,
   });
 
   factory AiAnalysisResult.fromJson(Map<String, dynamic> json) {
     final successVal = (json['success'] as bool?) ?? true;
-    final quotaRaw   = json['_quota'] as Map<String, dynamic>? ?? {};
-    final quota      = AiQuotaInfo.fromJson(quotaRaw);
+    final quotaRaw = json['_quota'] as Map<String, dynamic>? ?? {};
+    final quota = AiQuotaInfo.fromJson(quotaRaw);
 
     // success=false：非宠物，只有 reason + quota
     if (!successVal) {
       return AiAnalysisResult(
-        success:       false,
-        reason:        (json['reason'] as String?) ?? '无法识别该图片',
-        quota:         quota,
-        primaryEmotion: const AiEmotionItem(label: '', labelZh: '', confidence: 0),
+        success: false,
+        reason: (json['reason'] as String?) ?? '无法识别该图片',
+        quota: quota,
+        primaryEmotion:
+            const AiEmotionItem(label: '', labelZh: '', confidence: 0),
       );
     }
 
     // success=true：正常情绪分析结果
     final emotionRaw = json['emotion'] as Map<String, dynamic>? ?? {};
-    final primary    = AiEmotionItem.fromJson(emotionRaw);
-    final top3Raw    = json['top3'] as List? ?? [];
-    final top3       = top3Raw
+    final primary = AiEmotionItem.fromJson(emotionRaw);
+    final top3Raw = json['top3'] as List? ?? [];
+    final top3 = top3Raw
         .whereType<Map<String, dynamic>>()
         .map(AiEmotionItem.fromJson)
         .toList();
 
     return AiAnalysisResult(
-      success:       true,
-      id:            (json['id']           as String?) ?? '',
+      success: true,
+      id: (json['id'] as String?) ?? '',
       primaryEmotion: primary,
-      top3:          top3,
-      advice:        (json['advice']       as String?) ?? '',
-      ensembleSize:  (json['ensembleSize'] as int?)    ?? 0,
-      processingMs:  (json['processingMs'] as int?)    ?? 0,
-      quota:         quota,
+      top3: top3,
+      advice: (json['advice'] as String?) ?? '',
+      ensembleSize: (json['ensembleSize'] as int?) ?? 0,
+      processingMs: (json['processingMs'] as int?) ?? 0,
+      quota: quota,
     );
   }
 
-  /// 直连 AI 服务（AppConfig.aiConsultBaseUrl :8007）时使用此解析器。
+  /// 直连 AI 服务（AppConfig.aiConsultBaseUrl）时使用此解析器。
   ///
   /// AI 服务响应字段与业务后端不同：
   ///   - 语音：primary_emotion / top3_emotions / rejected
@@ -143,32 +144,33 @@ class AiAnalysisResult {
     final successVal = (json['success'] as bool?) ?? true;
     if (!successVal) {
       return AiAnalysisResult(
-        success:       false,
-        reason:        (json['message'] as String?)
-                    ?? (json['reason']  as String?)
-                    ?? '无法识别为宠物',
-        primaryEmotion: const AiEmotionItem(label: '', labelZh: '', confidence: 0),
-        quota:         const AiQuotaInfo(used: 0, limit: -1, remaining: -1),
+        success: false,
+        reason: (json['message'] as String?) ??
+            (json['reason'] as String?) ??
+            '无法识别为宠物',
+        primaryEmotion:
+            const AiEmotionItem(label: '', labelZh: '', confidence: 0),
+        quota: const AiQuotaInfo(used: 0, limit: -1, remaining: -1),
       );
     }
 
     // success=true：正常情绪分析结果
     final primaryRaw = json['primary_emotion'] as Map<String, dynamic>? ?? {};
-    final primary    = AiEmotionItem.fromJson(primaryRaw);
+    final primary = AiEmotionItem.fromJson(primaryRaw);
 
     // top3_emotions（语音/图片均用此字段）
     final top3Raw = json['top3_emotions'] as List? ?? [];
-    final top3    = top3Raw
+    final top3 = top3Raw
         .whereType<Map<String, dynamic>>()
         .map(AiEmotionItem.fromJson)
         .toList();
 
     return AiAnalysisResult(
-      success:       true,
+      success: true,
       primaryEmotion: primary,
-      top3:          top3,
-      advice:        (json['advice'] as String?) ?? '',
-      ensembleSize:  (json['emotion_model_count'] as int?) ?? 0,
+      top3: top3,
+      advice: (json['advice'] as String?) ?? '',
+      ensembleSize: (json['emotion_model_count'] as int?) ?? 0,
       // 直连 AI 服务不返回配额，limit=-1 表示无限制
       quota: const AiQuotaInfo(used: 0, limit: -1, remaining: -1),
     );
@@ -181,42 +183,42 @@ class AiAnalysisResult {
   int get primaryColorHex => _colorMap[primaryEmotion.label] ?? 0xFF9E9E9E;
 
   static const _emojiMap = <String, String>{
-    'alert':        '👀',
-    'angry':        '😠',
+    'alert': '👀',
+    'angry': '😠',
     'anticipation': '🤩',
-    'anxiety':      '😰',
-    'appeasement':  '🙏',
-    'caution':      '⚠️',
-    'confident':    '😎',
-    'curiosity':    '🔍',
-    'fear':         '😨',
-    'happy':        '😄',
-    'relaxed':      '😌',
-    'sad':          '😢',
-    'sleepy':       '😴',
-    'excited':      '🥳',
-    'anxious':      '😰',
-    'aggressive':   '😡',
-    'pain':         '😣',
+    'anxiety': '😰',
+    'appeasement': '🙏',
+    'caution': '⚠️',
+    'confident': '😎',
+    'curiosity': '🔍',
+    'fear': '😨',
+    'happy': '😄',
+    'relaxed': '😌',
+    'sad': '😢',
+    'sleepy': '😴',
+    'excited': '🥳',
+    'anxious': '😰',
+    'aggressive': '😡',
+    'pain': '😣',
   };
 
   static const _colorMap = <String, int>{
-    'alert':        0xFF2196F3,
-    'angry':        0xFFF44336,
+    'alert': 0xFF2196F3,
+    'angry': 0xFFF44336,
     'anticipation': 0xFFFF9800,
-    'anxiety':      0xFF9C27B0,
-    'appeasement':  0xFF607D8B,
-    'caution':      0xFFFF5722,
-    'confident':    0xFF009688,
-    'curiosity':    0xFF03A9F4,
-    'fear':         0xFF673AB7,
-    'happy':        0xFF4CAF50,
-    'relaxed':      0xFF8BC34A,
-    'sad':          0xFF78909C,
-    'sleepy':       0xFF9E9E9E,
-    'excited':      0xFFFF6B35,
-    'anxious':      0xFF9C27B0,
-    'aggressive':   0xFFF44336,
-    'pain':         0xFFE91E63,
+    'anxiety': 0xFF9C27B0,
+    'appeasement': 0xFF607D8B,
+    'caution': 0xFFFF5722,
+    'confident': 0xFF009688,
+    'curiosity': 0xFF03A9F4,
+    'fear': 0xFF673AB7,
+    'happy': 0xFF4CAF50,
+    'relaxed': 0xFF8BC34A,
+    'sad': 0xFF78909C,
+    'sleepy': 0xFF9E9E9E,
+    'excited': 0xFFFF6B35,
+    'anxious': 0xFF9C27B0,
+    'aggressive': 0xFFF44336,
+    'pain': 0xFFE91E63,
   };
 }

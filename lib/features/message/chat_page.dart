@@ -222,7 +222,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         actions: [
           IconButton(
             icon: Icon(Icons.more_horiz_rounded, color: AppColors.onSurfaceVariant),
-            onPressed: () {},
+            tooltip: '更多',
+            onPressed: () => PetToast.warning(context, '聊天设置即将上线'),
           ),
         ],
       ),

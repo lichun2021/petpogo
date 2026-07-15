@@ -3,20 +3,17 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:gal/gal.dart';
-import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:media_kit/media_kit.dart'; // 新增
 import 'package:media_kit_video/media_kit_video.dart'; // 新增
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../shared/utils/remote_media_saver.dart';
 import '../../shared/utils/wechat_share.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_fonts.dart';
@@ -1133,32 +1130,20 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
   bool _deleting = false;
   bool _sharingCommunity = false;
 
-  // ── 下载到相册（用 Dio）────────────────────────────────
+  // ── 下载到相册 ──────────────────────────────────────────
   Future<void> _download() async {
     final url = widget.item.resourceUrl;
     if (url.isEmpty) return;
     setState(() => _downloading = true);
     try {
-      final hasAccess = await Gal.hasAccess(toAlbum: true);
-      if (!hasAccess) {
-        final ok = await Gal.requestAccess(toAlbum: true);
-        if (!ok) {
-          if (mounted) PetToast.error(context, '无相册权限，请在设置中开启');
-          return;
-        }
-      }
-      final tmp = await getTemporaryDirectory();
-      final ext = widget.item.isVideo ? 'mp4' : 'jpg';
-      final path =
-          '${tmp.path}/capture_${DateTime.now().millisecondsSinceEpoch}.$ext';
-      await Dio().download(url, path);
-      if (widget.item.isVideo) {
-        await Gal.putVideo(path, album: 'PetPogo');
-      } else {
-        await Gal.putImage(path, album: 'PetPogo');
-      }
-      await File(path).delete();
+      await saveRemoteMediaToGallery(
+        url: url,
+        isVideo: widget.item.isVideo,
+        fileNamePrefix: 'capture',
+      );
       if (mounted) PetToast.success(context, '已保存到相册');
+    } on GalleryAccessDeniedException {
+      if (mounted) PetToast.error(context, '无相册权限，请在设置中开启');
     } catch (_) {
       if (mounted) PetToast.error(context, '保存失败，请重试');
     } finally {

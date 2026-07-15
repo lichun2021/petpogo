@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../shared/theme/app_colors.dart';
+import '../../shared/widgets/pet_toast.dart';
 import '../../app.dart' show AppL10nX;
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
@@ -30,8 +31,10 @@ class MallPage extends StatelessWidget {
             shadowColor: Colors.transparent,
             title: const SizedBox.shrink(), // 隐藏标题
             actions: [
-              IconButton(icon: Icon(Icons.search_rounded, color: AppColors.onSurfaceVariant), onPressed: () {}),
-              IconButton(icon: Icon(Icons.shopping_cart_outlined, color: AppColors.onSurfaceVariant), onPressed: () {}),
+              IconButton(icon: Icon(Icons.search_rounded, color: AppColors.onSurfaceVariant),
+                  tooltip: '搜索商品', onPressed: () => PetToast.warning(context, '商品搜索即将上线')),
+              IconButton(icon: Icon(Icons.shopping_cart_outlined, color: AppColors.onSurfaceVariant),
+                  tooltip: '购物车', onPressed: () => PetToast.warning(context, '购物车即将上线')),
               Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: CircleAvatar(radius: 16,

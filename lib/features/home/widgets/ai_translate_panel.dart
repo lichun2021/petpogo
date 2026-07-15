@@ -132,7 +132,6 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(aiVoiceControllerProvider);
@@ -143,9 +142,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
           (next.phase == AiPhase.result || next.phase == AiPhase.notPet)) {
         final quota = next.result?.quota;
         if (quota != null) {
-          final msg = quota.isUnlimited
-              ? '分析完成 ✨（Pro 无限）'
-              : '分析完成 ✨';
+          final msg = quota.isUnlimited ? '分析完成 ✨（Pro 无限）' : '分析完成 ✨';
           _showSnack(msg, color: AppColors.primary);
         }
       }
@@ -245,7 +242,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
                       reason: state.notPetReason ?? '未检测到宠物',
                       onRetry: _reset,
                     ),
-                  AiPhase.error => _ErrorView(
+                  AiPhase.error => AiErrorView(
                       key: ValueKey('error'),
                       message: state.errorMessage ?? '分析失败',
                       onRetry: _reset,
@@ -497,39 +494,6 @@ class _ResultView extends StatelessWidget {
     );
   }
 }
-
-// ── 错误 ──────────────────────────────────────────────────
-class _ErrorView extends StatelessWidget {
-  final String message;
-  final VoidCallback onRetry;
-  const _ErrorView({super.key, required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text('😓', style: TextStyle(fontSize: 40)),
-        SizedBox(height: 12),
-        Text(message,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: AppFonts.primary,
-              fontSize: 13,
-              color: AppColors.onSurfaceVariant,
-            )),
-        SizedBox(height: 16),
-        ElevatedButton(
-          onPressed: onRetry,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-          ),
-          child: Text('重试'),
-        ),
-      ],
-    );
-  }
-} // ── 配额徽章 ──────────────────────────────────────────────
 
 // ── 非宠物提示 ────────────────────────────────────────────────
 class _NotPetView extends StatelessWidget {

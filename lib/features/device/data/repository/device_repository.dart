@@ -6,6 +6,35 @@ import '../../../../core/api/peer_api_client.dart';
 import '../models/device_model.dart';
 import '../models/device_product_model.dart';
 
+Map<String, dynamic> buildMotorControlPayload({
+  required int motor0Direction,
+  required int motor0Speed,
+  required int motor1Direction,
+  required int motor1Speed,
+}) {
+  void validateDirection(String name, int value) {
+    if (value < 0 || value > 2) {
+      throw ArgumentError.value(value, name, 'must be 0, 1, or 2');
+    }
+  }
+
+  void validateSpeed(String name, int value) {
+    if (value < 0 || value > 100) {
+      throw RangeError.range(value, 0, 100, name);
+    }
+  }
+
+  validateDirection('motor0Direction', motor0Direction);
+  validateDirection('motor1Direction', motor1Direction);
+  validateSpeed('motor0Speed', motor0Speed);
+  validateSpeed('motor1Speed', motor1Speed);
+
+  return {
+    'motor_0': {'direction': motor0Direction, 'speed': motor0Speed},
+    'motor_1': {'direction': motor1Direction, 'speed': motor1Speed},
+  };
+}
+
 class DeviceRepository {
   final PeerApiClient _peer;
   DeviceRepository(this._peer);
@@ -179,35 +208,14 @@ class DeviceRepository {
     required int motor1Direction,
     required int motor1Speed,
   }) async {
-    _validateMotorDirection('motor0Direction', motor0Direction);
-    _validateMotorDirection('motor1Direction', motor1Direction);
-    _validateMotorSpeed('motor0Speed', motor0Speed);
-    _validateMotorSpeed('motor1Speed', motor1Speed);
-
-    final data = jsonEncode({
-      'motor_0': {
-        'direction': motor0Direction,
-        'speed': motor0Speed,
-      },
-      'motor_1': {
-        'direction': motor1Direction,
-        'speed': motor1Speed,
-      },
-    });
+    final data = jsonEncode(buildMotorControlPayload(
+      motor0Direction: motor0Direction,
+      motor0Speed: motor0Speed,
+      motor1Direction: motor1Direction,
+      motor1Speed: motor1Speed,
+    ));
     await _peer
         .post('/device/shadow/update', params: {'mac': mac, 'data': data});
-  }
-
-  void _validateMotorDirection(String name, int value) {
-    if (value < 0 || value > 2) {
-      throw ArgumentError.value(value, name, 'must be 0, 1, or 2');
-    }
-  }
-
-  void _validateMotorSpeed(String name, int value) {
-    if (value < 0 || value > 100) {
-      throw RangeError.range(value, 0, 100, name);
-    }
   }
 
   /// POST /pet/agora/getToken — 获取 Agora RTC Token（同时触发 ESP32 加入频道）
@@ -393,8 +401,8 @@ class DeviceListNotifier extends StateNotifier<DeviceListState> {
   void ensureProductType(String mac, String productKey) {
     final products = state.products;
     final matched = products.firstWhere(
-      (p) => p.productKey.trim().toUpperCase() ==
-          productKey.trim().toUpperCase(),
+      (p) =>
+          p.productKey.trim().toUpperCase() == productKey.trim().toUpperCase(),
       orElse: () => const DeviceProductModel(
         id: 0,
         productKey: '',

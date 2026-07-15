@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../shared/theme/app_colors.dart';
+import '../../shared/widgets/pet_toast.dart';
 import '../../core/config/shop_config.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
@@ -196,7 +197,7 @@ class _StoreCard extends StatelessWidget {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
-          onTap: () {},
+          onTap: () => PetToast.warning(context, '门店详情即将上线'),
           borderRadius: BorderRadius.circular(20),
           splashColor: AppColors.primaryGlow,
           child: Padding(

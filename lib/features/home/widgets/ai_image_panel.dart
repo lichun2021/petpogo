@@ -77,8 +77,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
                 color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(Icons.camera_alt_rounded,
-                  color: AppColors.primary),
+              child: Icon(Icons.camera_alt_rounded, color: AppColors.primary),
             ),
             title: Text('拍照',
                 style: TextStyle(
@@ -95,8 +94,8 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
                 color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(Icons.photo_library_rounded,
-                  color: AppColors.primary),
+              child:
+                  Icon(Icons.photo_library_rounded, color: AppColors.primary),
             ),
             title: Text('从相册选择',
                 style: TextStyle(
@@ -137,9 +136,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
           (next.phase == AiPhase.result || next.phase == AiPhase.notPet)) {
         final quota = next.result?.quota;
         if (quota != null && mounted) {
-          final msg = quota.isUnlimited
-              ? '分析完成 ✨（Pro 无限）'
-              : '分析完成 ✨';
+          final msg = quota.isUnlimited ? '分析完成 ✨（Pro 无限）' : '分析完成 ✨';
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(msg),
             backgroundColor: AppColors.primary,
@@ -242,7 +239,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
                       quota: state.result?.quota,
                       onRetry: _reset,
                     ),
-                  AiPhase.error => _ErrorView(
+                  AiPhase.error => AiErrorView(
                       key: ValueKey('error'),
                       message: state.errorMessage ?? '分析失败',
                       onRetry: _reset,
@@ -356,8 +353,8 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
                   ),
                 ],
               ),
-              child: Icon(Icons.camera_alt_rounded,
-                  color: Colors.white, size: 32),
+              child:
+                  Icon(Icons.camera_alt_rounded, color: Colors.white, size: 32),
             ),
           ),
           SizedBox(height: 10),
@@ -523,37 +520,6 @@ class _ResultView extends StatelessWidget {
         ]),
       ],
     );
-  }
-}
-
-// ── 错误 ──────────────────────────────────────────────────
-class _ErrorView extends StatelessWidget {
-  final String message;
-  final VoidCallback onRetry;
-  const _ErrorView({super.key, required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(children: [
-      Text('😓', style: TextStyle(fontSize: 40)),
-      SizedBox(height: 12),
-      Text(message,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: AppFonts.primary,
-            fontSize: 13,
-            color: AppColors.onSurfaceVariant,
-          )),
-      SizedBox(height: 16),
-      ElevatedButton(
-        onPressed: onRetry,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-        ),
-        child: Text('重试'),
-      ),
-    ]);
   }
 }
 

@@ -11,6 +11,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/widgets/pet_toast.dart';
@@ -36,6 +37,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   bool _obscure = true;
   bool _isSmsLogin = true;
   bool _agreedToTerms = false; // 是否同意协议
+
+  String? _phoneError;
+  String? _codeError;
+  String? _passwordError;
 
   bool _isSendingSms = false;
   int _countdown = 0;
@@ -66,13 +71,54 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     });
   }
 
+  String? _validatePhone(String phone) {
+    if (phone.isEmpty) return '请输入手机号';
+    final requiredLength =
+        _selectedCountry.countryId.toUpperCase() == 'CN' ? 11 : null;
+    if (requiredLength != null && phone.length != requiredLength) {
+      return '中国大陆手机号应为 11 位数字';
+    }
+    if (requiredLength == null && (phone.length < 7 || phone.length > 16)) {
+      return '手机号应为 7-16 位数字';
+    }
+    return null;
+  }
+
+  String? _validateCode(String code) {
+    if (code.isEmpty) return '请输入验证码';
+    if (code.length != 6) return '验证码应为 6 位数字';
+    return null;
+  }
+
+  String? _validatePassword(String password) {
+    if (password.isEmpty) return '请输入密码';
+    if (password.length < 6) return '密码至少需要 6 位';
+    return null;
+  }
+
+  void _clearPhoneError(String _) {
+    if (_phoneError != null) setState(() => _phoneError = null);
+  }
+
+  void _clearCodeError(String _) {
+    if (_codeError != null) setState(() => _codeError = null);
+  }
+
+  void _clearPasswordError(String _) {
+    if (_passwordError != null) setState(() => _passwordError = null);
+  }
+
   Future<void> _sendSms() async {
     final phone = _phoneCtrl.text.trim();
-    if (phone.isEmpty) {
-      PetToast.warning(context, '请先输入手机号');
+    final phoneError = _validatePhone(phone);
+    if (phoneError != null) {
+      setState(() => _phoneError = phoneError);
       return;
     }
-    setState(() => _isSendingSms = true);
+    setState(() {
+      _phoneError = null;
+      _isSendingSms = true;
+    });
     final error = await ref
         .read(authControllerProvider.notifier)
         .sendSms(phone, nationNum: _selectedCountry.dialCode);
@@ -87,35 +133,39 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void _submit() {
-    // 先检查是否同意协议
+    if (ref.read(authControllerProvider).isLoading) return;
+    // 登录/注册前仍需同意协议；获取验证码保持原有流程，不受此项限制。
     if (!_agreedToTerms) {
       PetToast.warning(context, '请先阅读并同意《服务条款》和《隐私政策》');
       return;
     }
     final phone = _phoneCtrl.text.trim();
-    if (phone.isEmpty) {
-      PetToast.warning(context, '请先输入手机号');
+    final phoneError = _validatePhone(phone);
+    final codeError = _isSmsLogin ? _validateCode(_codeCtrl.text.trim()) : null;
+    final passwordError =
+        !_isSmsLogin ? _validatePassword(_passwordCtrl.text.trim()) : null;
+    setState(() {
+      _phoneError = phoneError;
+      _codeError = codeError;
+      _passwordError = passwordError;
+    });
+    if (phoneError != null || codeError != null || passwordError != null) {
       return;
     }
+
     final nationNum = _selectedCountry.dialCode;
     if (_isSmsLogin) {
-      final code = _codeCtrl.text.trim();
-      if (code.isEmpty) {
-        PetToast.warning(context, '请输入验证码');
-        return;
-      }
-      ref
-          .read(authControllerProvider.notifier)
-          .loginWithSms(phone: phone, code: code, nationNum: nationNum);
+      ref.read(authControllerProvider.notifier).loginWithSms(
+            phone: phone,
+            code: _codeCtrl.text.trim(),
+            nationNum: nationNum,
+          );
     } else {
-      final password = _passwordCtrl.text.trim();
-      if (password.isEmpty) {
-        PetToast.warning(context, '请输入密码');
-        return;
-      }
-      ref
-          .read(authControllerProvider.notifier)
-          .loginWithPwd(phone: phone, password: password, nationNum: nationNum);
+      ref.read(authControllerProvider.notifier).loginWithPwd(
+            phone: phone,
+            password: _passwordCtrl.text.trim(),
+            nationNum: nationNum,
+          );
     }
   }
 
@@ -131,7 +181,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         selected: _selectedCountry,
         searchCtrl: _searchCtrl,
         onSelect: (c) {
-          setState(() => _selectedCountry = c);
+          setState(() {
+            _selectedCountry = c;
+            _phoneError = _phoneCtrl.text.isEmpty
+                ? null
+                : _validatePhone(_phoneCtrl.text.trim());
+          });
           Navigator.pop(context);
         },
       ),
@@ -207,7 +262,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 Row(
                   children: [
                     GestureDetector(
-                      onTap: () => setState(() => _isSmsLogin = true),
+                      onTap: () => setState(() {
+                        _isSmsLogin = true;
+                        _passwordError = null;
+                      }),
                       child: Text('短信登录',
                           style: TextStyle(
                               fontSize: 16,
@@ -220,7 +278,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     SizedBox(width: 24),
                     GestureDetector(
-                      onTap: () => setState(() => _isSmsLogin = false),
+                      onTap: () => setState(() {
+                        _isSmsLogin = false;
+                        _codeError = null;
+                      }),
                       child: Text('密码登录',
                           style: TextStyle(
                               fontSize: 16,
@@ -240,15 +301,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 SizedBox(height: 8),
                 TextField(
                   controller: _phoneCtrl,
-                  keyboardType: TextInputType.number,
+                  keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
-                  autofillHints: const <String>[],
+                  autofillHints: const [AutofillHints.telephoneNumber],
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  onChanged: _clearPhoneError,
                   style: TextStyle(
                       fontFamily: AppFonts.primary,
                       fontSize: 15,
                       color: AppColors.onSurface),
                   decoration: _inputDecorationWithCountry(
                     hint: '请输入手机号',
+                    errorText: _phoneError,
                     country: _selectedCountry,
                     onCountryTap: () => countriesAsync
                         .whenData((list) => _showCountryPicker(list)),
@@ -268,6 +332,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           controller: _codeCtrl,
                           keyboardType: TextInputType.number,
                           textInputAction: TextInputAction.done,
+                          autofillHints: const [AutofillHints.oneTimeCode],
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(6),
+                          ],
+                          onChanged: _clearCodeError,
                           onSubmitted: (_) => _submit(),
                           style: TextStyle(
                               fontFamily: AppFonts.primary,
@@ -275,6 +345,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               color: AppColors.onSurface),
                           decoration: _inputDecoration(
                             hint: '请输入验证码',
+                            errorText: _codeError,
                             prefixIcon: Icons.message_outlined,
                           ),
                         ),
@@ -328,7 +399,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   TextField(
                     controller: _passwordCtrl,
                     obscureText: _obscure,
+                    keyboardType: TextInputType.visiblePassword,
                     textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.password],
+                    onChanged: _clearPasswordError,
                     onSubmitted: (_) => _submit(),
                     style: TextStyle(
                         fontFamily: AppFonts.primary,
@@ -336,15 +410,26 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         color: AppColors.onSurface),
                     decoration: _inputDecoration(
                       hint: '请输入密码',
+                      errorText: _passwordError,
                       prefixIcon: Icons.lock_outline_rounded,
-                      suffix: GestureDetector(
-                        onTap: () => setState(() => _obscure = !_obscure),
-                        child: Icon(
+                      suffix: Semantics(
+                        button: true,
+                        label: _obscure ? '显示密码' : '隐藏密码',
+                        child: IconButton(
+                          tooltip: _obscure ? '显示密码' : '隐藏密码',
+                          constraints: const BoxConstraints(
+                            minWidth: 44,
+                            minHeight: 44,
+                          ),
+                          onPressed: () => setState(() => _obscure = !_obscure),
+                          icon: Icon(
                             _obscure
                                 ? Icons.visibility_off_outlined
                                 : Icons.visibility_outlined,
                             size: 20,
-                            color: AppColors.onSurfaceVariant),
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -427,9 +512,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     required String hint,
     required CountryInfo country,
     required VoidCallback onCountryTap,
+    String? errorText,
   }) =>
       InputDecoration(
         hintText: hint,
+        errorText: errorText,
         hintStyle: TextStyle(
             fontFamily: AppFonts.primary,
             fontSize: 14,
@@ -467,10 +554,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   InputDecoration _inputDecoration({
     required String hint,
     required IconData prefixIcon,
+    String? errorText,
     Widget? suffix,
   }) =>
       InputDecoration(
         hintText: hint,
+        errorText: errorText,
         hintStyle: TextStyle(
             fontFamily: AppFonts.primary,
             fontSize: 14,
@@ -514,90 +603,122 @@ class _AgreementRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      // 点击整行切换勾选状态（方便拇指点击）
-      onTap: () => onChanged(!agreed),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 自定义圆形 Checkbox
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 22,
-            height: 22,
-            margin: const EdgeInsets.only(top: 1),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: agreed ? AppColors.primary : Colors.transparent,
-              border: Border.all(
-                color: agreed
-                    ? AppColors.primary
-                    : AppColors.outline.withOpacity(0.5),
-                width: 1.8,
+    final textStyle = TextStyle(
+      fontFamily: AppFonts.primary,
+      fontSize: 12.5,
+      color: AppColors.onSurfaceVariant,
+      height: 1.6,
+    );
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          button: true,
+          checked: agreed,
+          label: agreed ? '已同意服务条款和隐私政策' : '同意服务条款和隐私政策',
+          onTap: () => onChanged(!agreed),
+          child: ExcludeSemantics(
+            child: InkResponse(
+              radius: 22,
+              onTap: () => onChanged(!agreed),
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Center(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: agreed ? AppColors.primary : Colors.transparent,
+                      border: Border.all(
+                        color: agreed
+                            ? AppColors.primary
+                            : AppColors.outline.withOpacity(0.5),
+                        width: 1.8,
+                      ),
+                    ),
+                    child: agreed
+                        ? const Icon(
+                            Icons.check_rounded,
+                            size: 14,
+                            color: Colors.white,
+                          )
+                        : null,
+                  ),
+                ),
               ),
             ),
-            child: agreed
-                ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
-                : null,
           ),
-          const SizedBox(width: 10),
-          // 文字（含可点击链接）
-          Expanded(
-            child: Text.rich(
-              TextSpan(
+        ),
+        const SizedBox(width: 2),
+        Expanded(
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text('我已阅读并同意', style: textStyle),
+              _AgreementLink(
+                label: '《服务条款》',
+                onTap: () => _openDoc(
+                  context,
+                  '服务条款',
+                  'assets/docs/terms.html',
+                ),
+              ),
+              Text('和', style: textStyle),
+              _AgreementLink(
+                label: '《隐私政策》',
+                onTap: () => _openDoc(
+                  context,
+                  '隐私政策',
+                  'assets/docs/privacy.html',
+                ),
+              ),
+              Text('，并授权使用手机号注册/登录', style: textStyle),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AgreementLink extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _AgreementLink({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      link: true,
+      label: label,
+      onTap: onTap,
+      child: ExcludeSemantics(
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 44),
+            child: Align(
+              widthFactor: 1,
+              heightFactor: 1,
+              alignment: Alignment.center,
+              child: Text(
+                label,
                 style: TextStyle(
                   fontFamily: AppFonts.primary,
                   fontSize: 12.5,
-                  color: AppColors.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
                   height: 1.6,
                 ),
-                children: [
-                  const TextSpan(text: '我已阅读并同意'),
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: GestureDetector(
-                      onTap: () => _openDoc(
-                        context,
-                        '服务条款',
-                        'assets/docs/terms.html',
-                      ),
-                      child: Text(
-                        '《服务条款》',
-                        style: TextStyle(
-                          fontFamily: AppFonts.primary,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const TextSpan(text: '和'),
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: GestureDetector(
-                      onTap: () => _openDoc(
-                        context,
-                        '隐私政策',
-                        'assets/docs/privacy.html',
-                      ),
-                      child: Text(
-                        '《隐私政策》',
-                        style: TextStyle(
-                          fontFamily: AppFonts.primary,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const TextSpan(text: '，并授权使用手机号注册/登录'),
-                ],
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }

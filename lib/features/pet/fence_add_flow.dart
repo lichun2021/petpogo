@@ -4,9 +4,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:dio/dio.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/utils/coord_transform.dart';
+import '../../shared/utils/map_services.dart';
 import '../../shared/widgets/pet_toast.dart';
 import 'data/repository/pet_peer_repository.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
@@ -16,44 +16,17 @@ import 'package:petpogo_app/shared/theme/app_fonts.dart';
 // 此处改用 OpenStreetMap Nominatim，支持中文地址返回
 Future<String> _amapRegeocode(LatLng pos) async {
   try {
-    final dio = Dio();
-    // Nominatim 要求 User-Agent 标识应用
-    dio.options.headers['User-Agent'] = 'PetPogoApp/1.0';
-    final resp = await dio.get(
-      'https://nominatim.openstreetmap.org/reverse',
-      queryParameters: {
-        'format':          'json',
-        'lat':             pos.latitude.toStringAsFixed(7),
-        'lon':             pos.longitude.toStringAsFixed(7),
-        'accept-language': 'zh-CN,zh',
-        'zoom':            18,
-      },
-    ).timeout(Duration(seconds: 8));
-
-    final data = resp.data;
-    debugPrint('[Geocode] Nominatim response: $data');
-
-    if (data is Map) {
-      // 优先使用 display_name（完整地址）
-      final display = data['display_name']?.toString() ?? '';
-      if (display.isNotEmpty) {
-        // 去掉末尾多余的国家名（"中国"）
-        final parts = display.split(', ');
-        if (parts.length > 1 && parts.last == '中国') parts.removeLast();
-        return parts.join(' ');
-      }
+    final display = await fetchNominatimDisplayName(pos);
+    if (display.isNotEmpty) {
+      final parts = display.split(', ');
+      if (parts.length > 1 && parts.last == '中国') parts.removeLast();
+      return parts.join(' ');
     }
   } catch (e) {
     debugPrint('[Geocode] Nominatim error: $e');
   }
-  // 兜底：显示坐标
   return '${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)}';
 }
-
-// ── 高德瓦片 URL ──────────────────────────────────────────
-// 使用高德矢量路网瓦片（支持中文标注，style=8）
-const _amapTileUrl =
-    'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}';
 
 // ═══════════════════════════════════════════════════════════
 // Step 1: 地图选点页
@@ -73,6 +46,7 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
   double  _radius   = 300.0; // 预览半径（米）
   bool    _locating = false;
   String  _address  = '正在获取位置...';
+  int _geocodeRequestId = 0;
 
   @override
   void initState() {
@@ -89,6 +63,7 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
       }
+      if (!mounted) return;
       if (perm == LocationPermission.deniedForever) {
         setState(() { _address = '请在系统设置中开启位置权限'; _locating = false; });
         return;
@@ -97,6 +72,7 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
           locationSettings: LocationSettings(accuracy: LocationAccuracy.high)
       ).timeout(Duration(seconds: 8));
 
+      if (!mounted) return;
       // WGS-84 → GCJ-02（火星坐标），解决高德地图偏移
       final gcj = CoordTransform.wgs84ToGcj02(pos.latitude, pos.longitude);
       debugPrint('[Fence] GPS WGS84: ${pos.latitude},${pos.longitude}');
@@ -108,15 +84,18 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
       // Nominatim 用原始 WGS-84 查询（OSM 坐标系）
       _reverseGeocode(LatLng(pos.latitude, pos.longitude));
     } catch (e) {
+      if (!mounted) return;
       setState(() { _address = '定位失败，请手动选点'; _locating = false; });
     }
   }
 
   // ── 逆地理编码（高德 REST API）──
   Future<void> _reverseGeocode(LatLng pos) async {
+    final requestId = ++_geocodeRequestId;
     setState(() { _address = '正在获取地址...'; });
     final addr = await _amapRegeocode(pos);
-    if (mounted) setState(() { _address = addr; });
+    if (!mounted || requestId != _geocodeRequestId) return;
+    setState(() { _address = addr; });
   }
 
   // ── 地图移动时更新中心 ──
@@ -145,7 +124,7 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
           ),
           children: [
             TileLayer(
-              urlTemplate: _amapTileUrl,
+              urlTemplate: amapTileUrl,
               subdomains: ['1', '2', '3', '4'],
               userAgentPackageName: 'com.junxin.petpogo_and',
             ),
@@ -390,7 +369,7 @@ class _FenceConfigPageState extends ConsumerState<FenceConfigPage> {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: _amapTileUrl,
+                    urlTemplate: amapTileUrl,
                     subdomains: ['1', '2', '3', '4'],
                     userAgentPackageName: 'com.junxin.petpogo_and',
                   ),

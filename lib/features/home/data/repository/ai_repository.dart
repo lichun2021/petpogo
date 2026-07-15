@@ -17,6 +17,21 @@ import '../../../../core/api/api_client.dart';
 import '../../../../core/config/app_config.dart';
 import '../models/ai_result_model.dart';
 
+FormData buildAiAnalyzeFormData({
+  required String url,
+  required String account,
+  String? petId,
+}) {
+  if (account.trim().isEmpty) {
+    throw ArgumentError.value(account, 'account', 'must not be empty');
+  }
+  return FormData.fromMap({
+    'url': url,
+    'account': account,
+    if (petId != null) 'pet_id': petId,
+  });
+}
+
 class AiRepository {
   final ApiClient _client;
   AiRepository(this._client);
@@ -61,7 +76,8 @@ class AiRepository {
       );
       debugPrint('[AI-OSS] 上传成功');
     } on DioException catch (e) {
-      debugPrint('[AI-OSS] 上传失败 ${e.response?.statusCode}: ${e.response?.data}');
+      debugPrint(
+          '[AI-OSS] 上传失败 ${e.response?.statusCode}: ${e.response?.data}');
       rethrow;
     }
   }
@@ -71,15 +87,17 @@ class AiRepository {
   /// [petId]    : 可选，关联宠物 ID
   Future<AiAnalysisResult> analyzeVoice({
     required String audioUrl,
+    required String account,
     String? petId,
   }) async {
     debugPrint('[AI] 语音分析 → $audioUrl');
     final res = await _client.post<Map<String, dynamic>>(
       '${AppConfig.aiConsultBaseUrl}/voice/analyze',
-      data: FormData.fromMap({
-        'url': audioUrl,
-        if (petId != null) 'pet_id': petId,
-      }),
+      data: buildAiAnalyzeFormData(
+        url: audioUrl,
+        account: account,
+        petId: petId,
+      ),
     );
     return AiAnalysisResult.fromAiDirectJson(res);
   }
@@ -89,15 +107,17 @@ class AiRepository {
   /// [petId]    : 可选，关联宠物 ID
   Future<AiAnalysisResult> analyzeImage({
     required String imageUrl,
+    required String account,
     String? petId,
   }) async {
     debugPrint('[AI] 图像分析 → $imageUrl');
     final res = await _client.post<Map<String, dynamic>>(
       '${AppConfig.aiConsultBaseUrl}/image/analyze',
-      data: FormData.fromMap({
-        'url': imageUrl,
-        if (petId != null) 'pet_id': petId,
-      }),
+      data: buildAiAnalyzeFormData(
+        url: imageUrl,
+        account: account,
+        petId: petId,
+      ),
     );
     return AiAnalysisResult.fromAiDirectJson(res);
   }
@@ -106,13 +126,14 @@ class AiRepository {
   /// 适合直接从本地文件调用，内部完成 OSS 上传 + voice-analyze
   Future<AiAnalysisResult> uploadAndAnalyzeVoice({
     required File file,
+    required String account,
     String? petId,
     void Function(String stage, double progress)? onProgress,
   }) async {
     // 1. 获取上传凭证
     onProgress?.call('upload', 0);
     final token = await getUploadToken(
-      mimeType: 'audio/wav',  // 录音格式为 WAV
+      mimeType: 'audio/wav', // 录音格式为 WAV
       folder: 'ai-voice',
     );
 
@@ -127,6 +148,7 @@ class AiRepository {
     // 3. 调后端分析（配额由后端控制）
     final result = await analyzeVoice(
       audioUrl: token.publicUrl,
+      account: account,
       petId: petId,
     );
     onProgress?.call('done', 1.0);
@@ -136,6 +158,7 @@ class AiRepository {
   // ── 便捷方法：一步完成上传 + 分析（图像）────────────────
   Future<AiAnalysisResult> uploadAndAnalyzeImage({
     required File file,
+    required String account,
     String? petId,
     void Function(String stage, double progress)? onProgress,
   }) async {
@@ -144,9 +167,12 @@ class AiRepository {
     final ext = file.path.split('.').last.toLowerCase();
     // 根据扩展名推断 MIME
     final mimeType = {
-      'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
-      'png': 'image/png', 'webp': 'image/webp',
-    }[ext] ?? 'image/jpeg';
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'png': 'image/png',
+          'webp': 'image/webp',
+        }[ext] ??
+        'image/jpeg';
     final token = await getUploadToken(
       mimeType: mimeType,
       folder: 'ai-image',
@@ -163,6 +189,7 @@ class AiRepository {
     // 3. 调后端分析
     final result = await analyzeImage(
       imageUrl: token.publicUrl,
+      account: account,
       petId: petId,
     );
     onProgress?.call('done', 1.0);
@@ -172,8 +199,8 @@ class AiRepository {
 
 // ── OSS 上传凭证 ──────────────────────────────────────────
 class OssUploadToken {
-  final String uploadUrl;  // PUT 上传地址（预签名，15 分钟有效）
-  final String publicUrl;  // 上传完成后的公开 CDN URL（传给 AI 接口的地址）
+  final String uploadUrl; // PUT 上传地址（预签名，15 分钟有效）
+  final String publicUrl; // 上传完成后的公开 CDN URL（传给 AI 接口的地址）
 
   const OssUploadToken({
     required this.uploadUrl,
@@ -184,9 +211,9 @@ class OssUploadToken {
   ///   uploadUrl → OSS PUT 预签名地址
   ///   cdnUrl    → 公开访问 CDN 地址（= publicUrl）
   factory OssUploadToken.fromJson(Map<String, dynamic> json) => OssUploadToken(
-    uploadUrl: (json['uploadUrl'] as String?) ?? '',
-    publicUrl: (json['cdnUrl']   as String?) ?? '',  // 后端返回字段是 cdnUrl
-  );
+        uploadUrl: (json['uploadUrl'] as String?) ?? '',
+        publicUrl: (json['cdnUrl'] as String?) ?? '', // 后端返回字段是 cdnUrl
+      );
 }
 
 // ── Provider ─────────────────────────────────────────────

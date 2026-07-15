@@ -379,7 +379,7 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
         icon: Icons.share_rounded,
         label: '分享',
         color: Colors.white,
-        onTap: () {},
+        onTap: () => PetToast.warning(context, '帖子分享即将上线'),
       ),
     ]);
   }

@@ -91,12 +91,12 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F5F5),
+      backgroundColor: AppColors.surface,
       body: NestedScrollView(
         headerSliverBuilder: (_, __) => [
           SliverAppBar(
             pinned: true, floating: false,
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.surface,
             surfaceTintColor: Colors.transparent, elevation: 0,
             leading: IconButton(
               icon: Icon(Icons.arrow_back_ios_rounded, size: 20),
@@ -108,7 +108,8 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage>
             centerTitle: false,
             actions: [
               IconButton(icon: Icon(Icons.volume_up_outlined),
-                  color: AppColors.onSurface, onPressed: () {}),
+                  tooltip: '音量设置', color: AppColors.onSurface,
+                  onPressed: () => PetToast.warning(context, '音量设置即将上线')),
             ],
             bottom: TabBar(
               controller: _mainTab,

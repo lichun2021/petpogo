@@ -565,7 +565,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                   color: AppColors.onSurfaceVariant)),
         ])),
         TextButton(
-            onPressed: () {},
+            onPressed: () => PetToast.warning(context, '设备升级功能即将上线'),
             child: Text('升级', style: TextStyle(color: AppColors.tertiary))),
       ]),
     );

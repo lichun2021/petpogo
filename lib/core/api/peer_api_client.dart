@@ -186,7 +186,8 @@ void _logLong(String msg, {int chunkSize = 500}) {
   var offset = 0;
   var first = true;
   while (offset < msg.length) {
-    final chunk = msg.substring(offset, (offset + chunkSize).clamp(0, msg.length));
+    final chunk =
+        msg.substring(offset, (offset + chunkSize).clamp(0, msg.length));
     if (first) {
       debugPrint(chunk);
       first = false;
@@ -281,9 +282,6 @@ dynamic _redactForLog(dynamic value) {
 }
 
 // ── Riverpod Provider ────────────────────────────────────
-/// iPet 硬件网关 BaseUrl 兜底（环境变量未配置时使用）
-const _kFallbackPeerUrl = 'http://49.234.39.11:8006';
-
 final peerApiClientProvider = Provider<PeerApiClient>((ref) {
   final client = PeerApiClient();
 
@@ -293,10 +291,8 @@ final peerApiClientProvider = Provider<PeerApiClient>((ref) {
     final user = authState.user!;
     if (user.token.isEmpty) return;
 
-    // peerGatewayUrl 可能为空（后端环境变量未配）→ 用兜底地址
-    final url = user.peerGatewayUrl.isNotEmpty
-        ? user.peerGatewayUrl
-        : _kFallbackPeerUrl;
+    // 所有 iPet 请求统一走受控 HTTPS 网关；不再采用登录响应中的旧地址。
+    const url = AppConfig.peerPublicBaseUrl;
 
     if (!client.isReady) {
       client.init(baseUrl: url, token: user.token);

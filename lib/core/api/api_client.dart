@@ -133,7 +133,7 @@ class ApiClient {
   /// 流式 POST，返回 SSE 帧流（适用大模型逐 token 输出等场景）
   ///
   /// [url] 可以是相对路径（走 baseUrl）或完整 URL（http(s)://...），
-  /// 完整 URL 形式用于打第三方后端（如宠小伊 49.234.39.11:8007），
+  /// 完整 URL 形式用于访问独立后端（如宠小伊 AI 服务），
   /// 此时会绕开 baseUrl 但仍然经过现有拦截器。
   ///
   /// 行为：
@@ -269,7 +269,8 @@ class _AuthInterceptor extends Interceptor {
     if (options.path.contains('/sdkapi/')) {
       final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
       const appApiSecret = '1q21ee182efd1gf1g@#\$';
-      final signature = md5.convert(utf8.encode('$timestamp$appApiSecret')).toString();
+      final signature =
+          md5.convert(utf8.encode('$timestamp$appApiSecret')).toString();
       options.headers['x-timestamp'] = timestamp;
       options.headers['x-signature'] = signature;
     }
@@ -292,7 +293,8 @@ void _logLong(String msg, {int chunkSize = 500}) {
   var offset = 0;
   var first = true;
   while (offset < msg.length) {
-    final chunk = msg.substring(offset, (offset + chunkSize).clamp(0, msg.length));
+    final chunk =
+        msg.substring(offset, (offset + chunkSize).clamp(0, msg.length));
     if (first) {
       debugPrint(chunk);
       first = false;
@@ -332,11 +334,15 @@ class _DevLogInterceptor extends Interceptor {
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    final key = '${response.requestOptions.method}:${response.requestOptions.path}';
-    final ms = DateTime.now().difference(_startTimes.remove(key) ?? DateTime.now()).inMilliseconds;
+    final key =
+        '${response.requestOptions.method}:${response.requestOptions.path}';
+    final ms = DateTime.now()
+        .difference(_startTimes.remove(key) ?? DateTime.now())
+        .inMilliseconds;
 
     debugPrint('\n┌─── [API 响应] ─────────────────────────────');
-    debugPrint('│ ${response.statusCode} ${response.requestOptions.uri}  (${ms}ms)');
+    debugPrint(
+        '│ ${response.statusCode} ${response.requestOptions.uri}  (${ms}ms)');
     if (response.requestOptions.responseType == ResponseType.stream) {
       debugPrint('│ Body: <streaming>');
     } else {
@@ -403,7 +409,8 @@ class _ErrorInterceptor extends Interceptor {
       case DioExceptionType.badResponse:
         final statusCode = err.response?.statusCode ?? 0;
         // 尝试从响应体中提取服务器的错误消息
-        final serverMsg = _extractServerMessage(err.response?.data) ?? err.message ?? '';
+        final serverMsg =
+            _extractServerMessage(err.response?.data) ?? err.message ?? '';
 
         if (statusCode == 401) {
           // 未授权：Token 过期或无效 → 触发强制登出回调
@@ -455,7 +462,7 @@ class _ErrorInterceptor extends Interceptor {
     handler.reject(
       DioException(
         requestOptions: err.requestOptions,
-        error: apiEx,          // 携带 ApiException
+        error: apiEx, // 携带 ApiException
         type: err.type,
         response: err.response,
       ),
