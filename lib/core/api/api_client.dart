@@ -275,9 +275,9 @@ class _AuthInterceptor extends Interceptor {
       options.headers['x-signature'] = signature;
     }
 
-    // 如果是 iPet-AI 服务（ai.jxpetai.com），注入 AI 鉴权头
+    // 如果是 iPet-AI 服务（AppConfig.aiConsultBaseUrl），注入 AI 鉴权头
     // 签名规则：md5(apiKey + timestamp + apiSecret) 小写十六进制
-    if (options.uri.host == 'ai.jxpetai.com') {
+    if (options.uri.toString().startsWith(AppConfig.aiConsultBaseUrl)) {
       final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
       const apiKey    = AppConfig.aiApiKey;
       const apiSecret = AppConfig.aiApiSecret;
