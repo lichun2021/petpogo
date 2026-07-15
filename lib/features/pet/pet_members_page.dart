@@ -45,9 +45,8 @@ class _PetMembersPageState extends ConsumerState<PetMembersPage> {
       _error = null;
     });
     try {
-      final list = await ref
-          .read(petShareRepositoryProvider)
-          .fetchMembers(widget.petId);
+      final list =
+          await ref.read(petShareRepositoryProvider).fetchMembers(widget.petId);
       if (mounted) {
         setState(() {
           _members = list;
@@ -83,7 +82,7 @@ class _PetMembersPageState extends ConsumerState<PetMembersPage> {
             imageUrl: widget.petAvatar.isNotEmpty ? widget.petAvatar : null,
             payload: {
               'order': order,
-              'petId': widget.petId,
+              'petId': widget.petId.toString(),
               'petName': widget.petName,
             },
             expireDays: 1, // 对齐口令 24h 有效期
@@ -435,8 +434,8 @@ class _MemberTile extends StatelessWidget {
                     const SizedBox(width: 6),
                     // 角色标签
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(
                         color: roleColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(20),
@@ -484,12 +483,13 @@ class _MemberTile extends StatelessWidget {
                 onRemove();
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
                   color: AppColors.error.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(20),
-                  border:
-                      Border.all(color: AppColors.error.withValues(alpha: 0.22)),
+                  border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.22)),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.person_remove_rounded,
@@ -552,8 +552,7 @@ class _SharePetSheet extends StatelessWidget {
             color: AppColors.primary.withOpacity(0.12),
             borderRadius: BorderRadius.circular(18),
           ),
-          child:
-              Icon(Icons.pets_rounded, color: AppColors.primary, size: 26),
+          child: Icon(Icons.pets_rounded, color: AppColors.primary, size: 26),
         ),
         const SizedBox(height: 14),
         Text(
@@ -630,6 +629,7 @@ class _SharePetSheet extends StatelessWidget {
               filled: true,
               onTap: () async {
                 Navigator.pop(context);
+                debugPrint('[宠物分享] 微信分享 URL=$shareUrl');
                 await shareWechatWebPage(
                   url: shareUrl,
                   title: '邀请你共同管理宠物「$petName」',

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/router/app_router.dart' show appRouter;
 import '../../core/router/app_routes.dart';
 import '../../features/auth/controller/auth_controller.dart';
 import '../../features/device/data/repository/device_repository.dart';
 import '../../features/device/data/models/device_product_model.dart';
+import '../../features/pet/data/repository/pet_share_repository.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_fonts.dart';
 import '../../shared/widgets/pet_toast.dart';
@@ -33,6 +35,15 @@ class _ShareLandingPageState extends ConsumerState<ShareLandingPage> {
   String? _error;
 
   @override
+  void didUpdateWidget(covariant ShareLandingPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.code == widget.code && oldWidget.type == widget.type) return;
+    _started = false;
+    _data = null;
+    _error = null;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
 
@@ -44,31 +55,40 @@ class _ShareLandingPageState extends ConsumerState<ShareLandingPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 10, 20, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              IconButton(
-                onPressed: () => context.go(AppRoutes.home),
-                icon: Icon(Icons.close_rounded, color: AppColors.onSurface),
-              ),
-              const Spacer(),
-              if (auth.isRestoring || _loading)
-                const _LoadingCard()
-              else if (!auth.isLoggedIn)
-                _LoginCard(type: widget.type)
-              else if (_data != null)
-                (_data!.type == 'device'
-                    ? _DeviceShareCard(data: _data!)
-                    : _ResultCard(data: _data!))
-              else
-                _ErrorCard(
-                  message: _error ?? '分享内容打开失败',
-                  onRetry: _resolve,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.sizeOf(context).height -
+                  MediaQuery.paddingOf(context).vertical -
+                  38,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                IconButton(
+                  onPressed: () => context.go(AppRoutes.home),
+                  icon: Icon(Icons.close_rounded, color: AppColors.onSurface),
                 ),
-              const Spacer(flex: 2),
-            ],
+                const SizedBox(height: 56),
+                if (auth.isRestoring || _loading)
+                  const _LoadingCard()
+                else if (!auth.isLoggedIn)
+                  _LoginCard(code: widget.code, type: widget.type)
+                else if (_data != null)
+                  switch (_data!.type) {
+                    'device' => _DeviceShareCard(data: _data!),
+                    'pet' => _PetShareCard(data: _data!),
+                    _ => _ResultCard(data: _data!),
+                  }
+                else
+                  _ErrorCard(
+                    message: _error ?? '分享内容打开失败',
+                    onRetry: _resolve,
+                  ),
+                const SizedBox(height: 40),
+              ],
+            ),
           ),
         ),
       ),
@@ -137,8 +157,9 @@ class _LoadingCard extends StatelessWidget {
 }
 
 class _LoginCard extends StatelessWidget {
+  final String code;
   final String? type;
-  const _LoginCard({this.type});
+  const _LoginCard({required this.code, this.type});
 
   @override
   Widget build(BuildContext context) {
@@ -169,8 +190,12 @@ class _LoginCard extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           _PrimaryButton(
-            label: '去登录',
-            onTap: () => context.go(AppRoutes.login),
+            label: '登录并继续',
+            onTap: () => context.go(
+              AppRoutes.loginWithReturnTo(
+                AppRoutes.shareLanding(code: code, type: type),
+              ),
+            ),
           ),
         ],
       ),
@@ -236,6 +261,227 @@ class _ResultCard extends StatelessWidget {
           _PrimaryButton(
             label: '回到首页',
             onTap: () => context.go(AppRoutes.home),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── 宠物分享卡片（接收者）────────────────────────────────────
+class _PetShareCard extends ConsumerStatefulWidget {
+  final ShareResolveResult data;
+  const _PetShareCard({required this.data});
+
+  @override
+  ConsumerState<_PetShareCard> createState() => _PetShareCardState();
+}
+
+class _PetShareCardState extends ConsumerState<_PetShareCard> {
+  bool _accepting = false;
+  bool _accepted = false;
+  String? _error;
+
+  String get _order => widget.data.payload['order']?.toString() ?? '';
+  String get _petName {
+    final name = widget.data.payload['petName']?.toString().trim() ?? '';
+    return name.isNotEmpty
+        ? name
+        : (widget.data.title.isNotEmpty ? widget.data.title : '这只宠物');
+  }
+
+  bool get _expired =>
+      widget.data.expiresAt != null &&
+      !widget.data.expiresAt!.isAfter(DateTime.now());
+
+  Future<void> _accept() async {
+    if (_accepting || _accepted || _order.isEmpty || _expired) return;
+    setState(() {
+      _accepting = true;
+      _error = null;
+    });
+    try {
+      await ref.read(petShareRepositoryProvider).acceptShare(_order);
+      if (!mounted) return;
+      setState(() {
+        _accepting = false;
+        _accepted = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _accepting = false;
+        _error = e.toString().replaceAll('Exception: ', '');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final owner = widget.data.createdByCurrentUser;
+    final missingOrder = _order.isEmpty;
+    final unavailable = missingOrder || _expired || owner;
+    final title = _accepted
+        ? '已接受宠物邀请'
+        : owner
+            ? '这是你发出的宠物邀请'
+            : _expired
+                ? '宠物邀请已失效'
+                : missingOrder
+                    ? '宠物邀请信息不完整'
+                    : '邀请你共同管理「$_petName」';
+    final description = _accepted
+        ? '你现在可以在“我的宠物”中查看这只宠物。'
+        : owner
+            ? '这是你创建的分享链接，不能重复接受自己的邀请。'
+            : _expired
+                ? '该邀请已过期，请联系邀请人重新分享。'
+                : missingOrder
+                    ? '分享口令缺失，无法接受该邀请，请让邀请人重新生成链接。'
+                    : '接受后可在“我的宠物”中查看并共同管理，不会改变宠物所有权。';
+
+    return _ShellCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _Preview(imageUrl: widget.data.imageUrl, type: 'pet'),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.onSurface,
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      _accepted ? '宠物共享成功' : '宠物共享邀请',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color:
+                            _accepted ? AppColors.success : AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text(
+            description,
+            style: TextStyle(
+              fontSize: 15,
+              height: 1.65,
+              color: AppColors.onSurfaceVariant,
+            ),
+          ),
+          if (!_accepted && !owner && !_expired && !missingOrder) ...[
+            const SizedBox(height: 16),
+            _ShareInfoRow(
+              icon: Icons.group_outlined,
+              label: '身份',
+              value: '共享成员',
+            ),
+            _ShareInfoRow(
+              icon: Icons.visibility_outlined,
+              label: '权限',
+              value: '查看和共同管理宠物',
+            ),
+            _ShareInfoRow(
+              icon: Icons.lock_outline_rounded,
+              label: '所有权',
+              value: '不会改变宠物所有权',
+            ),
+          ],
+          if (_error != null) ...[
+            const SizedBox(height: 14),
+            Text(
+              _error!,
+              style:
+                  TextStyle(color: AppColors.error, fontSize: 13, height: 1.4),
+            ),
+          ],
+          const SizedBox(height: 24),
+          if (_accepted)
+            _PrimaryButton(
+              label: '查看我的宠物',
+              onTap: () {
+                context.go(AppRoutes.profile);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  appRouter.push(AppRoutes.petList);
+                });
+              },
+            )
+          else if (unavailable)
+            _PrimaryButton(
+              label: owner ? '回到首页' : '返回首页',
+              onTap: () => context.go(AppRoutes.home),
+            )
+          else if (_accepting)
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text('正在接受…', style: TextStyle(color: AppColors.primary)),
+                  ],
+                ),
+              ),
+            )
+          else
+            _PrimaryButton(label: '接受宠物邀请', onTap: _accept),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShareInfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _ShareInfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 9),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppColors.primary),
+          const SizedBox(width: 9),
+          Text('$label：', style: TextStyle(color: AppColors.onSurfaceVariant)),
+          Expanded(
+            child: Text(value, style: TextStyle(color: AppColors.onSurface)),
           ),
         ],
       ),

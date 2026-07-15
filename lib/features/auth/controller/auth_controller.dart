@@ -263,6 +263,19 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  // ── 更新昵称 ─────────────────────────────────────────────
+  Future<void> updateNickname(String nickname) async {
+    final normalized = nickname.trim();
+    if (normalized.isEmpty) {
+      throw ArgumentError.value(nickname, 'nickname', 'must not be empty');
+    }
+    await _repo.updateNickname(normalized);
+    if (state.user != null) {
+      state = state.copyWith(user: state.user!.copyWith(name: normalized));
+      debugPrint('[AuthCtrl] 昵称 state 已更新: $normalized');
+    }
+  }
+
   // ── 更新头像（上传 OSS 后调用）────────────────────────
   Future<bool> updateAvatar(String avatarUrl) async {
     final ok = await _repo.updateAvatar(avatarUrl);
@@ -302,11 +315,8 @@ class AuthController extends StateNotifier<AuthState> {
       debugPrint('[AuthCtrl] ⚠️ imUserSig 为空，跳过 IM 登录');
     }
 
-    
     // ② 绑定极光推送 alias（用 account 手机号作为别名，服务端按用户推送）
     PushService.setAlias(user.account + '@qq.com');
-
-
 
     debugPrint('[AuthCtrl] 极光推送 alias 绑定: ${user.account}');
 

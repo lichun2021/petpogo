@@ -256,6 +256,16 @@ class AuthRepository {
     }
   }
 
+  // ── 更新昵称 ───────────────────────────────────────────────
+  Future<void> updateNickname(String nickname) async {
+    await _client.put<Map<String, dynamic>>(
+      '/sdkapi/user/profile',
+      data: {'nickname': nickname},
+    );
+    await _storage.write(key: _kName, value: nickname);
+    debugPrint('[AuthRepo] ✅ 昵称已更新: $nickname');
+  }
+
   // ── 更新头像 ─────────────────────────────────────────────
   Future<bool> updateAvatar(String avatarUrl) async {
     try {

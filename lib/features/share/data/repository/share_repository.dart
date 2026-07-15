@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/api/api_client.dart';
@@ -31,11 +32,14 @@ class ShareRepository {
           'expireDays': expireDays,
         },
       );
-      return ShareCreateResult.fromJson(res);
+      final result = ShareCreateResult.fromJson(res);
+      debugPrint('[分享] 创建成功 code=${result.code} url=${result.shareUrl}');
+      return result;
     });
   }
 
   Future<Result<ShareResolveResult>> resolveShare(String code) {
+    debugPrint('[分享] 解析请求 code=$code');
     return guardResult(() async {
       final res = await _client.get<Map<String, dynamic>>(
         ApiEndpoints.shareResolve,

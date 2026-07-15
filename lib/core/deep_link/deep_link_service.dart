@@ -16,26 +16,35 @@ class DeepLinkService {
   static StreamSubscription<Uri>? _subscription;
   static ProviderContainer? _container;
   static String? _pendingRoute;
+  static String? _lastHandledUri;
 
   static Future<void> init(ProviderContainer container) async {
     _container = container;
     await _subscription?.cancel();
-    _subscription = _appLinks.uriLinkStream.listen(
-      _handleUri,
-      onError: (error) => debugPrint('[DeepLink] 链接监听失败: $error'),
-    );
-
     try {
       final initial = await _appLinks.getInitialLink();
       if (initial != null) _handleUri(initial);
     } catch (error) {
       debugPrint('[DeepLink] 初始链接读取失败: $error');
     }
+
+    _subscription = _appLinks.uriLinkStream.listen(
+      _handleUri,
+      onError: (error) => debugPrint('[DeepLink] 链接监听失败: $error'),
+    );
   }
 
   static void _handleUri(Uri uri) {
+    final raw = uri.toString();
+    debugPrint('[DeepLink] 收到链接: $raw');
+    if (_lastHandledUri == raw) {
+      debugPrint('[DeepLink] 忽略重复链接: $raw');
+      return;
+    }
     final route = _routeFromUri(uri);
     if (route == null) return;
+    _lastHandledUri = raw;
+    debugPrint('[DeepLink] 解析路由: $route');
 
     final auth = _container?.read(authControllerProvider);
     if (auth == null || auth.isRestoring) {

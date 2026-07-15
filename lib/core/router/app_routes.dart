@@ -19,8 +19,13 @@ abstract class AppRoutes {
   // ── 子页面 ────────────────────────────────────────────
   static const settings = '/settings';
   static const addPet = '/add-pet';
+  static const petList = '/pet-list';
   static const bindDevice = '/bind-device';
   static const login = '/login'; // 登录页
+  static String loginWithReturnTo(String returnTo) => Uri(
+        path: login,
+        queryParameters: {'returnTo': returnTo},
+      ).toString();
 
   // ── 会员 / 积分 / 签到 / 订单 ──────────────────────────
   static const membership = '/membership'; // 会员计划

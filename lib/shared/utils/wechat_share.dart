@@ -36,6 +36,7 @@ Future<bool> shareWechatWebPage({
   required WechatShareScene scene,
 }) async {
   if (url.trim().isEmpty) return false;
+  debugPrint('[微信分享] 准备分享 URL=${url.trim()}');
 
   await initWechatShare();
 

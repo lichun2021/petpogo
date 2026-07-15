@@ -16,7 +16,6 @@ import '../music/pet_music_page.dart';
 import 'data/user_stats_provider.dart';
 import 'data/points_repository.dart';
 import '../../core/router/app_routes.dart';
-import '../../core/api/api_client.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
@@ -55,12 +54,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       backgroundColor: AppColors.surfaceContainerLowest,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (ctx) => _NicknameInlineSheet(
-          ctrl: ctrl,
-          ref: ref,
-          onSaved: () {
-            ref.read(authControllerProvider.notifier).refreshUser();
-          }),
+      builder: (ctx) => _NicknameInlineSheet(ctrl: ctrl),
     );
   }
 
@@ -934,10 +928,7 @@ class _GuestProfileView extends StatelessWidget {
 // ── 昵称编辑 Sheet（内联在 profile_page 中）───────────────
 class _NicknameInlineSheet extends ConsumerStatefulWidget {
   final TextEditingController ctrl;
-  final WidgetRef ref;
-  final VoidCallback onSaved;
-  const _NicknameInlineSheet(
-      {required this.ctrl, required this.ref, required this.onSaved});
+  const _NicknameInlineSheet({required this.ctrl});
 
   @override
   ConsumerState<_NicknameInlineSheet> createState() =>
@@ -959,15 +950,10 @@ class _NicknameInlineSheetState extends ConsumerState<_NicknameInlineSheet> {
       _error = null;
     });
     try {
-      final client = ref.read(apiClientProvider);
-      await client.put<Map<String, dynamic>>(
-        '/sdkapi/user/profile',
-        data: {'nickname': name},
-      );
-      await ref.read(authControllerProvider.notifier).refreshUser();
+      await ref.read(authControllerProvider.notifier).updateNickname(name);
       if (!mounted) return;
       Navigator.pop(context);
-      widget.onSaved();
+      PetToast.success(context, '昵称已更新');
     } catch (e) {
       setState(() {
         _loading = false;

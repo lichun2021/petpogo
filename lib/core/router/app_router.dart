@@ -36,6 +36,7 @@ import '../../features/profile/points_rules_page.dart';
 import '../../features/profile/check_in_page.dart';
 import '../../features/profile/orders_page.dart';
 import '../../features/pet/add_pet_page.dart';
+import '../../features/pet/pet_list_page.dart';
 import '../../features/pet/pet_detail_page.dart';
 import '../../features/pet/pet_members_page.dart';
 import '../../features/bind_device/select_device_page.dart';
@@ -107,8 +108,11 @@ final appRouter = GoRouter(
     // ③ 未登录 且 不在登录页 → 强制跳到登录页
     if (auth.isGuest && !isOnLogin && !isOnShare) return AppRoutes.login;
 
-    // ④ 已登录 且 在登录页 → 跳回首页
-    if (auth.isLoggedIn && isOnLogin) return AppRoutes.home;
+    // ④ 已登录且在登录页：优先返回经过白名单校验的分享页
+    if (auth.isLoggedIn && isOnLogin) {
+      return _shareReturnLocation(state.uri.queryParameters['returnTo']) ??
+          AppRoutes.home;
+    }
 
     return null; // 不拦截
   },
@@ -148,6 +152,7 @@ final appRouter = GoRouter(
     _slide(AppRoutes.checkIn, const CheckInPage()),
     _slide(AppRoutes.orders, const OrdersPage()),
     _slide(AppRoutes.addPet, const AddPetPage()),
+    _slide(AppRoutes.petList, const PetListPage()),
     _slide(AppRoutes.bindDevice, const SelectDevicePage()),
 
     GoRoute(
@@ -322,6 +327,19 @@ ConsultationReport _emptyReport() {
 
 /// 淡入动画 — 用于 Tab 切换
 ///
+String? _shareReturnLocation(String? raw) {
+  if (raw == null || raw.isEmpty) return null;
+  final uri = Uri.tryParse(raw);
+  if (uri == null || uri.hasScheme || uri.hasAuthority) return null;
+  if (uri.path != AppRoutes.share) return null;
+  final code = uri.queryParameters['code']?.trim() ?? '';
+  if (code.isEmpty) return null;
+  return AppRoutes.shareLanding(
+    code: code,
+    type: uri.queryParameters['type'],
+  );
+}
+
 /// 轻量快速（200ms），不带方向性，避免 Tab 切换时的视觉混乱
 GoRoute _fade(String path, Widget page) => GoRoute(
       path: path,
