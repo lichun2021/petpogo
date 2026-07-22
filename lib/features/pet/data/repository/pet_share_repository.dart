@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/peer_api_client.dart';
+import '../models/pet_peer_models.dart';
 import '../models/pet_share_model.dart';
 
 /// 宠物分享Repository
@@ -81,6 +82,37 @@ class PetShareRepository {
     );
     return (res.list ?? res.info ?? [])
         .map((e) => PetShareModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// GET /pet/share/withme — 共享给我的宠物（已接受），返回 PetInfoModel 列表
+  ///
+  /// 用于萌宠圈：和 /pet/info/list 合并成"可查看的宠物"。
+  /// 兼容两种后端响应结构：
+  ///   1. 平铺：每条记录直接是宠物字段（petId/petName/avatar/breed...）
+  ///   2. 嵌套：每条记录里有个 pet 子对象
+  Future<List<PetInfoModel>> fetchSharedPets({
+    int pageNo = 1,
+    int pageSize = 20,
+  }) async {
+    final res = await _peer.get<List<dynamic>>(
+      '/pet/share/withme',
+      params: {'pageNo': pageNo, 'pageSize': pageSize},
+      fromInfo: (d) => d as List<dynamic>,
+    );
+    final raw = res.list ?? res.info ?? [];
+    return raw
+        .whereType<Map>()
+        .map((e) => e.cast<String, dynamic>())
+        // 如果有嵌套的 pet 字段，取它；否则用整条记录
+        .map((m) {
+          final pet = m['pet'];
+          if (pet is Map) return pet.cast<String, dynamic>();
+          return m;
+        })
+        // 只保留有 petId 的（确保是有效宠物）
+        .where((m) => (m['petId']?.toString() ?? '').isNotEmpty)
+        .map((m) => PetInfoModel.fromJson(m))
         .toList();
   }
 

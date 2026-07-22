@@ -150,7 +150,13 @@ class _PetCirclePageState extends ConsumerState<PetCirclePage> {
 
     return RefreshIndicator(
       color: AppColors.primary,
-      onRefresh: () => ref.read(petCircleControllerProvider.notifier).refresh(),
+      onRefresh: () async {
+        // 下拉同时刷新宠物列表（我的 + 共享）和帖子
+        await Future.wait([
+          ref.read(petCirclePetControllerProvider.notifier).refresh(),
+          ref.read(petCircleControllerProvider.notifier).refresh(),
+        ]);
+      },
       child: circleState.posts.isEmpty
           ? ListView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -370,21 +376,55 @@ class _PetAvatarTab extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color:
-                      selected ? const Color(0xFFFFB13B) : Colors.transparent,
-                  width: 3,
+            // 头像（共享宠物右上角加「共享」角标）
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selected
+                          ? const Color(0xFFFFB13B)
+                          : pet.isShared
+                              ? AppColors.secondary.withValues(alpha: 0.4)
+                              : Colors.transparent,
+                      width: 3,
+                    ),
+                  ),
+                  child: PetAvatar(
+                    imageUrl: pet.avatar,
+                    size: 54,
+                  ),
                 ),
-              ),
-              child: PetAvatar(
-                imageUrl: pet.avatar,
-                size: 54,
-              ),
+                // 共享宠物角标
+                if (pet.isShared)
+                  Positioned(
+                    top: -2,
+                    right: -4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                            color: AppColors.surface, width: 1.2),
+                      ),
+                      child: const Text(
+                        '共享',
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 4),
             Text(

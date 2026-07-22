@@ -5,14 +5,25 @@ import '../../device/data/models/device_model.dart';
 import '../../device/data/repository/device_repository.dart';
 import '../../pet/data/models/pet_peer_models.dart';
 import '../../pet/data/repository/pet_peer_repository.dart';
+import '../../pet/data/repository/pet_share_repository.dart';
+
+/// 萌宠圈宠物来源
+enum PetCircleSource {
+  /// 我的宠物（/pet/info/list）
+  owned,
+  /// 共享给我的宠物（/pet/share/withme）
+  shared,
+}
 
 class PetCirclePet {
   final PetInfoModel pet;
   final DeviceModel device;
+  final PetCircleSource source;
 
   const PetCirclePet({
     required this.pet,
     required this.device,
+    this.source = PetCircleSource.owned,
   });
 
   String get id => pet.petId;
@@ -20,6 +31,9 @@ class PetCirclePet {
   String get name => pet.petName;
 
   String get avatar => pet.avatar;
+
+  /// 是否是别人共享给我的
+  bool get isShared => source == PetCircleSource.shared;
 
   String get emoji {
     final breed = pet.breed.toLowerCase();
@@ -80,11 +94,25 @@ class PetCirclePetController extends StateNotifier<PetCirclePetState> {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
       final petRepo = _ref.read(petPeerRepositoryProvider);
+      final shareRepo = _ref.read(petShareRepositoryProvider);
 
-      // 使用新接口 /pet/info/list — 直接获取用户所有宠物，不依赖设备
-      debugPrint('[萌宠圈][宠物] 调用 /pet/info/list');
-      final pets = await petRepo.fetchPetList();
-      debugPrint('[萌宠圈][宠物] 宠物列表返回 count=${pets.length}');
+      // 并行拉取：我的宠物 + 共享给我的宠物
+      // 两个接口理论上不会返回同一只宠物（一个是我创建的，一个是别人共享给我的）
+      debugPrint('[萌宠圈][宠物] 并行调用 /pet/info/list + /pet/share/withme');
+      final results = await Future.wait([
+        petRepo.fetchPetList().catchError((e) {
+          debugPrint('[萌宠圈][宠物] /pet/info/list 失败: $e');
+          return const <PetInfoModel>[];
+        }),
+        shareRepo.fetchSharedPets(pageNo: 1, pageSize: 20).catchError((e) {
+          debugPrint('[萌宠圈][宠物] /pet/share/withme 失败: $e');
+          return const <PetInfoModel>[];
+        }),
+      ]);
+      final myPets = results[0];
+      final sharedPets = results[1];
+      debugPrint(
+          '[萌宠圈][宠物] 我的=${myPets.length} 共享=${sharedPets.length}');
 
       // 获取设备列表用于关联显示
       final deviceState = await _ensureDevices();
@@ -99,47 +127,28 @@ class PetCirclePetController extends StateNotifier<PetCirclePetState> {
         }
       }
 
-      // 将宠物与设备关联
+      // 按 petId 去重合并：我的宠物优先，共享宠物追加（理论上不会重复）
+      final seen = <String>{};
       final petList = <PetCirclePet>[];
-      for (final pet in pets) {
-        if (pet.petId.isNotEmpty && pet.petName.isNotEmpty) {
-          // 如果有设备ID，尝试查找设备
-          DeviceModel? device;
-          if (pet.deviceId.isNotEmpty) {
-            device = deviceMap[pet.deviceId];
-            if (device == null) {
-              debugPrint(
-                  '[萌宠圈][宠物] 警告: 宠物 ${pet.petName} 的设备ID ${pet.deviceId} 在设备列表中未找到');
-            }
-          }
 
-          // 显示所有宠物（包括未绑定设备的）
-          // 如果没有找到设备，创建一个虚拟设备用于显示
-          if (device == null && pet.deviceId.isNotEmpty) {
-            // 有deviceId但找不到设备，创建虚拟设备
-            device = DeviceModel(
-              deviceId: pet.deviceId,
-              mac: '',
-              name: '未知设备',
-              productKey: '',
-              uType: '3', // 成员
-            );
-          } else if (device == null && pet.deviceId.isEmpty) {
-            // 未绑定设备，创建虚拟设备
-            device = DeviceModel(
-              deviceId: '',
-              mac: '',
-              name: '未绑定设备',
-              productKey: '',
-              uType: '3',
-            );
-          }
-
-          if (device != null) {
-            petList.add(PetCirclePet(pet: pet, device: device));
-            debugPrint(
-                '[萌宠圈][宠物] 添加宠物 petId=${pet.petId} name=${pet.petName} device=${device.displayName}');
-          }
+      // 1. 先放我的宠物
+      for (final pet in myPets) {
+        if (pet.petId.isEmpty || pet.petName.isEmpty) continue;
+        if (!seen.add(pet.petId)) continue; // 去重
+        final device = _resolveDevice(pet, deviceMap);
+        if (device != null) {
+          petList.add(PetCirclePet(
+              pet: pet, device: device, source: PetCircleSource.owned));
+        }
+      }
+      // 2. 再放共享宠物
+      for (final pet in sharedPets) {
+        if (pet.petId.isEmpty || pet.petName.isEmpty) continue;
+        if (!seen.add(pet.petId)) continue; // 去重（理论上不会命中）
+        final device = _resolveDevice(pet, deviceMap);
+        if (device != null) {
+          petList.add(PetCirclePet(
+              pet: pet, device: device, source: PetCircleSource.shared));
         }
       }
 
@@ -159,6 +168,40 @@ class PetCirclePetController extends StateNotifier<PetCirclePetState> {
         errorMessage: e.toString(),
       );
     }
+  }
+
+  /// 强制刷新（下拉刷新用）：清除缓存标志重新拉取
+  Future<void> refresh() async {
+    debugPrint('[萌宠圈][宠物] 强制刷新');
+    state = state.copyWith(hasLoaded: false);
+    await load();
+  }
+
+  /// 解析宠物关联的设备（找不到则创建虚拟设备）
+  DeviceModel? _resolveDevice(
+      PetInfoModel pet, Map<String, DeviceModel> deviceMap) {
+    if (pet.deviceId.isNotEmpty) {
+      final device = deviceMap[pet.deviceId];
+      if (device != null) return device;
+      // 有 deviceId 但设备列表里没有，创建虚拟设备
+      debugPrint(
+          '[萌宠圈][宠物] 警告: 宠物 ${pet.petName} 的设备ID ${pet.deviceId} 在设备列表中未找到');
+      return DeviceModel(
+        deviceId: pet.deviceId,
+        mac: '',
+        name: '未知设备',
+        productKey: '',
+        uType: '3',
+      );
+    }
+    // 未绑定设备，创建虚拟设备
+    return DeviceModel(
+      deviceId: '',
+      mac: '',
+      name: '未绑定设备',
+      productKey: '',
+      uType: '3',
+    );
   }
 
   Future<DeviceListState> _ensureDevices() async {
