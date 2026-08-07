@@ -17,6 +17,7 @@ import '../../device/data/repository/device_repository.dart';
 import '../../device/data/models/device_model.dart';
 import '../../pet/data/models/pet_peer_models.dart';
 import '../../pet/data/repository/pet_peer_repository.dart';
+import '../controller/ai_controller.dart';
 
 class _PetWithDevice {
   final PetInfoModel pet;
@@ -172,6 +173,7 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
   Widget build(BuildContext context) {
     final screenH = MediaQuery.of(context).size.height;
     final bottomPad = MediaQuery.of(context).padding.bottom;
+    final consultPoints = ref.watch(aiPointsProvider).valueOrNull?['consult'];
 
     return Container(
       // 最大高度限制，内容不足时自动收缩
@@ -204,7 +206,7 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
           ),
           SizedBox(height: 4),
           Text(
-            '宠小伊会基于该宠物的档案进行问诊',
+            '宠小伊会基于该宠物的档案进行健康顾问咨询${consultPoints != null ? '（$consultPoints积分/次提问）' : '（X积分/次提问）'}',
             style: TextStyle(
               fontSize: 12,
               color: AppColors.onSurfaceVariant,
@@ -392,7 +394,7 @@ class _EmptyState extends StatelessWidget {
           ),
           SizedBox(height: 14),
           Text(
-            '问诊功能暂不可用',
+            '健康顾问功能暂不可用',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
@@ -401,7 +403,7 @@ class _EmptyState extends StatelessWidget {
           ),
           SizedBox(height: 6),
           Text(
-            '请先绑定设备并完善宠物档案\n才能使用 AI 问诊功能',
+            '请先绑定设备并完善宠物档案\n才能使用 AI 健康顾问功能',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,

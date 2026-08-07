@@ -129,6 +129,8 @@ class PushService {
 
     // 计算目标路由
     final String targetRoute;
+    // 设备事件类型（fence_alert/device_offline/low_battery）带 device_mac，
+    // 优先跳设备详情页；其余类型按 type 分支跳转
     if (deviceMac.isNotEmpty) {
       targetRoute = AppRoutes.deviceDetail(deviceMac);
     } else {
@@ -141,6 +143,12 @@ class PushService {
           targetRoute = AppRoutes.consultation;
           break;
         case 'message':
+          targetRoute = AppRoutes.message;
+          break;
+        // 设备事件类型无 device_mac 时回退消息页（系统通知入口）
+        case 'fence_alert':
+        case 'device_offline':
+        case 'low_battery':
           targetRoute = AppRoutes.message;
           break;
         default:

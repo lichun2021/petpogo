@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_exception.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../auth/data/models/auth_model.dart';
+import '../../profile/data/points_repository.dart';
 import '../data/models/ai_result_model.dart';
 import '../data/repository/ai_repository.dart';
 
@@ -194,4 +195,35 @@ final aiVoiceControllerProvider =
 final aiImageControllerProvider =
     StateNotifierProvider<AiAnalyzeController, AiAnalyzeState>((ref) {
   return AiAnalyzeController(ref.watch(aiRepositoryProvider), ref);
+});
+
+// ── AI 积分消耗提示 ───────────────────────────────────────
+// 从 GET /sdkapi/points/rules 拉规则，按 consume_type 精确匹配
+// 后端 consume_type 值：voice_analyze / image_analyze / consultation_question
+// 返回 {voice: X, image: Y, consult: Z}（未匹配到则 null）
+final aiPointsProvider = FutureProvider.autoDispose<Map<String, int?>>((ref) async {
+  final repo = ref.watch(pointsRepositoryProvider);
+  try {
+    final rules = await repo.fetchRules();
+    int? match(String consumeType) {
+      for (final r in rules) {
+        final ct = (r['consume_type'] ?? '').toString();
+        if (ct == consumeType) {
+          final p = r['unit_points'];
+          if (p is int) return p;
+          if (p is num) return p.toInt();
+          if (p is String) return int.tryParse(p);
+        }
+      }
+      return null;
+    }
+    return {
+      'voice':  match('voice_analyze'),
+      'image':  match('image_analyze'),
+      'consult': match('consultation_question'),
+    };
+  } catch (e) {
+    debugPrint('[AiPoints] 拉取积分规则失败: $e');
+    return {'voice': null, 'image': null, 'consult': null};
+  }
 });

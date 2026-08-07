@@ -113,6 +113,33 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
               children: [
                 SafeArea(
                   bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: GestureDetector(
+                      onTap: () => PetToast.show(context, '搜索功能即将上线'),
+                      child: Container(
+                        height: 40,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(children: [
+                          Icon(Icons.search_rounded, size: 18,
+                              color: AppColors.onSurfaceVariant.withOpacity(0.5)),
+                          SizedBox(width: 8),
+                          Text('搜索功能即将上线…',
+                              style: TextStyle(
+                                  fontFamily: AppFonts.primary,
+                                  fontSize: 13,
+                                  color: AppColors.onSurfaceVariant.withOpacity(0.6))),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ),
+                SafeArea(
+                  bottom: false,
                   child: SizedBox(
                     height: 56,
                     child: Row(children: [

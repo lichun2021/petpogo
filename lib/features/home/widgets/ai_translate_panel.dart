@@ -135,6 +135,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(aiVoiceControllerProvider);
+    final voicePoints = ref.watch(aiPointsProvider).valueOrNull?['voice'];
 
     // 分析完成后弹 SnackBar 提示（积分扣减文案，具体数值待后端接口）
     ref.listen(aiVoiceControllerProvider, (prev, next) {
@@ -183,14 +184,31 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
             ),
             SizedBox(width: 10),
             Expanded(
-              child: Text('听懂宠物语言',
+              child: RichText(
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                text: TextSpan(
+                  text: '听懂宠物的情绪',
                   style: TextStyle(
                     fontFamily: AppFonts.primary,
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
                     color: AppColors.onSurface,
                     height: 1.15,
-                  )),
+                  ),
+                  children: [
+                    TextSpan(
+                      text: voicePoints != null ? '（$voicePoints积分/次）' : '（X积分/次）',
+                      style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFFF9500),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
             if (state.result != null || state.phase == AiPhase.notPet) ...[
               TextButton(

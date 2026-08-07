@@ -155,4 +155,17 @@ abstract class ApiEndpoints {
   /// 补签（会员配额）POST /sdkapi/checkin/makeup
   /// body: { date: 'YYYY-MM-DD' }，配额用尽返回 402 → 引导看广告
   static const checkInMakeup = '/sdkapi/checkin/makeup';
+
+  // ── 设备事件（系统通知）────────────────────────────────
+  /// 设备事件列表  GET /sdkapi/device-event/list
+  /// query: type(breach/offline/low_battery)?, page, page_size
+  /// → { list:[{id,type,pet_name,device_mac,device_name,device_product_key,desc,time,read}], total, page }
+  static const deviceEventList = '/sdkapi/device-event/list';
+
+  /// 标记单条已读  POST /sdkapi/device-event/read
+  /// body: { event_id }
+  static const deviceEventRead = '/sdkapi/device-event/read';
+
+  /// 标记全部已读  POST /sdkapi/device-event/read-all
+  static const deviceEventReadAll = '/sdkapi/device-event/read-all';
 }

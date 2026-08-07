@@ -781,7 +781,7 @@ class _TimelineShareSheetState extends State<_TimelineShareSheet> {
               border: Border.all(
                   color: const Color(0xFF07C160).withValues(alpha: 0.25)),
             ),
-            child: const Text('#萌宠智伴#',
+            child: const Text('#宠联芯#',
                 style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -824,7 +824,7 @@ class _TimelineShareSheetState extends State<_TimelineShareSheet> {
                   fontSize: 15,
                   color: AppColors.onSurface),
               decoration: InputDecoration(
-                hintText: '说说宠物的萌照... #萌宠智伴#',
+                hintText: '说说宠物的萌照... #宠联芯#',
                 hintStyle: TextStyle(
                     color: AppColors.onSurfaceVariant.withOpacity(0.5)),
                 filled: true,
@@ -1305,7 +1305,7 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
 
   /// 先弹文本输入，确认后再分享到朋友圈
   Future<void> _showTimelineSheet(BuildContext ctx) async {
-    final ctrl = TextEditingController(text: '🐾我家宝贝超可爱！#萌宠智伴# ');
+    final ctrl = TextEditingController(text: '🐾我家宝贝超可爱！#宠联芯# ');
     final confirmed = await showModalBottomSheet<bool>(
       context: ctx,
       isScrollControlled: true,
@@ -1318,7 +1318,7 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
     final text = ctrl.text.trim();
     ctrl.dispose();
     if (confirmed != true || !mounted) return;
-    await _shareToTimeline(text.isEmpty ? '#萌宠智伴#' : text);
+    await _shareToTimeline(text.isEmpty ? '#宠联芯#' : text);
   }
 
   @override

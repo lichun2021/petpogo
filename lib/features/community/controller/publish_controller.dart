@@ -14,6 +14,7 @@ class PublishState {
   final MediaType selectedMediaType;
   final List<File> selectedImages;
   final File? selectedVideo;
+  final String? category; // 帖子分类（dog/cat/other），未选为 null
 
   const PublishState({
     this.step = PublishStep.idle,
@@ -23,6 +24,7 @@ class PublishState {
     this.selectedMediaType = MediaType.none,
     this.selectedImages = const [],
     this.selectedVideo,
+    this.category,
   });
 
   bool get isIdle      => step == PublishStep.idle;
@@ -40,6 +42,7 @@ class PublishState {
     MediaType? selectedMediaType,
     List<File>? selectedImages,
     File? selectedVideo,
+    String? category,
   }) => PublishState(
     step:              step              ?? this.step,
     uploadProgress:    uploadProgress    ?? this.uploadProgress,
@@ -48,6 +51,7 @@ class PublishState {
     selectedMediaType: selectedMediaType ?? this.selectedMediaType,
     selectedImages:    selectedImages    ?? this.selectedImages,
     selectedVideo:     selectedVideo     ?? this.selectedVideo,
+    category:          category          ?? this.category,
   );
 }
 
@@ -73,6 +77,10 @@ class PublishController extends StateNotifier<PublishState> {
 
   void clearMedia() {
     state = const PublishState();
+  }
+
+  void setCategory(String? category) {
+    state = state.copyWith(category: category);
   }
 
   Future<PostModel?> publish({required String content, String? location}) async {
@@ -125,6 +133,7 @@ class PublishController extends StateNotifier<PublishState> {
         coverUrl:    coverUrl,
         rawVideoKey: rawVideoKey,
         location:    location,
+        category:    state.category,
       );
 
       final postId = res['id'] as String? ?? '';

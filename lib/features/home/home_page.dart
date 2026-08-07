@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../app.dart' show AppL10nX;
 import '../../core/router/app_routes.dart';
 import '../../shared/theme/app_colors.dart';
+import '../../shared/widgets/pet_avatar.dart';
 import '../auth/controller/auth_controller.dart';
 import '../bind_device/select_device_page.dart';
 import '../device/data/models/device_model.dart';
@@ -13,6 +14,7 @@ import '../device/data/repository/device_repository.dart';
 import '../device/device_detail_page.dart';
 import '../device/device_list_page.dart';
 import '../device/robot_device_page.dart';
+import '../profile/data/points_repository.dart';
 import '../pet/controller/pet_controller.dart';
 import 'widgets/ai_image_panel.dart';
 import 'widgets/ai_translate_panel.dart';
@@ -28,21 +30,6 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
-  final _voiceKey = GlobalKey();
-  final _imageKey = GlobalKey();
-
-  void _scrollTo(GlobalKey key) {
-    final target = key.currentContext;
-    if (target == null) return;
-    HapticFeedback.selectionClick();
-    Scrollable.ensureVisible(
-      target,
-      duration: Duration(milliseconds: 480),
-      curve: Curves.easeOutCubic,
-      alignment: 0.08,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -57,29 +44,20 @@ class _HomePageState extends ConsumerState<HomePage> {
                 delegate: SliverChildListDelegate([
                   const _HomeTopBar(),
                   SizedBox(height: 14),
-                  _HomeHero(
-                    onConsult: () => _openConsultation(context, ref),
-                  ),
+                  const _HomeHero(),
                   SizedBox(height: 14),
-                  _ActionDock(
-                    onConsult: () => _openConsultation(context, ref),
-                    onVoice: () => _scrollTo(_voiceKey),
-                    onImage: () => _scrollTo(_imageKey),
-                  ),
+                  _HomeCheckInCard(),
+                  SizedBox(height: 14),
                   const _MaybePetMoodSection(),
                   const _SectionHeader(
                     title: 'AI 解析',
                   ),
                   SizedBox(height: 12),
-                  KeyedSubtree(
-                    key: _voiceKey,
-                    child: AiTranslatePanel(),
-                  ),
+                  AiTranslatePanel(),
                   SizedBox(height: 16),
-                  KeyedSubtree(
-                    key: _imageKey,
-                    child: AiImagePanel(),
-                  ),
+                  AiImagePanel(),
+                  SizedBox(height: 16),
+                  _AiConsultCard(onTap: () => _openConsultation(context, ref)),
                   SizedBox(height: 28),
                   const _HomeDeviceSection(),
                 ]),
@@ -146,7 +124,7 @@ void _showNoDeviceDialog(BuildContext context) {
         ),
       ),
       content: Text(
-        '绑定设备并完善宠物档案后，就可以开启 AI 问诊。',
+        '绑定设备并完善宠物档案后，就可以开启 AI 健康顾问。',
         style: TextStyle(
           fontSize: 14,
           height: 1.5,
@@ -180,35 +158,23 @@ void _showNoDeviceDialog(BuildContext context) {
 }
 
 class _HomeHero extends ConsumerWidget {
-  final VoidCallback onConsult;
-
-  const _HomeHero({required this.onConsult});
+  const _HomeHero();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = context.l10n;
     final auth = ref.watch(authControllerProvider);
     final deviceState = ref.watch(deviceListProvider);
-    final petState = ref.watch(petControllerProvider);
 
-    final name = auth.user?.name.trim();
-    final displayName = name == null || name.isEmpty ? '铲屎官' : name;
+    final user = auth.user;
+    final displayName = (user?.name.trim().isNotEmpty ?? false)
+        ? user!.name
+        : '铲屎官';
+    final avatar = user?.avatar ?? '';
     final onlineCount = deviceState.devices.where((d) => d.isOnline).length;
-    final pets = petState.pets;
-    final primaryPet = pets.isEmpty ? null : pets.first;
-    final primaryPetName = primaryPet?.name.trim();
-    final primaryPetTitle = primaryPetName == null || primaryPetName.isEmpty
-        ? '宠物档案'
-        : primaryPetName;
-    final petLine = petState.isLoading
-        ? '正在同步你的宠物档案和设备状态。'
-        : pets.isEmpty
-            ? l10n.homeSubtitle
-            : '今天先看看 $primaryPetTitle 的状态。';
-    final points = auth.user?.points ?? 0;
+    final points = user?.points ?? 0;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -232,402 +198,279 @@ class _HomeHero extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '你好，$displayName',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontSize: 25,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.onSurface,
-                        height: 1.10,
-                      ),
-                    ),
-                    SizedBox(height: 9),
-                    Text(
-                      petLine,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontSize: 13.5,
-                        height: 1.42,
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    _HeroButton(onTap: onConsult),
-                  ],
+          // 第一行：头像+昵称(→我的) | 🔔通知(→消息页)
+          Row(children: [
+            _HeroTap(
+              onTap: () => context.go(AppRoutes.profile),
+              child: Row(children: [
+                PetAvatar(imageUrl: avatar, size: 40, fallbackEmoji: '🐾'),
+                SizedBox(width: 10),
+                Text(displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.onSurface,
+                    )),
+              ]),
+            ),
+            Spacer(),
+            _HeroTap(
+              onTap: () => context.go(AppRoutes.message),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.notifications_rounded,
+                    size: 20, color: AppColors.onSurface),
+              ),
+            ),
+          ]),
+          SizedBox(height: 14),
+          // 第二行：在线设备(→我的设备页) | 积分(→积分明细页)
+          Row(children: [
+            Expanded(
+              child: _HeroTap(
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const DeviceListPage())),
+                child: _HeroMetric(
+                  icon: Icons.sensors_rounded,
+                  value: '$onlineCount',
+                  label: '在线设备',
+                  color: AppColors.secondary,
                 ),
               ),
-              SizedBox(width: 14),
-              const _AssistantImageCard(),
-            ],
-          ),
-          SizedBox(height: 16),
-          _HeroMetricStrip(
-            items: [
-              _HeroMetricData(
-                label: '在线设备',
-                value: onlineCount.toString(),
-                icon: Icons.sensors_rounded,
-                color: AppColors.secondary,
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: _HeroTap(
+                onTap: () => context.push(AppRoutes.points),
+                child: _HeroMetric(
+                  icon: Icons.account_balance_wallet_rounded,
+                  value: '$points',
+                  label: '积分',
+                  color: AppColors.tertiary,
+                ),
               ),
-              _HeroMetricData(
-                label: '积分',
-                value: points.toString(),
-                icon: Icons.account_balance_wallet_rounded,
-                color: AppColors.tertiary,
-              ),
-            ],
-          ),
+            ),
+          ]),
         ],
       ),
     );
   }
 }
 
-class _AssistantImageCard extends StatelessWidget {
-  const _AssistantImageCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 104,
-      height: 108,
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.68),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.62),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.08),
-            blurRadius: 18,
-            spreadRadius: -10,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: Image.asset(
-          'assets/images/chongxiaoyi.png',
-          fit: BoxFit.cover,
-          alignment: Alignment.topCenter,
-        ),
-      ),
-    );
-  }
-}
-
-class _HeroButton extends StatelessWidget {
+// ── 账号展示位热区包装（独立可点击，互不重叠）──────────────
+class _HeroTap extends StatelessWidget {
   final VoidCallback onTap;
-
-  const _HeroButton({required this.onTap});
+  final Widget child;
+  const _HeroTap({required this.onTap, required this.child});
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 42,
-      child: ElevatedButton.icon(
-        onPressed: onTap,
-        icon: Icon(Icons.medical_services_rounded, size: 17),
-        label: Text('问问宠小伊'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.secondary,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 15),
-          textStyle: TextStyle(
-            fontFamily: AppFonts.primary,
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(999),
-          ),
+  Widget build(BuildContext context) => Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: child,
         ),
-      ),
-    );
-  }
+      );
 }
 
-class _HeroMetricData {
-  final String label;
-  final String value;
+// ── 账号展示位指标格 ──────────────────────────────────────
+class _HeroMetric extends StatelessWidget {
   final IconData icon;
+  final String value, label;
   final Color color;
-
-  const _HeroMetricData({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-}
-
-class _HeroMetricStrip extends StatelessWidget {
-  final List<_HeroMetricData> items;
-
-  const _HeroMetricStrip({required this.items});
+  const _HeroMetric(
+      {required this.icon, required this.value, required this.label, required this.color});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 62,
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.74),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          for (var i = 0; i < items.length; i++) ...[
-            Expanded(child: _HeroMetricCell(data: items[i])),
-            if (i != items.length - 1) const _MetricDivider(),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroMetricCell extends StatelessWidget {
-  final _HeroMetricData data;
-
-  const _HeroMetricCell({required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 5),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(data.icon, size: 17, color: data.color),
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.74),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(children: [
+          Icon(icon, size: 16, color: color),
           SizedBox(width: 6),
           Flexible(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  data.value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.onSurface,
-                    height: 1.0,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  data.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.onSurfaceVariant,
-                    height: 1.0,
-                  ),
-                ),
+                Text(value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.onSurface)),
+                Text(label,
+                    maxLines: 1,
+                    style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onSurfaceVariant)),
               ],
             ),
           ),
-        ],
+        ]),
+      );
+}
+
+// ── AI 健康顾问卡片（整卡可点 → 问诊页）──────────────────
+class _AiConsultCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AiConsultCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+                color: AppColors.secondary.withValues(alpha: 0.2)),
+            boxShadow: [
+              BoxShadow(
+                  color: AppColors.cardShadow,
+                  blurRadius: 16,
+                  spreadRadius: -6,
+                  offset: Offset(0, 6)),
+            ],
+          ),
+          child: Row(children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.secondaryContainer.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Image.asset('assets/images/chongxiaoyi.png',
+                  fit: BoxFit.cover, alignment: Alignment.topCenter),
+            ),
+            SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('AI健康顾问',
+                      style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.onSurface)),
+                  SizedBox(height: 3),
+                  Text('问问宠小伊，基于宠物档案给建议',
+                      style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 12,
+                          color: AppColors.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_rounded,
+                size: 20, color: AppColors.onSurfaceVariant),
+          ]),
+        ),
       ),
     );
   }
 }
 
-class _MetricDivider extends StatelessWidget {
-  const _MetricDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 32,
-      color: AppColors.outlineVariant.withValues(alpha: 0.22),
-    );
+// ── 首页签到卡片（调 checkin status 显示连续签到天数）──────────
+final _homeCheckInProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>?>((ref) async {
+  try {
+    return await ref.read(pointsRepositoryProvider).fetchStatus();
+  } catch (e) {
+    return null;
   }
-}
+});
 
-class _ActionDock extends StatelessWidget {
-  final VoidCallback onConsult;
-  final VoidCallback onVoice;
-  final VoidCallback onImage;
-
-  const _ActionDock({
-    required this.onConsult,
-    required this.onVoice,
-    required this.onImage,
-  });
+class _HomeCheckInCard extends ConsumerWidget {
+  const _HomeCheckInCard();
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _ActionTile(
-            icon: Icons.health_and_safety_rounded,
-            title: '问诊',
-            color: AppColors.secondary,
-            onTap: onConsult,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncStreak = ref.watch(_homeCheckInProvider);
+    final streak = asyncStreak.valueOrNull;
+    final signedToday = streak?['signedInToday'] == true;
+    final currentStreak = streak == null
+        ? null
+        : (streak['currentStreak'] is int
+            ? streak['currentStreak'] as int
+            : int.tryParse(streak['currentStreak'].toString()) ?? 0);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.push(AppRoutes.checkIn),
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.15)),
           ),
-        ),
-        SizedBox(width: 9),
-        Expanded(
-          child: _ActionTile(
-            icon: Icons.graphic_eq_rounded,
-            title: '听懂',
-            color: AppColors.primary,
-            onTap: onVoice,
-          ),
-        ),
-        SizedBox(width: 9),
-        Expanded(
-          child: _ActionTile(
-            icon: Icons.add_photo_alternate_rounded,
-            title: '表情',
-            color: AppColors.tertiary,
-            onTap: onImage,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ActionTile extends StatefulWidget {
-  final IconData icon;
-  final String title;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _ActionTile({
-    required this.icon,
-    required this.title,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  State<_ActionTile> createState() => _ActionTileState();
-}
-
-class _ActionTileState extends State<_ActionTile> {
-  bool _pressed = false;
-
-  void _setPressed(bool value) {
-    if (_pressed == value) return;
-    setState(() => _pressed = value);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bgColor = Color.lerp(
-      AppColors.surfaceContainerLowest,
-      widget.color,
-      _pressed ? 0.18 : 0.09,
-    )!;
-    final borderColor = widget.color.withValues(alpha: _pressed ? 0.34 : 0.22);
-
-    return AnimatedScale(
-      scale: _pressed ? 0.97 : 1,
-      duration: Duration(milliseconds: 120),
-      curve: Curves.easeOutCubic,
-      child: AnimatedContainer(
-        duration: Duration(milliseconds: 160),
-        curve: Curves.easeOutCubic,
-        height: 58,
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(17),
-          border: Border.all(color: borderColor),
-          boxShadow: [
-            BoxShadow(
-              color: widget.color.withValues(alpha: _pressed ? 0.06 : 0.14),
-              blurRadius: _pressed ? 7 : 14,
-              spreadRadius: -10,
-              offset: Offset(0, _pressed ? 2 : 7),
+          child: Row(children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.calendar_month_rounded,
+                  size: 20, color: AppColors.primary),
             ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(17),
-          child: InkWell(
-            onTapDown: (_) => _setPressed(true),
-            onTapCancel: () => _setPressed(false),
-            onTap: () {
-              _setPressed(false);
-              HapticFeedback.selectionClick();
-              widget.onTap();
-            },
-            splashColor: widget.color.withValues(alpha: 0.14),
-            highlightColor: widget.color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(17),
-            child: LayoutBuilder(
-              builder: (ctx, constraints) {
-                // 固定内容：左pad(11)+图标(32)+间距(9)+右pad(10) = 62
-                // 箭头区域：间距(4)+箭头(18) = 22  →  阈值 = 62 + 22 + 最小文字宽 ≈ 112
-                final showArrow = constraints.maxWidth >= 112;
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(11, 0, 10, 0),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: widget.color.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(11),
-                        ),
-                        child: Icon(widget.icon, color: widget.color, size: 17),
-                      ),
-                      SizedBox(width: 9),
-                      Flexible(
-                        child: Text(
-                          widget.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: AppFonts.primary,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.onSurface,
-                            height: 1.0,
-                          ),
-                        ),
-                      ),
-                      if (showArrow) ...[
-                        SizedBox(width: 4),
-                        Icon(Icons.arrow_forward_rounded,
-                            color: widget.color, size: 18),
-                      ],
-                    ],
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    signedToday ? '今日已签到' : '每日签到',
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.onSurface),
                   ),
-                );
-              },
+                  SizedBox(height: 2),
+                  Text(
+                    currentStreak == null
+                        ? '点击查看签到奖励'
+                        : '已连续签到 $currentStreak 天',
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 12,
+                        color: AppColors.onSurfaceVariant),
+                  ),
+                ],
+              ),
             ),
-          ),
+            Icon(Icons.chevron_right_rounded,
+                size: 20, color: AppColors.onSurfaceVariant),
+          ]),
         ),
       ),
     );

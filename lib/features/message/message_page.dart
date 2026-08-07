@@ -82,6 +82,29 @@ class _MessagePageState extends ConsumerState<MessagePage> {
 
 
 
+                // ── 系统通知卡（排最前，承接设备/宠物异常提醒）──
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    children: [
+                      _NotificationItem(
+                        icon: Icons.warning_amber_rounded,
+                        iconBg: const Color(0xFFFFE8E0),
+                        iconColor: AppColors.error,
+                        title: '系统通知',
+                        subtitle: '设备/宠物异常提醒',
+                        time: '',
+                        hasUnread: false,
+                        onTap: () => context.push(AppRoutes.systemNotification),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 12),
+
                 // 系统通知区（真实通知）
                 _NotificationSection(
                   friendApplications: state.friendApplications,

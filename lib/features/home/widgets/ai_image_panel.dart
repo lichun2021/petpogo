@@ -129,6 +129,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(aiImageControllerProvider);
+    final imagePoints = ref.watch(aiPointsProvider).valueOrNull?['image'];
 
     // 分析完成后弹 SnackBar（积分模式）
     ref.listen(aiImageControllerProvider, (prev, next) {
@@ -185,14 +186,31 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
             ),
             SizedBox(width: 10),
             Expanded(
-              child: Text('读懂宠物表情',
+              child: RichText(
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                text: TextSpan(
+                  text: '看懂宠物的情绪',
                   style: TextStyle(
                     fontFamily: AppFonts.primary,
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
                     color: AppColors.onSurface,
                     height: 1.15,
-                  )),
+                  ),
+                  children: [
+                    TextSpan(
+                      text: imagePoints != null ? '（$imagePoints积分/次）' : '（X积分/次）',
+                      style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFFF9500),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
             if (state.phase == AiPhase.result ||
                 state.phase == AiPhase.notPet ||

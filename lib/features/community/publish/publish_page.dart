@@ -297,6 +297,28 @@ class _PublishPageState extends ConsumerState<PublishPage>
                     SizedBox(height: 8),
                     _AddMediaCard(onTap: _showMediaPicker),
                   ],
+
+                  SizedBox(height: 20),
+
+                  // ── 分类选择 ─────────────────────────────
+                  Text('选择分类',
+                      style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onSurface)),
+                  SizedBox(height: 4),
+                  Text('选择后帖子将归入对应类别，社区页可按分类筛选',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.onSurfaceVariant)),
+                  SizedBox(height: 10),
+                  _CategorySelector(
+                    selected: pub.category,
+                    onSelect: (v) => ref
+                        .read(publishControllerProvider.notifier)
+                        .setCategory(v),
+                  ),
                 ],
               ),
             ),
@@ -695,6 +717,61 @@ class _SheetOption extends StatelessWidget {
             fontSize: 13, color: AppColors.onSurface)),
         ]),
       ),
+    );
+  }
+}
+
+// ── 分类选择器（猫/狗/其他）─────────────────────────────
+class _CategorySelector extends StatelessWidget {
+  final String? selected; // 'dog' / 'cat' / 'other' / null
+  final ValueChanged<String?> onSelect;
+
+  const _CategorySelector({required this.selected, required this.onSelect});
+
+  static const _options = <String, String>{
+    'dog': '🐶 狗',
+    'cat': '🐱 猫',
+    'other': '其他',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: _options.entries.map((e) {
+        final isSel = selected == e.key;
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () => onSelect(isSel ? null : e.key),
+              child: AnimatedContainer(
+                duration: Duration(milliseconds: 160),
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isSel
+                      ? AppColors.primary.withOpacity(0.10)
+                      : AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSel
+                        ? AppColors.primary.withOpacity(0.4)
+                        : AppColors.surfaceContainerHigh,
+                  ),
+                ),
+                child: Text(e.value,
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 13,
+                        fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
+                        color: isSel
+                            ? AppColors.primary
+                            : AppColors.onSurfaceVariant)),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

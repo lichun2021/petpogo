@@ -110,7 +110,7 @@ class _CheckInPageState extends ConsumerState<CheckInPage> {
       if (!mounted) return;
       final amount = _asInt(result['pointsAmount']);
       final pType = _asInt(result['pointsType']);
-      PetToast.success(context, '已领取 +$amount ${pType == 2 ? '永久' : '周'}积分');
+      PetToast.success(context, '已领取 +$amount ${pType == 2 ? '永久积分' : '积分'}');
       await _refresh();
     } catch (e) {
       if (mounted) {
@@ -942,7 +942,7 @@ class _RewardRow extends StatelessWidget {
                       : AppColors.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text('+$pointsAmount ${pointsType == 2 ? '永久' : '周'}',
+                child: Text('+$pointsAmount ${pointsType == 2 ? '永久' : '积分'}',
                     style: TextStyle(
                         fontFamily: AppFonts.primary,
                         fontSize: 10,

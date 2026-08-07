@@ -34,7 +34,7 @@ class ShareService {
     await SharePlus.instance.share(
       ShareParams(
         text: '🐾 $summary\n\n$shareUrl',
-        subject: '来自萌宠智伴的帖子',
+        subject: '来自宠联芯的帖子',
         sharePositionOrigin: origin,
       ),
     );
@@ -57,7 +57,7 @@ class ShareService {
     await SharePlus.instance.share(
       ShareParams(
         text: '🎥 $summary\n\n点击查看视频：$shareUrl',
-        subject: '萌宠智伴 · 视频帖子',
+        subject: '宠联芯 · 视频帖子',
         sharePositionOrigin: origin,
       ),
     );

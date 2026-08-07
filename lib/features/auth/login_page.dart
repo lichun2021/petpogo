@@ -239,7 +239,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 Row(children: [
                   Icon(Icons.pets_rounded, color: AppColors.primary, size: 36),
                   SizedBox(width: 10),
-                  Text('萌宠智伴',
+                  Text('宠联芯',
                       style: TextStyle(
                           fontFamily: AppFonts.primary,
                           fontSize: 28,

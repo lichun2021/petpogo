@@ -25,6 +25,7 @@ import '../../features/auth/controller/auth_controller.dart';
 // 所有页面集中在这里导入，app.dart 不再需要导入各页面
 import '../../features/home/home_page.dart';
 import '../../features/message/message_page.dart';
+import '../../features/message/system_notification_page.dart';
 import '../../features/community/community_page.dart';
 import '../../features/pet_circle/pet_circle_page.dart';
 import '../../features/profile/profile_page.dart';
@@ -145,6 +146,7 @@ final appRouter = GoRouter(
     //  子页面 — 从底部滑入（符合 iOS/Android 平台习惯）
     // ══════════════════════════════════════════════════════
     _slide(AppRoutes.settings, const SettingsPage()),
+    _slide(AppRoutes.systemNotification, const SystemNotificationPage()),
     _slide(AppRoutes.membership, const MembershipPage()),
     _slide(AppRoutes.points, const PointsPage()),
     _slide(AppRoutes.giftedPoints, const GiftedPointsPage()),

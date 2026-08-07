@@ -157,6 +157,44 @@ class PetPeerRepository {
   Future<void> deleteFence(String fenceId) async {
     await _peer.post('/pet/fence/del', params: {'fenceId': fenceId});
   }
+
+  // ── 实时状态（围栏内/越界、电量）────────────────────────
+  // ★ PeerApi 接口待实现（"马上实现"），下方为预留接入点。
+  //   接口就绪后：
+  //   1. 把 throw UnimplementedError 改为真实 _peer.post 调用
+  //   2. 首页"我的宠物"区块（pet_mood_section.dart _HomePetCard._statusText）
+  //      把"围栏-"/"电量-"占位替换为 inFence/battery 真实值
+  //   3. 项圈页设备信息卡（device_detail_page.dart）电量占位替换
+
+  /// 获取宠物此刻是否在围栏内
+  /// ★ 接口路径待 PeerApi 确认（预期 /pet/fence/status）
+  Future<PetFenceStatus> fetchFenceStatus({String? mac, String? deviceId}) async {
+    // TODO(task 12.1): PeerApi 接口就绪后改为：
+    //   final params = <String, dynamic>{};
+    //   if (mac != null) params['mac'] = mac;
+    //   if (deviceId != null) params['deviceId'] = deviceId;
+    //   final res = await _peer.post<PetFenceStatus>(
+    //     '/pet/fence/status', params: params,
+    //     fromInfo: (d) => PetFenceStatus.fromJson(d as Map<String, dynamic>),
+    //   );
+    //   return res.info ?? const PetFenceStatus();
+    return const PetFenceStatus(); // known=false 占位
+  }
+
+  /// 获取设备当前电量
+  /// ★ 接口路径待 PeerApi 确认（预期 /pet/battery 或 /device/battery）
+  Future<PetBattery> fetchBattery({String? mac, String? deviceId}) async {
+    // TODO(task 12.2): PeerApi 接口就绪后改为：
+    //   final params = <String, dynamic>{};
+    //   if (mac != null) params['mac'] = mac;
+    //   if (deviceId != null) params['deviceId'] = deviceId;
+    //   final res = await _peer.post<PetBattery>(
+    //     '/pet/battery', params: params,
+    //     fromInfo: (d) => PetBattery.fromJson(d as Map<String, dynamic>),
+    //   );
+    //   return res.info ?? const PetBattery();
+    return const PetBattery(); // known=false 占位
+  }
 }
 
 // ── Provider ─────────────────────────────────────────────

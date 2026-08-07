@@ -4,10 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/utils/coord_transform.dart';
 import '../../shared/utils/map_services.dart';
 import '../../shared/widgets/pet_avatar.dart';
+import '../../shared/widgets/pet_toast.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
@@ -294,10 +296,56 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
             error: _error,
             updateTime: _updateTime,
             safeBottom: safeBottom,
+            hasLocation: _gcjLatLng != null,
+            onNavigate: _startNavigation,
           ),
         ),
       ]),
     );
+  }
+
+  // ── 寻宠导航：url_launcher 唤起系统地图 App ────────────────
+  // 优先级：高德(GCJ02) → 百度(GCJ02) → Google Maps(WGS84) → 系统/Apple Maps(WGS84)
+  Future<void> _startNavigation() async {
+    final gcj = _gcjLatLng;
+    final pos = _position;
+    if (gcj == null || pos == null || !pos.hasLocation) {
+      PetToast.show(context, '宠物位置未就绪，无法导航');
+      return;
+    }
+    HapticFeedback.lightImpact();
+
+    final latGcj = gcj.latitude.toStringAsFixed(6);
+    final lonGcj = gcj.longitude.toStringAsFixed(6);
+    final latWgs = pos.lat.toStringAsFixed(6);
+    final lonWgs = pos.lng.toStringAsFixed(6);
+
+    // 候选地图 App scheme（按优先级）
+    final candidates = <Uri>[
+      // 高德（GCJ02，dev=0 表示 gcj02）
+      Uri.parse(
+          'androidamap://navi?sourceApplication=petpogo&lat=$latGcj&lon=$lonGcj&dev=0&style=2'),
+      Uri.parse(
+          'iosamap://navi?sourceApplication=petpogo&lat=$latGcj&lon=$lonGcj&dev=0&style=2'),
+      // 百度（GCJ02，coord_type=1 表示 gcj02）
+      Uri.parse(
+          'baidumap://map/direction?destination=$latGcj,$lonGcj&coord_type=1&mode=driving&src=petpogo'),
+      // Google Maps（WGS84）
+      Uri.parse('comgooglemaps://?daddr=$latWgs,$lonWgs&directionsmode=driving'),
+      // Apple Maps（WGS84）
+      Uri.parse('maps://?daddr=$latWgs,$lonWgs'),
+      // 系统 geo（Android 兜底）
+      Uri.parse('geo:$latWgs,$lonWgs?q=$latWgs,$lonWgs'),
+    ];
+
+    for (final uri in candidates) {
+      if (await canLaunchUrl(uri)) {
+        if (await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+          return;
+        }
+      }
+    }
+    PetToast.show(context, '未找到地图 App');
   }
 }
 
@@ -310,6 +358,8 @@ class _BottomCard extends StatelessWidget {
   final bool inFence;
   final String? error;
   final double safeBottom;
+  final bool hasLocation; // 是否有 GPS 定位（无则禁用寻宠导航）
+  final VoidCallback? onNavigate; // 寻宠导航回调
 
   const _BottomCard({
     required this.petName,
@@ -321,6 +371,8 @@ class _BottomCard extends StatelessWidget {
     required this.error,
     required this.updateTime,
     required this.safeBottom,
+    this.hasLocation = false,
+    this.onNavigate,
   });
 
   @override
@@ -493,6 +545,30 @@ class _BottomCard extends StatelessWidget {
                       ],
                     ])),
               ]),
+            SizedBox(height: 16),
+            // 寻宠导航按钮（无定位时禁用）
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton.icon(
+                onPressed: hasLocation ? onNavigate : null,
+                icon: Icon(Icons.navigation_rounded, size: 18),
+                label: Text('寻宠导航',
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppColors.surfaceContainerLow,
+                  disabledForegroundColor: AppColors.onSurfaceVariant,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+            ),
           ]),
     );
   }

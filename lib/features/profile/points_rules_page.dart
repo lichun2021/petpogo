@@ -78,7 +78,7 @@ class _PointsRulesPageState extends ConsumerState<PointsRulesPage> {
                       size: 18, color: AppColors.primary),
                   const SizedBox(width: 9),
                   Expanded(
-                    child: Text('使用 AI 分析、问诊等功能时会按下列规则扣除积分。',
+                    child: Text('使用 AI 分析、健康顾问等功能时会按下列规则扣除积分。',
                         style: TextStyle(
                             fontFamily: AppFonts.primary,
                             fontSize: 12,

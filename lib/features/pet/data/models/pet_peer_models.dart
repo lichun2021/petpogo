@@ -120,3 +120,37 @@ class PetInfoModel {
     avatar:     (json['avatar']     as String?) ?? '',
   );
 }
+
+/// 围栏状态模型 — 对应 PeerApi "宠物此刻是否在围栏内"
+/// ★ 接口待 PeerApi 实现（task 12.1），字段结构为预期，以 PeerApi 实际返回为准
+class PetFenceStatus {
+  final bool inFence;       // true=围栏内 false=越界
+  final bool known;         // false=未知（接口未就绪/无围栏/无定位）
+
+  const PetFenceStatus({this.inFence = false, this.known = false});
+
+  factory PetFenceStatus.fromJson(Map<String, dynamic> json) => PetFenceStatus(
+    inFence: json['in_fence'] == true || json['inFence'] == true,
+    known:   true,
+  );
+}
+
+/// 设备电量模型 — 对应 PeerApi "设备当前电量"
+/// ★ 接口待 PeerApi 实现（task 12.2），字段结构为预期，以 PeerApi 实际返回为准
+class PetBattery {
+  final int  battery;       // 电量百分比 0-100，-1=未知
+  final bool known;         // false=未知（接口未就绪）
+
+  const PetBattery({this.battery = -1, this.known = false});
+
+  /// 是否低电（低于 20%）
+  bool get isLow => known && battery >= 0 && battery < 20;
+
+  factory PetBattery.fromJson(Map<String, dynamic> json) {
+    final b = json['battery'] ?? json['power'] ?? json['batteryPercent'];
+    return PetBattery(
+      battery: b is int ? b : (b is num ? b.toInt() : int.tryParse('$b') ?? -1),
+      known:   true,
+    );
+  }
+}

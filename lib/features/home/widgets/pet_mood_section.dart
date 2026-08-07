@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/widgets/pet_avatar.dart';
+import '../../../shared/widgets/pet_toast.dart';
 import '../../auth/controller/auth_controller.dart';
+import '../../device/data/models/device_model.dart';
+import '../../device/data/repository/device_repository.dart';
+import '../../device/device_detail_page.dart';
+import '../../device/robot_device_page.dart';
 import '../../pet/controller/pet_controller.dart';
 import '../../pet/data/models/pet_model.dart';
-import '../controller/ai_controller.dart';
-import '../data/models/ai_result_model.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
-/// 首页宠物情绪卡片区
-/// - 监听 auth 状态：登录后自动加载宠物，解决首次打开不显示问题
-/// - 全宽 PageView + 圆点指示，与其他组件等宽
+/// 首页"我的宠物"区块
+/// - 头像横滑 + 纯文字状态（在线/离线，围栏/低电等 PeerApi 接口就绪后接入）
+/// - 末尾"添加"卡片 → 绑定设备页
+/// - 点击宠物卡 → 该宠物设备详情页（优先项圈）
 class PetMoodSection extends ConsumerStatefulWidget {
   const PetMoodSection({super.key});
 
@@ -41,10 +47,8 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
   Widget build(BuildContext context) {
     final isLoggedIn = ref.watch(authControllerProvider).isLoggedIn;
     final petState = ref.watch(petControllerProvider);
-    // 从图像分析 Controller 读取最近一次结果
-    final lastResult = ref.watch(aiImageControllerProvider).result;
+    final deviceState = ref.watch(deviceListProvider);
 
-    // 登录后首次加载（auth 就绪时再调，避免 token 未准备报错）
     if (isLoggedIn && !_loaded) {
       _loaded = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -60,14 +64,25 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
-    if (petState.pets.isEmpty) return const SizedBox.shrink();
 
     final pets = petState.pets;
+    if (pets.isEmpty) return const SizedBox.shrink();
+
+    // 按 pet.linkedDeviceId 查设备
+    DeviceModel? deviceForPet(PetModel pet) {
+      final id = pet.linkedDeviceId;
+      if (id.isEmpty) return null;
+      try {
+        return deviceState.devices.firstWhere((d) => d.deviceId == id);
+      } catch (_) {
+        return null;
+      }
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── 标题行 ──────────────────────────────────────
+        // ── 标题行：我的宠物 + 健康数据 › ──────────────
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -78,32 +93,67 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
                     fontWeight: FontWeight.w900,
                     color: AppColors.onSurface,
                     height: 1.15)),
-            if (lastResult != null) _EmotionBadge(result: lastResult),
+            GestureDetector(
+              onTap: () => PetToast.show(context, '健康报告即将上线'),
+              child: Text('健康数据 ›',
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary)),
+            ),
           ],
         ),
         SizedBox(height: 12),
 
-        // ── 全宽 PageView ────────────────────────────────
+        // ── 横滑宠物卡 + 添加卡 ────────────────────────
         SizedBox(
-          height: 88,
+          height: 96,
           child: PageView.builder(
             controller: _ctrl,
-            itemCount: pets.length,
+            itemCount: pets.length + 1, // 末尾 +1 为添加卡
             onPageChanged: (i) => setState(() => _page = i),
-            itemBuilder: (_, i) => _HomePetCard(
-              pet: pets[i],
-              result: lastResult,
-            ),
+            itemBuilder: (_, i) {
+              if (i == pets.length) {
+                return _AddPetCard(
+                  onTap: () => context.push(AppRoutes.bindDevice),
+                );
+              }
+              final pet = pets[i];
+              final device = deviceForPet(pet);
+              return _HomePetCard(
+                pet: pet,
+                device: device,
+                onTap: () {
+                  if (device == null) {
+                    PetToast.show(context, '该宠物未绑定设备');
+                    return;
+                  }
+                  HapticFeedback.selectionClick();
+                  final isRobot = device.productKey.contains('robot');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => isRobot
+                          ? RobotDevicePage(
+                              mac: device.mac, name: device.displayName)
+                          : DeviceDetailPage(
+                              mac: device.mac, name: device.displayName),
+                    ),
+                  );
+                },
+              );
+            },
           ),
         ),
 
         // ── 圆点指示（多宠物时显示）─────────────────────
-        if (pets.length > 1) ...[
+        if (pets.length + 1 > 1) ...[
           SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
-                pets.length,
+                pets.length + 1,
                 (i) => AnimatedContainer(
                       duration: Duration(milliseconds: 250),
                       margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -112,379 +162,117 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
                       decoration: BoxDecoration(
                         color: i == _page
                             ? AppColors.primary
-                            : AppColors.onSurfaceVariant
-                                .withValues(alpha: 0.25),
+                            : AppColors.onSurfaceVariant.withValues(alpha: 0.25),
                         borderRadius: BorderRadius.circular(999),
                       ),
                     )),
           ),
-        ],
-
-        // ── AI 情绪建议横幅 ──────────────────────────────
-        if (lastResult != null) ...[
-          SizedBox(height: 12),
-          _EmotionAdviceBanner(result: lastResult),
         ],
       ],
     );
   }
 }
 
-// ── 首页宠物卡 ────────────────────────────────────────────
+// ── 首页宠物卡（纯文字状态）──────────────────────────────
 class _HomePetCard extends StatelessWidget {
   final PetModel pet;
-  final AiAnalysisResult? result;
-  const _HomePetCard({required this.pet, this.result});
+  final DeviceModel? device;
+  final VoidCallback onTap;
+  const _HomePetCard({required this.pet, this.device, required this.onTap});
 
-  List<Color> get _gradients => pet.type == 'cat'
-      ? [Color(0xFF6EC6F5), Color(0xFF4A90D9)]
-      : [Color(0xFFFFB347), Color(0xFFE07B39)];
-
-  String _ageText() {
-    if (pet.birthday.isEmpty) return '';
-    try {
-      final birth = DateTime.parse(pet.birthday);
-      final now = DateTime.now();
-      int age = now.year - birth.year;
-      if (now.month < birth.month ||
-          (now.month == birth.month && now.day < birth.day)) {
-        age--;
-      }
-      if (age <= 0) {
-        final months = (now.year - birth.year) * 12 + now.month - birth.month;
-        return months <= 0 ? '刚出生' : '$months个月';
-      }
-      return '$age岁';
-    } catch (_) {
-      return '';
-    }
+  String get _statusText {
+    if (device == null) return '未绑定设备';
+    // 在线/离线（DeviceModel.connect）；围栏/低电等 PeerApi 接口就绪后接入，暂显"-"占位
+    final online = device!.connect ? '在线' : '离线';
+    return '$online · 围栏- · 电量-';
   }
 
-  Future<void> _openAmap() async {
-    HapticFeedback.lightImpact();
-    final uri = Uri.parse(
-      'https://uri.amap.com/search?q=${Uri.encodeComponent("宠物外出")}'
-      '&t=0&src=petpogo&callnative=1',
-    );
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      await launchUrl(
-        Uri.parse(
-            'https://www.amap.com/search?query=${Uri.encodeComponent("宠物外出")}'),
-        mode: LaunchMode.externalApplication,
-      );
-    }
-  }
+  Color get _statusColor =>
+      device == null
+          ? AppColors.onSurfaceVariant
+          : (device!.connect ? Color(0xFF34C759) : AppColors.onSurfaceVariant);
 
   @override
   Widget build(BuildContext context) {
-    final age = _ageText();
-    final emotion = result?.primaryEmotion;
-    final isMale = pet.gender == 'male';
-    final isFemale = pet.gender == 'female';
-    final gLabel = isMale
-        ? '♂ 公'
-        : isFemale
-            ? '♀ 母'
-            : '';
-    final gBg = isMale ? Color(0xFFDCEEFF) : Color(0xFFFFDCEE);
-    final gColor = isMale ? Color(0xFF1A6BB5) : Color(0xFFB51A6B);
-    final ageLabel =
-        emotion != null ? '${result!.primaryEmoji} ${emotion.labelZh}' : age;
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        gradient: LinearGradient(
-          colors: _gradients,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(right: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.3)),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: _gradients.first.withValues(alpha: 0.40),
-            blurRadius: 16,
-            spreadRadius: -4,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // 装饰圆
-          Positioned(
-            right: -14,
-            top: -14,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.09),
-              ),
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-            child: Row(
-              children: [
-                // ── 左：emoji 圆 + 情绪角标 ──────────────────
-                Stack(
-                  clipBehavior: Clip.none,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              PetAvatar(imageUrl: pet.avatar, size: 44, fallbackEmoji: pet.emoji),
+              SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 58,
-                      height: 58,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.22),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.white.withValues(alpha: 0.30),
-                            blurRadius: 10,
-                            spreadRadius: 1,
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(pet.emoji,
-                            style: TextStyle(fontSize: 28)),
-                      ),
-                    ),
-                    if (result != null)
-                      Positioned(
-                        bottom: -2,
-                        right: -2,
-                        child: Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: Color(result!.primaryColorHex),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: Center(
-                            child: Text(result!.primaryEmoji,
-                                style: TextStyle(fontSize: 11)),
-                          ),
-                        ),
-                      ),
+                    Text(pet.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.onSurface)),
+                    SizedBox(height: 3),
+                    Text(_statusText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: _statusColor)),
                   ],
                 ),
-
-                SizedBox(width: 12),
-
-                // ── 右：名字 / 信息行 ────────────────────
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 名字 + 性别
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(pet.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                    fontFamily: AppFonts.primary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white)),
-                          ),
-                          if (gLabel.isNotEmpty) ...[
-                            SizedBox(width: 6),
-                            Padding(
-                              padding: const EdgeInsets.only(right: 10),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: gBg,
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text(gLabel,
-                                    style: TextStyle(
-                                        fontFamily: AppFonts.primary,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w800,
-                                        color: gColor)),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-
-                      SizedBox(height: 5),
-
-                      // 年龄 chip + 位置（同一行）
-                      Row(
-                        children: [
-                          if (ageLabel.isNotEmpty) ...[
-                            _WChip(label: ageLabel),
-                            SizedBox(width: 8),
-                          ],
-                          GestureDetector(
-                            onTap: _openAmap,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.location_on_rounded,
-                                    size: 11, color: Colors.white),
-                                SizedBox(width: 2),
-                                Text('查看位置',
-                                    style: TextStyle(
-                                        fontFamily: AppFonts.primary,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white
-                                            .withValues(alpha: 0.85))),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// 白色半透明小标签
-class _WChip extends StatelessWidget {
-  final String label;
-  const _WChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.22),
-          borderRadius: BorderRadius.circular(999),
+              ),
+            ]),
+          ],
         ),
-        child: Text(label,
-            style: TextStyle(
-                fontFamily: AppFonts.primary,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: Colors.white)),
-      );
-}
-
-// ── 情绪标签（标题右侧）───────────────────────────────────────────────
-class _EmotionBadge extends StatelessWidget {
-  final AiAnalysisResult result;
-  const _EmotionBadge({required this.result});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = Color(result.primaryColorHex);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Text(result.primaryEmoji, style: TextStyle(fontSize: 12)),
-        SizedBox(width: 4),
-        Text(result.primaryEmotion.labelZh,
-            style: TextStyle(
-                fontFamily: AppFonts.primary,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: color)),
-      ]),
     );
   }
 }
 
-// ── AI 情绪建议横幅 ───────────────────────────────────────
-class _EmotionAdviceBanner extends StatelessWidget {
-  final AiAnalysisResult result;
-  const _EmotionAdviceBanner({required this.result});
+// ── 添加宠物卡 ────────────────────────────────────────────
+class _AddPetCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AddPetCard({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final emotion = result.primaryEmotion;
-    final color = Color(result.primaryColorHex);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(result.primaryEmoji, style: TextStyle(fontSize: 22)),
-          SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('AI 情绪分析 · ${emotion.labelZh}',
-                    style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: color,
-                        letterSpacing: 0.3)),
-                SizedBox(height: 3),
-                Text(result.advice,
-                    style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontSize: 12,
-                        color: AppColors.onSurfaceVariant,
-                        height: 1.5)),
-                SizedBox(height: 8),
-                ...result.top3.take(3).map((p) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(children: [
-                        SizedBox(
-                            width: 36,
-                            child: Text(p.labelZh,
-                                style: TextStyle(
-                                    fontFamily: AppFonts.primary,
-                                    fontSize: 10,
-                                    color: AppColors.onSurfaceVariant))),
-                        SizedBox(width: 6),
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(999),
-                            child: LinearProgressIndicator(
-                              value: p.confidence,
-                              minHeight: 5,
-                              backgroundColor: AppColors.outlineVariant
-                                  .withValues(alpha: 0.2),
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                  Color(result.primaryColorHex)
-                                      .withValues(alpha: 0.7)),
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 6),
-                        Text(p.percentText,
-                            style: TextStyle(
-                                fontFamily: AppFonts.primary,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: color)),
-                      ]),
-                    )),
-              ],
-            ),
-          ),
-        ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(right: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.3),
+              width: 1.5),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_rounded, size: 24, color: AppColors.primary),
+            SizedBox(height: 4),
+            Text('添加',
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary)),
+          ],
+        ),
       ),
     );
   }
