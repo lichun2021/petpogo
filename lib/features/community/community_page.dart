@@ -138,13 +138,18 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                                 controller: _searchCtrl,
                                 style: TextStyle(
                                     fontFamily: AppFonts.primary, fontSize: 13),
+                                cursorColor: AppColors.primary,
                                 decoration: InputDecoration(
-                                  border: InputBorder.none, isDense: true,
+                                  isDense: true,
+                                  filled: false,
                                   contentPadding: EdgeInsets.symmetric(vertical: 8),
                                   hintText: '搜索动态内容…',
                                   hintStyle: TextStyle(
                                       fontSize: 13,
                                       color: AppColors.onSurfaceVariant.withOpacity(0.5)),
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
                                 ),
                                 onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
                               ),

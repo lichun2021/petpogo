@@ -27,19 +27,10 @@ class PetMoodSection extends ConsumerStatefulWidget {
 }
 
 class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
-  int _page = 0;
-  late final PageController _ctrl;
   bool _loadTriggered = false;
 
   @override
-  void initState() {
-    super.initState();
-    _ctrl = PageController();
-  }
-
-  @override
   void dispose() {
-    _ctrl.dispose();
     super.dispose();
   }
 
@@ -90,25 +81,24 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
         // ── 加载中 ─────────────────────────────────────
         if (petState.isLoading && pets.isEmpty)
           SizedBox(
-            height: 96,
+            height: 92,
             child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
           )
-        // ── 横滑宠物卡 + 添加卡 ────────────────────────
+        // ── 横滑圆形头像（与萌宠圈一致）+ 末尾添加卡 ────
         else
           SizedBox(
-            height: 96,
-            child: PageView.builder(
-              controller: _ctrl,
+            height: 92,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 2),
               itemCount: pets.length + 1, // 末尾 +1 为添加卡
-              onPageChanged: (i) => setState(() => _page = i),
+              separatorBuilder: (_, __) => const SizedBox(width: 16),
               itemBuilder: (_, i) {
                 if (i == pets.length) {
-                  return _AddPetCard(
-                    onTap: () => context.push(AppRoutes.bindDevice),
-                  );
+                  return _AddPetAvatar(onTap: () => context.push(AppRoutes.bindDevice));
                 }
                 final p = pets[i];
-                return _HomePetCard(
+                return _PetAvatarTab(
                   petCirclePet: p,
                   onTap: () {
                     final device = p.device;
@@ -133,97 +123,85 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
               },
             ),
           ),
-
-        // ── 圆点指示（多宠物时显示）─────────────────────
-        if (pets.length + 1 > 1) ...[
-          SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-                pets.length + 1,
-                (i) => AnimatedContainer(
-                      duration: Duration(milliseconds: 250),
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      width: i == _page ? 18 : 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: i == _page
-                            ? AppColors.primary
-                            : AppColors.onSurfaceVariant.withValues(alpha: 0.25),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    )),
-          ),
-        ],
       ],
     );
   }
 }
 
-// ── 首页宠物卡（纯文字状态）──────────────────────────────
-class _HomePetCard extends StatelessWidget {
+// ── 宠物圆形头像 tab（与萌宠圈 _PetAvatarTab 一致）──────────
+class _PetAvatarTab extends StatelessWidget {
   final PetCirclePet petCirclePet;
   final VoidCallback onTap;
-  const _HomePetCard({required this.petCirclePet, required this.onTap});
-
-  PetCirclePet get p => petCirclePet;
-
-  String get _statusText {
-    final device = p.device;
-    if (device.mac.isEmpty) return '未绑定设备';
-    // 在线/离线（DeviceModel.connect）；围栏/低电等 PeerApi 接口就绪后接入，暂显"-"占位
-    final online = device.connect ? '在线' : '离线';
-    return '$online · 围栏- · 电量-';
-  }
-
-  Color get _statusColor => p.device.mac.isEmpty
-      ? AppColors.onSurfaceVariant
-      : (p.device.connect ? Color(0xFF34C759) : AppColors.onSurfaceVariant);
+  const _PetAvatarTab({required this.petCirclePet, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    final p = petCirclePet;
+    final device = p.device;
+    final online = device.mac.isNotEmpty && device.connect;
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: 10),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.3)),
-        ),
+      child: SizedBox(
+        width: 64,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Row(children: [
-              PetAvatar(
-                  imageUrl: p.avatar, size: 44, fallbackEmoji: p.emoji),
-              SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(p.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontFamily: AppFonts.primary,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.onSurface)),
-                    SizedBox(height: 3),
-                    Text(_statusText,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontFamily: AppFonts.primary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: _statusColor)),
-                  ],
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // 在线/离线边框色
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: online
+                          ? const Color(0xFF3EBD6D)
+                          : device.mac.isEmpty
+                              ? Colors.transparent
+                              : AppColors.onSurfaceVariant.withValues(alpha: 0.3),
+                      width: 2.5,
+                    ),
+                  ),
+                  child: PetAvatar(imageUrl: p.avatar, size: 54),
                 ),
+                // 共享角标
+                if (p.isShared)
+                  Positioned(
+                    top: -2,
+                    right: -4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppColors.surface, width: 1.2),
+                      ),
+                      child: const Text('共享',
+                          style: TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              height: 1.2)),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              p.name.isEmpty ? '宠物' : p.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 13,
+                height: 1.1,
+                color: AppColors.onSurface,
+                fontWeight: FontWeight.w600,
               ),
-            ]),
+            ),
           ],
         ),
       ),
@@ -231,34 +209,45 @@ class _HomePetCard extends StatelessWidget {
   }
 }
 
-// ── 添加宠物卡 ────────────────────────────────────────────
-class _AddPetCard extends StatelessWidget {
+// ── 添加宠物圆形卡 ────────────────────────────────────────
+class _AddPetAvatar extends StatelessWidget {
   final VoidCallback onTap;
-  const _AddPetCard({required this.onTap});
+  const _AddPetAvatar({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: 10),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.3),
-              width: 1.5),
-        ),
+      child: SizedBox(
+        width: 64,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.add_rounded, size: 24, color: AppColors.primary),
-            SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.3), width: 2.5),
+              ),
+              child: Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                ),
+                child: Icon(Icons.add_rounded, size: 26, color: AppColors.primary),
+              ),
+            ),
+            const SizedBox(height: 4),
             Text('添加',
                 style: TextStyle(
                     fontFamily: AppFonts.primary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.primary)),
           ],
         ),
