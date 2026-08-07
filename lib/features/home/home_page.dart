@@ -15,7 +15,6 @@ import '../device/device_detail_page.dart';
 import '../device/device_list_page.dart';
 import '../device/robot_device_page.dart';
 import '../profile/data/points_repository.dart';
-import '../pet/controller/pet_controller.dart';
 import 'widgets/ai_image_panel.dart';
 import 'widgets/ai_translate_panel.dart';
 import 'widgets/pet_mood_section.dart';
@@ -467,62 +466,16 @@ class _MaybePetMoodSection extends ConsumerStatefulWidget {
 }
 
 class _MaybePetMoodSectionState extends ConsumerState<_MaybePetMoodSection> {
-  String? _requestedForUserId;
-
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
-    final petState = ref.watch(petControllerProvider);
+    if (!auth.isLoggedIn) return SizedBox(height: 12);
 
-    if (!auth.isLoggedIn) {
-      _requestedForUserId = null;
-      return SizedBox(height: 12);
-    }
-
-    final userId = auth.user?.id ?? '';
-    if (_requestedForUserId != userId &&
-        !petState.isLoading &&
-        petState.pets.isEmpty) {
-      _requestedForUserId = userId;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          ref.read(petControllerProvider.notifier).loadPets();
-        }
-      });
-    }
-
-    if (petState.isLoading && petState.pets.isEmpty) {
-      return const _PetMoodLoadingShell();
-    }
-
-    // 始终渲染"我的宠物"区块：有宠物显示宠物卡+添加卡，无宠物只显示添加卡
+    // PetMoodSection 内部处理加载/空状态，外层不再判断，避免反复切换导致抖动
     return Column(
       children: [
         SizedBox(height: 22),
         PetMoodSection(),
-        SizedBox(height: 24),
-      ],
-    );
-  }
-}
-
-class _PetMoodLoadingShell extends StatelessWidget {
-  const _PetMoodLoadingShell();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(height: 22),
-        SizedBox(
-          height: 88,
-          child: Center(
-            child: CircularProgressIndicator(
-              color: AppColors.primary,
-              strokeWidth: 2,
-            ),
-          ),
-        ),
         SizedBox(height: 24),
       ],
     );

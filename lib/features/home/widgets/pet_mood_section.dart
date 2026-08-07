@@ -7,15 +7,15 @@ import '../../../shared/theme/app_colors.dart';
 import '../../../shared/widgets/pet_avatar.dart';
 import '../../../shared/widgets/pet_toast.dart';
 import '../../auth/controller/auth_controller.dart';
-import '../../device/data/models/device_model.dart';
-import '../../device/data/repository/device_repository.dart';
 import '../../device/device_detail_page.dart';
 import '../../device/robot_device_page.dart';
-import '../../pet/controller/pet_controller.dart';
-import '../../pet/data/models/pet_model.dart';
+import '../../pet_circle/controller/pet_circle_pet_controller.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 /// 首页"我的宠物"区块
+/// 数据源与萌宠圈一致：petCirclePetControllerProvider
+///   - 我的宠物（PeerApi /pet/info/list）
+///   - 共享给我的宠物（业务后端 /pet/share/withme）
 /// - 头像横滑 + 纯文字状态（在线/离线，围栏/低电等 PeerApi 接口就绪后接入）
 /// - 末尾"添加"卡片 → 绑定设备页
 /// - 点击宠物卡 → 该宠物设备详情页（优先项圈）
@@ -29,7 +29,7 @@ class PetMoodSection extends ConsumerStatefulWidget {
 class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
   int _page = 0;
   late final PageController _ctrl;
-  bool _loaded = false;
+  bool _loadTriggered = false;
 
   @override
   void initState() {
@@ -46,38 +46,19 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
   @override
   Widget build(BuildContext context) {
     final isLoggedIn = ref.watch(authControllerProvider).isLoggedIn;
-    final petState = ref.watch(petControllerProvider);
-    final deviceState = ref.watch(deviceListProvider);
+    final petState = ref.watch(petCirclePetControllerProvider);
 
-    if (isLoggedIn && !_loaded) {
-      _loaded = true;
+    // 登录后触发一次加载（loadIfNeeded 内部有缓存判断）
+    if (isLoggedIn && !_loadTriggered) {
+      _loadTriggered = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(petControllerProvider.notifier).loadPets();
+        ref.read(petCirclePetControllerProvider.notifier).loadIfNeeded();
       });
     }
 
     if (!isLoggedIn) return const SizedBox.shrink();
 
-    if (petState.isLoading) {
-      return SizedBox(
-        height: 88,
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      );
-    }
-
     final pets = petState.pets;
-    // 即使无宠物也渲染区块（只显示添加卡，引导用户添加）
-
-    // 按 pet.linkedDeviceId 查设备
-    DeviceModel? deviceForPet(PetModel pet) {
-      final id = pet.linkedDeviceId;
-      if (id.isEmpty) return null;
-      try {
-        return deviceState.devices.firstWhere((d) => d.deviceId == id);
-      } catch (_) {
-        return null;
-      }
-    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,46 +87,52 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
         ),
         SizedBox(height: 12),
 
+        // ── 加载中 ─────────────────────────────────────
+        if (petState.isLoading && pets.isEmpty)
+          SizedBox(
+            height: 96,
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          )
         // ── 横滑宠物卡 + 添加卡 ────────────────────────
-        SizedBox(
-          height: 96,
-          child: PageView.builder(
-            controller: _ctrl,
-            itemCount: pets.length + 1, // 末尾 +1 为添加卡
-            onPageChanged: (i) => setState(() => _page = i),
-            itemBuilder: (_, i) {
-              if (i == pets.length) {
-                return _AddPetCard(
-                  onTap: () => context.push(AppRoutes.bindDevice),
-                );
-              }
-              final pet = pets[i];
-              final device = deviceForPet(pet);
-              return _HomePetCard(
-                pet: pet,
-                device: device,
-                onTap: () {
-                  if (device == null) {
-                    PetToast.show(context, '该宠物未绑定设备');
-                    return;
-                  }
-                  HapticFeedback.selectionClick();
-                  final isRobot = device.productKey.contains('robot');
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => isRobot
-                          ? RobotDevicePage(
-                              mac: device.mac, name: device.displayName)
-                          : DeviceDetailPage(
-                              mac: device.mac, name: device.displayName),
-                    ),
+        else
+          SizedBox(
+            height: 96,
+            child: PageView.builder(
+              controller: _ctrl,
+              itemCount: pets.length + 1, // 末尾 +1 为添加卡
+              onPageChanged: (i) => setState(() => _page = i),
+              itemBuilder: (_, i) {
+                if (i == pets.length) {
+                  return _AddPetCard(
+                    onTap: () => context.push(AppRoutes.bindDevice),
                   );
-                },
-              );
-            },
+                }
+                final p = pets[i];
+                return _HomePetCard(
+                  petCirclePet: p,
+                  onTap: () {
+                    final device = p.device;
+                    if (device.mac.isEmpty) {
+                      PetToast.show(context, '该宠物未绑定设备');
+                      return;
+                    }
+                    HapticFeedback.selectionClick();
+                    final isRobot = device.productKey.contains('robot');
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => isRobot
+                            ? RobotDevicePage(
+                                mac: device.mac, name: device.displayName)
+                            : DeviceDetailPage(
+                                mac: device.mac, name: device.displayName),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
-        ),
 
         // ── 圆点指示（多宠物时显示）─────────────────────
         if (pets.length + 1 > 1) ...[
@@ -175,22 +162,23 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
 
 // ── 首页宠物卡（纯文字状态）──────────────────────────────
 class _HomePetCard extends StatelessWidget {
-  final PetModel pet;
-  final DeviceModel? device;
+  final PetCirclePet petCirclePet;
   final VoidCallback onTap;
-  const _HomePetCard({required this.pet, this.device, required this.onTap});
+  const _HomePetCard({required this.petCirclePet, required this.onTap});
+
+  PetCirclePet get p => petCirclePet;
 
   String get _statusText {
-    if (device == null) return '未绑定设备';
+    final device = p.device;
+    if (device.mac.isEmpty) return '未绑定设备';
     // 在线/离线（DeviceModel.connect）；围栏/低电等 PeerApi 接口就绪后接入，暂显"-"占位
-    final online = device!.connect ? '在线' : '离线';
+    final online = device.connect ? '在线' : '离线';
     return '$online · 围栏- · 电量-';
   }
 
-  Color get _statusColor =>
-      device == null
-          ? AppColors.onSurfaceVariant
-          : (device!.connect ? Color(0xFF34C759) : AppColors.onSurfaceVariant);
+  Color get _statusColor => p.device.mac.isEmpty
+      ? AppColors.onSurfaceVariant
+      : (p.device.connect ? Color(0xFF34C759) : AppColors.onSurfaceVariant);
 
   @override
   Widget build(BuildContext context) {
@@ -208,13 +196,14 @@ class _HomePetCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              PetAvatar(imageUrl: pet.avatar, size: 44, fallbackEmoji: pet.emoji),
+              PetAvatar(
+                  imageUrl: p.avatar, size: 44, fallbackEmoji: p.emoji),
               SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(pet.name,
+                    Text(p.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
