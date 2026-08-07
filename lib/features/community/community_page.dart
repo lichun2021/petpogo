@@ -29,6 +29,8 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _selectedCategory = 0;
+  String _searchQuery = '';
+  final _searchCtrl = TextEditingController();
   // 每个 Tab 独立 ScrollController，避免共用时重复触发 loadMore
   final _scrollCtrl0 = ScrollController();
   final _scrollCtrl1 = ScrollController();
@@ -44,12 +46,15 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
   @override
   void dispose() {
     _tabController.dispose();
+    _searchCtrl.dispose();
     _scrollCtrl0.dispose();
     _scrollCtrl1.dispose();
     super.dispose();
   }
 
   void _onScroll(ScrollController ctrl) {
+    // 搜索时禁用 loadMore（在已加载数据上过滤，不增量加载）
+    if (_searchQuery.isNotEmpty) return;
     if (ctrl.position.pixels >= ctrl.position.maxScrollExtent - 300) {
       ref.read(feedControllerProvider.notifier).loadMore();
     }
@@ -115,35 +120,48 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                   bottom: false,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: GestureDetector(
-                      onTap: () => PetToast.show(context, '搜索功能即将上线'),
-                      child: Container(
-                        height: 40,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(children: [
-                          Icon(Icons.search_rounded, size: 18,
-                              color: AppColors.onSurfaceVariant.withOpacity(0.5)),
-                          SizedBox(width: 8),
-                          Text('搜索功能即将上线…',
-                              style: TextStyle(
-                                  fontFamily: AppFonts.primary,
-                                  fontSize: 13,
-                                  color: AppColors.onSurfaceVariant.withOpacity(0.6))),
-                        ]),
-                      ),
-                    ),
-                  ),
-                ),
-                SafeArea(
-                  bottom: false,
-                  child: SizedBox(
-                    height: 56,
                     child: Row(children: [
-                      Spacer(),
+                      Expanded(
+                        child: Container(
+                          height: 40,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(children: [
+                            Icon(Icons.search_rounded, size: 18,
+                                color: AppColors.onSurfaceVariant.withOpacity(0.5)),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: TextField(
+                                controller: _searchCtrl,
+                                style: TextStyle(
+                                    fontFamily: AppFonts.primary, fontSize: 13),
+                                decoration: InputDecoration(
+                                  border: InputBorder.none, isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(vertical: 8),
+                                  hintText: '搜索动态内容…',
+                                  hintStyle: TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.onSurfaceVariant.withOpacity(0.5)),
+                                ),
+                                onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
+                              ),
+                            ),
+                            if (_searchQuery.isNotEmpty)
+                              GestureDetector(
+                                onTap: () {
+                                  _searchCtrl.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                                child: Icon(Icons.clear_rounded, size: 16,
+                                    color: AppColors.onSurfaceVariant),
+                              ),
+                          ]),
+                        ),
+                      ),
+                      SizedBox(width: 10),
                       IconButton(
                         icon: Container(
                           padding: const EdgeInsets.all(4),
@@ -232,9 +250,18 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
 
     final posts = feedState.posts;
 
-    if (posts.isEmpty) {
+    // 搜索过滤（在已加载数据上按内容/作者过滤）
+    final filtered = _searchQuery.isEmpty
+        ? posts
+        : posts.where((p) {
+            final content = p.content.toLowerCase();
+            final nick = (p.nickname).toLowerCase();
+            return content.contains(_searchQuery) || nick.contains(_searchQuery);
+          }).toList();
+
+    if (filtered.isEmpty) {
       return Center(
-        child: Text('还没有动态，来发第一条吧 🐾',
+        child: Text(_searchQuery.isNotEmpty ? '没有匹配的动态' : '还没有动态，来发第一条吧 🐾',
           style: TextStyle(fontFamily: AppFonts.primary, color: AppColors.onSurfaceVariant)),
       );
     }
@@ -256,16 +283,16 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
               crossAxisCount: 2,
               mainAxisSpacing: 10,
               crossAxisSpacing: 10,
-              childCount: posts.length,
+              childCount: filtered.length,
               itemBuilder: (_, i) => _PostCard(
-                post: posts[i],
+                post: filtered[i],
                 index: i,
                 onTap: () => _openViewer(i),
-                onAvatarTap: () => _showUserPanel(context, posts[i]),
+                onAvatarTap: () => _showUserPanel(context, filtered[i]),
                 // 自己的帖子不能点赞
-                onLike: posts[i].userId == _myUserId
+                onLike: filtered[i].userId == _myUserId
                     ? null
-                    : () => ref.read(feedControllerProvider.notifier).toggleLike(posts[i].id),
+                    : () => ref.read(feedControllerProvider.notifier).toggleLike(filtered[i].id),
               ).animate().fadeIn(delay: Duration(milliseconds: (i * 40).clamp(0, 400))).slideY(begin: 0.08),
             ),
           ),

@@ -440,6 +440,22 @@ class _BottomCard extends StatelessWidget {
                       ),
                     ]),
                   ])),
+              // 寻宠导航小 icon（宠物名行右对齐，无定位时禁用）
+              IconButton(
+                icon: Icon(Icons.navigation_rounded,
+                    size: 20,
+                    color: hasLocation
+                        ? AppColors.primary
+                        : AppColors.onSurfaceVariant.withOpacity(0.4)),
+                onPressed: hasLocation ? onNavigate : null,
+                tooltip: '寻宠导航',
+                style: IconButton.styleFrom(
+                  backgroundColor: hasLocation
+                      ? AppColors.primary.withOpacity(0.10)
+                      : AppColors.surfaceContainerLow,
+                  minimumSize: Size(40, 40),
+                ),
+              ),
             ]),
             SizedBox(height: 14),
             Row(children: [
@@ -545,30 +561,6 @@ class _BottomCard extends StatelessWidget {
                       ],
                     ])),
               ]),
-            SizedBox(height: 16),
-            // 寻宠导航按钮（无定位时禁用）
-            SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: ElevatedButton.icon(
-                onPressed: hasLocation ? onNavigate : null,
-                icon: Icon(Icons.navigation_rounded, size: 18),
-                label: Text('寻宠导航',
-                    style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: AppColors.surfaceContainerLow,
-                  disabledForegroundColor: AppColors.onSurfaceVariant,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-              ),
-            ),
           ]),
     );
   }

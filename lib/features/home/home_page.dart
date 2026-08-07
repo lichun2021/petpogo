@@ -42,8 +42,6 @@ class _HomePageState extends ConsumerState<HomePage> {
               padding: const EdgeInsets.fromLTRB(20, 10, 20, 120),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  const _HomeTopBar(),
-                  SizedBox(height: 14),
                   const _HomeHero(),
                   SizedBox(height: 14),
                   _HomeCheckInCard(),
@@ -66,23 +64,6 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _HomeTopBar extends StatelessWidget {
-  const _HomeTopBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Spacer(),
-        _TopIconButton(
-          icon: Icons.person_rounded,
-          onTap: () => context.go(AppRoutes.profile),
-        ),
-      ],
     );
   }
 }
@@ -514,10 +495,7 @@ class _MaybePetMoodSectionState extends ConsumerState<_MaybePetMoodSection> {
       return const _PetMoodLoadingShell();
     }
 
-    if (petState.pets.isEmpty) {
-      return SizedBox(height: 12);
-    }
-
+    // 始终渲染"我的宠物"区块：有宠物显示宠物卡+添加卡，无宠物只显示添加卡
     return Column(
       children: [
         SizedBox(height: 22),

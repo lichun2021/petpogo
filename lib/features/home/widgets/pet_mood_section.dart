@@ -66,7 +66,7 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
     }
 
     final pets = petState.pets;
-    if (pets.isEmpty) return const SizedBox.shrink();
+    // 即使无宠物也渲染区块（只显示添加卡，引导用户添加）
 
     // 按 pet.linkedDeviceId 查设备
     DeviceModel? deviceForPet(PetModel pet) {
