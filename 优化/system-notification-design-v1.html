@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>宠联芯 系统通知列表页 · 设计方案</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Microsoft YaHei','PingFang SC',sans-serif}
+  body{background:#f0f0f0;padding:40px 20px;color:#222}
+  .page-title{text-align:center;font-size:24px;font-weight:700;margin-bottom:6px}
+  .page-sub{text-align:center;font-size:13px;color:#777;margin-bottom:32px}
+  .wrap{display:flex;justify-content:center;gap:50px;align-items:flex-start;flex-wrap:wrap;max-width:1400px;margin:0 auto}
+  .col{display:flex;flex-direction:column;align-items:center}
+  .col-label{font-size:13px;font-weight:700;margin-bottom:12px;padding:5px 16px;border-radius:20px;background:#ffe8cf;color:#c9761c;text-align:center}
+
+  .phone{width:310px;border:3px solid #333;border-radius:28px;background:#f7f4ef;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.15)}
+  .statusbar{height:22px;background:#f7f4ef;border-bottom:1px solid #eee}
+  .nav-bar{display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 14px;background:#f7f4ef;border-bottom:1px solid #eee}
+  .nav-bar .back{font-size:20px;color:#555;width:32px}
+  .nav-bar .title{font-size:16px;font-weight:700;flex:1;text-align:center}
+  .nav-bar .action{font-size:11px;color:#ff9500;font-weight:600;width:44px;text-align:right}
+
+  .list{padding:8px 0}
+  /* 日期分组标签 */
+  .date-group{font-size:11px;color:#aaa;font-weight:600;padding:8px 14px 4px}
+
+  /* 通知行 */
+  .notif-row{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:#fff;margin:1px 0;position:relative;cursor:pointer}
+  .notif-row.unread{background:#fff8f5}
+  .notif-row.unread::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:#ff9500;border-radius:0 2px 2px 0}
+  .notif-row:active{background:#f5f5f5}
+
+  .notif-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex:0 0 auto;margin-top:2px}
+  .notif-icon.breach{background:#fff0f0}
+  .notif-icon.offline{background:#fff8e8}
+  .notif-icon.battery{background:#fff8e0}
+  .notif-icon.resolved{background:#f0f8f0}
+
+  .notif-body{flex:1;min-width:0}
+  .notif-title{font-size:13px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:6px}
+  .notif-desc{font-size:11px;color:#666;line-height:1.5;margin-bottom:4px}
+  .notif-meta{font-size:10px;color:#bbb;display:flex;align-items:center;gap:8px}
+  .notif-meta .pet{color:#ff9500;font-weight:600}
+  .notif-meta .arrow{margin-left:auto;color:#ccc;font-size:14px}
+
+  .badge{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px}
+  .badge.breach{background:#ffeded;color:#d44}
+  .badge.offline{background:#fff3e0;color:#e07000}
+  .badge.battery{background:#fffbe0;color:#c09000}
+  .badge.resolved{background:#e8f5e9;color:#4caf50}
+  .unread-dot{width:7px;height:7px;border-radius:50%;background:#ff9500;flex:0 0 auto;margin-top:5px}
+
+  /* 空状态 */
+  .empty-state{padding:60px 20px;text-align:center}
+  .empty-icon{font-size:52px;margin-bottom:14px}
+  .empty-title{font-size:15px;font-weight:700;margin-bottom:6px;color:#444}
+  .empty-desc{font-size:12px;color:#aaa;line-height:1.6}
+
+  /* 说明面板 */
+  .panel{max-width:1400px;margin:40px auto 0;background:#fff;border-radius:12px;padding:20px 24px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  .panel h3{font-size:15px;margin-bottom:14px}
+  .panel table{width:100%;border-collapse:collapse;font-size:13px}
+  .panel td,.panel th{padding:9px 10px;border-bottom:1px solid #eee;text-align:left;vertical-align:top}
+  .panel th{color:#888;font-weight:600;font-size:12px}
+  .tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:6px;font-weight:700}
+  .tag.r{background:#ffeded;color:#d44}
+  .tag.o{background:#fff3e0;color:#e07000}
+  .tag.y{background:#fffbe0;color:#c09000}
+  .tag.g{background:#e8f5e9;color:#4caf50}
+</style>
+</head>
+<body>
+
+<div class="page-title">宠联芯 系统通知列表页 · 设计方案</div>
+<div class="page-sub">新页面，承接所有设备/宠物异常通知 · 从消息页"系统通知"入口进入 · 2026-08-07</div>
+
+<div class="wrap">
+
+  <!-- 有通知的正常态 -->
+  <div class="col">
+    <div class="col-label">正常态：有通知记录</div>
+    <div class="phone">
+      <div class="statusbar"></div>
+      <div class="nav-bar">
+        <span class="back">‹</span>
+        <span class="title">系统通知</span>
+        <span class="action">全部已读</span>
+      </div>
+      <div class="list">
+        <div class="date-group">今天</div>
+
+        <!-- 越界告警（未读） -->
+        <div class="notif-row unread">
+          <div class="notif-icon breach">⚠️</div>
+          <div class="notif-body">
+            <div class="notif-title">
+              越界告警
+              <span class="badge breach">未处理</span>
+            </div>
+            <div class="notif-desc">豆包离开了安全围栏范围，请及时查看位置。</div>
+            <div class="notif-meta">
+              <span class="pet">🐱 豆包</span>
+              <span>15:20</span>
+              <span class="arrow">›</span>
+            </div>
+          </div>
+          <div class="unread-dot"></div>
+        </div>
+
+        <!-- 低电提醒（未读） -->
+        <div class="notif-row unread">
+          <div class="notif-icon battery">🔋</div>
+          <div class="notif-body">
+            <div class="notif-title">
+              低电提醒
+              <span class="badge battery">未处理</span>
+            </div>
+            <div class="notif-desc">豆包的项圈电量低于 20%，请尽快充电。</div>
+            <div class="notif-meta">
+              <span class="pet">🐱 豆包</span>
+              <span>13:45</span>
+              <span class="arrow">›</span>
+            </div>
+          </div>
+          <div class="unread-dot"></div>
+        </div>
+
+        <div class="date-group">昨天</div>
+
+        <!-- 设备离线（已读） -->
+        <div class="notif-row">
+          <div class="notif-icon offline">📡</div>
+          <div class="notif-body">
+            <div class="notif-title">
+              设备离线
+              <span class="badge resolved">已处理</span>
+            </div>
+            <div class="notif-desc">奶茶的项圈已恢复在线连接。</div>
+            <div class="notif-meta">
+              <span class="pet">🐱 奶茶</span>
+              <span>09:12</span>
+              <span class="arrow">›</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 越界告警（已读） -->
+        <div class="notif-row">
+          <div class="notif-icon breach" style="opacity:.6">⚠️</div>
+          <div class="notif-body">
+            <div class="notif-title" style="color:#999">
+              越界告警
+              <span class="badge resolved">已处理</span>
+            </div>
+            <div class="notif-desc" style="color:#bbb">豆包离开了安全围栏范围。</div>
+            <div class="notif-meta">
+              <span class="pet">🐱 豆包</span>
+              <span>20:05</span>
+              <span class="arrow">›</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="date-group">7月4日</div>
+
+        <!-- 设备离线（已读） -->
+        <div class="notif-row">
+          <div class="notif-icon offline" style="opacity:.6">📡</div>
+          <div class="notif-body">
+            <div class="notif-title" style="color:#999">
+              设备离线
+              <span class="badge resolved">已处理</span>
+            </div>
+            <div class="notif-desc" style="color:#bbb">豆包的项圈已离线，请检查设备。</div>
+            <div class="notif-meta">
+              <span class="pet">🐱 豆包</span>
+              <span>11:30</span>
+              <span class="arrow">›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 空状态 -->
+  <div class="col">
+    <div class="col-label">空状态：暂无通知</div>
+    <div class="phone">
+      <div class="statusbar"></div>
+      <div class="nav-bar">
+        <span class="back">‹</span>
+        <span class="title">系统通知</span>
+        <span class="action"></span>
+      </div>
+      <div class="empty-state">
+        <div class="empty-icon">🛡️</div>
+        <div class="empty-title">一切正常</div>
+        <div class="empty-desc">暂无设备异常通知<br>宠物安全守护中</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="panel">
+  <h3>页面结构说明</h3>
+  <table>
+    <tr><th>区域</th><th>说明</th></tr>
+    <tr><td>顶部导航</td><td>返回按钮 + "系统通知"标题 + "全部已读"操作（有未读时显示，全部已读后隐藏）</td></tr>
+    <tr><td>日期分组</td><td>按日期分组展示，今天/昨天/具体日期，降序排列（最新在前）</td></tr>
+    <tr><td>通知列表</td><td>每条通知包含：事件图标、事件类型、处理状态、描述文字、宠物名、时间、右箭头</td></tr>
+    <tr><td>未读标识</td><td>左侧橙色竖条 + 右上角橙色圆点 + 背景微暖色</td></tr>
+    <tr><td>点击行为</td><td>点击整行跳转到对应宠物的设备详情页（项圈页）；跳转后该条标记为已读</td></tr>
+    <tr><td>空状态</td><td>无任何通知时显示"一切正常"空状态，不做空列表</td></tr>
+  </table>
+
+  <h3 style="margin-top:20px">通知类型</h3>
+  <table>
+    <tr><th>类型</th><th>图标</th><th>颜色</th><th>触发条件</th></tr>
+    <tr><td><span class="tag r">越界告警</span></td><td>⚠️</td><td>红色系</td><td>宠物超出电子围栏范围</td></tr>
+    <tr><td><span class="tag o">设备离线</span></td><td>📡</td><td>橙色系</td><td>项圈/机器人断开连接</td></tr>
+    <tr><td><span class="tag y">低电提醒</span></td><td>🔋</td><td>黄色系</td><td>设备电量低于阈值（由后台配置）</td></tr>
+  </table>
+
+  <h3 style="margin-top:20px">状态标签</h3>
+  <table>
+    <tr><th>状态</th><th>含义</th><th>切换时机</th></tr>
+    <tr><td><span class="tag r">未处理</span></td><td>用户尚未查看该条通知</td><td>用户点击该条通知后自动变为"已处理"</td></tr>
+    <tr><td><span class="tag g">已处理</span></td><td>用户已查看</td><td>点击进入设备详情页后标记</td></tr>
+  </table>
+
+  <h3 style="margin-top:20px">进入路径</h3>
+  <table>
+    <tr><th>来源</th><th>路径</th></tr>
+    <tr><td>消息页</td><td>消息页 → 系统通知卡片 → 本页</td></tr>
+    <tr><td>首页通知铃铛</td><td>首页铃铛 → 消息页 → 系统通知卡片 → 本页</td></tr>
+    <tr><td>我的页铃铛</td><td>我的页铃铛 → 消息页 → 系统通知卡片 → 本页</td></tr>
+  </table>
+</div>
+
+</body>
+</html>

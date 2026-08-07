@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>宠联芯 AI功能积分消耗提示规范 · 线框图</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Microsoft YaHei','PingFang SC',sans-serif}
+  body{background:#f0f0f0;padding:40px 20px;color:#222}
+  .page-title{text-align:center;font-size:24px;font-weight:700;margin-bottom:6px}
+  .page-sub{text-align:center;font-size:13px;color:#777;margin-bottom:32px}
+  .section-title{text-align:center;font-size:17px;font-weight:700;margin:40px auto 20px;color:#444;padding:10px 0;border-bottom:2px solid #ddd;max-width:1200px}
+  .wrap{display:flex;justify-content:center;gap:50px;align-items:flex-start;flex-wrap:wrap;max-width:1200px;margin:0 auto}
+  .col{display:flex;flex-direction:column;align-items:center}
+  .col-label{font-size:13px;font-weight:700;margin-bottom:12px;padding:5px 16px;border-radius:20px}
+  .col-label.old{background:#eee;color:#999}
+  .col-label.new{background:#ffe8cf;color:#c9761c}
+  .phone{width:310px;border:3px solid #333;border-radius:28px;background:#fff;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.15)}
+  .statusbar{height:22px;background:#fafafa;border-bottom:1px solid #eee}
+  .page-content{padding:12px 14px 20px}
+
+  .section-label{font-size:13px;font-weight:700;margin:14px 0 8px;color:#333}
+  .ai-card{border:1px solid #eee;border-radius:14px;padding:16px;margin-bottom:12px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+  .ai-card-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .ai-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px}
+  .ai-icon.sound{background:#fff0f0}
+  .ai-icon.photo{background:#fff8e8}
+  .card-title{font-size:14px;font-weight:700}
+  .cost-hint{font-size:11px;color:#ff9500;font-weight:600;margin-left:4px}
+  .cost-hint.missing{color:#ccc;border:1px dashed #ccc;border-radius:6px;padding:1px 6px;font-size:10px}
+  .record-btn{width:64px;height:64px;border-radius:50%;background:#e05a3a;margin:10px auto;display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff}
+  .hint-text{text-align:center;font-size:11px;color:#bbb;margin-bottom:4px}
+
+  .bottom-sheet{background:#fff;border-radius:20px 20px 0 0;padding:16px 14px;border-top:1px solid #eee;margin-top:8px}
+  .sheet-title{font-size:15px;font-weight:700;text-align:center;margin-bottom:4px}
+  .sheet-sub{font-size:11px;color:#888;text-align:center;margin-bottom:12px}
+  .pet-row{display:flex;align-items:center;gap:10px;border:1px solid #f0f0f0;border-radius:10px;padding:10px}
+  .pet-avatar{width:40px;height:40px;border-radius:50%;background:#fde8d8;display:flex;align-items:center;justify-content:center;font-size:18px;flex:0 0 auto}
+  .pet-info b{display:block;font-size:13px}
+  .pet-info span{display:block;font-size:11px;color:#999;margin-top:2px}
+
+  .ann-box{background:#ff9500;color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;display:inline-block;margin:2px 0}
+  .ann-line{border-left:2px dashed #ff9500;margin-left:12px;padding-left:10px;margin-top:4px;margin-bottom:8px;font-size:11px;color:#a06000;line-height:1.6}
+
+  .legend{max-width:1200px;margin:40px auto 0;background:#fff;border-radius:12px;padding:20px 24px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  .legend h3{font-size:15px;margin-bottom:12px}
+  .legend table{width:100%;border-collapse:collapse;font-size:13px}
+  .legend td,.legend th{padding:9px 10px;border-bottom:1px solid #eee;text-align:left;vertical-align:top}
+  .legend th{color:#888;font-weight:600;font-size:12px}
+  .tag{display:inline-block;background:#ff9500;color:#fff;font-size:10px;padding:2px 7px;border-radius:6px;margin-right:4px}
+</style>
+</head>
+<body>
+
+<div class="page-title">宠联芯 AI功能积分消耗提示规范 · 线框图</div>
+<div class="page-sub">标注3处积分提示的精确位置与文字格式 · 积分数值由接口返回，前端不写死 · 2026-08-07</div>
+
+<!-- 声音+图片分析 -->
+<div class="section-title">① 声音分析 / 图片分析卡片（首页 AI 解析区）</div>
+<div class="wrap">
+
+  <div class="col">
+    <div class="col-label old">优化前（现状）</div>
+    <div class="phone">
+      <div class="statusbar"></div>
+      <div class="page-content">
+        <div class="section-label">AI 解析</div>
+        <div class="ai-card">
+          <div class="ai-card-head">
+            <div class="ai-icon sound">🎤</div>
+            <div class="card-title">听懂宠物的情绪</div>
+            <span class="cost-hint missing">积分提示缺失</span>
+          </div>
+          <div style="font-size:11px;color:#bbb;text-align:center;margin-bottom:8px">按住对宠物录音</div>
+          <div class="record-btn">🎤</div>
+          <div class="hint-text">按住即可录音</div>
+        </div>
+        <div class="ai-card">
+          <div class="ai-card-head">
+            <div class="ai-icon photo">📷</div>
+            <div class="card-title">看懂宠物的情绪</div>
+            <span class="cost-hint missing">积分提示缺失</span>
+          </div>
+          <div style="font-size:11px;color:#bbb;text-align:center;margin-bottom:8px">选择宠物照片，AI 读懂它的心情</div>
+          <div class="record-btn" style="background:#e0943a">📷</div>
+          <div class="hint-text">点击拍照或从相册选择</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="col-label new">优化后（本次方案）</div>
+    <div class="phone">
+      <div class="statusbar"></div>
+      <div class="page-content">
+        <div class="section-label">AI 解析</div>
+        <div class="ai-card">
+          <div class="ai-card-head">
+            <div class="ai-icon sound">🎤</div>
+            <div class="card-title">听懂宠物的情绪<span class="cost-hint">（X积分/次）</span></div>
+          </div>
+          <div style="font-size:11px;color:#bbb;text-align:center;margin-bottom:8px">按住对宠物录音</div>
+          <div class="record-btn">🎤</div>
+          <div class="hint-text">按住即可录音</div>
+        </div>
+        <div class="ai-card">
+          <div class="ai-card-head">
+            <div class="ai-icon photo">📷</div>
+            <div class="card-title">看懂宠物的情绪<span class="cost-hint">（X积分/次）</span></div>
+          </div>
+          <div style="font-size:11px;color:#bbb;text-align:center;margin-bottom:8px">选择宠物照片，AI 读懂它的心情</div>
+          <div class="record-btn" style="background:#e0943a">📷</div>
+          <div class="hint-text">点击拍照或从相册选择</div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px;width:310px">
+      <div class="ann-box">标注①②</div>
+      <div class="ann-line">
+        在功能标题文字末尾紧跟 <b>（X积分/次）</b><br>
+        字色：橙色（#FF9500），字号：11px<br>
+        X 值由接口返回，不写死
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 问诊选宠物弹窗 -->
+<div class="section-title">② AI健康顾问：选择宠物弹窗</div>
+<div class="wrap">
+
+  <div class="col">
+    <div class="col-label old">优化前（现状）</div>
+    <div class="phone">
+      <div class="statusbar"></div>
+      <div class="page-content" style="padding-bottom:8px">
+        <div style="height:60px;background:#f5f5f5;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#bbb">页面背景（已模糊）</div>
+      </div>
+      <div class="bottom-sheet">
+        <div class="sheet-title">选择要咨询的宠物</div>
+        <div class="sheet-sub">宠小伊会基于该宠物的档案进行问诊<span class="cost-hint missing" style="margin-left:4px">积分提示缺失</span></div>
+        <div class="pet-row">
+          <div class="pet-avatar">🐾</div>
+          <div class="pet-info"><b>咳咳爱爱</b><span>布偶猫 · 公 · 来自毛毛的项圈</span></div>
+          <span style="margin-left:auto;color:#bbb;font-size:16px">›</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="col-label new">优化后（本次方案）</div>
+    <div class="phone">
+      <div class="statusbar"></div>
+      <div class="page-content" style="padding-bottom:8px">
+        <div style="height:60px;background:#f5f5f5;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#bbb">页面背景（已模糊）</div>
+      </div>
+      <div class="bottom-sheet">
+        <div class="sheet-title">选择要咨询的宠物</div>
+        <div class="sheet-sub">宠小伊会基于该宠物的档案进行问诊<span class="cost-hint">（X积分/次提问）</span></div>
+        <div class="pet-row">
+          <div class="pet-avatar">🐾</div>
+          <div class="pet-info"><b>咳咳爱爱</b><span>布偶猫 · 公 · 来自毛毛的项圈</span></div>
+          <span style="margin-left:auto;color:#bbb;font-size:16px">›</span>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px;width:310px">
+      <div class="ann-box">标注③</div>
+      <div class="ann-line">
+        在弹窗副标题末尾紧跟 <b>（X积分/次提问）</b><br>
+        字色：橙色（#FF9500），字号：11px<br>
+        X 值由接口返回，不写死
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="legend">
+  <h3>改动汇总</h3>
+  <table>
+    <tr><th>标注</th><th>页面位置</th><th>改动内容</th><th>备注</th></tr>
+    <tr>
+      <td><span class="tag">标注①</span></td>
+      <td>首页 AI 解析 → 声音分析卡片标题末尾</td>
+      <td>"听懂宠物的情绪" 后加 <b>（X积分/次）</b></td>
+      <td rowspan="2">橙色小字，11px；X 由接口返回，不写死</td>
+    </tr>
+    <tr>
+      <td><span class="tag">标注②</span></td>
+      <td>首页 AI 解析 → 图片分析卡片标题末尾</td>
+      <td>"看懂宠物的情绪" 后加 <b>（X积分/次）</b></td>
+    </tr>
+    <tr>
+      <td><span class="tag">标注③</span></td>
+      <td>AI健康顾问 → 选择宠物弹窗副标题末尾</td>
+      <td>"宠小伊会基于该宠物的档案进行问诊" 后加 <b>（X积分/次提问）</b></td>
+      <td>橙色小字，11px；X 由接口返回，不写死</td>
+    </tr>
+  </table>
+
+  <h3 style="margin-top:20px">不需要额外开发的部分</h3>
+  <table>
+    <tr><th>事项</th><th>说明</th></tr>
+    <tr><td>积分不足提示</td><td>后台已做，前端直接接入，无需额外开发</td></tr>
+    <tr><td>操作结果页积分显示</td><td>不需要，入口处已告知消耗，结果页保持简洁</td></tr>
+  </table>
+</div>
+
+</body>
+</html>

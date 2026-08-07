@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>宠联芯社区页+发布动态页结构优化 · 线框图</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Microsoft YaHei','PingFang SC',sans-serif}
+  body{background:#f0f0f0;padding:40px 20px;color:#222}
+  .page-title{text-align:center;font-size:24px;font-weight:700;margin-bottom:6px}
+  .page-sub{text-align:center;font-size:13px;color:#777;margin-bottom:32px}
+  .section-title{text-align:center;font-size:18px;font-weight:700;margin:40px 0 20px;color:#444;padding:10px 0;border-bottom:2px solid #ddd}
+  .wrap{display:flex;justify-content:center;gap:60px;align-items:flex-start;flex-wrap:wrap;max-width:1200px;margin:0 auto}
+  .col{display:flex;flex-direction:column;align-items:center}
+  .col-label{font-size:15px;font-weight:700;margin-bottom:14px;padding:6px 18px;border-radius:20px}
+  .col-label.old{background:#eee;color:#999}
+  .col-label.new{background:#ffe8cf;color:#c9761c}
+  .phone{width:340px;border:3px solid #333;border-radius:28px;background:#fff;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.15)}
+  .statusbar{height:24px;background:#fafafa;border-bottom:1px solid #eee}
+  .scroll{position:relative}
+  .blk{border:2px dashed #bbb;margin:8px 10px;border-radius:10px;padding:10px;position:relative;background:#fcfcfc}
+  .blk .tag{position:absolute;top:-12px;left:10px;background:#333;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px}
+  .blk .desc{font-size:12px;color:#666;line-height:1.6;margin-top:6px}
+  .blk.dup{border-color:#e57373;background:#fff5f5}
+  .blk.dup .tag{background:#e57373}
+  .blk.new{border-color:#ff9500;background:#fff8ef}
+  .blk.new .tag{background:#ff9500}
+  .blk.mod{border-color:#5b8dee;background:#f0f4ff}
+  .blk.mod .tag{background:#5b8dee}
+  .blk.keep{border-color:#8bc34a;background:#f7fbf1}
+  .blk.keep .tag{background:#8bc34a}
+  .hot{display:inline-block;border:1.5px solid #007AFF;border-radius:6px;padding:1px 6px;font-size:10px;color:#007AFF;margin:2px 2px 0 0;background:#eef6ff}
+  .err-tag{display:inline-block;background:#e57373;color:#fff;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px}
+  .tab-row{display:flex;gap:4px;margin-top:4px}
+  .tab-item{flex:1;border:1px solid #ddd;border-radius:6px;padding:7px;text-align:center;font-size:12px;background:#fff;color:#555}
+  .tab-item.active{background:#fff3e0;border-color:#ff9500;color:#ff9500;font-weight:700}
+  .tab-item.wrong{background:#fff5f5;border-color:#e57373;color:#e57373}
+  .chip-row{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+  .chip{border:1px solid #ddd;border-radius:20px;padding:4px 10px;font-size:11px;background:#fff;color:#555}
+  .chip.active{background:#fff3e0;border-color:#ff9500;color:#ff9500}
+  .chip.disabled{background:#f5f5f5;color:#bbb;border-color:#eee}
+  .search-box{display:flex;align-items:center;gap:6px;border:1px solid #ddd;border-radius:20px;padding:6px 12px;background:#f5f5f5;margin-bottom:4px}
+  .search-box span{font-size:12px;color:#bbb}
+  .topbar-row{display:flex;justify-content:space-between;align-items:center;padding:4px}
+  .post-btn{border:1px solid #ff9500;border-radius:6px;padding:4px 10px;font-size:11px;color:#ff9500;background:#fff3e0}
+  .post-card{border:1px solid #eee;border-radius:10px;padding:10px;background:#fff;margin-top:6px}
+  .post-card .user{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+  .post-card .avatar{width:28px;height:28px;border-radius:50%;background:#e8d4b8}
+  .post-card .name{font-size:12px;font-weight:700}
+  .post-card .media{height:60px;background:#f0f0f0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#bbb;margin:6px 0}
+  .post-card .actions{display:flex;gap:12px;font-size:11px;color:#999}
+  .upload-area{height:80px;border:2px dashed #ddd;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#bbb;margin-top:4px;background:#fafafa}
+  .select-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px}
+  .select-row .label{color:#555}
+  .select-row .val{color:#999;font-size:11px}
+  .category-select{display:flex;gap:6px;margin-top:4px}
+  .cat-btn{flex:1;border:1px solid #ddd;border-radius:8px;padding:7px;text-align:center;font-size:12px;background:#fff;color:#555}
+  .cat-btn.active{background:#fff3e0;border-color:#ff9500;color:#ff9500;font-weight:700}
+  .legend{max-width:1200px;margin:40px auto 0;background:#fff;border-radius:12px;padding:20px 24px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  .legend h3{font-size:15px;margin-bottom:12px}
+  .legend table{width:100%;border-collapse:collapse;font-size:13px}
+  .legend td,.legend th{padding:8px 10px;border-bottom:1px solid #eee;text-align:left}
+  .legend th{color:#888;font-weight:600;font-size:12px}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+  .d-new{background:#ff9500}.d-mod{background:#5b8dee}.d-keep{background:#8bc34a}.d-dup{background:#e57373}
+  .note-box{background:#fff8ef;border:1px solid #ffd080;border-radius:8px;padding:10px;font-size:12px;color:#8a6000;line-height:1.6;margin-top:8px}
+</style>
+</head>
+<body>
+
+<div class="page-title">宠联芯 App 社区页 + 发布动态页结构优化 · 线框对比图</div>
+<div class="page-sub">低保真结构线框图，仅表达模块顺序 / 信息内容 / 点击热区，不涉及色彩字体等美术资源 · 2026-08-07</div>
+
+<!-- 社区页 -->
+<div class="section-title">① 社区页</div>
+<div class="wrap">
+
+  <div class="col">
+    <div class="col-label old">优化前（现状）</div>
+    <div class="phone">
+      <div class="statusbar"></div>
+      <div class="scroll">
+        <div class="blk">
+          <span class="tag">顶部操作区</span>
+          <div class="topbar-row">
+            <span style="font-size:13px;font-weight:700">社区</span>
+            <div class="post-btn">+ 发布</div>
+          </div>
+          <div class="desc">无搜索框</div>
+        </div>
+        <div class="blk dup">
+          <span class="tag">Tab切换（需改名）</span>
+          <div class="tab-row">
+            <div class="tab-item wrong">关注 <span class="err-tag">命名有误</span></div>
+            <div class="tab-item active">发现</div>
+          </div>
+          <div class="desc">"关注"暗示单向关注关系，实际只有好友（双向），命名不符</div>
+        </div>
+        <div class="blk dup">
+          <span class="tag">分类标签（无效）</span>
+          <div class="chip-row">
+            <div class="chip active">全部</div>
+            <div class="chip disabled">🐶 狗 <span class="err-tag">无效</span></div>
+            <div class="chip disabled">🐱 猫 <span class="err-tag">无效</span></div>
+            <div class="chip disabled">其他 <span class="err-tag">无效</span></div>
+          </div>
+          <div class="desc">发帖时无分类选项，帖子无分类数据，标签过滤无法生效</div>
+        </div>
+        <div class="blk keep">
+          <span class="tag">内容Feed</span>
+          <div class="post-card">
+            <div class="user"><div class="avatar"></div><div class="name">宠友小林</div></div>
+            <div style="font-size:11px;color:#444">今天带狗狗去了河边…</div>
+            <div class="media">📷 图片</div>
+            <div class="actions"><span>♡ 128</span><span>◌ 36</span><span>分享</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="col-label new">优化后（本次方案）</div>
+    <div class="phone">
+      <div class="statusbar"></div>
+      <div class="scroll">
+        <div class="blk new">
+          <span class="tag">① 顶部操作区（新增搜索框）</span>
+          <div class="search-box"><span>🔍 搜索功能即将上线…</span></div>
+          <div class="topbar-row" style="margin-top:4px">
+            <span style="font-size:13px;font-weight:700">社区</span>
+            <div class="post-btn">+ 发布</div>
+          </div>
+          <div class="desc">新增搜索框占位；点击提示"搜索功能即将上线"，暂不实现真实搜索</div>
+        </div>
+        <div class="blk mod">
+          <span class="tag">② Tab切换（改名）</span>
+          <div class="tab-row">
+            <div class="tab-item">好友</div>
+            <div class="tab-item active">发现</div>
+          </div>
+          <div class="desc">"关注" → "好友"，准确反映双向好友关系</div>
+        </div>
+        <div class="blk mod">
+          <span class="tag">③ 分类标签（配合发帖联动）</span>
+          <div class="chip-row">
+            <div class="chip active">全部</div>
+            <div class="chip">🐶 狗</div>
+            <div class="chip">🐱 猫</div>
+            <div class="chip">其他</div>
+          </div>
+          <div class="desc">标签保留；配合发布动态页新增的分类选项，帖子带上分类后过滤功能才能真正生效</div>
+        </div>
+        <div class="blk keep">
+          <span class="tag">④ 内容Feed（不变）</span>
+          <div class="post-card">
+            <div class="user"><div class="avatar"></div><div class="name">宠友小林</div></div>
+            <div style="font-size:11px;color:#444">今天带狗狗去了河边…</div>
+            <div class="media">📷 图片</div>
+            <div class="actions"><span>♡ 128</span><span>◌ 36</span><span>分享</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 发布动态页 -->
+<div class="section-title">② 发布动态页（配套改动）</div>
+<div class="wrap">
+
+  <div class="col">
+    <div class="col-label old">优化前（现状）</div>
+    <div class="phone">
+      <div class="statusbar"></div>
+      <div class="scroll">
+        <div class="blk">
+          <span class="tag">页面标题区</span>
+          <div class="desc">发布动态　　取消 / 发布</div>
+        </div>
+        <div class="blk keep">
+          <span class="tag">内容输入区</span>
+          <div class="upload-area">📷 点击上传图片或视频</div>
+          <div style="margin-top:8px;font-size:12px;color:#bbb">输入文字内容…</div>
+        </div>
+        <div class="blk dup">
+          <span class="tag">无分类选项（缺失）</span>
+          <div class="desc" style="color:#e57373">发帖时无分类选择，导致帖子无分类数据，社区页标签过滤无法生效</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="col-label new">优化后（本次方案）</div>
+    <div class="phone">
+      <div class="statusbar"></div>
+      <div class="scroll">
+        <div class="blk keep">
+          <span class="tag">① 页面标题区（不变）</span>
+          <div class="desc">发布动态　　取消 / 发布</div>
+        </div>
+        <div class="blk keep">
+          <span class="tag">② 内容输入区（不变）</span>
+          <div class="upload-area">📷 点击上传图片或视频</div>
+          <div style="margin-top:8px;font-size:12px;color:#bbb">输入文字内容…</div>
+        </div>
+        <div class="blk new">
+          <span class="tag">③ 新增分类选项</span>
+          <div class="select-row">
+            <span class="label">选择分类</span>
+            <span class="val">选择后帖子将归入对应类别</span>
+          </div>
+          <div class="category-select">
+            <div class="cat-btn">🐶 狗</div>
+            <div class="cat-btn active">🐱 猫</div>
+            <div class="cat-btn">其他</div>
+          </div>
+          <div class="desc">必选项或可选项由产品决定；选择后帖子带上分类标签，社区页筛选才能生效</div>
+        </div>
+        <div class="note-box">
+          ⚠️ 联动说明：社区页分类标签过滤 和 本页分类选项 是前后联动关系，需同步开发。若只做其中一端，另一端没有效果。
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="legend">
+  <h3>图例说明</h3>
+  <table>
+    <tr><th style="width:26px"></th><th>标记</th><th>含义</th></tr>
+    <tr><td><span class="dot d-dup"></span></td><td>红色虚线框</td><td>问题/缺失内容</td></tr>
+    <tr><td><span class="dot d-new"></span></td><td>橙色虚线框</td><td>本次新增内容</td></tr>
+    <tr><td><span class="dot d-mod"></span></td><td>蓝色虚线框</td><td>修改内容</td></tr>
+    <tr><td><span class="dot d-keep"></span></td><td>绿色虚线框</td><td>保留内容（不动）</td></tr>
+  </table>
+
+  <h3 style="margin-top:20px">改动汇总</h3>
+  <table>
+    <tr><th>页面</th><th>区域</th><th>改动说明</th></tr>
+    <tr><td>社区页</td><td>顶部操作区</td><td>新增搜索框占位，点击提示"搜索功能即将上线"，暂不实现真实搜索</td></tr>
+    <tr><td>社区页</td><td>Tab切换</td><td>"关注"改名为"好友"，准确反映双向好友关系</td></tr>
+    <tr><td>社区页</td><td>分类标签</td><td>保留标签（猫/狗/其他），配合发布动态页分类选项联动后方可生效</td></tr>
+    <tr><td>发布动态页</td><td>新增分类选项</td><td>发帖时新增分类选择（猫/狗/其他），帖子带上分类数据后社区页筛选才能真正工作</td></tr>
+  </table>
+
+  <h3 style="margin-top:20px">联动说明（重要）</h3>
+  <table>
+    <tr><th>说明</th></tr>
+    <tr><td>社区页分类标签筛选 和 发布动态页分类选项 必须同步开发，任意一端单独上线均无实际效果</td></tr>
+    <tr><td>分类字段需要后端存储支持，前端在发帖时传入分类值，社区页查询时按分类过滤</td></tr>
+  </table>
+</div>
+</body>
+</html>
