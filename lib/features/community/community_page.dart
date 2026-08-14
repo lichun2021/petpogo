@@ -11,6 +11,7 @@ import '../../shared/theme/app_colors.dart';
 import '../../app.dart' show AppL10nX;
 import '../auth/controller/auth_controller.dart';
 import '../message/controller/im_controller.dart';
+import '../message/data/repository/im_repository.dart';
 import '../../core/router/app_routes.dart';
 import 'controller/feed_controller.dart';
 import 'data/models/post_model.dart';
@@ -41,6 +42,35 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
     _tabController = TabController(length: 2, vsync: this);
     _scrollCtrl0.addListener(() => _onScroll(_scrollCtrl0));
     _scrollCtrl1.addListener(() => _onScroll(_scrollCtrl1));
+    _tabController.addListener(_onTabChange);
+  }
+
+  void _onTabChange() {
+    if (_tabController.index == 1) {
+      // 进入好友 Tab，拉好友列表
+      _loadFriendFeed();
+    }
+  }
+
+  Future<void> _loadFriendFeed() async {
+    final imRepo = ref.read(imRepositoryProvider);
+    final authState = ref.read(authControllerProvider);
+    final myUserId = authState.user?.id;
+    
+    if (myUserId == null) return;
+
+    final result = await imRepo.fetchFriendList();
+    final friendIds = result.when(
+      success: (friends) => friends.map((f) => f.userID ?? '').where((id) => id.isNotEmpty).toList(),
+      failure: (_) => <String>[],
+    );
+
+    // 追加自己（能看到自己发的帖子）
+    final allIds = [...friendIds, myUserId];
+
+    // 触发好友流加载，传当前分类
+    final tag = _selectedCategory == 0 ? null : (_selectedCategory == 1 ? 'dog' : _selectedCategory == 2 ? 'cat' : 'other');
+    ref.read(friendFeedControllerProvider.notifier).setFriendsAndLoad(allIds, tag: tag);
   }
 
   @override
@@ -206,7 +236,14 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                     itemBuilder: (_, i) => _CategoryChip(
                       label: categories[i],
                       selected: _selectedCategory == i,
-                      onTap: () => setState(() => _selectedCategory = i),
+                      onTap: () {
+                        setState(() => _selectedCategory = i);
+                        // 如果当前在好友 Tab，同步更新好友流的 tag
+                        if (_tabController.index == 1) {
+                          final tag = i == 0 ? null : (i == 1 ? 'dog' : i == 2 ? 'cat' : 'other');
+                          ref.read(friendFeedControllerProvider.notifier).setTag(tag);
+                        }
+                      },
                     ),
                   ),
                 ),
@@ -220,8 +257,8 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildFeedGrid(_scrollCtrl0),
-                _buildFeedGrid(_scrollCtrl1),
+                _buildDiscoverGrid(_scrollCtrl0),
+                _buildFriendGrid(_scrollCtrl1),
               ],
             ),
           ),
@@ -231,7 +268,8 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
   }
 
 
-  Widget _buildFeedGrid(ScrollController scrollCtrl) {
+  // ── 发现流（全站最新）──────────────────────────────────
+  Widget _buildDiscoverGrid(ScrollController scrollCtrl) {
     final feedState = ref.watch(feedControllerProvider);
 
     if (feedState.isLoading) {
@@ -319,6 +357,112 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                     child: Center(child: CircularProgressIndicator()),
                   )
                 : feedState.hasMore
+                    ? SizedBox(height: 40)
+                    : Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Center(child: Text('没有更多了～', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13))),
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 好友流（好友+自己的帖子）─────────────────────────────
+  Widget _buildFriendGrid(ScrollController scrollCtrl) {
+    final friendState = ref.watch(friendFeedControllerProvider);
+
+    if (friendState.isLoading) {
+      return _ShimmerGrid();
+    }
+
+    if (friendState.error != null && friendState.posts.isEmpty) {
+      return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.onSurfaceVariant),
+          SizedBox(height: 12),
+          Text('加载失败，下拉重试', style: TextStyle(color: AppColors.onSurfaceVariant)),
+          SizedBox(height: 16),
+          TextButton(
+            onPressed: () => ref.read(friendFeedControllerProvider.notifier).refresh(),
+            child: Text('重新加载'),
+          ),
+        ]),
+      );
+    }
+
+    final posts = friendState.posts;
+
+    // 分类过滤（0=全部，1=狗狗，2=猫咪，3=其他）
+    final categoryFiltered = _selectedCategory == 0
+        ? posts
+        : posts.where((p) {
+            if (_selectedCategory == 1) return p.tag == 'dog';
+            if (_selectedCategory == 2) return p.tag == 'cat';
+            if (_selectedCategory == 3) return p.tag == 'other';
+            return true;
+          }).toList();
+
+    // 搜索过滤
+    final filtered = _searchQuery.isEmpty
+        ? categoryFiltered
+        : categoryFiltered.where((p) {
+            final content = p.content.toLowerCase();
+            final nick = (p.nickname).toLowerCase();
+            return content.contains(_searchQuery) || nick.contains(_searchQuery);
+          }).toList();
+
+    if (filtered.isEmpty) {
+      // 空好友引导
+      return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.people_outline_rounded, size: 56, color: AppColors.onSurfaceVariant.withOpacity(0.6)),
+          SizedBox(height: 16),
+          Text('还没有好友动态',
+            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.onSurface)),
+          SizedBox(height: 8),
+          Text('去「发现」认识新朋友吧 🐾',
+            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14, color: AppColors.onSurfaceVariant)),
+        ]),
+      );
+    }
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      backgroundColor: Colors.white,
+      strokeWidth: 2.5,
+      displacement: 20,
+      onRefresh: () => ref.read(friendFeedControllerProvider.notifier).refresh(),
+      child: CustomScrollView(
+        controller: scrollCtrl,
+        physics: AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+            sliver: SliverMasonryGrid.count(
+              key: ValueKey(friendState.refreshCount),
+              crossAxisCount: 2,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childCount: filtered.length,
+              itemBuilder: (_, i) => _PostCard(
+                post: filtered[i],
+                index: i,
+                onTap: () => _openViewer(i),
+                onAvatarTap: () => _showUserPanel(context, filtered[i]),
+                onLike: filtered[i].userId == _myUserId
+                    ? null
+                    : () => ref.read(friendFeedControllerProvider.notifier).toggleLike(filtered[i].id),
+              ).animate().fadeIn(delay: Duration(milliseconds: (i * 40).clamp(0, 400))).slideY(begin: 0.08),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: friendState.isLoadingMore
+                ? Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                : friendState.hasMore
                     ? SizedBox(height: 40)
                     : Padding(
                         padding: EdgeInsets.all(24),

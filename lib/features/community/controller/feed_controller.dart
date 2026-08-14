@@ -142,3 +142,127 @@ final feedControllerProvider =
     StateNotifierProvider<FeedController, FeedState>((ref) {
   return FeedController(ref.watch(postRepositoryProvider));
 });
+
+// ── Friend Feed Controller ─────────────────────────────
+class FriendFeedController extends StateNotifier<FeedState> {
+  final PostRepository _repo;
+  static const _pageSize = 20;
+  List<String> _friendIds = []; // 好友 id 列表（含自己），进 Tab 时设置，翻页复用
+  String? _currentTag; // 当前分类
+
+  FriendFeedController(this._repo) : super(const FeedState());
+
+  /// 设置好友列表并首次加载（进 Tab 时调用）
+  void setFriendsAndLoad(List<String> friendIds, {String? tag}) {
+    _friendIds = friendIds;
+    _currentTag = tag;
+    loadFeed();
+  }
+
+  /// 切换分类标签（好友流内筛选）
+  void setTag(String? tag) {
+    if (_currentTag == tag) return;
+    _currentTag = tag;
+    loadFeed();
+  }
+
+  Future<void> loadFeed() async {
+    if (state.isLoading) return;
+    // 空好友直接返回空，不调接口
+    if (_friendIds.isEmpty) {
+      state = const FeedState(isLoading: false, hasMore: false);
+      return;
+    }
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final posts = await _repo.fetchFriendFeed(
+        friendIds: _friendIds,
+        page: 1,
+        size: _pageSize,
+        tag: _currentTag,
+      );
+      state = state.copyWith(
+        posts: posts,
+        isLoading: false,
+        page: 1,
+        hasMore: posts.length >= _pageSize,
+      );
+      debugPrint('[FriendFeed] 加载 ${posts.length} 条（好友 ${_friendIds.length}）');
+    } catch (e) {
+      debugPrint('[FriendFeed] 加载失败: $e');
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (state.isLoadingMore || !state.hasMore || _friendIds.isEmpty) return;
+    state = state.copyWith(isLoadingMore: true);
+    try {
+      final nextPage = state.page + 1;
+      final posts = await _repo.fetchFriendFeed(
+        friendIds: _friendIds,
+        page: nextPage,
+        size: _pageSize,
+        tag: _currentTag,
+      );
+      state = state.copyWith(
+        posts: [...state.posts, ...posts],
+        isLoadingMore: false,
+        page: nextPage,
+        hasMore: posts.length >= _pageSize,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoadingMore: false);
+    }
+  }
+
+  Future<void> refresh() async {
+    final nextCount = state.refreshCount + 1;
+    await loadFeed();
+    state = state.copyWith(refreshCount: nextCount);
+  }
+
+  // 点赞逻辑复用（与发现流一致）
+  final Set<String> _likingInProgress = {};
+
+  Future<void> toggleLike(String postId) async {
+    if (_likingInProgress.contains(postId)) return;
+    final idx = state.posts.indexWhere((p) => p.id == postId);
+    if (idx == -1) return;
+
+    _likingInProgress.add(postId);
+    final post = state.posts[idx];
+    final optimistic = post.copyWith(
+      isLiked: !post.isLiked,
+      likeCount: post.isLiked ? post.likeCount - 1 : post.likeCount + 1,
+    );
+    updatePost(idx, optimistic);
+    try {
+      final liked = await _repo.toggleLike(postId);
+      final currentIdx = state.posts.indexWhere((p) => p.id == postId);
+      if (currentIdx != -1) {
+        updatePost(currentIdx, optimistic.copyWith(isLiked: liked));
+      }
+    } catch (_) {
+      final currentIdx = state.posts.indexWhere((p) => p.id == postId);
+      if (currentIdx != -1) updatePost(currentIdx, post);
+    } finally {
+      _likingInProgress.remove(postId);
+    }
+  }
+
+  void updatePost(int idx, PostModel updated) {
+    final list = [...state.posts];
+    list[idx] = updated;
+    state = state.copyWith(posts: list);
+  }
+
+  void prependPost(PostModel post) {
+    state = state.copyWith(posts: [post, ...state.posts]);
+  }
+}
+
+final friendFeedControllerProvider =
+    StateNotifierProvider<FriendFeedController, FeedState>((ref) {
+  return FriendFeedController(ref.watch(postRepositoryProvider));
+});

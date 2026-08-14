@@ -10,10 +10,35 @@ class PostRepository {
   PostRepository(this._client);
 
   // ── Feed 分页 ──────────────────────────────────────────
-  Future<List<PostModel>> fetchFeed({int page = 1, int size = 20}) async {
+  /// 发现流（全站最新）
+  Future<List<PostModel>> fetchFeed({int page = 1, int size = 20, String? tag}) async {
     final res = await _client.get<Map<String, dynamic>>(
       '/sdkapi/post/feed',
-      params: {'page': page, 'size': size},
+      params: {
+        'page': page,
+        'size': size,
+        if (tag != null) 'tag': tag,
+      },
+    );
+    final list = res['list'] as List<dynamic>? ?? [];
+    return list.map((e) => PostModel.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// 好友流（好友+自己的帖子）
+  Future<List<PostModel>> fetchFriendFeed({
+    required List<String> friendIds,
+    int page = 1,
+    int size = 20,
+    String? tag,
+  }) async {
+    final res = await _client.post<Map<String, dynamic>>(
+      '/sdkapi/post/feed/friends',
+      data: {
+        'friendIds': friendIds,
+        'page': page,
+        'size': size,
+        if (tag != null) 'tag': tag,
+      },
     );
     final list = res['list'] as List<dynamic>? ?? [];
     return list.map((e) => PostModel.fromJson(e as Map<String, dynamic>)).toList();
