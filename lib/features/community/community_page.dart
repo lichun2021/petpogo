@@ -43,6 +43,13 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
     _scrollCtrl0.addListener(() => _onScroll(_scrollCtrl0));
     _scrollCtrl1.addListener(() => _onScroll(_scrollCtrl1));
     _tabController.addListener(_onTabChange);
+    
+    // 首次打开时如果默认在好友 Tab，主动触发加载
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_tabController.index == 0) {
+        _loadFriendFeed();
+      }
+    });
   }
 
   void _onTabChange() {
