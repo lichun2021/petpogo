@@ -46,8 +46,8 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
   }
 
   void _onTabChange() {
-    if (_tabController.index == 1) {
-      // 进入好友 Tab，拉好友列表
+    if (_tabController.index == 0) {
+      // 进入好友 Tab（Tab 0 是好友），拉好友列表
       _loadFriendFeed();
     }
   }
@@ -75,13 +75,12 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
       },
     );
 
-    // 追加自己（能看到自己发的帖子）
-    final allIds = [...friendIds, myUserId];
-    debugPrint('[FriendFeed] 最终 friendIds（含自己）: ${allIds.length} 个');
+    // 不追加自己，好友流只显示好友的帖子
+    debugPrint('[FriendFeed] 最终 friendIds（纯好友）: ${friendIds.length} 个');
 
     // 触发好友流加载，传当前分类
     final tag = _selectedCategory == 0 ? null : (_selectedCategory == 1 ? 'dog' : _selectedCategory == 2 ? 'cat' : 'other');
-    ref.read(friendFeedControllerProvider.notifier).setFriendsAndLoad(allIds, tag: tag);
+    ref.read(friendFeedControllerProvider.notifier).setFriendsAndLoad(friendIds, tag: tag);
   }
 
   @override
@@ -268,8 +267,8 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildDiscoverGrid(_scrollCtrl0),
-                _buildFriendGrid(_scrollCtrl1),
+                _buildFriendGrid(_scrollCtrl0),      // Tab 0 = 好友
+                _buildDiscoverGrid(_scrollCtrl1),    // Tab 1 = 发现
               ],
             ),
           ),
