@@ -255,10 +255,20 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
 
     final posts = feedState.posts;
 
-    // 搜索过滤（在已加载数据上按内容/作者过滤）
-    final filtered = _searchQuery.isEmpty
+    // 分类过滤（0=全部，1=狗狗，2=猫咪，3=其他）
+    final categoryFiltered = _selectedCategory == 0
         ? posts
         : posts.where((p) {
+            if (_selectedCategory == 1) return p.category == 'dog';
+            if (_selectedCategory == 2) return p.category == 'cat';
+            if (_selectedCategory == 3) return p.category == 'other';
+            return true;
+          }).toList();
+
+    // 搜索过滤（在已加载数据上按内容/作者过滤）
+    final filtered = _searchQuery.isEmpty
+        ? categoryFiltered
+        : categoryFiltered.where((p) {
             final content = p.content.toLowerCase();
             final nick = (p.nickname).toLowerCase();
             return content.contains(_searchQuery) || nick.contains(_searchQuery);
