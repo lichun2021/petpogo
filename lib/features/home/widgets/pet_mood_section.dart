@@ -81,13 +81,13 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
         // ── 加载中 ─────────────────────────────────────
         if (petState.isLoading && pets.isEmpty)
           SizedBox(
-            height: 92,
+            height: 110,
             child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
           )
         // ── 横滑圆形头像（与萌宠圈一致）+ 末尾添加卡 ────
         else
           SizedBox(
-            height: 92,
+            height: 110, // 增加高度以容纳状态文字
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -133,6 +133,16 @@ class _PetAvatarTab extends StatelessWidget {
   final PetCirclePet petCirclePet;
   final VoidCallback onTap;
   const _PetAvatarTab({required this.petCirclePet, required this.onTap});
+
+  /// 构建状态文字：当前显示在线/离线，后续接入围栏状态后显示"围栏内""越界""低电"等
+  String _buildStatusText(DeviceModel device) {
+    if (device.mac.isEmpty) return '未绑定';
+    // TODO: 接入 PeerApi /uclgwapp/pet/fence/status 后，优先显示围栏状态
+    // 示例: if (device.fenceStatus == 'out') return '越界';
+    //       if (device.fenceStatus == 'in') return '围栏内';
+    //       if (device.battery < 20) return '低电量';
+    return device.connect ? '在线' : '离线';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -199,6 +209,22 @@ class _PetAvatarTab extends StatelessWidget {
                 fontSize: 13,
                 height: 1.1,
                 color: AppColors.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 2),
+            // 状态文字：在线/离线（预留围栏状态：围栏内/越界/低电等）
+            Text(
+              _buildStatusText(device),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 10,
+                height: 1.1,
+                color: online
+                    ? const Color(0xFF3EBD6D)
+                    : AppColors.onSurfaceVariant.withValues(alpha: 0.7),
                 fontWeight: FontWeight.w600,
               ),
             ),
