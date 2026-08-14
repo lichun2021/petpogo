@@ -285,7 +285,7 @@ class ConsultationSessionSummary {
   }
 
   /// 显示标题：有则显示，无则用日期
-  String get displayTitle => title?.isNotEmpty == true ? title! : '问诊记录';
+  String get displayTitle => title?.isNotEmpty == true ? title! : '咨询记录';
 
   /// 只取日期部分（"2026-05-25 14:30:00" → "2026-05-25"）
   String get dateOnly {

@@ -30,7 +30,7 @@ class ReportDiagnosisPage extends StatelessWidget {
           onPressed: () => Navigator.maybePop(context),
         ),
         title: Text(
-          '宠小伊问诊报告',
+          '宠小伊健康顾问报告',
           style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w700,
@@ -173,7 +173,7 @@ class _PetHeroCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          '问诊报告',
+                          '健康顾问',
                           style: TextStyle(
                             fontFamily: AppFonts.primary,
                             fontSize: 10,

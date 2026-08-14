@@ -163,7 +163,7 @@ class _ConsultationPageState extends ConsumerState<ConsultationPage> {
                       // ── 历史查看横幅 ─────────────────────
                       if (state.isViewingHistory)
                         _HistoryViewBanner(
-                          title: state.historyViewTitle ?? '历史问诊',
+                          title: state.historyViewTitle ?? '历史咨询',
                           onExit: () {
                             ref
                                 .read(consultationControllerProvider(widget.petId)
@@ -302,7 +302,7 @@ class _ConsultationPageState extends ConsumerState<ConsultationPage> {
             IconButton(
               icon: Icon(Icons.menu_rounded, size: 22),
               color: AppColors.onSurface,
-              tooltip: '历史问诊',
+              tooltip: '历史咨询',
               onPressed: () => _openHistoryDrawer(s),
             ),
             // 有历史记录时显示小红点
@@ -432,7 +432,7 @@ class _HistoryDrawer extends StatelessWidget {
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      '历史问诊',
+                      '历史咨询',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -481,7 +481,7 @@ class _HistoryDrawer extends StatelessWidget {
                                       .withOpacity(0.4)),
                               SizedBox(height: 12),
                               Text(
-                                '暂无历史问诊记录',
+                                '暂无历史咨询记录',
                                 style: TextStyle(
                                     fontSize: 14,
                                     color: AppColors.onSurfaceVariant),
@@ -537,7 +537,7 @@ class _HistorySessionTile extends StatelessWidget {
         backgroundColor: AppColors.surfaceContainerLowest,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          '删除问诊记录',
+          '删除咨询记录',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w700,
@@ -1392,7 +1392,7 @@ class _ReportCardsArea extends StatelessWidget {
         children: [
           _ReportCard(
             icon: Icons.medical_information_outlined,
-            title: '宠小伊问诊报告',
+            title: '宠小伊健康顾问报告',
             subtitle: diagSubtitle,
             onTap: diagTap,
             showLoading: isGenerating,
@@ -1602,7 +1602,7 @@ class _GeneratingOverlay extends StatelessWidget {
                 ),
                 SizedBox(height: 6),
                 Text(
-                  '宠小伊正在分析问诊记录，请稍候…',
+                  '宠小伊正在分析咨询记录，请稍候…',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppColors.onSurfaceVariant,
