@@ -106,7 +106,7 @@ class AppL10nZh extends AppL10n {
   String get communityTitle => '社区';
 
   @override
-  String get communityTabFollowing => '关注';
+  String get communityTabFollowing => '好友';
 
   @override
   String get communityTabDiscover => '发现';

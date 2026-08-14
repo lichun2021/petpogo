@@ -7,6 +7,7 @@ import '../../../shared/theme/app_colors.dart';
 import '../../../shared/widgets/pet_avatar.dart';
 import '../../../shared/widgets/pet_toast.dart';
 import '../../auth/controller/auth_controller.dart';
+import '../../device/data/models/device_model.dart';
 import '../../device/device_detail_page.dart';
 import '../../device/robot_device_page.dart';
 import '../../pet_circle/controller/pet_circle_pet_controller.dart';

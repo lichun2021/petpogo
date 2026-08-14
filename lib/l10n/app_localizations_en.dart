@@ -109,7 +109,7 @@ class AppL10nEn extends AppL10n {
   String get communityTitle => 'Community';
 
   @override
-  String get communityTabFollowing => 'Following';
+  String get communityTabFollowing => 'Friends';
 
   @override
   String get communityTabDiscover => 'Discover';

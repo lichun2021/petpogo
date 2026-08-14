@@ -286,7 +286,7 @@ abstract class AppL10n {
   /// No description provided for @communityTabFollowing.
   ///
   /// In zh, this message translates to:
-  /// **'关注'**
+  /// **'好友'**
   String get communityTabFollowing;
 
   /// No description provided for @communityTabDiscover.

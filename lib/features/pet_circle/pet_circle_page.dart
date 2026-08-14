@@ -628,17 +628,21 @@ class _NetworkImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('[萌宠圈][图片] 加载 URL: "$url" (长度=${url.length})');
     return CachedNetworkImage(
       imageUrl: url,
       fit: BoxFit.cover,
       placeholder: (_, __) => Container(color: AppColors.surfaceContainerHigh),
-      errorWidget: (_, __, ___) => Container(
-        color: AppColors.surfaceContainerHigh,
-        child: Icon(
-          Icons.broken_image_outlined,
-          color: AppColors.onSurfaceVariant,
-        ),
-      ),
+      errorWidget: (_, __, error) {
+        debugPrint('[萌宠圈][图片] 加载失败 URL: "$url" 错误: $error');
+        return Container(
+          color: AppColors.surfaceContainerHigh,
+          child: Icon(
+            Icons.broken_image_outlined,
+            color: AppColors.onSurfaceVariant,
+          ),
+        );
+      },
     );
   }
 }
