@@ -177,7 +177,19 @@ class _PetCirclePageState extends ConsumerState<PetCirclePage> {
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 30),
               itemCount: circleState.posts.length +
                   (circleState.isLoadingMore ? 1 : 0),
-              separatorBuilder: (_, __) => const SizedBox(height: 18),
+              separatorBuilder: (_, index) {
+                // 帖子之间用分割线；最后一条帖子后不加（loadingMore 指示器前也不加）
+                if (index >= circleState.posts.length - 1) {
+                  return const SizedBox(height: 18);
+                }
+                return Column(
+                  children: [
+                    const SizedBox(height: 18),
+                    Divider(height: 1, color: Colors.black.withValues(alpha: 0.06)),
+                    const SizedBox(height: 18),
+                  ],
+                );
+              },
               itemBuilder: (context, index) {
                 if (index >= circleState.posts.length) {
                   return const Padding(
@@ -465,18 +477,11 @@ class _PetCirclePostTile extends StatelessWidget {
     final avatar =
         post.petAvatar.isNotEmpty ? post.petAvatar : fallbackPet?.avatar ?? '';
 
-    return Container(
-      padding: const EdgeInsets.only(bottom: 18),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Colors.black.withValues(alpha: 0.06)),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          PetAvatar(imageUrl: avatar, size: 46),
-          const SizedBox(width: 12),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        PetAvatar(imageUrl: avatar, size: 46),
+        const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -531,7 +536,6 @@ class _PetCirclePostTile extends StatelessWidget {
             ),
           ),
         ],
-      ),
     );
   }
 
@@ -628,21 +632,17 @@ class _NetworkImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('[萌宠圈][图片] 加载 URL: "$url" (长度=${url.length})');
     return CachedNetworkImage(
       imageUrl: url,
       fit: BoxFit.cover,
       placeholder: (_, __) => Container(color: AppColors.surfaceContainerHigh),
-      errorWidget: (_, __, error) {
-        debugPrint('[萌宠圈][图片] 加载失败 URL: "$url" 错误: $error');
-        return Container(
-          color: AppColors.surfaceContainerHigh,
-          child: Icon(
-            Icons.broken_image_outlined,
-            color: AppColors.onSurfaceVariant,
-          ),
-        );
-      },
+      errorWidget: (_, __, ___) => Container(
+        color: AppColors.surfaceContainerHigh,
+        child: Icon(
+          Icons.broken_image_outlined,
+          color: AppColors.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }
