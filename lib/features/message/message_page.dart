@@ -11,6 +11,7 @@ import '../../shared/widgets/pet_avatar.dart';
 import '../../shared/widgets/pet_toast.dart';
 import '../../app.dart' show AppL10nX;
 import '../../core/router/app_routes.dart';
+import 'contacts_page.dart';
 import 'controller/im_controller.dart';
 import 'data/repository/im_repository.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
@@ -73,6 +74,49 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                 color: AppColors.onSurface,
               ),
             ),
+            actions: [
+              // 联系人入口（好友列表 / 扫码加好友 / 我的二维码），带好友申请角标
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.person_add_alt_1_rounded,
+                          color: AppColors.onSurface, size: 24),
+                      tooltip: '联系人',
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ContactsPage()),
+                      ),
+                    ),
+                    if (state.pendingFriendCount > 0)
+                      Positioned(
+                        right: 6,
+                        top: 6,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          constraints:
+                              const BoxConstraints(minWidth: 16, minHeight: 16),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${state.pendingFriendCount}',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
 
           SliverPadding(
