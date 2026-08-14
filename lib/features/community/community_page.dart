@@ -259,9 +259,9 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
     final categoryFiltered = _selectedCategory == 0
         ? posts
         : posts.where((p) {
-            if (_selectedCategory == 1) return p.category == 'dog';
-            if (_selectedCategory == 2) return p.category == 'cat';
-            if (_selectedCategory == 3) return p.category == 'other';
+            if (_selectedCategory == 1) return p.tag == 'dog';
+            if (_selectedCategory == 2) return p.tag == 'cat';
+            if (_selectedCategory == 3) return p.tag == 'other';
             return true;
           }).toList();
 

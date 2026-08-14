@@ -314,10 +314,10 @@ class _PublishPageState extends ConsumerState<PublishPage>
                           color: AppColors.onSurfaceVariant)),
                   SizedBox(height: 10),
                   _CategorySelector(
-                    selected: pub.category,
+                    selected: pub.tag,
                     onSelect: (v) => ref
                         .read(publishControllerProvider.notifier)
-                        .setCategory(v),
+                        .setTag(v),
                   ),
                 ],
               ),

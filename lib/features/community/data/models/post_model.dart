@@ -16,7 +16,7 @@ class PostModel {
   final String? coverUrl;
   final double? duration;
   final String? location;
-  final String? category;  // 帖子分类：dog/cat/other/null（全部）
+  final String? tag;  // 帖子分类标签：dog/cat/other/null（全部）
   final int likeCount;
   final int commentCount;
   final int viewCount;
@@ -39,7 +39,7 @@ class PostModel {
     this.coverUrl,
     this.duration,
     this.location,
-    this.category,
+    this.tag,
     required this.likeCount,
     required this.commentCount,
     required this.viewCount,
@@ -61,7 +61,7 @@ class PostModel {
       coverUrl:     json['cover_url'] as String?,
       duration:     (json['duration'] as num?)?.toDouble(),
       location:     json['location'] as String?,
-      category:     json['category'] as String?,
+      tag:          json['tag'] as String?,
       likeCount:    (json['like_count'] as int?) ?? 0,
       commentCount: (json['comment_count'] as int?) ?? 0,
       viewCount:    (json['view_count'] as int?) ?? 0,
@@ -86,7 +86,7 @@ class PostModel {
     coverUrl:     coverUrl,
     duration:     duration,
     location:     location,
-    category:     category,
+    tag:          tag,
     likeCount:    likeCount ?? this.likeCount,
     commentCount: commentCount ?? this.commentCount,
     viewCount:    viewCount,

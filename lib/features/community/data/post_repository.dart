@@ -28,7 +28,7 @@ class PostRepository {
     String? coverUrl,
     String? rawVideoKey,
     String? location,
-    String? category,
+    String? tag,
   }) async {
     return await _client.post<Map<String, dynamic>>(
       '/sdkapi/post/create',
@@ -41,7 +41,8 @@ class PostRepository {
         'rawVideoKey': rawVideoKey,
         'location':    location,
         'visibility':  1,
-        if (category != null) 'category': category,
+        // 分类标签（后端字段 tag）
+        if (tag != null) 'tag': tag,
       },
     );
   }
