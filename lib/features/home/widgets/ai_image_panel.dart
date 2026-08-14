@@ -131,13 +131,13 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
     final state = ref.watch(aiImageControllerProvider);
     final imagePoints = ref.watch(aiPointsProvider).valueOrNull?['image'];
 
-    // 分析完成后弹 SnackBar（积分模式）
+    // 分析完成后弹 SnackBar
     ref.listen(aiImageControllerProvider, (prev, next) {
       if (prev?.phase == AiPhase.analyzing &&
           (next.phase == AiPhase.result || next.phase == AiPhase.notPet)) {
         final quota = next.result?.quota;
         if (quota != null && mounted) {
-          final msg = quota.isUnlimited ? '分析完成 ✨（Pro 无限）' : '分析完成 ✨';
+          final msg = '分析完成 ✨';
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(msg),
             backgroundColor: AppColors.primary,
@@ -516,26 +516,6 @@ class _ResultView extends StatelessWidget {
           ),
 
         SizedBox(height: 8),
-
-        // 配额（积分模式）
-        Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          Icon(
-            result.quota.isUnlimited
-                ? Icons.all_inclusive_rounded
-                : Icons.bolt_rounded,
-            size: 14,
-            color: AppColors.onSurfaceVariant,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            result.quota.isUnlimited ? 'Pro 无限' : '消耗积分',
-            style: TextStyle(
-              fontFamily: AppFonts.primary,
-              fontSize: 11,
-              color: AppColors.onSurfaceVariant,
-            ),
-          ),
-        ]),
       ],
     );
   }

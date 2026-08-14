@@ -137,14 +137,13 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
     final state = ref.watch(aiVoiceControllerProvider);
     final voicePoints = ref.watch(aiPointsProvider).valueOrNull?['voice'];
 
-    // 分析完成后弹 SnackBar 提示（积分扣减文案，具体数值待后端接口）
+    // 分析完成后弹 SnackBar 提示
     ref.listen(aiVoiceControllerProvider, (prev, next) {
       if (prev?.phase == AiPhase.analyzing &&
           (next.phase == AiPhase.result || next.phase == AiPhase.notPet)) {
         final quota = next.result?.quota;
         if (quota != null) {
-          final msg = quota.isUnlimited ? '分析完成 ✨（Pro 无限）' : '分析完成 ✨';
-          _showSnack(msg, color: AppColors.primary);
+          _showSnack('分析完成 ✨', color: AppColors.primary);
         }
       }
     });
@@ -485,29 +484,6 @@ class _ResultView extends StatelessWidget {
           ),
           SizedBox(height: 8),
         ],
-
-        // 配额（积分模式）
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Icon(
-              result.quota.isUnlimited
-                  ? Icons.all_inclusive_rounded
-                  : Icons.bolt_rounded,
-              size: 14,
-              color: AppColors.onSurfaceVariant,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              result.quota.isUnlimited ? 'Pro 无限' : '消耗积分',
-              style: TextStyle(
-                fontFamily: AppFonts.primary,
-                fontSize: 11,
-                color: AppColors.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
       ],
     );
   }
