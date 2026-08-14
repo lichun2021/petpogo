@@ -57,16 +57,27 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
     final authState = ref.read(authControllerProvider);
     final myUserId = authState.user?.id;
     
-    if (myUserId == null) return;
+    if (myUserId == null) {
+      debugPrint('[FriendFeed] myUserId 为空，跳过加载');
+      return;
+    }
 
     final result = await imRepo.fetchFriendList();
     final friendIds = result.when(
-      success: (friends) => friends.map((f) => f.userID ?? '').where((id) => id.isNotEmpty).toList(),
-      failure: (_) => <String>[],
+      success: (friends) {
+        final ids = friends.map((f) => f.userID ?? '').where((id) => id.isNotEmpty).toList();
+        debugPrint('[FriendFeed] IM 好友列表: ${ids.length} 个');
+        return ids;
+      },
+      failure: (e) {
+        debugPrint('[FriendFeed] 拉取好友列表失败: $e');
+        return <String>[];
+      },
     );
 
     // 追加自己（能看到自己发的帖子）
     final allIds = [...friendIds, myUserId];
+    debugPrint('[FriendFeed] 最终 friendIds（含自己）: ${allIds.length} 个');
 
     // 触发好友流加载，传当前分类
     final tag = _selectedCategory == 0 ? null : (_selectedCategory == 1 ? 'dog' : _selectedCategory == 2 ? 'cat' : 'other');
