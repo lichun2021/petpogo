@@ -16,6 +16,7 @@
 /// ════════════════════════════════════════════════════════════
 
 import 'dart:convert';
+import 'dart:math';
 import 'package:crypto/crypto.dart';
 
 import 'package:dio/dio.dart';
@@ -258,6 +259,16 @@ class _AuthInterceptor extends Interceptor {
   final String? token;
   _AuthInterceptor({this.token});
 
+  // nonce 随机数生成器（防重放标识用）
+  static final _rand = Random.secure();
+
+  /// 生成防重放 nonce：16 位十六进制随机串（8 字节熵）
+  /// 服务端要求 ≥8 位，5 分钟窗口内不可重复。
+  String _genNonce() {
+    final bytes = List<int>.generate(8, (_) => _rand.nextInt(256));
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     // 如果有初始 Token，注入到请求头
@@ -273,6 +284,8 @@ class _AuthInterceptor extends Interceptor {
           md5.convert(utf8.encode('$timestamp$appApiSecret')).toString();
       options.headers['x-timestamp'] = timestamp;
       options.headers['x-signature'] = signature;
+      // x-nonce 防重放：每个请求唯一的随机串（≥8 位），5 分钟窗口内不可重复
+      options.headers['x-nonce'] = _genNonce();
     }
 
     // 如果是 iPet-AI 服务（AppConfig.aiConsultBaseUrl），注入 AI 鉴权头
