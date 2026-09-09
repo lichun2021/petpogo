@@ -18,6 +18,7 @@ import '../../device/data/models/device_model.dart';
 import '../../pet/data/models/pet_peer_models.dart';
 import '../../pet/data/repository/pet_peer_repository.dart';
 import '../controller/ai_controller.dart';
+import '../../../shared/utils/error_presenter.dart';
 
 class _PetWithDevice {
   final PetInfoModel pet;
@@ -163,7 +164,7 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = ErrorPresenter.message(e, fallback: '宠物列表加载失败，请稍后重试');
         });
       }
     }
@@ -455,7 +456,7 @@ class _ErrorState extends StatelessWidget {
           ),
           SizedBox(height: 10),
           Text(
-            '加载失败：$message',
+            message,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12,

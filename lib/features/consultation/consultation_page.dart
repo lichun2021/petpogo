@@ -1034,15 +1034,15 @@ class _MedicalAnalysisSection extends StatelessWidget {
 
   /// 根据概率返回颜色
   static Color _cardColor(int prob) {
-    if (prob >= 50) return Color(0xFFFFEBEE); // 高风险 - 淡红
-    if (prob >= 25) return Color(0xFFFFF3E0); // 中风险 - 淡橙
-    return Color(0xFFE8F5E9);                 // 低风险 - 淡绿
+    if (prob >= 50) return AppColors.statusAlertSoft;   // 高风险
+    if (prob >= 25) return AppColors.brandPrimarySoft;  // 中风险
+    return AppColors.statusOnlineSoft;                  // 低风险
   }
 
   static Color _headerColor(int prob) {
-    if (prob >= 50) return Color(0xFFE53935);
-    if (prob >= 25) return Color(0xFFEF6C00);
-    return Color(0xFF2E7D32);
+    if (prob >= 50) return AppColors.statusAlert;
+    if (prob >= 25) return AppColors.brandPrimaryStrong;
+    return AppColors.statusOnlineStrong;
   }
 
   @override

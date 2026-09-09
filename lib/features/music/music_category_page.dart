@@ -95,7 +95,7 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
         devices.where((d) => d.isRobot && d.mac.isNotEmpty).toList();
 
     return Scaffold(
-      backgroundColor: Color(0xFFF5F5F5),
+      backgroundColor: AppColors.surfacePage,
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
@@ -259,14 +259,8 @@ class _MusicCategoryPageState extends ConsumerState<MusicCategoryPage> {
   Widget _defaultCover() => Container(
         width: 80,
         height: 80,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF6C63FF), Color(0xFF48CAE4)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Icon(Icons.music_note_rounded, color: Colors.white, size: 36),
+        color: AppColors.surfaceSunken,
+        child: Icon(Icons.music_note_rounded, color: AppColors.brandPrimary, size: 36),
       );
 
   Future<void> _addToPlaylist(MusicItem song) async {

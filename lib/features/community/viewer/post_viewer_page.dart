@@ -11,15 +11,16 @@ import '../data/post_repository.dart';
 import '../controller/feed_controller.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
-
 class PostViewerPage extends ConsumerStatefulWidget {
   final List<PostModel> posts;
   final int initialIndex;
+  final bool friends;
 
   PostViewerPage({
     super.key,
     required this.posts,
     required this.initialIndex,
+    this.friends = false,
   });
 
   @override
@@ -48,8 +49,12 @@ class _PostViewerPageState extends ConsumerState<PostViewerPage> {
   @override
   Widget build(BuildContext context) {
     // 监听 Feed 状态（点赞同步）
-    final feedState = ref.watch(feedControllerProvider);
-    final posts = feedState.posts.isNotEmpty ? feedState.posts : widget.posts;
+    final feedState = widget.friends
+        ? ref.watch(friendFeedControllerProvider)
+        : ref.watch(feedControllerProvider);
+    final updates = {for (final post in feedState.posts) post.id: post};
+    // 保持打开时的筛选集合与顺序，仅按 ID 同步更新。
+    final posts = widget.posts.map((post) => updates[post.id] ?? post).toList();
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -62,13 +67,11 @@ class _PostViewerPageState extends ConsumerState<PostViewerPage> {
             itemCount: posts.length,
             onPageChanged: (i) {
               setState(() => _currentIndex = i);
-              // 接近末尾时加载更多
-              if (i >= posts.length - 3) {
-                ref.read(feedControllerProvider.notifier).loadMore();
-              }
             },
             itemBuilder: (context, i) => _PostViewItem(
+              key: ValueKey(posts[i].id),
               post: posts[i],
+              friends: widget.friends,
               isActive: i == _currentIndex,
             ),
           ),
@@ -80,12 +83,14 @@ class _PostViewerPageState extends ConsumerState<PostViewerPage> {
               child: GestureDetector(
                 onTap: () => Navigator.of(context, rootNavigator: true).pop(),
                 child: Container(
-                  width: 36, height: 36,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     color: Colors.black.withOpacity(0.45),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.close_rounded, color: Colors.white, size: 20),
+                  child:
+                      Icon(Icons.close_rounded, color: Colors.white, size: 20),
                 ),
               ),
             ),
@@ -95,7 +100,8 @@ class _PostViewerPageState extends ConsumerState<PostViewerPage> {
           if (posts.length > 1)
             Positioned(
               right: 12,
-              top: 0, bottom: 0,
+              top: 0,
+              bottom: 0,
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -127,7 +133,12 @@ class _PostViewerPageState extends ConsumerState<PostViewerPage> {
 class _PostViewItem extends ConsumerStatefulWidget {
   final PostModel post;
   final bool isActive;
-  const _PostViewItem({required this.post, required this.isActive});
+  final bool friends;
+  const _PostViewItem(
+      {super.key,
+      required this.post,
+      required this.isActive,
+      required this.friends});
 
   @override
   ConsumerState<_PostViewItem> createState() => _PostViewItemState();
@@ -142,7 +153,8 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
   @override
   void initState() {
     super.initState();
-    if (widget.post.mediaType == MediaType.video && widget.post.videoUrl != null) {
+    if (widget.post.mediaType == MediaType.video &&
+        widget.post.videoUrl != null) {
       _initVideo();
     }
   }
@@ -184,13 +196,22 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
       PetToast.warning(context, '不能给自己的帖子点赞 🙈');
       return;
     }
-    ref.read(feedControllerProvider.notifier).toggleLike(widget.post.id);
+    if (widget.friends) {
+      ref
+          .read(friendFeedControllerProvider.notifier)
+          .toggleLike(widget.post.id);
+    } else {
+      ref.read(feedControllerProvider.notifier).toggleLike(widget.post.id);
+    }
     HapticFeedback.lightImpact();
   }
 
   @override
   Widget build(BuildContext context) {
-    final post = ref.watch(feedControllerProvider).posts
+    final post = (widget.friends
+            ? ref.watch(friendFeedControllerProvider)
+            : ref.watch(feedControllerProvider))
+        .posts
         .firstWhere((p) => p.id == widget.post.id, orElse: () => widget.post);
 
     return GestureDetector(
@@ -204,7 +225,9 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
 
           // ── 渐变遮罩（底部信息区） ─────────────────────
           Positioned(
-            left: 0, right: 0, bottom: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
             child: Container(
               height: 260,
               decoration: BoxDecoration(
@@ -219,7 +242,8 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
 
           // ── 底部信息 ──────────────────────────────────
           Positioned(
-            left: 16, right: 64,
+            left: 16,
+            right: 64,
             bottom: MediaQuery.of(context).padding.bottom + 24,
             child: AnimatedOpacity(
               opacity: _showControls ? 1 : 0,
@@ -267,7 +291,8 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
           child: CachedNetworkImage(
             imageUrl: post.mediaUrls.first,
             fit: BoxFit.contain,
-            placeholder: (_, __) => Center(child: CircularProgressIndicator(color: Colors.white)),
+            placeholder: (_, __) =>
+                Center(child: CircularProgressIndicator(color: Colors.white)),
           ),
         );
       }
@@ -280,24 +305,32 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
               child: CachedNetworkImage(
                 imageUrl: post.mediaUrls[i],
                 fit: BoxFit.contain,
-                placeholder: (_, __) => Center(child: CircularProgressIndicator(color: Colors.white)),
+                placeholder: (_, __) => Center(
+                    child: CircularProgressIndicator(color: Colors.white)),
               ),
             ),
           ),
           // 多图指示点
           Positioned(
-            bottom: 56, left: 0, right: 0,
+            bottom: 56,
+            left: 0,
+            right: 0,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(post.mediaUrls.length, (i) => AnimatedContainer(
-                duration: Duration(milliseconds: 200),
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: i == _imgIndex ? 16 : 6, height: 6,
-                decoration: BoxDecoration(
-                  color: i == _imgIndex ? Colors.white : Colors.white.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              )),
+              children: List.generate(
+                  post.mediaUrls.length,
+                  (i) => AnimatedContainer(
+                        duration: Duration(milliseconds: 200),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        width: i == _imgIndex ? 16 : 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: i == _imgIndex
+                              ? Colors.white
+                              : Colors.white.withOpacity(0.4),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      )),
             ),
           ),
         ],
@@ -310,8 +343,10 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
       alignment: Alignment.center,
       child: Padding(
         padding: const EdgeInsets.all(32),
-        child: Text(post.content,
-          style: TextStyle(fontSize: 24, color: AppColors.onSurface, height: 1.6),
+        child: Text(
+          post.content,
+          style:
+              TextStyle(fontSize: 24, color: AppColors.onSurface, height: 1.6),
           textAlign: TextAlign.center,
         ),
       ),
@@ -326,29 +361,39 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
         Row(children: [
           _Avatar(url: post.userAvatar, name: post.nickname, size: 32),
           SizedBox(width: 10),
-          Text(post.nickname, style: TextStyle(
-            fontFamily: AppFonts.primary, fontSize: 14,
-            fontWeight: FontWeight.w700, color: Colors.white,
-          )),
+          Text(post.nickname,
+              style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              )),
         ]),
         if (post.content.isNotEmpty) ...[
           SizedBox(height: 8),
-          Text(post.content,
-            maxLines: 2, overflow: TextOverflow.ellipsis,
+          Text(
+            post.content,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontFamily: AppFonts.primary, fontSize: 13,
-              color: Colors.white.withOpacity(0.85), height: 1.5,
+              fontFamily: AppFonts.primary,
+              fontSize: 13,
+              color: Colors.white.withOpacity(0.85),
+              height: 1.5,
             ),
           ),
         ],
         if (post.location != null) ...[
           SizedBox(height: 6),
           Row(children: [
-            Icon(Icons.location_on_rounded, size: 12, color: Colors.white.withOpacity(0.6)),
+            Icon(Icons.location_on_rounded,
+                size: 12, color: Colors.white.withOpacity(0.6)),
             SizedBox(width: 4),
-            Text(post.location!, style: TextStyle(
-              fontSize: 12, color: Colors.white.withOpacity(0.6),
-            )),
+            Text(post.location!,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withOpacity(0.6),
+                )),
           ]),
         ],
       ],
@@ -359,12 +404,16 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
     final isOwn = _isOwnPost;
     return Column(children: [
       _ActionBtn(
-        icon: post.isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+        icon: post.isLiked
+            ? Icons.favorite_rounded
+            : Icons.favorite_border_rounded,
         label: '${post.likeCount}',
         // 自己的帖子：图标置灰 + 点击给提示；已点赞：红色；未点赞：白色
         color: isOwn
             ? Colors.white.withOpacity(0.3)
-            : post.isLiked ? Colors.red : Colors.white,
+            : post.isLiked
+                ? Colors.red
+                : Colors.white,
         onTap: _onLikeTap,
       ),
       SizedBox(height: 20),
@@ -400,17 +449,23 @@ class _ActionBtn extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback? onTap; // null = 禁用（自己的帖子不可点赞）
-  const _ActionBtn({required this.icon, required this.label, required this.color, required this.onTap});
+  const _ActionBtn(
+      {required this.icon,
+      required this.label,
+      required this.color,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Column(children: [
-      Icon(icon, color: color, size: 30),
-      SizedBox(height: 4),
-      Text(label, style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 12)),
-    ]),
-  );
+        onTap: onTap,
+        child: Column(children: [
+          Icon(icon, color: color, size: 30),
+          SizedBox(height: 4),
+          Text(label,
+              style: TextStyle(
+                  color: Colors.white.withOpacity(0.85), fontSize: 12)),
+        ]),
+      );
 }
 
 // ── 头像 ────────────────────────────────────────────────────
@@ -431,8 +486,12 @@ class _Avatar extends StatelessWidget {
     return CircleAvatar(
       radius: size / 2,
       backgroundColor: AppColors.primaryContainer,
-      child: Text(name.isNotEmpty ? name[0] : '?',
-        style: TextStyle(fontSize: size * 0.4, color: AppColors.primary, fontWeight: FontWeight.w700),
+      child: Text(
+        name.isNotEmpty ? name[0] : '?',
+        style: TextStyle(
+            fontSize: size * 0.4,
+            color: AppColors.primary,
+            fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -468,7 +527,11 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
     try {
       final repo = ref.read(postRepositoryProvider);
       final list = await repo.fetchComments(widget.postId);
-      if (mounted) setState(() { _comments = list; _loading = false; });
+      if (mounted)
+        setState(() {
+          _comments = list;
+          _loading = false;
+        });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -497,12 +560,20 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
       ),
       child: Column(children: [
         // 把手
-        Container(margin: const EdgeInsets.symmetric(vertical: 12),
-          width: 40, height: 4,
-          decoration: BoxDecoration(color: AppColors.outline, borderRadius: BorderRadius.circular(2))),
+        Container(
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+                color: AppColors.outline,
+                borderRadius: BorderRadius.circular(2))),
 
-        Text('评论', style: TextStyle(fontFamily: AppFonts.primary,
-            fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+        Text('评论',
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.onSurface)),
 
         Divider(),
 
@@ -511,13 +582,15 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
           child: _loading
               ? Center(child: CircularProgressIndicator())
               : _comments.isEmpty
-                  ? Center(child: Text('暂无评论，来说第一句吧 💬',
-                      style: TextStyle(color: AppColors.onSurfaceVariant)))
+                  ? Center(
+                      child: Text('暂无评论，来说第一句吧 💬',
+                          style: TextStyle(color: AppColors.onSurfaceVariant)))
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                       itemCount: _comments.length,
                       separatorBuilder: (_, __) => SizedBox(height: 16),
-                      itemBuilder: (_, i) => _CommentItem(comment: _comments[i]),
+                      itemBuilder: (_, i) =>
+                          _CommentItem(comment: _comments[i]),
                     ),
         ),
 
@@ -531,11 +604,16 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
                 style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: '说点什么…',
-                  hintStyle: TextStyle(color: AppColors.onSurfaceVariant.withOpacity(0.5), fontSize: 14),
+                  hintStyle: TextStyle(
+                      color: AppColors.onSurfaceVariant.withOpacity(0.5),
+                      fontSize: 14),
                   filled: true,
                   fillColor: AppColors.surfaceContainerLow,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 ),
               ),
             ),
@@ -544,7 +622,8 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
               onTap: _submit,
               child: Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                    color: AppColors.primary, shape: BoxShape.circle),
                 child: Icon(Icons.send_rounded, color: Colors.white, size: 20),
               ),
             ),
@@ -564,12 +643,22 @@ class _CommentItem extends StatelessWidget {
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _Avatar(url: comment.userAvatar, name: comment.nickname, size: 36),
       SizedBox(width: 10),
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(comment.nickname, style: TextStyle(
-          fontFamily: AppFonts.primary, fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+      Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(comment.nickname,
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.onSurface)),
         SizedBox(height: 4),
-        Text(comment.content, style: TextStyle(
-          fontFamily: AppFonts.primary, fontSize: 14, color: AppColors.onSurface, height: 1.4)),
+        Text(comment.content,
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 14,
+                color: AppColors.onSurface,
+                height: 1.4)),
       ])),
     ]);
   }

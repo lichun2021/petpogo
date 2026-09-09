@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/peer_api_client.dart';
 import '../models/device_model.dart';
 import '../models/device_product_model.dart';
+import '../../../../shared/utils/error_presenter.dart';
 
 Map<String, dynamic> buildMotorControlPayload({
   required int motor0Direction,
@@ -327,7 +328,7 @@ class DeviceListNotifier extends StateNotifier<DeviceListState> {
       // 再用实时接口校正在线态 + 回填成员设备缺失的 productKey
       await _enrich(typedDevices, products);
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      state = state.copyWith(isLoading: false, errorMessage: ErrorPresenter.message(e, fallback: '设备列表加载失败，请稍后重试'));
     }
   }
 

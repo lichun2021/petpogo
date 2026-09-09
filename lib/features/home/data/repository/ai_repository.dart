@@ -1,12 +1,13 @@
 /// ════════════════════════════════════════════════════════════
 ///  AI Repository — 宠物语音 / 图像情绪分析
 ///
-///  新版流程（三步）：
+///  流程（三步）：
 ///    1. 调用方先上传文件到 OSS，拿到 publicUrl
 ///    2. 调用 analyzeVoice(audioUrl) 或 analyzeImage(imageUrl)
-///    3. 后端检查配额 → 调 AI → 成功才扣次 → 存库 → 返回结果
+///    3. 直连 AI 网关（AppConfig.aiConsultBaseUrl）分析并返回结果
 ///
-///  不再直连 AI 服务器，所有 AI 调用均经过业务后端。
+///  语音/图像分析直连 AI 网关，而非业务后端 /sdkapi/ai/*；
+///  请求经 ApiClient 发出，自动注入 AI 签名鉴权头（见 _AuthInterceptor）。
 /// ════════════════════════════════════════════════════════════
 
 import 'dart:io';
@@ -82,7 +83,7 @@ class AiRepository {
     }
   }
 
-  // ── 步骤3a：语音分析（直连 AI 服务 :8007）─────────────────
+  // ── 步骤3a：语音分析（直连 AI 网关 aiConsultBaseUrl）─────────────────
   /// [audioUrl] : OSS 公开访问 URL
   /// [petId]    : 可选，关联宠物 ID
   Future<AiAnalysisResult> analyzeVoice({
@@ -102,7 +103,7 @@ class AiRepository {
     return AiAnalysisResult.fromAiDirectJson(res);
   }
 
-  // ── 步骤3b：图像分析（直连 AI 服务 :8007）─────────────────
+  // ── 步骤3b：图像分析（直连 AI 网关 aiConsultBaseUrl）─────────────────
   /// [imageUrl] : OSS 公开访问 URL
   /// [petId]    : 可选，关联宠物 ID
   Future<AiAnalysisResult> analyzeImage({

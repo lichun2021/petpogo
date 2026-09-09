@@ -224,7 +224,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF6b1a01), Color(0xFF9e2f04), Color(0xFFe85d26)],
+            colors: [AppColors.brandPrimaryStrong, AppColors.brandPrimary],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -285,7 +285,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                       width: 7,
                       height: 7,
                       decoration: BoxDecoration(
-                          color: online ? Color(0xFF4ADE80) : Colors.white38,
+                          color: online ? AppColors.statusOnlineSoft : AppColors.textOnBrand.withValues(alpha: 0.38),
                           shape: BoxShape.circle)),
                   SizedBox(width: 5),
                   Text(online ? '在线' : '离线',
@@ -293,7 +293,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                           fontFamily: AppFonts.primary,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: online ? Color(0xFF4ADE80) : Colors.white60)),
+                          color: online ? AppColors.statusOnlineSoft : AppColors.textOnBrand.withValues(alpha: 0.6))),
                 ]),
                 SizedBox(height: 8),
                 // 电量 + 设备码（PeerApi 电量接口未就绪，电量先占位）
@@ -628,9 +628,9 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   Widget _buildSafetyScenes(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _SceneCard(
-        color: Color(0xFFE8F5E9),
-        iconBg: Color(0xFF4CAF50),
-        icon: Icons.shield_rounded,
+        color: AppColors.statusOnlineSoft,
+        iconBg: AppColors.statusOnline,
+        icon: Icons.shield_outlined,
         title: '安全设置',
         subtitle: '设定安全范围，开启虚拟围栏警告',
         onTap: () => Navigator.push(
@@ -773,7 +773,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.check_circle_rounded,
-                                  color: Color(0xFF22C55E), size: 48),
+                                  color: AppColors.statusOnline, size: 48),
                               const SizedBox(height: 12),
                               Text('设备已解绑',
                                   style: TextStyle(
@@ -943,7 +943,7 @@ class _SceneCard extends StatelessWidget {
               height: 44,
               decoration: BoxDecoration(
                   color: iconBg, borderRadius: BorderRadius.circular(14)),
-              child: Icon(icon, color: Colors.white, size: 22),
+              child: Icon(icon, color: AppColors.textOnBrand, size: 22),
             ),
             SizedBox(width: 14),
             Expanded(
@@ -1010,7 +1010,7 @@ class _DeviceSwitcherSheet extends StatelessWidget {
                   fontFamily: AppFonts.primary,
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF1A1A2E))),
+                  color: AppColors.textPrimary)),
         ),
         SizedBox(height: 16),
         ...devices.map((d) {
@@ -1044,15 +1044,13 @@ class _DeviceSwitcherSheet extends StatelessWidget {
                   height: 44,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: isRobot
-                          ? [Color(0xFF00897B), Color(0xFF006760)]
-                          : [Color(0xFFff784e), Color(0xFFa83206)],
+                      colors: [AppColors.brandPrimary, AppColors.brandPrimaryStrong],
                     ),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(
-                    isRobot ? Icons.smart_toy_rounded : Icons.pets_rounded,
-                    color: Colors.white,
+                    isRobot ? Icons.smart_toy_outlined : Icons.pets_outlined,
+                    color: AppColors.textOnBrand,
                     size: 22,
                   ),
                 ),
@@ -1083,8 +1081,8 @@ class _DeviceSwitcherSheet extends StatelessWidget {
                             height: 6,
                             decoration: BoxDecoration(
                               color: d.isOnline
-                                  ? Color(0xFF4ADE80)
-                                  : AppColors.onSurfaceVariant,
+                                  ? AppColors.statusOnline
+                                  : AppColors.statusNeutral,
                               shape: BoxShape.circle,
                             )),
                         SizedBox(width: 4),

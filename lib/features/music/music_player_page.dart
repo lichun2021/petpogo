@@ -147,7 +147,7 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter, end: Alignment.bottomCenter,
-              colors: [Color(0xCC000000), Color(0xEE000000)],
+              colors: [AppColors.mediaBackdrop.withValues(alpha: 0.8), AppColors.mediaBackdrop.withValues(alpha: 0.93)],
             ),
           ),
         )),
@@ -383,13 +383,8 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
   }
 
   Widget _defaultDisc() => Container(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [Color(0xFF6C63FF), Color(0xFF48CAE4)],
-        begin: Alignment.topLeft, end: Alignment.bottomRight,
-      ),
-    ),
-    child: Icon(Icons.music_note_rounded, color: Colors.white, size: 80),
+    color: AppColors.surfaceSunken,
+    child: Icon(Icons.music_note_rounded, color: AppColors.brandPrimary, size: 80),
   );
 
   String _fmt(Duration d) {

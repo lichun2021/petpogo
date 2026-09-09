@@ -71,7 +71,7 @@ class _SafetySettingsContent extends StatelessWidget {
         // 设置步骤标题
         Text('设置步骤',
             style: TextStyle(fontFamily: AppFonts.primary,
-                fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A))),
+                fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
         SizedBox(height: 4),
         Text('完成所有步骤以激活安全保护',
             style: TextStyle(fontFamily: AppFonts.primary,
@@ -108,7 +108,7 @@ class _SafetySettingsContent extends StatelessWidget {
               // ② 警报通知
               _StepItem(
                 icon: Icons.notifications_rounded,
-                iconBg: Color(0xFFFF9800),
+                iconBg: AppColors.brandPrimary,
                 title: '设置警报通知',
                 subtitle: '配置宠物离开安全区域的规则与提醒方式',
                 score: '+40分',
@@ -142,7 +142,7 @@ class _SafetyScoreCard extends StatelessWidget {
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.shield_rounded, size: 16,
-              color: score == 0 ? AppColors.error : Color(0xFF4CAF50)),
+              color: score == 0 ? AppColors.statusAlert : AppColors.statusOnline),
           SizedBox(width: 6),
           Text('当前安全评分',
               style: TextStyle(fontFamily: AppFonts.primary,
@@ -153,7 +153,7 @@ class _SafetyScoreCard extends StatelessWidget {
           '安全指数：${score == 0 ? '低' : score < 60 ? '中' : '高'}',
           style: TextStyle(
             fontFamily: AppFonts.primary, fontSize: 12, fontWeight: FontWeight.w600,
-            color: score == 0 ? AppColors.error : score < 60 ? Color(0xFFFF9800) : Color(0xFF4CAF50),
+            color: score == 0 ? AppColors.statusAlert : score < 60 ? AppColors.brandPrimary : AppColors.statusOnline,
           ),
         ),
       ])),
@@ -164,15 +164,15 @@ class _SafetyScoreCard extends StatelessWidget {
           shape: BoxShape.circle,
           border: Border.all(
               color: score == 0
-                  ? AppColors.error.withOpacity(0.25)
-                  : Color(0xFF4CAF50).withOpacity(0.25),
+                  ? AppColors.statusAlertSoft
+                  : AppColors.statusOnlineSoft,
               width: 2.5),
         ),
         child: Center(
           child: Text('$score',
               style: TextStyle(fontFamily: AppFonts.primary,
                   fontSize: 22, fontWeight: FontWeight.w900,
-                  color: score == 0 ? AppColors.error : Color(0xFF4CAF50))),
+                  color: score == 0 ? AppColors.statusAlert : AppColors.statusOnline)),
         ),
       ),
     ]),
@@ -186,7 +186,7 @@ class _StepDivider extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     // 16(card padding) + 42(icon) + 14(gap) = 72
     padding: const EdgeInsets.only(left: 72),
-    child: Divider(height: 1, color: AppColors.outlineVariant.withOpacity(0.4)),
+    child: const Divider(height: 1),
   );
 }
 
@@ -245,7 +245,7 @@ class _StepItem extends StatelessWidget {
 
         // 分数 / 即将上线 / 完成状态
         if (done)
-          Icon(Icons.check_circle_rounded, size: 20, color: Color(0xFF4ADE80))
+          Icon(Icons.check_circle_outline_rounded, size: 20, color: AppColors.statusOnline)
         else if (comingSoon)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

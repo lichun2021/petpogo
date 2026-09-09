@@ -9,6 +9,7 @@ import '../device/device_detail_page.dart';
 import '../device/robot_device_page.dart';
 import 'data/models/device_event_model.dart';
 import 'data/repository/device_event_repository.dart';
+import '../../shared/widgets/app_error_view.dart';
 
 /// 系统通知列表页（承接设备/宠物异常通知）
 ///
@@ -29,7 +30,7 @@ class _SystemNotificationPageState extends ConsumerState<SystemNotificationPage>
   bool _loadingMore = false;
   int _page = 1;
   int _total = 0;
-  String? _error;
+  Object? _error;
 
   static const _pageSize = 20;
 
@@ -58,7 +59,7 @@ class _SystemNotificationPageState extends ConsumerState<SystemNotificationPage>
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.toString().replaceAll('Exception: ', '');
+        _error = e;
       });
     }
   }
@@ -175,18 +176,7 @@ class _SystemNotificationPageState extends ConsumerState<SystemNotificationPage>
           child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5));
     }
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline_rounded, color: AppColors.error, size: 40),
-            SizedBox(height: 8),
-            Text(_error!, style: TextStyle(fontSize: 13, color: AppColors.error)),
-            SizedBox(height: 12),
-            TextButton(onPressed: _loadFirst, child: Text('重试')),
-          ],
-        ),
-      );
+      return AppErrorView(error: _error, fallback: '通知加载失败，请稍后重试', onRetry: _loadFirst);
     }
     if (_events.isEmpty) return _buildEmpty();
     return _buildGroupedList();
@@ -296,16 +286,16 @@ class _EventRow extends StatelessWidget {
     switch (event.type) {
       case 'breach':
         return (Icons.warning_amber_rounded,
-            const Color(0xFFFFE8E0), AppColors.error);
+            AppColors.statusAlertSoft, AppColors.statusAlert);
       case 'offline':
         return (Icons.wifi_off_rounded,
-            const Color(0xFFFFF3E0), const Color(0xFFE07000));
+            AppColors.surfaceSunken, AppColors.statusNeutral);
       case 'low_battery':
         return (Icons.battery_alert_rounded,
-            const Color(0xFFFFFBE0), const Color(0xFFC09000));
+            AppColors.statusAlertSoft, AppColors.statusAlert);
       default:
         return (Icons.info_outline_rounded,
-            AppColors.surfaceContainerLow, AppColors.onSurfaceVariant);
+            AppColors.surfaceSunken, AppColors.statusNeutral);
     }
   }
 
@@ -325,7 +315,7 @@ class _EventRow extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isUnread ? const Color(0xFFFFF8F5) : AppColors.surface,
+          color: isUnread ? AppColors.brandPrimarySoft.withValues(alpha: 0.35) : AppColors.surfaceCard,
           border: Border(
             left: BorderSide(
               color: isUnread ? AppColors.primary : Colors.transparent,
@@ -418,7 +408,7 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
-          color: read ? const Color(0xFFE8F5E9) : const Color(0xFFFFEDED),
+          color: read ? AppColors.statusOnlineSoft : AppColors.statusAlertSoft,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(read ? '已处理' : '未处理',
@@ -426,6 +416,6 @@ class _StatusBadge extends StatelessWidget {
                 fontFamily: AppFonts.primary,
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
-                color: read ? const Color(0xFF4CAF50) : AppColors.error)),
+                color: read ? AppColors.statusOnlineStrong : AppColors.statusAlert)),
       );
 }

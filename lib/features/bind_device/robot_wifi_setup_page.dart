@@ -17,6 +17,8 @@ import '../../shared/theme/app_fonts.dart';
 import '../../shared/widgets/pet_toast.dart';
 import '../device/data/repository/device_repository.dart';
 import '../device/data/models/device_product_model.dart';
+import '../../shared/utils/error_presenter.dart';
+import '../../shared/theme/app_tokens.dart';
 
 // ── 配网步骤枚举 ──────────────────────────────────────────
 enum _SetupStep { wifi, qrcode, waiting, success }
@@ -182,7 +184,7 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
     } catch (error) {
       debugPrint('[机器人配网] 获取临时凭证失败: $error');
       if (!mounted) return;
-      final message = error.toString().replaceFirst('Exception: ', '');
+      final message = ErrorPresenter.message(error, fallback: '配网二维码生成失败');
       setState(() => _qrError = message);
       PetToast.error(context, '配网二维码生成失败');
     } finally {
@@ -733,9 +735,9 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
                       fontSize: 15,
                       fontWeight: FontWeight.w700)),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                backgroundColor: AppColors.brandPrimary,
+                shape: const RoundedRectangleBorder(
+                    borderRadius: AppRadius.pillRadius),
               ),
             ),
           ),
@@ -984,15 +986,15 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
             width: 110,
             height: 110,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
+              gradient: LinearGradient(
+                colors: [AppColors.statusOnline, AppColors.statusOnlineStrong],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF22C55E).withValues(alpha: 0.35),
+                  color: AppColors.statusOnline.withValues(alpha: 0.35),
                   blurRadius: 36,
                   spreadRadius: -4,
                 ),
@@ -1053,9 +1055,9 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
                       fontSize: 15,
                       fontWeight: FontWeight.w700)),
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF22C55E),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                backgroundColor: AppColors.brandPrimary,
+                shape: const RoundedRectangleBorder(
+                    borderRadius: AppRadius.pillRadius),
               ),
             ),
           ),

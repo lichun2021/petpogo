@@ -473,7 +473,7 @@ class _ContactSettingsTab extends StatelessWidget {
         SizedBox(height: 8),
         _SettingItem(
           icon: Icons.qr_code_scanner_rounded,
-          iconColor: Color(0xFF34C759),
+          iconColor: AppColors.brandPrimary,
           title: '扫码加好友',
           subtitle: '扫描对方的二维码快速添加好友',
           onTap: () => Navigator.push(context,

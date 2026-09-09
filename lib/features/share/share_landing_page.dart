@@ -13,6 +13,7 @@ import '../../shared/theme/app_fonts.dart';
 import '../../shared/widgets/pet_toast.dart';
 import 'data/models/share_link_model.dart';
 import 'data/repository/share_repository.dart';
+import '../../shared/theme/app_tokens.dart';
 
 class ShareLandingPage extends ConsumerStatefulWidget {
   final String code;
@@ -827,7 +828,7 @@ class _PrimaryButton extends StatelessWidget {
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.onPrimary,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: AppRadius.pillRadius,
           ),
         ),
         child: Text(

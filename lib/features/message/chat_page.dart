@@ -683,7 +683,7 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20)),
         title: Row(children: [
-          Icon(icon, color: Color(0xFFFF6B6B)),
+          Icon(icon, color: AppColors.statusAlert),
           SizedBox(width: 8),
           Flexible(child: Text(title,
             style: TextStyle(fontFamily: AppFonts.primary,
@@ -843,7 +843,7 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
         : MediaQuery.of(context).padding.bottom;
 
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      Divider(height: 1, thickness: 0.5, color: Color(0x10000000)),
+      Divider(height: 1, thickness: 1, color: AppColors.borderSubtle),
 
       // ── 输入栏（微信风格）──────────────────────────────────────────────
       Container(

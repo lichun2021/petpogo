@@ -64,7 +64,7 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                   height: 140,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppColors.primary, AppColors.secondary],
+                      colors: [AppColors.brandPrimary, AppColors.brandPrimaryStrong],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -82,7 +82,7 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                       Text(_isCollar ? '🐾' : '🤖',
                           style: TextStyle(fontSize: 52)),
                       Icon(Icons.check_circle_rounded,
-                          color: Colors.white, size: 28),
+                          color: AppColors.textOnBrand, size: 28),
                     ],
                   ),
                 ),
@@ -143,12 +143,12 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                             _FeatureRow(
                                 icon: Icons.notifications_active_rounded,
                                 label: '走失预警通知',
-                                color: AppColors.secondary),
+                                color: AppColors.brandPrimary),
                             SizedBox(height: 14),
                             _FeatureRow(
                                 icon: Icons.battery_charging_full_rounded,
                                 label: '健康监测报告',
-                                color: AppColors.tertiary),
+                                color: AppColors.brandPrimary),
                           ]
                         : [
                             _FeatureRow(
@@ -159,12 +159,12 @@ class _BindSuccessPageState extends State<BindSuccessPage>
                             _FeatureRow(
                                 icon: Icons.videocam_rounded,
                                 label: '远程视频监控',
-                                color: AppColors.secondary),
+                                color: AppColors.brandPrimary),
                             SizedBox(height: 14),
                             _FeatureRow(
                                 icon: Icons.music_note_rounded,
                                 label: '播放舒缓音乐',
-                                color: AppColors.tertiary),
+                                color: AppColors.brandPrimary),
                           ],
                   ),
                 ),

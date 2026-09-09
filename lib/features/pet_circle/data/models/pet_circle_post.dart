@@ -36,6 +36,14 @@ class PetCirclePost {
   });
 
   factory PetCirclePost.fromJson(Map<String, dynamic> json) {
+    final urls = _stringList(json['mediaUrls'] ?? json['media_urls']);
+    final cover = _string(json['coverUrl'] ?? json['cover_url']).trim();
+    final rawType = json['mediaType'] ?? json['media_type'];
+    var type = _mediaType(rawType);
+    // 仅类型缺失时根据明确的图片扩展名兜底，不把视频当图片。
+    if (rawType == null && [...urls, cover].any(_isImageUrl)) {
+      type = PetCircleMediaType.image;
+    }
     return PetCirclePost(
       id: _string(json['id']),
       ownerUserId: _string(json['ownerUserId'] ?? json['owner_user_id']),
@@ -43,9 +51,9 @@ class PetCirclePost {
       petName: _string(json['petName'] ?? json['pet_name']),
       petAvatar: _string(json['petAvatar'] ?? json['pet_avatar']),
       content: _string(json['content']),
-      mediaType: _mediaType(json['mediaType'] ?? json['media_type']),
-      mediaUrls: _stringList(json['mediaUrls'] ?? json['media_urls']),
-      coverUrl: _string(json['coverUrl'] ?? json['cover_url']),
+      mediaType: type,
+      mediaUrls: urls,
+      coverUrl: cover,
       eventType: _string(json['eventType'] ?? json['event_type']),
       sourceId: _string(json['sourceId'] ?? json['source_id']),
       sourceTime: _date(json['sourceTime'] ?? json['source_time']),
@@ -54,13 +62,21 @@ class PetCirclePost {
     );
   }
 
-  bool get hasMedia => mediaType != PetCircleMediaType.text;
+  bool get hasMedia => isVideo || imageUrls.isNotEmpty;
+
+  List<String> get imageUrls => mediaType == PetCircleMediaType.image
+      ? (mediaUrls.isNotEmpty ? mediaUrls : [if (coverUrl.isNotEmpty) coverUrl])
+      : const [];
+
+  static bool _isImageUrl(String value) =>
+      RegExp(r'\.(jpg|jpeg|png|webp|gif|heic|avif)$', caseSensitive: false)
+          .hasMatch(Uri.tryParse(value)?.path ?? '');
 
   bool get isVideo => mediaType == PetCircleMediaType.video;
 
   String get displayMediaUrl {
     if (coverUrl.isNotEmpty) return coverUrl;
-    if (mediaUrls.isNotEmpty) return mediaUrls.first;
+    if (!isVideo && mediaUrls.isNotEmpty) return mediaUrls.first;
     return '';
   }
 
@@ -68,7 +84,17 @@ class PetCirclePost {
 
   static List<String> _stringList(dynamic value) {
     if (value is List) {
-      return value.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+      return value
+          .whereType<String>()
+          .map((e) => e.trim())
+          .where((e) {
+            final uri = Uri.tryParse(e);
+            return uri != null &&
+                (uri.scheme == 'https' || uri.scheme == 'http') &&
+                uri.host.isNotEmpty;
+          })
+          .toSet()
+          .toList();
     }
     return const [];
   }

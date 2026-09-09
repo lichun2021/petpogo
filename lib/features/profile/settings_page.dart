@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../core/config/app_config.dart';
+import '../../core/config/app_flags.dart';
+import '../../core/providers/raw_error_provider.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/api_endpoints.dart';
 import '../../core/router/app_routes.dart';
@@ -161,7 +163,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _buildGroup([
             _SettingsTile(
               icon: Icons.workspace_premium_rounded,
-              iconColor: const Color(0xFFB8860B),
+              iconColor: AppColors.brandPrimaryStrong,
               label: '会员中心',
               onTap: () => context.push(AppRoutes.membership),
             ),
@@ -200,6 +202,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _buildSectionHeader('外观'),
           const _AppearanceGroup(),
           const SizedBox(height: 20),
+
+          // ── 开发者选项（由 assets/config/app_flags.json 决定是否露出）──
+          if (AppFlags.current.showRawErrorToggle) ...[
+            _buildSectionHeader('开发者选项'),
+            const _DeveloperGroup(),
+            const SizedBox(height: 20),
+          ],
 
           // ── 关于 ──────────────────────────────────────────
           _buildSectionHeader(l10n.settingsSectionAbout),
@@ -319,10 +328,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 .map((e) => Column(children: [
                       e.value,
                       if (e.key < tiles.length - 1)
-                        Divider(
-                            color: AppColors.outlineVariant.withOpacity(0.08),
-                            height: 0,
-                            indent: 56),
+                        const Divider(height: 0, indent: 56),
                     ]))
                 .toList(),
           ),
@@ -376,10 +382,7 @@ class _AppearanceGroup extends ConsumerWidget {
                 if (v != null) fontNotifier.setFont(v);
               },
             ),
-            Divider(
-                height: 1,
-                indent: 52,
-                color: AppColors.outlineVariant.withOpacity(0.2)),
+            const Divider(height: 1, indent: 52),
             // ―― 配色 ――
             _DropdownRow(
               icon: Icons.palette_outlined,
@@ -399,6 +402,14 @@ class _AppearanceGroup extends ConsumerWidget {
                                         fontFamily: 'Plus Jakarta Sans',
                                         fontSize: 14,
                                         color: AppColors.onSurface)),
+                                if (s.key == warmPinkScheme.key) ...[
+                                  SizedBox(width: 6),
+                                  Text('主线',
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.brandPrimary)),
+                                ],
                               ],
                             ),
                           ))
@@ -407,10 +418,7 @@ class _AppearanceGroup extends ConsumerWidget {
                 if (v != null) schemeNotifier.setScheme(v);
               },
             ),
-            Divider(
-                height: 1,
-                indent: 52,
-                color: AppColors.outlineVariant.withOpacity(0.2)),
+            const Divider(height: 1, indent: 52),
             // ―― 录像质量 ――
             // _DropdownRow(
             //   icon: Icons.videocam_rounded,
@@ -439,6 +447,48 @@ class _AppearanceGroup extends ConsumerWidget {
             //   onChanged: (v) { if (v != null) qualityNotifier.setQuality(v); },
             // ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── 开发者选项分组 ──────────────────────────────────────
+class _DeveloperGroup extends ConsumerWidget {
+  const _DeveloperGroup();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final showRaw = ref.watch(showRawErrorProvider);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surfaceCard,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+                color: AppColors.cardShadow, blurRadius: 10, spreadRadius: -4),
+          ],
+        ),
+        child: SwitchListTile.adaptive(
+          value: showRaw,
+          onChanged: (v) => ref.read(showRawErrorProvider.notifier).set(v),
+          activeThumbColor: AppColors.brandPrimary,
+          contentPadding: const EdgeInsets.fromLTRB(16, 4, 12, 4),
+          secondary: Icon(Icons.bug_report_outlined, color: AppColors.statusNeutral),
+          title: Text('显示原始错误信息',
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary)),
+          subtitle: Text('在错误提示下方附带原始报错文本，便于排查问题',
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 11,
+                  color: AppColors.textTertiary)),
         ),
       ),
     );

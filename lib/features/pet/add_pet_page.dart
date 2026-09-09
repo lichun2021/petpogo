@@ -435,7 +435,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
                     child: Container(
                       width: 32, height: 32,
                       decoration: BoxDecoration(
-                          color: _avatarUrl != null ? Color(0xFF4ADE80) : AppColors.primary,
+                          color: _avatarUrl != null ? AppColors.statusOnline : AppColors.brandPrimary,
                           shape: BoxShape.circle,
                           border: Border.all(color: AppColors.surface, width: 2)),
                       child: Icon(

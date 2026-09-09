@@ -426,8 +426,7 @@ class _StatusPanel extends StatelessWidget {
           status: captureEnabled ? captureSchedule : '未开启',
           active: captureEnabled,
         ),
-        Divider(height: 1, indent: 56, endIndent: 16,
-            color: AppColors.outlineVariant.withOpacity(0.3)),
+        const Divider(height: 1, indent: 56, endIndent: 16),
         _StatusRow(
           icon: Icons.record_voice_over_rounded,
           label: '定时打招呼',

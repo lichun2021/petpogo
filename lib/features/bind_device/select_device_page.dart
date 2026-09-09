@@ -205,11 +205,10 @@ class _ProductCard extends StatelessWidget {
     final type = product.type;
     final isCollar = type == DeviceProductType.collar;
     final isRobot = type == DeviceProductType.robot;
-    final accent = isCollar
-        ? AppColors.secondary
-        : isRobot
-            ? AppColors.primary
-            : AppColors.onSurfaceVariant;
+    // 两款产品卡统一品牌渐变，未知类型用中性
+    final accent = (isCollar || isRobot)
+        ? AppColors.brandPrimary
+        : AppColors.statusNeutral;
 
     return PressableButton(
       onTap: onTap,
@@ -218,8 +217,10 @@ class _ProductCard extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              accent.withValues(alpha: isCollar ? 0.4 : 0.25),
-              AppColors.surfaceContainerLowest,
+              accent == AppColors.brandPrimary
+                  ? AppColors.brandPrimarySoft
+                  : AppColors.surfaceSunken,
+              AppColors.surfaceCard,
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -351,9 +352,9 @@ class _FlowTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color) = switch (flow) {
-      BindFlow.scanQr => ('扫码绑定', AppColors.secondary),
-      BindFlow.wifiSetup => ('WiFi 配网', AppColors.primary),
-      BindFlow.manual => ('手动绑定', AppColors.onSurfaceVariant),
+      BindFlow.scanQr => ('扫码绑定', AppColors.brandPrimary),
+      BindFlow.wifiSetup => ('WiFi 配网', AppColors.brandPrimary),
+      BindFlow.manual => ('手动绑定', AppColors.statusNeutral),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),

@@ -8,6 +8,7 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../shared/theme/app_colors.dart';
+import '../../shared/theme/app_tokens.dart';
 import '../../app.dart' show AppL10nX;
 import '../auth/controller/auth_controller.dart';
 import '../message/controller/im_controller.dart';
@@ -35,15 +36,16 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
   // 每个 Tab 独立 ScrollController，避免共用时重复触发 loadMore
   final _scrollCtrl0 = ScrollController();
   final _scrollCtrl1 = ScrollController();
+  int _lastTab = 0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _scrollCtrl0.addListener(() => _onScroll(_scrollCtrl0));
-    _scrollCtrl1.addListener(() => _onScroll(_scrollCtrl1));
+    _scrollCtrl0.addListener(() => _onScroll(_scrollCtrl0, true));
+    _scrollCtrl1.addListener(() => _onScroll(_scrollCtrl1, false));
     _tabController.addListener(_onTabChange);
-    
+
     // 首次打开时如果默认在好友 Tab，主动触发加载
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_tabController.index == 0) {
@@ -53,6 +55,8 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
   }
 
   void _onTabChange() {
+    if (_lastTab == _tabController.index) return;
+    _lastTab = _tabController.index;
     if (_tabController.index == 0) {
       // 进入好友 Tab（Tab 0 是好友），拉好友列表
       _loadFriendFeed();
@@ -63,16 +67,20 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
     final imRepo = ref.read(imRepositoryProvider);
     final authState = ref.read(authControllerProvider);
     final myUserId = authState.user?.id;
-    
+
     if (myUserId == null) {
       debugPrint('[FriendFeed] myUserId 为空，跳过加载');
       return;
     }
 
     final result = await imRepo.fetchFriendList();
+    if (!mounted) return;
     final friendIds = result.when(
       success: (friends) {
-        final ids = friends.map((f) => f.userID ?? '').where((id) => id.isNotEmpty).toList();
+        final ids = friends
+            .map((f) => f.userID)
+            .where((id) => id.isNotEmpty)
+            .toList();
         debugPrint('[FriendFeed] IM 好友列表: ${ids.length} 个');
         return ids;
       },
@@ -86,8 +94,16 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
     debugPrint('[FriendFeed] 最终 friendIds（纯好友）: ${friendIds.length} 个');
 
     // 触发好友流加载，传当前分类
-    final tag = _selectedCategory == 0 ? null : (_selectedCategory == 1 ? 'dog' : _selectedCategory == 2 ? 'cat' : 'other');
-    ref.read(friendFeedControllerProvider.notifier).setFriendsAndLoad(friendIds, tag: tag);
+    final tag = _selectedCategory == 0
+        ? null
+        : (_selectedCategory == 1
+            ? 'dog'
+            : _selectedCategory == 2
+                ? 'cat'
+                : 'other');
+    ref
+        .read(friendFeedControllerProvider.notifier)
+        .setFriendsAndLoad(friendIds, tag: tag);
   }
 
   @override
@@ -99,13 +115,82 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
     super.dispose();
   }
 
-  void _onScroll(ScrollController ctrl) {
+  void _onScroll(ScrollController ctrl, bool friends) {
     // 搜索时禁用 loadMore（在已加载数据上过滤，不增量加载）
     if (_searchQuery.isNotEmpty) return;
     if (ctrl.position.pixels >= ctrl.position.maxScrollExtent - 300) {
-      ref.read(feedControllerProvider.notifier).loadMore();
+      if (friends) {
+        ref.read(friendFeedControllerProvider.notifier).loadMore();
+      } else {
+        ref.read(feedControllerProvider.notifier).loadMore();
+      }
     }
   }
+
+  Future<void> _loadMore(bool friends) => friends
+      ? ref.read(friendFeedControllerProvider.notifier).loadMore()
+      : ref.read(feedControllerProvider.notifier).loadMore();
+
+  void _fillViewport(ScrollController controller, FeedState state,
+      {required bool friends, required bool empty}) {
+    if (_searchQuery.isNotEmpty ||
+        state.isLoading ||
+        state.isLoadingMore ||
+        !state.hasMore ||
+        state.error != null ||
+        state.page >= 5) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _tabController.index != (friends ? 0 : 1)) return;
+      if (empty ||
+          (controller.hasClients && controller.position.extentAfter < 300)) {
+        _loadMore(friends);
+      }
+    });
+  }
+
+  Widget _feedFooter(FeedState state, bool friends) {
+    if (state.isLoadingMore)
+      return const Padding(
+          padding: EdgeInsets.all(AppSpacing.x24),
+          child: Center(child: CircularProgressIndicator()));
+    if (state.hasMore && _searchQuery.isEmpty)
+      return Center(
+          child: TextButton(
+              onPressed: () => _loadMore(friends),
+              child: Text(state.error == null ? '加载更多' : '加载失败，点击重试')));
+    return Padding(
+        padding: const EdgeInsets.all(AppSpacing.x24),
+        child: Center(
+            child: Text(_searchQuery.isEmpty ? '没有更多了～' : '仅搜索已加载的动态',
+                style:
+                    TextStyle(color: AppColors.textSecondary, fontSize: 13))));
+  }
+
+  Widget _emptyFeed(
+          ScrollController controller, FeedState state, bool friends) =>
+      RefreshIndicator(
+        onRefresh: () => friends
+            ? ref.read(friendFeedControllerProvider.notifier).refresh()
+            : ref.read(feedControllerProvider.notifier).refresh(),
+        child: ListView(
+            controller: controller,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(AppSpacing.x24),
+            children: [
+              const SizedBox(height: AppSpacing.x40),
+              Text(
+                  _searchQuery.isNotEmpty
+                      ? '已加载的动态中没有匹配内容'
+                      : _selectedCategory != 0
+                          ? '这个分类暂时没有动态'
+                          : friends
+                              ? '还没有好友动态，去「发现」认识新朋友吧'
+                              : '还没有动态，来发第一条吧',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textSecondary)),
+              _feedFooter(state, friends),
+            ]),
+      );
 
   // ── 打开发布页 ──────────────────────────────────────────
   Future<void> _openPublish() async {
@@ -116,8 +201,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
   }
 
   // ── 点击帖子 → 真正全屏查看（覆盖底部导航栏） ──────────────────
-  void _openViewer(int index) {
-    final posts = ref.read(feedControllerProvider).posts;
+  void _openViewer(List<PostModel> posts, int index, {bool friends = false}) {
     showGeneralDialog(
       context: context,
       barrierDismissible: false,
@@ -125,7 +209,10 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
       transitionDuration: Duration(milliseconds: 220),
       transitionBuilder: (_, anim, __, child) =>
           FadeTransition(opacity: anim, child: child),
-      pageBuilder: (_, __, ___) => PostViewerPage(posts: posts, initialIndex: index),
+      pageBuilder: (_, __, ___) => PostViewerPage(
+          posts: List.unmodifiable(posts),
+          initialIndex: index,
+          friends: friends),
     );
   }
 
@@ -166,7 +253,8 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                 SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Row(children: [
                       Expanded(
                         child: Container(
@@ -177,8 +265,10 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(children: [
-                            Icon(Icons.search_rounded, size: 18,
-                                color: AppColors.onSurfaceVariant.withOpacity(0.5)),
+                            Icon(Icons.search_rounded,
+                                size: 18,
+                                color: AppColors.onSurfaceVariant
+                                    .withOpacity(0.5)),
                             SizedBox(width: 8),
                             Expanded(
                               child: TextField(
@@ -189,16 +279,19 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                                 decoration: InputDecoration(
                                   isDense: true,
                                   filled: false,
-                                  contentPadding: EdgeInsets.symmetric(vertical: 8),
-                                  hintText: '搜索动态内容…',
+                                  contentPadding:
+                                      EdgeInsets.symmetric(vertical: 8),
+                                  hintText: '搜索已加载动态…',
                                   hintStyle: TextStyle(
                                       fontSize: 13,
-                                      color: AppColors.onSurfaceVariant.withOpacity(0.5)),
+                                      color: AppColors.onSurfaceVariant
+                                          .withOpacity(0.5)),
                                   border: InputBorder.none,
                                   enabledBorder: InputBorder.none,
                                   focusedBorder: InputBorder.none,
                                 ),
-                                onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
+                                onChanged: (v) => setState(() =>
+                                    _searchQuery = v.trim().toLowerCase()),
                               ),
                             ),
                             if (_searchQuery.isNotEmpty)
@@ -207,7 +300,8 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                                   _searchCtrl.clear();
                                   setState(() => _searchQuery = '');
                                 },
-                                child: Icon(Icons.clear_rounded, size: 16,
+                                child: Icon(Icons.clear_rounded,
+                                    size: 16,
                                     color: AppColors.onSurfaceVariant),
                               ),
                           ]),
@@ -221,7 +315,8 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                             color: AppColors.primary,
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                          child: Icon(Icons.add_rounded,
+                              color: Colors.white, size: 18),
                         ),
                         onPressed: _openPublish,
                       ),
@@ -236,8 +331,14 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                   indicatorSize: TabBarIndicatorSize.label,
                   indicatorWeight: 3,
                   dividerColor: Colors.transparent,
-                  labelStyle: TextStyle(fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w700),
-                  unselectedLabelStyle: TextStyle(fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w500),
+                  labelStyle: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700),
+                  unselectedLabelStyle: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500),
                   tabs: [
                     Tab(text: l10n.communityTabFollowing),
                     Tab(text: l10n.communityTabDiscover),
@@ -247,7 +348,8 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                   height: 44,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     itemCount: categories.length,
                     separatorBuilder: (_, __) => SizedBox(width: 8),
                     itemBuilder: (_, i) => _CategoryChip(
@@ -256,15 +358,23 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                       onTap: () {
                         setState(() => _selectedCategory = i);
                         // 如果当前在好友 Tab，同步更新好友流的 tag
-                        if (_tabController.index == 1) {
-                          final tag = i == 0 ? null : (i == 1 ? 'dog' : i == 2 ? 'cat' : 'other');
-                          ref.read(friendFeedControllerProvider.notifier).setTag(tag);
+                        if (_tabController.index == 0) {
+                          final tag = i == 0
+                              ? null
+                              : (i == 1
+                                  ? 'dog'
+                                  : i == 2
+                                      ? 'cat'
+                                      : 'other');
+                          ref
+                              .read(friendFeedControllerProvider.notifier)
+                              .setTag(tag);
                         }
                       },
                     ),
                   ),
                 ),
-                Divider(height: 1, thickness: 0.5, color: Color(0x18000000)),
+                Divider(height: 1, thickness: 1, color: AppColors.borderSubtle),
               ],
             ),
           ),
@@ -274,8 +384,8 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildFriendGrid(_scrollCtrl0),      // Tab 0 = 好友
-                _buildDiscoverGrid(_scrollCtrl1),    // Tab 1 = 发现
+                _buildFriendGrid(_scrollCtrl0), // Tab 0 = 好友
+                _buildDiscoverGrid(_scrollCtrl1), // Tab 1 = 发现
               ],
             ),
           ),
@@ -283,7 +393,6 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
       ),
     );
   }
-
 
   // ── 发现流（全站最新）──────────────────────────────────
   Widget _buildDiscoverGrid(ScrollController scrollCtrl) {
@@ -296,12 +405,15 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
     if (feedState.error != null && feedState.posts.isEmpty) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.onSurfaceVariant),
+          Icon(Icons.wifi_off_rounded,
+              size: 48, color: AppColors.onSurfaceVariant),
           SizedBox(height: 12),
-          Text('加载失败，下拉重试', style: TextStyle(color: AppColors.onSurfaceVariant)),
+          Text('加载失败，下拉重试',
+              style: TextStyle(color: AppColors.onSurfaceVariant)),
           SizedBox(height: 16),
           TextButton(
-            onPressed: () => ref.read(feedControllerProvider.notifier).refresh(),
+            onPressed: () =>
+                ref.read(feedControllerProvider.notifier).refresh(),
             child: Text('重新加载'),
           ),
         ]),
@@ -326,15 +438,13 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
         : categoryFiltered.where((p) {
             final content = p.content.toLowerCase();
             final nick = (p.nickname).toLowerCase();
-            return content.contains(_searchQuery) || nick.contains(_searchQuery);
+            return content.contains(_searchQuery) ||
+                nick.contains(_searchQuery);
           }).toList();
 
-    if (filtered.isEmpty) {
-      return Center(
-        child: Text(_searchQuery.isNotEmpty ? '没有匹配的动态' : '还没有动态，来发第一条吧 🐾',
-          style: TextStyle(fontFamily: AppFonts.primary, color: AppColors.onSurfaceVariant)),
-      );
-    }
+    _fillViewport(scrollCtrl, feedState,
+        friends: false, empty: filtered.isEmpty);
+    if (filtered.isEmpty) return _emptyFeed(scrollCtrl, feedState, false);
 
     return RefreshIndicator(
       color: AppColors.primary,
@@ -349,7 +459,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
             sliver: SliverMasonryGrid.count(
-              key: ValueKey(feedState.refreshCount),  // 刷新时重建 Grid，重播入场动画
+              key: ValueKey(feedState.refreshCount), // 刷新时重建 Grid，重播入场动画
               crossAxisCount: 2,
               mainAxisSpacing: 10,
               crossAxisSpacing: 10,
@@ -357,29 +467,22 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
               itemBuilder: (_, i) => _PostCard(
                 post: filtered[i],
                 index: i,
-                onTap: () => _openViewer(i),
+                onTap: () => _openViewer(filtered, i),
                 onAvatarTap: () => _showUserPanel(context, filtered[i]),
                 // 自己的帖子不能点赞
                 onLike: filtered[i].userId == _myUserId
                     ? null
-                    : () => ref.read(feedControllerProvider.notifier).toggleLike(filtered[i].id),
-              ).animate().fadeIn(delay: Duration(milliseconds: (i * 40).clamp(0, 400))).slideY(begin: 0.08),
+                    : () => ref
+                        .read(feedControllerProvider.notifier)
+                        .toggleLike(filtered[i].id),
+              )
+                  .animate()
+                  .fadeIn(delay: Duration(milliseconds: (i * 40).clamp(0, 400)))
+                  .slideY(begin: 0.08),
             ),
           ),
           // 加载更多指示
-          SliverToBoxAdapter(
-            child: feedState.isLoadingMore
-                ? Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                : feedState.hasMore
-                    ? SizedBox(height: 40)
-                    : Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Center(child: Text('没有更多了～', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13))),
-                      ),
-          ),
+          SliverToBoxAdapter(child: _feedFooter(feedState, false)),
         ],
       ),
     );
@@ -396,12 +499,15 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
     if (friendState.error != null && friendState.posts.isEmpty) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.onSurfaceVariant),
+          Icon(Icons.wifi_off_rounded,
+              size: 48, color: AppColors.onSurfaceVariant),
           SizedBox(height: 12),
-          Text('加载失败，下拉重试', style: TextStyle(color: AppColors.onSurfaceVariant)),
+          Text('加载失败，下拉重试',
+              style: TextStyle(color: AppColors.onSurfaceVariant)),
           SizedBox(height: 16),
           TextButton(
-            onPressed: () => ref.read(friendFeedControllerProvider.notifier).refresh(),
+            onPressed: () =>
+                ref.read(friendFeedControllerProvider.notifier).refresh(),
             child: Text('重新加载'),
           ),
         ]),
@@ -426,30 +532,21 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
         : categoryFiltered.where((p) {
             final content = p.content.toLowerCase();
             final nick = (p.nickname).toLowerCase();
-            return content.contains(_searchQuery) || nick.contains(_searchQuery);
+            return content.contains(_searchQuery) ||
+                nick.contains(_searchQuery);
           }).toList();
 
-    if (filtered.isEmpty) {
-      // 空好友引导
-      return Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.people_outline_rounded, size: 56, color: AppColors.onSurfaceVariant.withOpacity(0.6)),
-          SizedBox(height: 16),
-          Text('还没有好友动态',
-            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.onSurface)),
-          SizedBox(height: 8),
-          Text('去「发现」认识新朋友吧 🐾',
-            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14, color: AppColors.onSurfaceVariant)),
-        ]),
-      );
-    }
+    _fillViewport(scrollCtrl, friendState,
+        friends: true, empty: filtered.isEmpty);
+    if (filtered.isEmpty) return _emptyFeed(scrollCtrl, friendState, true);
 
     return RefreshIndicator(
       color: AppColors.primary,
       backgroundColor: Colors.white,
       strokeWidth: 2.5,
       displacement: 20,
-      onRefresh: () => ref.read(friendFeedControllerProvider.notifier).refresh(),
+      onRefresh: () =>
+          ref.read(friendFeedControllerProvider.notifier).refresh(),
       child: CustomScrollView(
         controller: scrollCtrl,
         physics: AlwaysScrollableScrollPhysics(),
@@ -465,27 +562,20 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
               itemBuilder: (_, i) => _PostCard(
                 post: filtered[i],
                 index: i,
-                onTap: () => _openViewer(i),
+                onTap: () => _openViewer(filtered, i, friends: true),
                 onAvatarTap: () => _showUserPanel(context, filtered[i]),
                 onLike: filtered[i].userId == _myUserId
                     ? null
-                    : () => ref.read(friendFeedControllerProvider.notifier).toggleLike(filtered[i].id),
-              ).animate().fadeIn(delay: Duration(milliseconds: (i * 40).clamp(0, 400))).slideY(begin: 0.08),
+                    : () => ref
+                        .read(friendFeedControllerProvider.notifier)
+                        .toggleLike(filtered[i].id),
+              )
+                  .animate()
+                  .fadeIn(delay: Duration(milliseconds: (i * 40).clamp(0, 400)))
+                  .slideY(begin: 0.08),
             ),
           ),
-          SliverToBoxAdapter(
-            child: friendState.isLoadingMore
-                ? Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                : friendState.hasMore
-                    ? SizedBox(height: 40)
-                    : Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Center(child: Text('没有更多了～', style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 13))),
-                      ),
-          ),
+          SliverToBoxAdapter(child: _feedFooter(friendState, true)),
         ],
       ),
     );
@@ -516,7 +606,10 @@ class _PostCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 16, spreadRadius: -4)],
+          boxShadow: [
+            BoxShadow(
+                color: AppColors.cardShadow, blurRadius: 16, spreadRadius: -4)
+          ],
         ),
         clipBehavior: Clip.hardEdge,
         child: Column(
@@ -524,61 +617,77 @@ class _PostCard extends StatelessWidget {
           children: [
             // ── 封面图（不用 Hero，避免新帖刷新时 iOS 出现白色占位框）──
             if (post.thumbnailUrl != null)
-              _Thumbnail(url: post.thumbnailUrl!, isVideo: post.mediaType == MediaType.video),
+              _Thumbnail(
+                  url: post.thumbnailUrl!,
+                  isVideo: post.mediaType == MediaType.video),
 
             // ── 底部信息 ──────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                // 作者 + 点赞
-                Row(children: [
-                  GestureDetector(
-                    onTap: onAvatarTap,
-                    child: _SmallAvatar(url: post.userAvatar, name: post.nickname),
-                  ),
-                  SizedBox(width: 6),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: onAvatarTap,
-                      child: Text(post.nickname,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontFamily: AppFonts.primary,
-                            fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: onLike, // null 时 GestureDetector 不响应
-                    child: Row(children: [
-                      Icon(
-                        post.isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                        // 自己帖子(onLike==null)：置灰；已点赞：红色；未点赞：浅灰
-                        color: onLike == null
-                            ? AppColors.onSurfaceVariant.withOpacity(0.25)
-                            : post.isLiked
-                                ? AppColors.error
-                                : AppColors.onSurfaceVariant.withOpacity(0.5),
-                        size: 16,
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 作者 + 点赞
+                    Row(children: [
+                      GestureDetector(
+                        onTap: onAvatarTap,
+                        child: _SmallAvatar(
+                            url: post.userAvatar, name: post.nickname),
                       ),
-                      SizedBox(width: 2),
-                      Text('${post.likeCount}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: onLike == null
-                              ? AppColors.onSurfaceVariant.withOpacity(0.3)
-                              : AppColors.onSurfaceVariant,
-                        )),
+                      SizedBox(width: 6),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: onAvatarTap,
+                          child: Text(post.nickname,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontFamily: AppFonts.primary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.onSurface)),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: onLike, // null 时 GestureDetector 不响应
+                        child: Row(children: [
+                          Icon(
+                            post.isLiked
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            // 自己帖子(onLike==null)：置灰；已点赞：红色；未点赞：浅灰
+                            color: onLike == null
+                                ? AppColors.onSurfaceVariant.withOpacity(0.25)
+                                : post.isLiked
+                                    ? AppColors.error
+                                    : AppColors.onSurfaceVariant
+                                        .withOpacity(0.5),
+                            size: 16,
+                          ),
+                          SizedBox(width: 2),
+                          Text('${post.likeCount}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: onLike == null
+                                    ? AppColors.onSurfaceVariant
+                                        .withOpacity(0.3)
+                                    : AppColors.onSurfaceVariant,
+                              )),
+                        ]),
+                      ),
                     ]),
-                  ),
-                ]),
 
-                if (post.content.isNotEmpty) ...[
-                  SizedBox(height: 6),
-                  Text(post.content,
-                    maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
-                        color: AppColors.onSurfaceVariant, height: 1.4)),
-                ],
-              ]),
+                    if (post.content.isNotEmpty) ...[
+                      SizedBox(height: 6),
+                      Text(post.content,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontFamily: AppFonts.primary,
+                              fontSize: 12,
+                              color: AppColors.onSurfaceVariant,
+                              height: 1.4)),
+                    ],
+                  ]),
             ),
           ],
         ),
@@ -604,11 +713,13 @@ class _Thumbnail extends StatelessWidget {
             imageUrl: url,
             fit: BoxFit.cover,
             width: double.infinity,
-            placeholder: (_, __) => Container(color: AppColors.surfaceContainerHigh),
+            placeholder: (_, __) =>
+                Container(color: AppColors.surfaceContainerHigh),
             errorWidget: (_, __, ___) => Container(
               color: AppColors.surfaceContainerHigh,
               child: Center(
-                child: Icon(Icons.broken_image_outlined, color: AppColors.onSurfaceVariant, size: 32),
+                child: Icon(Icons.broken_image_outlined,
+                    color: AppColors.onSurfaceVariant, size: 32),
               ),
             ),
           ),
@@ -616,18 +727,22 @@ class _Thumbnail extends StatelessWidget {
         // ── 视频播放图标（居中大按钮）────────────────
         if (isVideo)
           Container(
-            width: 44, height: 44,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: Colors.black.withOpacity(0.45),
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withOpacity(0.7), width: 2),
+              border:
+                  Border.all(color: Colors.white.withOpacity(0.7), width: 2),
             ),
-            child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
+            child:
+                Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
           ),
         // ── 视频标签（右上角小标）────────────────────
         if (isVideo)
           Positioned(
-            top: 7, right: 7,
+            top: 7,
+            right: 7,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
@@ -637,7 +752,11 @@ class _Thumbnail extends StatelessWidget {
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.videocam_rounded, color: Colors.white, size: 11),
                 SizedBox(width: 2),
-                Text('视频', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600)),
+                Text('视频',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600)),
               ]),
             ),
           ),
@@ -655,13 +774,17 @@ class _SmallAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (url != null && url!.isNotEmpty) {
-      return CircleAvatar(radius: 12, backgroundImage: CachedNetworkImageProvider(url!));
+      return CircleAvatar(
+          radius: 12, backgroundImage: CachedNetworkImageProvider(url!));
     }
     return CircleAvatar(
       radius: 12,
       backgroundColor: AppColors.primaryContainer,
       child: Text(name.isNotEmpty ? name[0] : '?',
-        style: TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.w700)),
+          style: TextStyle(
+              fontSize: 10,
+              color: AppColors.primary,
+              fontWeight: FontWeight.w700)),
     );
   }
 }
@@ -675,7 +798,8 @@ class _ShimmerGrid extends StatelessWidget {
       highlightColor: AppColors.surfaceContainerHigh,
       child: MasonryGridView.count(
         crossAxisCount: 2,
-        mainAxisSpacing: 10, crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
         padding: const EdgeInsets.all(12),
         itemCount: 8,
         itemBuilder: (_, i) => Container(
@@ -695,27 +819,34 @@ class _CategoryChip extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  const _CategoryChip({required this.label, required this.selected, required this.onTap});
+  const _CategoryChip(
+      {required this.label, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: AnimatedContainer(
-      duration: Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
-      decoration: BoxDecoration(
-        color: selected ? AppColors.primary : AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(999),
-        boxShadow: selected
-            ? [BoxShadow(color: AppColors.primaryGlow, blurRadius: 12, offset: Offset(0, 4))]
-            : null,
-      ),
-      child: Text(label, style: TextStyle(
-        fontFamily: AppFonts.primary, fontSize: 13, fontWeight: FontWeight.w700,
-        color: selected ? AppColors.onPrimary : AppColors.onSurfaceVariant,
-      )),
-    ),
-  );
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: Duration(milliseconds: 200),
+          constraints: const BoxConstraints(minHeight: AppSize.touchMin),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.x16, vertical: AppSpacing.x8),
+          decoration: BoxDecoration(
+            color:
+                selected ? AppColors.brandPrimarySoft : AppColors.surfaceCard,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(label,
+              style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: selected
+                    ? AppColors.brandPrimaryStrong
+                    : AppColors.textSecondary,
+              )),
+        ),
+      );
 }
 
 // ── 用户操作弹窗（状态机单按钮） ──────────────────────────────
@@ -728,9 +859,9 @@ class _UserActionDialog extends ConsumerStatefulWidget {
 }
 
 class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
-  bool _adding         = false;
-  bool _requestSent    = false;
-  bool _isFriend       = false;
+  bool _adding = false;
+  bool _requestSent = false;
+  bool _isFriend = false;
   bool _checkingFriend = true;
 
   @override
@@ -745,7 +876,7 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
         .checkIsFriend(widget.post.userId);
     if (!mounted) return;
     setState(() {
-      _isFriend       = isFriend;
+      _isFriend = isFriend;
       _checkingFriend = false;
     });
   }
@@ -753,17 +884,18 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
   Future<void> _addFriend() async {
     if (_adding) return;
     // ── pop 前缓存所有依赖（pop 后 ref / widget 均不可用）
-    final nav        = Navigator.of(context);
+    final nav = Navigator.of(context);
     final imNotifier = ref.read(imControllerProvider.notifier); // 在 pop 前读取
     final postUserId = widget.post.userId;
-    final postNick   = widget.post.nickname;
+    final postNick = widget.post.nickname;
     nav.pop(); // 关闭 _UserActionDialog
 
     final defaultText = '我在 PetPogo 看到你的动态，想加个好友～';
     final ctrl = TextEditingController.fromValue(
       TextEditingValue(
         text: defaultText,
-        selection: TextSelection(baseOffset: 0, extentOffset: defaultText.length),
+        selection:
+            TextSelection(baseOffset: 0, extentOffset: defaultText.length),
       ),
     );
 
@@ -789,11 +921,13 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
                   Icon(Icons.person_add_rounded,
                       color: AppColors.primary, size: 20),
                   SizedBox(width: 8),
-                  Expanded(child: Text(
+                  Expanded(
+                      child: Text(
                     '向 $postNick 发送好友申请',
                     style: TextStyle(
                       fontFamily: AppFonts.primary,
-                      fontSize: 14, fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.onSurface,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -808,21 +942,25 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
                     maxLines: 3,
                     minLines: 3,
                     onChanged: (_) => setSelf(() {}),
-                    buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
+                    buildCounter: (_,
+                            {required currentLength,
+                            required isFocused,
+                            maxLength}) =>
                         Padding(
-                          padding: const EdgeInsets.only(right: 2),
-                          child: Text(
-                            '$currentLength/${maxLength ?? 40}',
-                            style: TextStyle(
-                                fontSize: 11,
-                                color: AppColors.onSurfaceVariant.withOpacity(0.6)),
-                          ),
-                        ),
+                      padding: const EdgeInsets.only(right: 2),
+                      child: Text(
+                        '$currentLength/${maxLength ?? 40}',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.onSurfaceVariant.withOpacity(0.6)),
+                      ),
+                    ),
                     decoration: InputDecoration(
                       hintText: '写一句话介绍自己…',
                       hintStyle: TextStyle(
                           color: AppColors.onSurfaceVariant,
-                          fontFamily: AppFonts.primary, fontSize: 13),
+                          fontFamily: AppFonts.primary,
+                          fontSize: 13),
                       filled: true,
                       fillColor: AppColors.surfaceContainerLow,
                       border: OutlineInputBorder(
@@ -830,8 +968,8 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
                           borderSide: BorderSide.none),
                       contentPadding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
                     ),
-                    style: TextStyle(
-                        fontFamily: AppFonts.primary, fontSize: 13),
+                    style:
+                        TextStyle(fontFamily: AppFonts.primary, fontSize: 13),
                   ),
                 ),
                 SizedBox(height: 12),
@@ -845,8 +983,8 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
                     ),
                     onPressed: () => Navigator.pop(ctx, false),
                     child: Text('取消',
-                        style: TextStyle(fontFamily: AppFonts.primary,
-                            fontSize: 13)),
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary, fontSize: 13)),
                   ),
                   SizedBox(width: 8),
                   FilledButton(
@@ -858,7 +996,8 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
                           borderRadius: BorderRadius.circular(12)),
                       textStyle: TextStyle(
                         fontFamily: AppFonts.primary,
-                        fontSize: 13, fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     onPressed: () => Navigator.pop(ctx, true),
@@ -899,36 +1038,45 @@ class _UserActionDialogState extends ConsumerState<_UserActionDialog> {
           color: AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.14),
-                blurRadius: 48, spreadRadius: -4, offset: Offset(0, 8)),
+            BoxShadow(
+                color: Colors.black.withOpacity(0.14),
+                blurRadius: 48,
+                spreadRadius: -4,
+                offset: Offset(0, 8)),
           ],
         ),
         padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-
           // ── 头像 ──────────────────────────────────────────────
           if (post.userAvatar != null && post.userAvatar!.isNotEmpty)
-            CircleAvatar(radius: 42,
+            CircleAvatar(
+                radius: 42,
                 backgroundImage: CachedNetworkImageProvider(post.userAvatar!))
           else
             CircleAvatar(
               radius: 42,
               backgroundColor: AppColors.primaryContainer,
               child: Text(post.nickname.isNotEmpty ? post.nickname[0] : '?',
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800,
+                  style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.primary)),
             ),
           SizedBox(height: 14),
 
           // ── 昵称 ─────────────────────────────────────────────
           Text(post.nickname,
-              style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 17, fontWeight: FontWeight.w800,
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
                   color: AppColors.onSurface)),
           SizedBox(height: 4),
           Text('UID ${post.userId}',
-              style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 11, color: AppColors.onSurfaceVariant)),
+              style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 11,
+                  color: AppColors.onSurfaceVariant)),
           SizedBox(height: 24),
 
           // ── 动作按钮（单按钮状态机）──────────────────────────
@@ -991,39 +1139,44 @@ class _GradientBtn extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
-  const _GradientBtn({required this.icon, required this.label, required this.onTap});
+  const _GradientBtn(
+      {required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 15),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.primary, AppColors.primary.withOpacity(0.75)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.45),
-            blurRadius: 18, offset: Offset(0, 6),
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primary, AppColors.primary.withOpacity(0.75)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withOpacity(0.45),
+                blurRadius: 18,
+                offset: Offset(0, 6),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(icon, color: Colors.white, size: 20),
-        SizedBox(width: 8),
-        Text(label, style: TextStyle(
-          fontFamily: AppFonts.primary, fontSize: 15,
-          fontWeight: FontWeight.w800, color: Colors.white,
-          letterSpacing: 0.3,
-        )),
-      ]),
-    ),
-  );
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, color: Colors.white, size: 20),
+            SizedBox(width: 8),
+            Text(label,
+                style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: 0.3,
+                )),
+          ]),
+        ),
+      );
 }
 
 // ── 申请已发送脉冲按钮 ────────────────────────────────────
@@ -1041,43 +1194,47 @@ class _PendingBtnState extends State<_PendingBtn>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-      vsync: this, duration: Duration(milliseconds: 1400))
-      ..repeat(reverse: true);
-    _pulse = Tween(begin: 0.7, end: 1.0).animate(
-        CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _ctrl =
+        AnimationController(vsync: this, duration: Duration(milliseconds: 1400))
+          ..repeat(reverse: true);
+    _pulse = Tween(begin: 0.7, end: 1.0)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _pulse,
-    builder: (_, __) => Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 15),
-      decoration: BoxDecoration(
-        color: AppColors.primaryContainer.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.primary.withOpacity(_pulse.value * 0.6),
-          width: 1.5,
+        animation: _pulse,
+        builder: (_, __) => Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          decoration: BoxDecoration(
+            color: AppColors.primaryContainer.withOpacity(0.6),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.primary.withOpacity(_pulse.value * 0.6),
+              width: 1.5,
+            ),
+          ),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(Icons.schedule_rounded,
+                color: AppColors.primary.withOpacity(_pulse.value), size: 19),
+            SizedBox(width: 8),
+            Text('申请已发送，等待对方同意',
+                style: TextStyle(
+                  fontFamily: AppFonts.primary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary.withOpacity(_pulse.value),
+                )),
+          ]),
         ),
-      ),
-      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.schedule_rounded,
-            color: AppColors.primary.withOpacity(_pulse.value), size: 19),
-        SizedBox(width: 8),
-        Text('申请已发送，等待对方同意',
-          style: TextStyle(
-            fontFamily: AppFonts.primary, fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: AppColors.primary.withOpacity(_pulse.value),
-          )),
-      ]),
-    ),
-  );
+      );
 }
 
 // ── 全宽实心按钮 ─────────────────────────────────────────────
@@ -1088,32 +1245,43 @@ class _SolidBtn extends StatelessWidget {
   final bool glow;
   final VoidCallback? onTap;
   const _SolidBtn({
-    required this.icon, required this.label,
-    required this.color, required this.textColor,
-    this.glow = false, required this.onTap,
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.textColor,
+    this.glow = false,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: AnimatedContainer(
-      duration: Duration(milliseconds: 200),
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 15),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: glow
-            ? [BoxShadow(color: AppColors.primaryGlow,
-                blurRadius: 16, offset: Offset(0, 4))]
-            : null,
-      ),
-      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(icon, color: textColor, size: 19),
-        SizedBox(width: 8),
-        Text(label, style: TextStyle(fontFamily: AppFonts.primary,
-            fontSize: 15, fontWeight: FontWeight.w700, color: textColor)),
-      ]),
-    ),
-  );
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: Duration(milliseconds: 200),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: glow
+                ? [
+                    BoxShadow(
+                        color: AppColors.primaryGlow,
+                        blurRadius: 16,
+                        offset: Offset(0, 4))
+                  ]
+                : null,
+          ),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, color: textColor, size: 19),
+            SizedBox(width: 8),
+            Text(label,
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: textColor)),
+          ]),
+        ),
+      );
 }

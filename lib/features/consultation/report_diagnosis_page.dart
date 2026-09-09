@@ -106,30 +106,30 @@ class _PetHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final chips = <({String label, String value, Color color})>[
       if (pet.breed.isNotEmpty)
-        (label: '品种', value: pet.breed, color: Color(0xFF6366F1)),
+        (label: '品种', value: pet.breed, color: AppColors.brandPrimary),
       if (pet.age.isNotEmpty)
-        (label: '年龄', value: pet.age, color: Color(0xFF0EA5E9)),
+        (label: '年龄', value: pet.age, color: AppColors.brandPrimaryStrong),
       if (pet.weight.isNotEmpty)
-        (label: '体重', value: '${pet.weight} kg', color: Color(0xFF10B981)),
+        (label: '体重', value: '${pet.weight} kg', color: AppColors.statusOnlineStrong),
       if (pet.gender.isNotEmpty)
         (
           label: '性别',
           value: _genderLabel(pet.gender),
-          color: Color(0xFFF59E0B)
+          color: AppColors.statusNeutral
         ),
     ];
 
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFFEDE9FE), Color(0xFFE0F2FE)],
+          colors: [AppColors.brandPrimarySoft, AppColors.surfaceCard],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Color(0xFF6366F1).withOpacity(0.12),
+            color: AppColors.cardShadow,
             blurRadius: 16,
             spreadRadius: -2,
             offset: Offset(0, 4),
@@ -158,7 +158,7 @@ class _PetHeroCard extends StatelessWidget {
                             fontFamily: AppFonts.primary,
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF1E1B4B),
+                            color: AppColors.textPrimary,
                             height: 1.2,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -169,7 +169,7 @@ class _PetHeroCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Color(0xFF6366F1).withOpacity(0.15),
+                          color: AppColors.brandPrimarySoft,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -178,7 +178,7 @@ class _PetHeroCard extends StatelessWidget {
                             fontFamily: AppFonts.primary,
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF6366F1),
+                            color: AppColors.brandPrimary,
                           ),
                         ),
                       ),
@@ -225,7 +225,7 @@ class _PetHeroCard extends StatelessWidget {
                                 fontFamily: AppFonts.primary,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                color: Color(0xFF1E1B4B),
+                                color: AppColors.textPrimary,
                               ),
                             ),
                           ]),
@@ -275,7 +275,7 @@ class _Avatar extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Color(0xFF6366F1).withOpacity(0.2),
+            color: AppColors.brandPrimarySoft,
             blurRadius: 12,
             spreadRadius: -2,
             offset: Offset(0, 4),
@@ -605,7 +605,7 @@ class _DiagnosticBasisCard extends StatelessWidget {
         color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: Color(0xFF6366F1).withOpacity(0.18),
+          color: AppColors.primaryGlow,
           width: 1,
         ),
         boxShadow: [
@@ -626,7 +626,7 @@ class _DiagnosticBasisCard extends StatelessWidget {
               width: 4,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                  colors: [AppColors.brandPrimary, AppColors.brandPrimaryStrong],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
@@ -655,7 +655,7 @@ class _DiagnosticBasisCard extends StatelessWidget {
                               height: 18,
                               margin: const EdgeInsets.only(top: 1, right: 8),
                               decoration: BoxDecoration(
-                                color: Color(0xFF6366F1),
+                                color: AppColors.brandPrimary,
                                 shape: BoxShape.circle,
                               ),
                               child: Center(

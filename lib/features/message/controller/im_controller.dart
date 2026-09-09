@@ -26,6 +26,7 @@ import '../data/debug_user_sig.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../../app.dart' show globalNavigatorKey;
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
+import 'package:petpogo_app/shared/theme/app_colors.dart';
 
 // ── 系统通知模型（点赞 / 评论 / 好友申请）────────────────────
 class ImSystemNotice {
@@ -227,9 +228,9 @@ class ImController extends StateNotifier<ImState> {
               insetPadding: const EdgeInsets.symmetric(horizontal: 32),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Color(0xFF1A1A2E),
+                  color: AppColors.surfaceCard,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                  border: Border.all(color: AppColors.borderSubtle),
                 ),
                 padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -237,18 +238,18 @@ class ImController extends StateNotifier<ImState> {
                   Container(
                     width: 56, height: 56,
                     decoration: BoxDecoration(
-                      color: Colors.redAccent.withOpacity(0.15),
+                      color: AppColors.statusAlertSoft,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.devices_other_rounded,
-                        color: Colors.redAccent, size: 28),
+                    child: Icon(Icons.devices_other_outlined,
+                        color: AppColors.statusAlert, size: 28),
                   ),
                   SizedBox(height: 16),
                   Text('账号已在其他设备登录',
                     style: TextStyle(
                       fontFamily: AppFonts.primary,
                       fontSize: 16, fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -257,7 +258,7 @@ class ImController extends StateNotifier<ImState> {
                     '当前设备已自动退出登录。\n如非本人操作，请尽快修改密码。',
                     style: TextStyle(
                       fontFamily: AppFonts.primary,
-                      fontSize: 13, color: Colors.white.withOpacity(0.55),
+                      fontSize: 13, color: AppColors.textSecondary,
                       height: 1.6,
                     ),
                     textAlign: TextAlign.center,
@@ -267,8 +268,8 @@ class ImController extends StateNotifier<ImState> {
                     width: double.infinity,
                     child: TextButton(
                       style: TextButton.styleFrom(
-                        backgroundColor: Colors.redAccent.withOpacity(0.18),
-                        foregroundColor: Colors.redAccent,
+                        backgroundColor: AppColors.statusAlertSoft,
+                        foregroundColor: AppColors.statusAlert,
                         padding: const EdgeInsets.symmetric(vertical: 13),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),

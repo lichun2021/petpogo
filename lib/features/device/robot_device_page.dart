@@ -25,6 +25,7 @@ import 'device_detail_page.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 import 'robot_ai_home_page.dart';
 import '../consultation/data/repository/consultation_repository.dart';
+import '../../shared/utils/error_presenter.dart';
 
 // ── 机器人设备详情页 ─────────────────────────────────────
 class RobotDevicePage extends ConsumerStatefulWidget {
@@ -453,7 +454,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       if (mounted)
         setState(() {
           _agoraLoading = false;
-          _agoraError = e.toString();
+          _agoraError = ErrorPresenter.message(e, fallback: '视频连接失败，请稍后重试');
         });
     }
   }
@@ -528,7 +529,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       if (mounted)
         setState(() {
           _agoraLoading = false;
-          _agoraError = e.toString();
+          _agoraError = ErrorPresenter.message(e, fallback: '视频连接失败，请稍后重试');
         });
     }
   }
@@ -1965,7 +1966,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                     decoration: BoxDecoration(
                       gradient: _micOn
                           ? LinearGradient(
-                              colors: [Color(0xFF43A047), Color(0xFF66BB6A)],
+                              colors: [AppColors.statusOnlineStrong, AppColors.statusOnline],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight)
                           : AppColors.primaryGradient,
@@ -2015,8 +2016,8 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                         gradient: isReady
                             ? (_micOn
                                 ? LinearGradient(colors: [
-                                    Color(0xFF43A047),
-                                    Color(0xFF66BB6A)
+                                    AppColors.statusOnlineStrong,
+                                    AppColors.statusOnline
                                   ])
                                 : AppColors.primaryGradient)
                             : null,

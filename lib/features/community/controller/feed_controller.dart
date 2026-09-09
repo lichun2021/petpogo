@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/post_model.dart';
 import '../data/post_repository.dart';
+import '../../../shared/utils/error_presenter.dart';
 
 // ── Feed 状态 ────────────────────────────────────────────
 class FeedState {
@@ -11,7 +12,7 @@ class FeedState {
   final bool hasMore;
   final String? error;
   final int page;
-  final int refreshCount;   // 每次刷新加 1，供 UI 重置动画 key
+  final int refreshCount; // 每次刷新加 1，供 UI 重置动画 key
 
   const FeedState({
     this.posts = const [],
@@ -31,58 +32,69 @@ class FeedState {
     String? error,
     int? page,
     int? refreshCount,
-  }) => FeedState(
-    posts:         posts         ?? this.posts,
-    isLoading:     isLoading     ?? this.isLoading,
-    isLoadingMore: isLoadingMore ?? this.isLoadingMore,
-    hasMore:       hasMore       ?? this.hasMore,
-    error:         error,
-    page:          page          ?? this.page,
-    refreshCount:  refreshCount  ?? this.refreshCount,
-  );
+  }) =>
+      FeedState(
+        posts: posts ?? this.posts,
+        isLoading: isLoading ?? this.isLoading,
+        isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+        hasMore: hasMore ?? this.hasMore,
+        error: error,
+        page: page ?? this.page,
+        refreshCount: refreshCount ?? this.refreshCount,
+      );
 }
 
 // ── Feed Controller ─────────────────────────────────────
 class FeedController extends StateNotifier<FeedState> {
   final PostRepository _repo;
   static const _pageSize = 20;
+  int _generation = 0;
 
   FeedController(this._repo) : super(const FeedState()) {
     loadFeed();
   }
 
   Future<void> loadFeed() async {
-    if (state.isLoading) return;
-    state = state.copyWith(isLoading: true, error: null);
+    final generation = ++_generation;
+    state = state.copyWith(isLoading: true, isLoadingMore: false, error: null);
     try {
       final posts = await _repo.fetchFeed(page: 1, size: _pageSize);
+      if (!mounted || generation != _generation) return;
       state = state.copyWith(
-        posts:     posts,
+        posts: posts,
         isLoading: false,
-        page:      1,
-        hasMore:   posts.length >= _pageSize,
+        page: 1,
+        hasMore: posts.length >= _pageSize,
       );
       debugPrint('[Feed] 加载 ${posts.length} 条');
     } catch (e) {
+      if (!mounted || generation != _generation) return;
       debugPrint('[Feed] 加载失败: $e');
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(
+          isLoading: false,
+          error: ErrorPresenter.message(e, fallback: '动态加载失败，请稍后重试'));
     }
   }
 
   Future<void> loadMore() async {
-    if (state.isLoadingMore || !state.hasMore) return;
+    if (state.isLoading || state.isLoadingMore || !state.hasMore) return;
+    final generation = _generation;
     state = state.copyWith(isLoadingMore: true);
     try {
       final nextPage = state.page + 1;
       final posts = await _repo.fetchFeed(page: nextPage, size: _pageSize);
+      if (!mounted || generation != _generation) return;
       state = state.copyWith(
-        posts:         [...state.posts, ...posts],
+        posts: [...state.posts, ...posts],
         isLoadingMore: false,
-        page:          nextPage,
-        hasMore:       posts.length >= _pageSize,
+        page: nextPage,
+        hasMore: posts.length >= _pageSize,
       );
     } catch (e) {
-      state = state.copyWith(isLoadingMore: false);
+      if (!mounted || generation != _generation) return;
+      state = state.copyWith(
+          isLoadingMore: false,
+          error: ErrorPresenter.message(e, fallback: '加载更多失败，请重试'));
     }
   }
 
@@ -90,7 +102,7 @@ class FeedController extends StateNotifier<FeedState> {
     final nextCount = state.refreshCount + 1;
     await loadFeed();
     // loadFeed 完成后更新 refreshCount，触发卡片入场动画
-    state = state.copyWith(refreshCount: nextCount);
+    if (mounted) state = state.copyWith(refreshCount: nextCount);
   }
 
   // ── 点赞（乐观更新 + 防重复锁）────────────────────────────
@@ -106,7 +118,7 @@ class FeedController extends StateNotifier<FeedState> {
     _likingInProgress.add(postId);
     final post = state.posts[idx];
     final optimistic = post.copyWith(
-      isLiked:   !post.isLiked,
+      isLiked: !post.isLiked,
       likeCount: post.isLiked ? post.likeCount - 1 : post.likeCount + 1,
     );
     updatePost(idx, optimistic);
@@ -147,6 +159,7 @@ final feedControllerProvider =
 class FriendFeedController extends StateNotifier<FeedState> {
   final PostRepository _repo;
   static const _pageSize = 20;
+  int _generation = 0;
   List<String> _friendIds = []; // 好友 id 列表（含自己），进 Tab 时设置，翻页复用
   String? _currentTag; // 当前分类
 
@@ -167,13 +180,13 @@ class FriendFeedController extends StateNotifier<FeedState> {
   }
 
   Future<void> loadFeed() async {
-    if (state.isLoading) return;
+    final generation = ++_generation;
     // 空好友直接返回空，不调接口
     if (_friendIds.isEmpty) {
       state = const FeedState(isLoading: false, hasMore: false);
       return;
     }
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true, isLoadingMore: false, error: null);
     try {
       final posts = await _repo.fetchFriendFeed(
         friendIds: _friendIds,
@@ -181,6 +194,7 @@ class FriendFeedController extends StateNotifier<FeedState> {
         size: _pageSize,
         tag: _currentTag,
       );
+      if (!mounted || generation != _generation) return;
       state = state.copyWith(
         posts: posts,
         isLoading: false,
@@ -189,13 +203,20 @@ class FriendFeedController extends StateNotifier<FeedState> {
       );
       debugPrint('[FriendFeed] 加载 ${posts.length} 条（好友 ${_friendIds.length}）');
     } catch (e) {
+      if (!mounted || generation != _generation) return;
       debugPrint('[FriendFeed] 加载失败: $e');
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(
+          isLoading: false,
+          error: ErrorPresenter.message(e, fallback: '动态加载失败，请稍后重试'));
     }
   }
 
   Future<void> loadMore() async {
-    if (state.isLoadingMore || !state.hasMore || _friendIds.isEmpty) return;
+    if (state.isLoading ||
+        state.isLoadingMore ||
+        !state.hasMore ||
+        _friendIds.isEmpty) return;
+    final generation = _generation;
     state = state.copyWith(isLoadingMore: true);
     try {
       final nextPage = state.page + 1;
@@ -205,6 +226,7 @@ class FriendFeedController extends StateNotifier<FeedState> {
         size: _pageSize,
         tag: _currentTag,
       );
+      if (!mounted || generation != _generation) return;
       state = state.copyWith(
         posts: [...state.posts, ...posts],
         isLoadingMore: false,
@@ -212,14 +234,17 @@ class FriendFeedController extends StateNotifier<FeedState> {
         hasMore: posts.length >= _pageSize,
       );
     } catch (e) {
-      state = state.copyWith(isLoadingMore: false);
+      if (!mounted || generation != _generation) return;
+      state = state.copyWith(
+          isLoadingMore: false,
+          error: ErrorPresenter.message(e, fallback: '加载更多失败，请重试'));
     }
   }
 
   Future<void> refresh() async {
     final nextCount = state.refreshCount + 1;
     await loadFeed();
-    state = state.copyWith(refreshCount: nextCount);
+    if (mounted) state = state.copyWith(refreshCount: nextCount);
   }
 
   // 点赞逻辑复用（与发现流一致）

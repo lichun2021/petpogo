@@ -128,7 +128,7 @@ class _HeroBanner extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xCCa83206), Colors.transparent],
+                  colors: [AppColors.brandPrimaryStrong.withValues(alpha: 0.8), Colors.transparent],
                   begin: Alignment.centerLeft, end: Alignment.centerRight,
                 ),
               ),

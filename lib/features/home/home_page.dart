@@ -127,7 +127,7 @@ void _showNoDeviceDialog(BuildContext context) {
           child: Text(
             '去绑定',
             style: TextStyle(
-              color: AppColors.secondary,
+              color: AppColors.brandPrimary,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -159,8 +159,8 @@ class _HomeHero extends ConsumerWidget {
         gradient: LinearGradient(
           colors: [
             AppColors.surfaceContainerLowest,
-            AppColors.primaryContainer.withValues(alpha: 0.22),
-            AppColors.secondaryContainer.withValues(alpha: 0.28),
+            AppColors.brandPrimarySoft.withValues(alpha: 0.55),
+            AppColors.surfaceSunken,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -222,7 +222,7 @@ class _HomeHero extends ConsumerWidget {
                   icon: Icons.sensors_rounded,
                   value: '$onlineCount',
                   label: '在线设备',
-                  color: AppColors.secondary,
+                  color: AppColors.statusOnline,
                 ),
               ),
             ),
@@ -234,7 +234,7 @@ class _HomeHero extends ConsumerWidget {
                   icon: Icons.account_balance_wallet_rounded,
                   value: '$points',
                   label: '积分',
-                  color: AppColors.tertiary,
+                  color: AppColors.brandPrimary,
                 ),
               ),
             ),
@@ -323,8 +323,7 @@ class _AiConsultCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-                color: AppColors.secondary.withValues(alpha: 0.2)),
+            border: Border.all(color: AppColors.borderSubtle),
             boxShadow: [
               BoxShadow(
                   color: AppColors.cardShadow,
@@ -338,7 +337,7 @@ class _AiConsultCard extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: AppColors.secondaryContainer.withValues(alpha: 0.3),
+                color: AppColors.brandPrimarySoft,
                 borderRadius: BorderRadius.circular(16),
               ),
               clipBehavior: Clip.antiAlias,
@@ -366,7 +365,7 @@ class _AiConsultCard extends StatelessWidget {
               ),
             ),
             Icon(Icons.arrow_forward_rounded,
-                size: 20, color: AppColors.onSurfaceVariant),
+                size: 20, color: AppColors.textTertiary),
           ]),
         ),
       ),
@@ -718,8 +717,8 @@ class _EmptyDevicePanel extends StatelessWidget {
             onPressed: () => context.push(AppRoutes.bindDevice),
             icon: Icon(Icons.arrow_forward_rounded, size: 18),
             style: IconButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.brandPrimary,
+              foregroundColor: AppColors.textOnBrand,
             ),
           ),
         ],
@@ -736,7 +735,7 @@ class _HomeDeviceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isRobot = device.isRobot;
-    final accent = device.isOnline ? AppColors.secondary : AppColors.outline;
+    final accent = device.isOnline ? AppColors.statusOnline : AppColors.statusNeutral;
 
     return Material(
       color: AppColors.surfaceContainerLowest,
@@ -809,8 +808,8 @@ class _HomeDeviceCard extends StatelessWidget {
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: device.isOnline
-                                ? AppColors.secondary
-                                : AppColors.onSurfaceVariant,
+                                ? AppColors.statusOnline
+                                : AppColors.statusNeutral,
                           ),
                         ),
                       ],

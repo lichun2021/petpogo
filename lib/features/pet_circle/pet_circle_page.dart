@@ -1,9 +1,10 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../shared/theme/app_colors.dart';
+import '../../shared/theme/app_tokens.dart';
+import 'widgets/pet_circle_media.dart';
 import '../../shared/widgets/pet_avatar.dart';
 import '../../shared/widgets/pet_toast.dart';
 import 'controller/pet_circle_controller.dart';
@@ -185,7 +186,8 @@ class _PetCirclePageState extends ConsumerState<PetCirclePage> {
                 return Column(
                   children: [
                     const SizedBox(height: 18),
-                    Divider(height: 1, color: Colors.black.withValues(alpha: 0.06)),
+                    Divider(
+                        height: 1, color: Colors.black.withValues(alpha: 0.06)),
                     const SizedBox(height: 18),
                   ],
                 );
@@ -204,6 +206,7 @@ class _PetCirclePageState extends ConsumerState<PetCirclePage> {
                   );
                 }
                 return _PetCirclePostTile(
+                  key: ValueKey(circleState.posts[index].id),
                   post: circleState.posts[index],
                   fallbackPet: selectedPet,
                   onMore: () => _showPostActions(circleState.posts[index]),
@@ -347,20 +350,20 @@ class _PetCircleHeader extends StatelessWidget {
               )
             : ListView.separated(
                 scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    itemCount: pets.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 18),
-                    itemBuilder: (context, index) {
-                      final pet = pets[index];
-                      final selected = pet.id == selectedPetId ||
-                          (selectedPetId.isEmpty && index == 0);
-                      return _PetAvatarTab(
-                        pet: pet,
-                        selected: selected,
-                        onTap: () => onSelect(pet),
-                      );
-                    },
-                  ),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                itemCount: pets.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 18),
+                itemBuilder: (context, index) {
+                  final pet = pets[index];
+                  final selected = pet.id == selectedPetId ||
+                      (selectedPetId.isEmpty && index == 0);
+                  return _PetAvatarTab(
+                    pet: pet,
+                    selected: selected,
+                    onTap: () => onSelect(pet),
+                  );
+                },
+              ),
       ),
     );
   }
@@ -399,9 +402,9 @@ class _PetAvatarTab extends StatelessWidget {
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: selected
-                          ? const Color(0xFFFFB13B)
+                          ? AppColors.brandPrimary
                           : pet.isShared
-                              ? AppColors.secondary.withValues(alpha: 0.4)
+                              ? AppColors.brandPrimarySoft
                               : Colors.transparent,
                       width: 3,
                     ),
@@ -422,8 +425,8 @@ class _PetAvatarTab extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.secondary,
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                            color: AppColors.surface, width: 1.2),
+                        border:
+                            Border.all(color: AppColors.surface, width: 1.2),
                       ),
                       child: const Text(
                         '共享',
@@ -457,13 +460,13 @@ class _PetAvatarTab extends StatelessWidget {
   }
 }
 
-
 class _PetCirclePostTile extends StatelessWidget {
   final PetCirclePost post;
   final PetCirclePet? fallbackPet;
   final VoidCallback onMore;
 
   const _PetCirclePostTile({
+    super.key,
     required this.post,
     required this.fallbackPet,
     required this.onMore,
@@ -477,66 +480,35 @@ class _PetCirclePostTile extends StatelessWidget {
     final avatar =
         post.petAvatar.isNotEmpty ? post.petAvatar : fallbackPet?.avatar ?? '';
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        PetAvatar(imageUrl: avatar, size: 46),
-        const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.onSurface,
-                  ),
-                ),
-                if (post.content.trim().isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    post.content.trim(),
-                    style: TextStyle(
-                      fontSize: 18,
-                      height: 1.38,
-                      color: AppColors.onSurface,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-                if (post.hasMedia) ...[
-                  const SizedBox(height: 12),
-                  _PetCircleMediaGrid(post: post),
-                ],
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.access_time_rounded,
-                      size: 16,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _relativeTime(post.sourceTime ?? post.createdAt),
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                    ),
-                    const Spacer(),
-                    _MoreButton(onTap: onMore),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-    );
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        PetAvatar(imageUrl: avatar, size: AppSpacing.x40),
+        const SizedBox(width: AppSpacing.x12),
+        Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary)),
+          const SizedBox(height: AppSpacing.x4),
+          Text(_relativeTime(post.sourceTime ?? post.createdAt),
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        ])),
+        _MoreButton(onTap: onMore),
+      ]),
+      if (post.content.trim().isNotEmpty) ...[
+        const SizedBox(height: AppSpacing.x12),
+        _ExpandableContent(content: post.content.trim()),
+      ],
+      if (post.hasMedia) ...[
+        const SizedBox(height: AppSpacing.x12),
+        PetCircleMedia(post: post),
+      ],
+    ]);
   }
 
   String _relativeTime(DateTime time) {
@@ -551,100 +523,40 @@ class _PetCirclePostTile extends StatelessWidget {
   }
 }
 
-class _PetCircleMediaGrid extends StatelessWidget {
-  final PetCirclePost post;
-
-  const _PetCircleMediaGrid({required this.post});
-
+class _ExpandableContent extends StatefulWidget {
+  final String content;
+  const _ExpandableContent({required this.content});
   @override
-  Widget build(BuildContext context) {
-    if (post.isVideo) {
-      final url = post.displayMediaUrl;
-      if (url.isEmpty) return const SizedBox.shrink();
-      return AspectRatio(
-        aspectRatio: 16 / 9,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              _NetworkImage(url: url),
-              Container(color: Colors.black.withValues(alpha: 0.12)),
-              Center(
-                child: Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.45),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.play_arrow_rounded,
-                    color: Colors.white,
-                    size: 34,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final urls = post.mediaUrls.take(9).toList();
-    if (urls.isEmpty) return const SizedBox.shrink();
-    if (urls.length == 1) {
-      return SizedBox(
-        width: 230,
-        child: AspectRatio(
-          aspectRatio: 1,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: _NetworkImage(url: urls.first),
-          ),
-        ),
-      );
-    }
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: urls.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 5,
-        mainAxisSpacing: 5,
-      ),
-      itemBuilder: (context, index) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(7),
-          child: _NetworkImage(url: urls[index]),
-        );
-      },
-    );
-  }
+  State<_ExpandableContent> createState() => _ExpandableContentState();
 }
 
-class _NetworkImage extends StatelessWidget {
-  final String url;
-
-  const _NetworkImage({required this.url});
-
+class _ExpandableContentState extends State<_ExpandableContent> {
+  bool _expanded = false;
   @override
-  Widget build(BuildContext context) {
-    return CachedNetworkImage(
-      imageUrl: url,
-      fit: BoxFit.cover,
-      placeholder: (_, __) => Container(color: AppColors.surfaceContainerHigh),
-      errorWidget: (_, __, ___) => Container(
-        color: AppColors.surfaceContainerHigh,
-        child: Icon(
-          Icons.broken_image_outlined,
-          color: AppColors.onSurfaceVariant,
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      LayoutBuilder(builder: (context, constraints) {
+        final style =
+            TextStyle(fontSize: 15, height: 1.5, color: AppColors.textPrimary);
+        final painter = TextPainter(
+            text: TextSpan(text: widget.content, style: style),
+            maxLines: 4,
+            textDirection: Directionality.of(context),
+            textScaler: MediaQuery.textScalerOf(context))
+          ..layout(maxWidth: constraints.maxWidth);
+        final needsExpansion = painter.didExceedMaxLines;
+        painter.dispose();
+        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(widget.content,
+              style: style,
+              maxLines: _expanded ? null : 4,
+              overflow:
+                  _expanded ? TextOverflow.visible : TextOverflow.ellipsis),
+          if (needsExpansion)
+            TextButton(
+                onPressed: () => setState(() => _expanded = !_expanded),
+                child: Text(_expanded ? '收起' : '展开全文')),
+        ]);
+      });
 }
 
 class _MoreButton extends StatelessWidget {
@@ -661,8 +573,8 @@ class _MoreButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         onTap: onTap,
         child: const SizedBox(
-          width: 34,
-          height: 26,
+          width: AppSize.touchMin,
+          height: AppSize.touchMin,
           child: Icon(Icons.more_horiz_rounded, size: 22),
         ),
       ),

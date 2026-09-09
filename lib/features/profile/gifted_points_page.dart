@@ -218,13 +218,13 @@ class _GiftedSummary extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFF3D6), Color(0xFFFFFBF1)],
+        gradient: LinearGradient(
+          colors: [AppColors.brandPrimarySoft, AppColors.surfaceCard],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFF0D29B)),
+        border: Border.all(color: AppColors.borderSubtle),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,11 +290,11 @@ class _BatchRow extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: const Color(0xFFB7791F).withValues(alpha: 0.1),
+              color: AppColors.brandPrimarySoft,
               borderRadius: BorderRadius.circular(11),
             ),
-            child: const Icon(Icons.card_giftcard_rounded,
-                size: 20, color: Color(0xFFB7791F)),
+            child: Icon(Icons.card_giftcard_outlined,
+                size: 20, color: AppColors.brandPrimaryStrong),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -315,7 +315,7 @@ class _BatchRow extends StatelessWidget {
                           fontFamily: AppFonts.primary,
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
-                          color: const Color(0xFFB7791F))),
+                          color: AppColors.brandPrimaryStrong)),
                 ]),
                 if (reason.isNotEmpty) ...[
                   const SizedBox(height: 3),
@@ -340,7 +340,7 @@ class _BatchRow extends StatelessWidget {
                             fontFamily: AppFonts.primary,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFFB7791F))),
+                            color: AppColors.brandPrimaryStrong)),
                 ]),
               ],
             ),

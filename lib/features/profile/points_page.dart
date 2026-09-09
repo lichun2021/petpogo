@@ -419,8 +419,7 @@ class _TxListState extends State<_TxList> {
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 30),
       itemCount:
           widget.items.length + (widget.hasMore || widget.loadingMore ? 1 : 0),
-      separatorBuilder: (_, __) => Divider(
-          height: 1, color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+      separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (_, i) {
         // 最后一项：加载更多指示器
         if (i >= widget.items.length) {
@@ -530,7 +529,7 @@ class _TxListState extends State<_TxList> {
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                       color: isIncome
-                          ? const Color(0xFF16A34A)
+                          ? AppColors.statusOnlineStrong
                           : AppColors.onSurface),
                 ),
                 if (tx['balance_after'] != null) ...[

@@ -51,6 +51,7 @@ class PetCircleState {
 class PetCircleController extends StateNotifier<PetCircleState> {
   final PetCircleRepository _repo;
   static const _pageSize = 20;
+  int _generation = 0;
 
   PetCircleController(this._repo) : super(const PetCircleState());
 
@@ -77,10 +78,12 @@ class PetCircleController extends StateNotifier<PetCircleState> {
     if (state.selectedPetId.isEmpty ||
         state.isLoadingMore ||
         state.isLoading ||
+        state.isRefreshing ||
         !state.hasMore) {
       return;
     }
 
+    final generation = _generation;
     final nextPage = state.page + 1;
     debugPrint(
         '[萌宠圈][动态] 加载更多 petId=${state.selectedPetId} page=$nextPage pageSize=$_pageSize');
@@ -91,6 +94,7 @@ class PetCircleController extends StateNotifier<PetCircleState> {
       pageSize: _pageSize,
     );
 
+    if (!mounted || generation != _generation) return;
     result.when(
       success: (data) {
         state = state.copyWith(
@@ -134,6 +138,7 @@ class PetCircleController extends StateNotifier<PetCircleState> {
   }
 
   Future<void> _loadFirst(String petId, {required bool refreshing}) async {
+    final generation = ++_generation;
     debugPrint(
         '[萌宠圈][动态] 请求首页 petId=$petId page=1 pageSize=$_pageSize refreshing=$refreshing');
     final result = await _repo.fetchFeed(
@@ -142,6 +147,7 @@ class PetCircleController extends StateNotifier<PetCircleState> {
       pageSize: _pageSize,
     );
 
+    if (!mounted || generation != _generation) return;
     result.when(
       success: (data) {
         state = state.copyWith(

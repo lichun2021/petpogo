@@ -17,6 +17,7 @@ import 'data/user_stats_provider.dart';
 import 'data/points_repository.dart';
 import '../../core/router/app_routes.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
+import '../../shared/utils/error_presenter.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -236,13 +237,13 @@ class _PointsOverviewCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFF8E7), Color(0xFFFFFDF7)],
+        gradient: LinearGradient(
+          colors: [AppColors.surfaceSunken, AppColors.surfaceCard],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF3D9A4)),
+        border: Border.all(color: AppColors.borderSubtle),
       ),
       child: Column(
         children: [
@@ -287,7 +288,7 @@ class _PointsOverviewCard extends StatelessWidget {
           //       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
           //       child: Row(children: [
           //         const Icon(Icons.rule_rounded,
-          //             size: 16, color: Color(0xFFB7791F)),
+          //             size: 16, color: AppColors.brandPrimaryStrong),
           //         const SizedBox(width: 6),
           //         Expanded(
           //           child: Text('积分消费规则',
@@ -295,10 +296,10 @@ class _PointsOverviewCard extends StatelessWidget {
           //                   fontFamily: AppFonts.primary,
           //                   fontSize: 11,
           //                   fontWeight: FontWeight.w700,
-          //                   color: const Color(0xFFB7791F))),
+          //                   color: const AppColors.brandPrimaryStrong)),
           //         ),
           //         const Icon(Icons.chevron_right_rounded,
-          //             size: 16, color: Color(0xFFB7791F)),
+          //             size: 16, color: AppColors.brandPrimaryStrong),
           //       ]),
           //     ),
           //   ),
@@ -325,7 +326,7 @@ class _PointsCardEntry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const accent = Color(0xFFB7791F);
+    final accent = AppColors.brandPrimaryStrong;
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(12),
@@ -402,7 +403,7 @@ class _PointsCardDivider extends StatelessWidget {
       child: Container(
         width: 1,
         height: 32,
-        color: const Color(0xFFE8D3AA),
+        color: AppColors.borderSubtle,
       ),
     );
   }
@@ -589,8 +590,8 @@ class _VipBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+        gradient: LinearGradient(
+          colors: [AppColors.brandPrimary, AppColors.brandPrimaryStrong],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -632,48 +633,49 @@ class _FeatureGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const collapsedItemCount = 6;
+    // 分层规则：核心资产（宠物 / 设备）用品牌色；内容与活动类用中性色
     final items = <_FeatureItem>[
       _FeatureItem(
-        icon: Icons.pets_rounded,
+        icon: Icons.pets_outlined,
         label: '我的宠物',
         subtitle: '宠物档案',
-        color: const Color(0xFF6758EA),
+        color: AppColors.brandPrimary,
         onTap: () => onNavPush(PetListPage()),
       ),
       _FeatureItem(
-        icon: Icons.devices_rounded,
+        icon: Icons.devices_outlined,
         label: '我的设备',
         subtitle: '硬件管理',
-        color: const Color(0xFF17834D),
+        color: AppColors.brandPrimary,
         onTap: () => onNavPush(DeviceListPage()),
       ),
       _FeatureItem(
-        icon: Icons.grid_view_rounded,
+        icon: Icons.grid_view_outlined,
         label: '我的帖子',
         subtitle: '发布记录',
-        color: const Color(0xFFEA580C),
+        color: AppColors.statusNeutral,
         onTap: () => PetToast.show(context, '我的帖子功能即将上线'),
       ),
       _FeatureItem(
-        icon: Icons.music_note_rounded,
+        icon: Icons.music_note_outlined,
         label: '宠物音乐',
         subtitle: '舒缓歌单',
-        color: const Color(0xFF0EA5E9),
+        color: AppColors.statusNeutral,
         onTap: () => onNavPush(PetMusicPage()),
       ),
       _FeatureItem(
-        icon: Icons.calendar_month_rounded,
+        icon: Icons.calendar_month_outlined,
         label: '每日签到',
         subtitle: '做任务领章卡',
-        color: const Color(0xFFEC4899),
+        color: AppColors.statusNeutral,
         badge: '待签', // TODO: 接签到状态后判断是否显示
         onTap: () => onNav(AppRoutes.checkIn),
       ),
       _FeatureItem(
-        icon: Icons.workspace_premium_rounded,
+        icon: Icons.workspace_premium_outlined,
         label: '会员计划',
         subtitle: '解锁更多权益',
-        color: const Color(0xFFB8860B),
+        color: AppColors.statusNeutral,
         onTap: () => onNav(AppRoutes.membership),
       ),
     ];
@@ -844,7 +846,9 @@ class _FeatureTile extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: item.color.withValues(alpha: 0.12),
+                      color: item.color == AppColors.statusNeutral
+                          ? AppColors.surfaceSunken
+                          : AppColors.brandPrimarySoft,
                       borderRadius: BorderRadius.circular(13),
                     ),
                     child: Icon(item.icon, size: 22, color: item.color),
@@ -857,7 +861,7 @@ class _FeatureTile extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEF4444),
+                          color: AppColors.statusAlert,
                           borderRadius: BorderRadius.circular(999),
                           border: Border.all(
                             color: AppColors.surfaceContainerLowest,
@@ -957,7 +961,7 @@ class _NicknameInlineSheetState extends ConsumerState<_NicknameInlineSheet> {
     } catch (e) {
       setState(() {
         _loading = false;
-        _error = e.toString();
+        _error = ErrorPresenter.message(e, fallback: '昵称更新失败，请稍后重试');
       });
     }
   }

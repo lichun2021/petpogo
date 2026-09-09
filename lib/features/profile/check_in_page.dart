@@ -598,35 +598,35 @@ enum _CalendarTone {
   Color get accent {
     switch (this) {
       case signed:
-        return const Color(0xFF35A566);
+        return AppColors.statusOnline;
       case signable:
-        return const Color(0xFFF04A3A);
+        return AppColors.brandPrimary;
       case makeup:
-        return const Color(0xFFF29B38);
+        return AppColors.brandPrimaryStrong;
       case missed:
-        return const Color(0xFF9EA3AA);
+        return AppColors.statusNeutral;
       case future:
-        return const Color(0xFFD1D4D8);
+        return AppColors.borderSubtle;
     }
   }
 
   Color get paper {
     switch (this) {
       case signed:
-        return const Color(0xFFF1FAF4);
+        return AppColors.statusOnlineSoft;
       case signable:
-        return const Color(0xFFFFFAEA);
+        return AppColors.brandPrimarySoft;
       case makeup:
-        return const Color(0xFFFFF8EA);
+        return AppColors.brandPrimarySoft;
       case missed:
       case future:
-        return const Color(0xFFF1F2F3);
+        return AppColors.surfaceSunken;
     }
   }
 
   Color get binder => this == missed || this == future
-      ? const Color(0xFFB8BCC1)
-      : const Color(0xFF8E9399);
+      ? AppColors.textTertiary
+      : AppColors.textSecondary;
 
   Color get background => accent;
 
@@ -635,14 +635,14 @@ enum _CalendarTone {
   Color get foreground {
     switch (this) {
       case signed:
-        return const Color(0xFF237747);
+        return AppColors.statusOnlineStrong;
       case signable:
-        return const Color(0xFFB72F25);
+        return AppColors.brandPrimaryStrong;
       case makeup:
-        return const Color(0xFF9A5A12);
+        return AppColors.brandPrimaryStrong;
       case missed:
       case future:
-        return const Color(0xFF9EA3AA);
+        return AppColors.statusNeutral;
     }
   }
 
@@ -938,7 +938,7 @@ class _RewardRow extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                 decoration: BoxDecoration(
                   color: pointsType == 2
-                      ? const Color(0xFFB8860B).withValues(alpha: 0.12)
+                      ? AppColors.brandPrimarySoft
                       : AppColors.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(4),
                 ),
@@ -948,7 +948,7 @@ class _RewardRow extends StatelessWidget {
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                         color: pointsType == 2
-                            ? const Color(0xFFB8860B)
+                            ? AppColors.brandPrimaryStrong
                             : AppColors.onSurfaceVariant)),
               ),
             ],
@@ -1135,8 +1135,8 @@ class _MakeupSheet extends StatelessWidget {
             const SizedBox(height: 18),
             if (hasQuota)
               _MakeupOption(
-                icon: Icons.workspace_premium_rounded,
-                iconColor: const Color(0xFFB8860B),
+                icon: Icons.workspace_premium_outlined,
+                iconColor: AppColors.brandPrimaryStrong,
                 title: '会员补签',
                 subtitle: '使用 1 次配额，本周剩余 $remaining 次',
                 enabled: true,

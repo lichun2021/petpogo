@@ -6,6 +6,8 @@ import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
 import 'fence_add_flow.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
+import '../../shared/widgets/app_error_view.dart';
+import '../../shared/theme/app_tokens.dart';
 
 // ── 围栏管理页 ────────────────────────────────────────────
 class FenceManagePage extends ConsumerStatefulWidget {
@@ -20,7 +22,7 @@ class FenceManagePage extends ConsumerStatefulWidget {
 class _FenceManagePageState extends ConsumerState<FenceManagePage> {
   List<FenceModel> _fences = [];
   bool _loading = true;
-  String? _error;
+  Object? _error;
 
   @override
   void initState() { super.initState(); _loadFences(); }
@@ -32,7 +34,7 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
           .fetchFences(mac: widget.deviceMac);
       if (mounted) setState(() { _fences = list; _loading = false; });
     } catch (e) {
-      if (mounted) setState(() { _loading = false; _error = e.toString(); });
+      if (mounted) setState(() { _loading = false; _error = e; });
     }
   }
 
@@ -83,14 +85,7 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
       return Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5));
     }
     if (_error != null && _fences.isEmpty) {
-      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.wifi_off_rounded, size: 64, color: AppColors.onSurfaceVariant),
-        SizedBox(height: 16),
-        Text(_error!, textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14, color: AppColors.onSurfaceVariant)),
-        SizedBox(height: 16),
-        OutlinedButton(onPressed: _loadFences, child: Text('重试')),
-      ]));
+      return AppErrorView(error: _error, fallback: '围栏加载失败，请稍后重试', onRetry: _loadFences);
     }
     if (_fences.isEmpty) return _buildEmpty();
     return RefreshIndicator(
@@ -210,10 +205,10 @@ class _FenceCard extends StatelessWidget {
           ])),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: Color(0xFF4ADE80).withOpacity(0.12),
+            decoration: BoxDecoration(color: AppColors.statusOnlineSoft,
                 borderRadius: BorderRadius.circular(20)),
             child: Text('活跃', style: TextStyle(fontFamily: AppFonts.primary,
-                fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF16A34A))),
+                fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.statusOnlineStrong)),
           ),
         ])),
         Container(
@@ -308,7 +303,7 @@ class _FenceFormSheetState extends State<_FenceFormSheet> {
           },
           style: FilledButton.styleFrom(backgroundColor: AppColors.primary,
               minimumSize: Size(double.infinity, 50),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              shape: const RoundedRectangleBorder(borderRadius: AppRadius.pillRadius)),
           child: Text('保存', style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w700)),
         ),
       ]),

@@ -6,10 +6,12 @@ import 'package:tencent_cloud_chat_sdk/tencent_im_sdk_plugin.dart';
 import 'package:tencent_cloud_chat_sdk/enum/V2TimSDKListener.dart';
 import 'package:tencent_cloud_chat_sdk/enum/log_level_enum.dart';
 import 'core/config/app_config.dart';
+import 'core/config/app_flags.dart';
 import 'core/router/app_router.dart';
 import 'core/providers/font_provider.dart';
 import 'core/providers/color_scheme_provider.dart';
 import 'core/providers/video_quality_provider.dart';
+import 'core/providers/raw_error_provider.dart';
 import 'core/deep_link/deep_link_service.dart';
 import 'core/push/push_service.dart';
 import 'shared/utils/wechat_share.dart';
@@ -42,6 +44,10 @@ void main() async {
 
   // 恢复录像质量
   final savedVideoQuality = prefs.getString(kVideoQualityKey) ?? 'medium';
+
+  // 读取功能开关配置文件（assets/config/app_flags.json，与构建模式无关）
+  final flags = await AppFlags.load();
+  final showRawError = resolveInitialShowRawError(prefs, flags);
 
   debugPrint(
       '[启动] 恢复字体: $savedFont  配色: $savedThemeKey  录像质量: $savedVideoQuality');
@@ -78,6 +84,9 @@ void main() async {
       ),
       videoQualityProvider.overrideWith(
         (ref) => VideoQualityNotifier(savedVideoQuality),
+      ),
+      showRawErrorProvider.overrideWith(
+        (ref) => ShowRawErrorNotifier(showRawError),
       ),
     ],
   );

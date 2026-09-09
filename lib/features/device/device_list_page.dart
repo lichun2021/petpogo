@@ -16,6 +16,7 @@ import '../pet/bind_pet_sheet.dart';
 import '../pet_circle/controller/pet_circle_pet_controller.dart';
 import '../bind_device/select_device_page.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
+import '../../shared/theme/app_tokens.dart';
 
 // ── 设备列表页 ────────────────────────────────────────────
 class DeviceListPage extends ConsumerWidget {
@@ -137,7 +138,7 @@ class DeviceListPage extends ConsumerWidget {
           backgroundColor: AppColors.primary,
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              const RoundedRectangleBorder(borderRadius: AppRadius.controlRadius),
         ),
       ),
     ]));
@@ -300,8 +301,8 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
                     const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
                   color: device.isOnline
-                      ? const Color(0xFF4ADE80).withValues(alpha: 0.12)
-                      : AppColors.surfaceContainerHighest,
+                      ? AppColors.statusOnlineSoft
+                      : AppColors.surfaceSunken,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -310,8 +311,8 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
                       height: 5,
                       decoration: BoxDecoration(
                         color: device.isOnline
-                            ? const Color(0xFF22C55E)
-                            : AppColors.onSurfaceVariant,
+                            ? AppColors.statusOnline
+                            : AppColors.statusNeutral,
                         shape: BoxShape.circle,
                       )),
                   SizedBox(width: 5),
@@ -321,8 +322,8 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: device.isOnline
-                              ? const Color(0xFF16A34A)
-                              : AppColors.onSurfaceVariant)),
+                              ? AppColors.statusOnlineStrong
+                              : AppColors.statusNeutral)),
                 ]),
               ),
             ]),
@@ -379,9 +380,9 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
                 SizedBox(width: 10),
                 // ── 管理共享按钮 ──
                 _ActionPill(
-                  icon: Icons.group_rounded,
+                  icon: Icons.group_outlined,
                   label: '管理共享',
-                  color: AppColors.onSurfaceVariant,
+                  color: AppColors.statusNeutral,
                   onTap: () {
                     HapticFeedback.selectionClick();
                     Navigator.push(
@@ -475,8 +476,8 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.check_circle_rounded,
-                    color: Color(0xFF22C55E), size: 48),
+                Icon(Icons.check_circle_outline_rounded,
+                    color: AppColors.statusOnline, size: 48),
                 const SizedBox(height: 12),
                 Text('设备已解绑',
                     style: TextStyle(
@@ -678,15 +679,15 @@ class _RoleBadge extends StatelessWidget {
     final IconData icon;
 
     if (device.isAdmin) {
-      // ADMIN — 蓝色
-      bg = const Color(0xFF60A5FA).withValues(alpha: 0.15);
-      fg = const Color(0xFF2563EB);
-      icon = Icons.admin_panel_settings_rounded;
+      // ADMIN — 品牌浅底
+      bg = AppColors.brandPrimarySoft;
+      fg = AppColors.brandPrimaryStrong;
+      icon = Icons.admin_panel_settings_outlined;
     } else {
       // MEMBER / 共享设备 — 灰色
-      bg = AppColors.surfaceContainerHighest;
-      fg = AppColors.onSurfaceVariant;
-      icon = Icons.share_rounded;
+      bg = AppColors.surfaceSunken;
+      fg = AppColors.statusNeutral;
+      icon = Icons.share_outlined;
     }
 
     return Container(
@@ -714,26 +715,24 @@ class _RoleBadge extends StatelessWidget {
 
 // ── 设备类型枚举 ──────────────────────────────────────────
 extension _DeviceProductTypeUiX on DeviceProductType {
-  /// 在线状态下的渐变色：项圈=橙色系，机器人=青色系
+  /// 在线状态下的渐变：所有产品统一品牌渐变（未知类型用中性）
   List<Color> get onlineGradient {
     switch (this) {
       case DeviceProductType.collar:
-        return [Color(0xFFff784e), Color(0xFFa83206)];
       case DeviceProductType.robot:
-        return [Color(0xFF00897B), Color(0xFF006760)];
+        return [AppColors.brandPrimary, AppColors.brandPrimaryStrong];
       case DeviceProductType.unknown:
-        return [Color(0xFF6B7280), Color(0xFF374151)];
+        return [AppColors.statusNeutral, AppColors.textSecondary];
     }
   }
 
   Color get glowColor {
     switch (this) {
       case DeviceProductType.collar:
-        return Color(0xFFff784e);
       case DeviceProductType.robot:
-        return Color(0xFF7fe6db);
+        return AppColors.brandPrimary;
       case DeviceProductType.unknown:
-        return Color(0xFF9CA3AF);
+        return AppColors.statusNeutral;
     }
   }
 }
@@ -746,9 +745,10 @@ class _DeviceTypeIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gradient =
-        isOnline ? type.onlineGradient : [Color(0xFF2c2c3e), Color(0xFF1e1e2a)];
-    final iconColor = isOnline ? Colors.white : Colors.white24;
+    final gradient = isOnline
+        ? type.onlineGradient
+        : [AppColors.surfaceSunken, AppColors.borderSubtle];
+    final iconColor = isOnline ? AppColors.textOnBrand : AppColors.textTertiary;
 
     return Container(
       width: 58,

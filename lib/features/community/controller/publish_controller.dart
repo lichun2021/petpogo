@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/post_model.dart';
 import '../data/post_repository.dart';
+import '../../../shared/utils/error_presenter.dart';
 
 enum PublishStep { idle, uploading, submitting, done, error }
 
@@ -157,7 +158,7 @@ class PublishController extends StateNotifier<PublishState> {
       );
     } catch (e) {
       debugPrint('[Publish] 失败: $e');
-      state = state.copyWith(step: PublishStep.error, errorMessage: e.toString());
+      state = state.copyWith(step: PublishStep.error, errorMessage: ErrorPresenter.message(e, fallback: '发布失败，请稍后重试'));
       return null;
     }
   }

@@ -169,7 +169,7 @@ class _PetAvatarTab extends StatelessWidget {
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: online
-                          ? const Color(0xFF3EBD6D)
+                          ? AppColors.statusOnline
                           : device.mac.isEmpty
                               ? Colors.transparent
                               : AppColors.onSurfaceVariant.withValues(alpha: 0.3),
@@ -224,7 +224,7 @@ class _PetAvatarTab extends StatelessWidget {
                 fontSize: 10,
                 height: 1.1,
                 color: online
-                    ? const Color(0xFF3EBD6D)
+                    ? AppColors.statusOnline
                     : AppColors.onSurfaceVariant.withValues(alpha: 0.7),
                 fontWeight: FontWeight.w600,
               ),

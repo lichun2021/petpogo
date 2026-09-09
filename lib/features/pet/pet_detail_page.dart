@@ -229,7 +229,7 @@ class _InfoRow extends StatelessWidget {
 class _Divider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Divider(height: 0, indent: 16, color: AppColors.outlineVariant.withOpacity(0.08));
+    return const Divider(height: 0, indent: 16);
   }
 }
 

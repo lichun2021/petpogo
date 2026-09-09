@@ -529,7 +529,7 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F8F6),
+      backgroundColor: AppColors.surfacePage,
       body: Column(children: [
         _buildHeader(),
         Expanded(
@@ -1407,12 +1407,12 @@ class _GreetingCell extends StatelessWidget {
   final VoidCallback onTap;
   const _GreetingCell({required this.item, required this.onTap});
 
-  // 根据情绪生成左侧渐变色，没有情绪则用品牌主色
-  static const List<List<Color>> _emotionPalettes = [
-    [Color(0xFF43E97B), Color(0xFF38F9D7)], // 兴奋 / 开心
-    [Color(0xFF4FACFE), Color(0xFF00F2FE)], // 平静
-    [Color(0xFFFA709A), Color(0xFFFEE140)], // 疼痛 / 担忧
-    [Color(0xFF667EEA), Color(0xFF764BA2)], // 其他
+  // 根据情绪生成左侧渐变色（全部取自语义 token，暖色体系内）
+  static List<List<Color>> get _emotionPalettes => [
+    [AppColors.statusOnline, AppColors.statusOnlineStrong], // 兴奋 / 开心
+    [AppColors.statusNeutral, AppColors.textSecondary], // 平静
+    [AppColors.statusAlert, AppColors.brandPrimaryStrong], // 疼痛 / 担忧
+    [AppColors.brandPrimary, AppColors.brandPrimaryStrong], // 其他
   ];
 
   List<Color> get _gradient {
@@ -2234,7 +2234,7 @@ class _GreetingDetailPageState extends State<_GreetingDetailPage>
     final hasEmotion = widget.item.aiResult?.emotions.isNotEmpty == true;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D1A),
+      backgroundColor: AppColors.mediaBackdrop,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -2347,7 +2347,7 @@ class _GreetingDetailPageState extends State<_GreetingDetailPage>
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Color(0xFF0D0D1A)],
+                  colors: [Colors.transparent, AppColors.mediaBackdrop],
                 ),
               ),
             ),
@@ -2364,7 +2364,7 @@ class _GreetingDetailPageState extends State<_GreetingDetailPage>
             end: Alignment.bottomCenter,
             colors: [
               AppColors.primary.withValues(alpha: 0.15),
-              const Color(0xFF0D0D1A),
+              AppColors.mediaBackdrop,
             ],
           ),
         ),
@@ -2373,7 +2373,7 @@ class _GreetingDetailPageState extends State<_GreetingDetailPage>
 
   // 视频解码失败降级背景
   Widget _videoErrorBg() => Container(
-        color: const Color(0xFF0D0D1A),
+        color: AppColors.mediaBackdrop,
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           const Icon(Icons.videocam_off_rounded,
               color: Colors.white38, size: 52),
@@ -3342,13 +3342,13 @@ class _GreetShareSheet extends StatelessWidget {
               _GreetShareOption(
                 icon: Icons.chat_bubble_rounded,
                 label: '微信好友',
-                color: const Color(0xFF07C160),
+                color: AppColors.wechat,
                 onTap: onWechat,
               ),
               _GreetShareOption(
                 icon: Icons.wb_sunny_rounded,
                 label: '朋友圈',
-                color: const Color(0xFF07C160),
+                color: AppColors.wechat,
                 onTap: onTimeline,
               ),
             ],

@@ -10,6 +10,8 @@ import '../device/data/models/device_product_model.dart';
 import '../device/device_detail_page.dart';
 import '../device/robot_device_page.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
+import '../../shared/utils/error_presenter.dart';
+import '../../shared/theme/app_tokens.dart';
 
 // ── 扫码绑定页 ────────────────────────────────────────────
 class ScanQrPage extends ConsumerStatefulWidget {
@@ -137,7 +139,7 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMsg = e.toString().replaceAll('Exception: ', '');
+          _errorMsg = ErrorPresenter.message(e, fallback: '绑定失败，请稍后重试');
           _state = _ScanState.error;
         });
       }
@@ -297,8 +299,8 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
             height: 72,
             decoration: BoxDecoration(
               color: _state == _ScanState.success
-                  ? Color(0xFF22C55E)
-                  : AppColors.primary,
+                  ? AppColors.statusOnline
+                  : AppColors.brandPrimary,
               shape: BoxShape.circle,
             ),
             child: _state == _ScanState.binding
@@ -388,8 +390,8 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 minimumSize: Size(double.infinity, 52),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                shape: const RoundedRectangleBorder(
+                    borderRadius: AppRadius.pillRadius),
               ),
               child: Text('确认绑定',
                   style: TextStyle(
@@ -420,7 +422,7 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
         return Column(mainAxisSize: MainAxisSize.min, children: [
           Text('绑定成功 🎉',
               style: TextStyle(
-                  color: Color(0xFF4ADE80),
+                  color: AppColors.statusOnlineStrong,
                   fontFamily: AppFonts.primary,
                   fontSize: 18,
                   fontWeight: FontWeight.w700),
@@ -441,10 +443,10 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
                 Navigator.of(context).popUntil((route) => route.isFirst);
               },
               style: FilledButton.styleFrom(
-                backgroundColor: Color(0xFF22C55E),
+                backgroundColor: AppColors.brandPrimary,
                 minimumSize: Size(double.infinity, 52),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                shape: const RoundedRectangleBorder(
+                    borderRadius: AppRadius.pillRadius),
               ),
               child: Text('完成',
                   style: TextStyle(
@@ -459,7 +461,7 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
         return Column(mainAxisSize: MainAxisSize.min, children: [
           Text(_errorMsg ?? '绑定失败',
               style: TextStyle(
-                  color: Color(0xFFFC8181),
+                  color: AppColors.statusAlert,
                   fontFamily: AppFonts.primary,
                   fontSize: 14),
               textAlign: TextAlign.center),
@@ -507,7 +509,7 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
           margin: const EdgeInsets.all(16),
           padding: EdgeInsets.fromLTRB(24, 20, 24, 24 + bottom),
           decoration: BoxDecoration(
-            color: Color(0xFF1e1e2e),
+            color: AppColors.surfaceCard,
             borderRadius: BorderRadius.circular(24),
           ),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -515,24 +517,24 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                    color: Colors.white24,
+                    color: AppColors.borderSubtle,
                     borderRadius: BorderRadius.circular(2))),
             SizedBox(height: 20),
             Text('手动输入设备 MAC',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontFamily: AppFonts.primary,
                     fontSize: 17,
                     fontWeight: FontWeight.w700)),
             SizedBox(height: 16),
             TextField(
               controller: ctrl,
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppColors.textPrimary),
               decoration: InputDecoration(
                 hintText: 'e.g. ipet-esp32-Device',
-                hintStyle: TextStyle(color: Colors.white38),
+                hintStyle: TextStyle(color: AppColors.textTertiary),
                 filled: true,
-                fillColor: Colors.white12,
+                fillColor: AppColors.surfaceSunken,
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none),

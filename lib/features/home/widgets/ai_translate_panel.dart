@@ -172,12 +172,12 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.10),
+                color: AppColors.brandPrimarySoft,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 Icons.graphic_eq_rounded,
-                color: AppColors.primary,
+                color: AppColors.brandPrimary,
                 size: 19,
               ),
             ),
@@ -202,7 +202,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
                         fontFamily: AppFonts.primary,
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFFFF9500),
+                        color: AppColors.textTertiary,
                       ),
                     ),
                   ],
@@ -318,8 +318,8 @@ class _IdleView extends StatelessWidget {
               return Transform.scale(
                 scale: scale,
                 child: Container(
-                  width: 88,
-                  height: 88,
+                  width: 80,
+                  height: 80,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: AppColors.primaryGradient,

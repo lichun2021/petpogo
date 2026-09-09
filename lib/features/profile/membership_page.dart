@@ -489,7 +489,7 @@ class _BillingPeriodOption extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFB8860B).withValues(alpha: 0.12),
+                      color: AppColors.brandPrimarySoft,
                       borderRadius: BorderRadius.circular(5),
                     ),
                     child: Text(badge!,
@@ -497,7 +497,7 @@ class _BillingPeriodOption extends StatelessWidget {
                             fontFamily: AppFonts.primary,
                             fontSize: 9,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFFB8860B))),
+                            color: AppColors.brandPrimaryStrong)),
                   ),
                 ],
               ],
@@ -556,7 +556,7 @@ class _PlanCard extends StatelessWidget {
     final isYearly = period == 'yearly' && priceCents > 0;
 
     final accent = planType == 2
-        ? const Color(0xFFB8860B) // ProMax 金
+        ? AppColors.brandPrimaryStrong // ProMax
         : planType == 1
             ? AppColors.primary // Pro
             : AppColors.onSurfaceVariant; // Free

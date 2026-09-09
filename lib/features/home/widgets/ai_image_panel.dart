@@ -175,12 +175,12 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: AppColors.tertiary.withValues(alpha: 0.12),
+                color: AppColors.brandPrimarySoft,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
-                Icons.add_photo_alternate_rounded,
-                color: AppColors.tertiary,
+                Icons.add_photo_alternate_outlined,
+                color: AppColors.brandPrimary,
                 size: 19,
               ),
             ),
@@ -205,7 +205,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
                         fontFamily: AppFonts.primary,
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFFFF9500),
+                        color: AppColors.textTertiary,
                       ),
                     ),
                   ],
@@ -358,21 +358,15 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
           GestureDetector(
             onTap: _showPickSheet,
             child: Container(
-              width: 72,
-              height: 72,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: AppColors.primaryGradient,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.35),
-                    blurRadius: 16,
-                    spreadRadius: -2,
-                  ),
-                ],
+                color: AppColors.brandPrimarySoft,
+                border: Border.all(color: AppColors.borderSubtle),
               ),
-              child:
-                  Icon(Icons.camera_alt_rounded, color: Colors.white, size: 32),
+              child: Icon(Icons.camera_alt_outlined,
+                  color: AppColors.brandPrimary, size: 32),
             ),
           ),
           SizedBox(height: 10),

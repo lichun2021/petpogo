@@ -136,8 +136,8 @@ class _MessagePageState extends ConsumerState<MessagePage> {
                     children: [
                       _NotificationItem(
                         icon: Icons.warning_amber_rounded,
-                        iconBg: const Color(0xFFFFE8E0),
-                        iconColor: AppColors.error,
+                        iconBg: AppColors.statusAlertSoft,
+                        iconColor: AppColors.statusAlert,
                         title: '系统通知',
                         subtitle: '设备/宠物异常提醒',
                         time: '',
@@ -403,7 +403,7 @@ class _NotificationSection extends ConsumerWidget {
             onTap: () => Navigator.push(context, MaterialPageRoute(
               builder: (_) => FriendRequestsPage(applications: friendApplications))),
           ),
-          Divider(color: AppColors.outlineVariant.withOpacity(0.1), height: 0, indent: 72),
+          const Divider(height: 0, indent: 72),
           // 点赞 / 评论（点击弹出通知历史列表）
           _NotificationItem(
             icon: Icons.favorite_rounded,
@@ -487,7 +487,7 @@ class _InteractSheet extends StatelessWidget {
               ),
             ]),
           ),
-          Divider(height: 1, thickness: 0.5, color: Color(0x18000000)),
+          Divider(height: 1, thickness: 1, color: AppColors.borderSubtle),
 
           // 通知列表
           if (notices.isEmpty)
@@ -515,8 +515,8 @@ class _InteractSheet extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
                 itemCount: notices.length,
                 separatorBuilder: (_, __) => Divider(
-                  height: 1, thickness: 0.5, indent: 60,
-                  color: Color(0x10000000),
+                  height: 1, thickness: 1, indent: 60,
+                  color: AppColors.borderSubtle,
                 ),
                 itemBuilder: (ctx, i) => _InteractNoticeItem(notice: notices[i]),
               ),
@@ -1215,7 +1215,7 @@ class _ConversationCardState extends State<_ConversationCard>
                   _SwipeActionBtn(
                     icon: Icons.delete_sweep_outlined,
                     label: '清空',
-                    color: Color(0xFFFF9500),
+                    color: AppColors.statusNeutral,
                     onTap: () => _runAction(widget.onClear),
                   ),
                   _SwipeActionBtn(

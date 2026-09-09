@@ -48,26 +48,11 @@ class _MainShellState extends ConsumerState<MainShell> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final navItems = [
-      NavItem(
-          icon: Icons.home_outlined,
-          activeIcon: Icons.home_rounded,
-          label: l10n.navHome),
-      NavItem(
-          icon: Icons.chat_bubble_outline,
-          activeIcon: Icons.chat_bubble_rounded,
-          label: l10n.navMessage),
-      NavItem(
-          icon: Icons.people_outline,
-          activeIcon: Icons.people_rounded,
-          label: l10n.navCommunity),
-      NavItem(
-          icon: Icons.pets_outlined,
-          activeIcon: Icons.pets_rounded,
-          label: '萌宠圈'),
-      NavItem(
-          icon: Icons.person_outline,
-          activeIcon: Icons.person_rounded,
-          label: l10n.navProfile),
+      NavItem(icon: Icons.home_outlined, label: l10n.navHome),
+      NavItem(icon: Icons.chat_bubble_outline_rounded, label: l10n.navMessage),
+      NavItem(icon: Icons.people_outline_rounded, label: l10n.navCommunity),
+      NavItem(icon: Icons.pets_outlined, label: '萌宠圈'),
+      NavItem(icon: Icons.person_outline_rounded, label: l10n.navProfile),
     ];
 
     final hideNav = ref.watch(hideBottomNavProvider);
@@ -75,7 +60,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     final currentIndex = _indexFromLocation(location);
 
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.surfacePage,
       body: widget.child,
       extendBody: hideNav, // 全屏时 body 延伸到底部边缘
       bottomNavigationBar: hideNav

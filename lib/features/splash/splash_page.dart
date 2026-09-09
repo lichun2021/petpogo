@@ -19,6 +19,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/controller/auth_controller.dart';
 import '../../core/router/app_router.dart';
 import '../../core/router/app_routes.dart';
+import '../../shared/theme/app_colors.dart';
 
 class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
@@ -35,7 +36,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
   late final Animation<Offset>   _slideAnim;
 
   // ── 品牌主色 ───────────────────────────────────────────
-  static const _primaryOrange = Color(0xFFFF6B35);
+  static Color get _primaryOrange => AppColors.brandPrimary;
 
   // 最短展示时间（确保 Logo 动画完整播放）
   static const _minShowDuration = Duration(milliseconds: 1600);
@@ -134,8 +135,8 @@ class _SplashPageState extends ConsumerState<SplashPage>
                   fit: BoxFit.contain,
                   errorBuilder: (ctx, err, stack) {
                     debugPrint('[SplashPage] ❌ Logo 加载失败: $err');
-                    return const Center(
-                      child: Icon(Icons.pets, color: Color(0xFFFF6B35), size: 120),
+                    return Center(
+                      child: Icon(Icons.pets, color: AppColors.brandPrimary, size: 120),
                     );
                   },
                 ),

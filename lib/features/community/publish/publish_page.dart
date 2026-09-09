@@ -90,7 +90,7 @@ class _PublishPageState extends ConsumerState<PublishPage>
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20)),
             title: Row(children: [
-              Icon(Icons.no_photography_rounded, color: Color(0xFFFF6B6B)),
+              Icon(Icons.no_photography_outlined, color: AppColors.statusAlert),
               SizedBox(width: 8),
               Flexible(child: Text('需要相机权限',
                 style: TextStyle(fontFamily: AppFonts.primary,
@@ -352,12 +352,8 @@ class _GradientHeader extends StatelessWidget {
     return Container(
       padding: EdgeInsets.only(top: top),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFa83206), Color(0xFFff784e)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        boxShadow: [BoxShadow(color: Color(0x40a83206), blurRadius: 16, offset: Offset(0, 4))],
+        gradient: AppColors.primaryGradient,
+        boxShadow: [BoxShadow(color: AppColors.primaryGlow, blurRadius: 16, offset: Offset(0, 4))],
       ),
       child: Row(
         children: [
@@ -395,7 +391,7 @@ class _GradientHeader extends StatelessWidget {
                         style: TextStyle(
                           fontFamily: AppFonts.primary, fontWeight: FontWeight.w800,
                           fontSize: 14,
-                          color: canPublish ? Color(0xFFa83206) : Colors.white.withOpacity(0.5),
+                          color: canPublish ? AppColors.brandPrimaryStrong : AppColors.textOnBrand.withValues(alpha: 0.5),
                         )),
                     ),
                   ),
@@ -417,7 +413,7 @@ class _TextCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Color(0x14a83206), blurRadius: 16, offset: Offset(0, 4))],
+        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 16, offset: Offset(0, 4))],
       ),
       child: Column(
         children: [
@@ -470,7 +466,7 @@ class _AddMediaCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.primaryContainer.withOpacity(0.4), width: 1.5),
-          boxShadow: [BoxShadow(color: Color(0x0Ea83206), blurRadius: 12, offset: Offset(0, 3))],
+          boxShadow: [BoxShadow(color: AppColors.ambientShadow, blurRadius: 12, offset: Offset(0, 3))],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -480,7 +476,7 @@ class _AddMediaCard extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: AppColors.primaryGradient,
                 shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Color(0x40a83206), blurRadius: 12, offset: Offset(0, 4))],
+                boxShadow: [BoxShadow(color: AppColors.primaryGlow, blurRadius: 12, offset: Offset(0, 4))],
               ),
               child: Icon(Icons.add_photo_alternate_rounded, color: Colors.white, size: 28),
             ),
@@ -584,7 +580,7 @@ class _VideoPreviewCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Color(0x1Fa83206), blurRadius: 12, offset: Offset(0, 4))],
+        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, offset: Offset(0, 4))],
       ),
       child: Stack(
         alignment: Alignment.center,
@@ -635,7 +631,7 @@ class _MediaPickerSheet extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        boxShadow: [BoxShadow(color: Color(0x30000000), blurRadius: 30, offset: Offset(0, -4))],
+        boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 30, offset: Offset(0, -4))],
       ),
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
       child: Column(
@@ -649,23 +645,23 @@ class _MediaPickerSheet extends StatelessWidget {
           SizedBox(height: 20),
           Row(children: [
             _SheetOption(
-              icon: Icons.camera_alt_rounded,
+              icon: Icons.camera_alt_outlined,
               label: '拍照',
-              gradient: LinearGradient(colors: [Color(0xFFa83206), Color(0xFFff784e)]),
+              gradient: AppColors.primaryGradient,
               onTap: onCamera,
             ),
             SizedBox(width: 14),
             _SheetOption(
-              icon: Icons.photo_library_rounded,
+              icon: Icons.photo_library_outlined,
               label: '相册图片',
-              gradient: LinearGradient(colors: [Color(0xFF006760), Color(0xFF7fe6db)]),
+              gradient: LinearGradient(colors: [AppColors.brandPrimaryStrong, AppColors.brandPrimary]),
               onTap: onPickImages,
             ),
             SizedBox(width: 14),
             _SheetOption(
-              icon: Icons.videocam_rounded,
+              icon: Icons.videocam_outlined,
               label: '视频',
-              gradient: LinearGradient(colors: [Color(0xFF705900), Color(0xFFfdd34d)]),
+              gradient: LinearGradient(colors: [AppColors.statusNeutral, AppColors.textSecondary]),
               onTap: onPickVideo,
             ),
           ]),

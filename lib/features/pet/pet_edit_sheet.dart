@@ -8,6 +8,7 @@ import '../../shared/theme/app_fonts.dart';
 import '../community/data/post_repository.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
+import '../../shared/utils/error_presenter.dart';
 
 /// 宠物编辑底部弹窗（基于 PeerApi）
 /// 接受 [PetInfoModel]，保存时调用 POST /pet/info/update
@@ -129,7 +130,7 @@ class _PetEditSheetState extends ConsumerState<PetEditSheet> {
       if (mounted) {
         setState(() {
           _saving = false;
-          _error  = e.toString().replaceAll('Exception: ', '');
+          _error  = ErrorPresenter.message(e, fallback: '保存失败，请稍后重试');
         });
       }
     }

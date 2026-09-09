@@ -762,8 +762,8 @@ class _TimelineShareSheetState extends State<_TimelineShareSheet> {
         const SizedBox(height: 16),
         // 标题
         Row(children: [
-          const Icon(Icons.wb_sunny_rounded,
-              color: Color(0xFF07C160), size: 20),
+          const Icon(Icons.wb_sunny_outlined,
+              color: AppColors.wechat, size: 20),
           const SizedBox(width: 8),
           Text('分享到朋友圈',
               style: TextStyle(
@@ -776,16 +776,16 @@ class _TimelineShareSheetState extends State<_TimelineShareSheet> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFF07C160).withValues(alpha: 0.10),
+              color: AppColors.wechat.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                  color: const Color(0xFF07C160).withValues(alpha: 0.25)),
+                  color: AppColors.wechat.withValues(alpha: 0.25)),
             ),
             child: const Text('#宠联芯#',
                 style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF07C160))),
+                    color: AppColors.wechat)),
           ),
         ]),
         const SizedBox(height: 14),
@@ -846,7 +846,7 @@ class _TimelineShareSheetState extends State<_TimelineShareSheet> {
           child: ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF07C160),
+              backgroundColor: AppColors.wechat,
               foregroundColor: Colors.white,
               minimumSize: const Size.fromHeight(48),
               padding: EdgeInsets.zero,
@@ -1060,7 +1060,7 @@ class _CaptureCell extends StatelessWidget {
     // 视频且没有封面 → 黑底 + 大播放图标
     if (item.isVideo && item.coverUrl.isEmpty) {
       return Container(
-        color: const Color(0xFF1C1C1E),
+        color: AppColors.textPrimary,
         child: const Center(
           child: Icon(Icons.play_circle_fill_rounded,
               size: 40, color: Colors.white70),
@@ -1455,9 +1455,9 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
                                           : () => _showShareSheet(ctx),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor:
-                                            const Color(0xFFEEF2FF),
+                                            AppColors.brandPrimarySoft,
                                         foregroundColor:
-                                            const Color(0xFF5869DB),
+                                            AppColors.brandPrimaryStrong,
                                         shape: RoundedRectangleBorder(
                                             borderRadius:
                                                 BorderRadius.circular(12)),
@@ -1465,12 +1465,12 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
                                         padding: EdgeInsets.zero,
                                       ),
                                       child: _sharingCommunity
-                                          ? const SizedBox(
+                                          ? SizedBox(
                                               width: 16,
                                               height: 16,
                                               child: CircularProgressIndicator(
                                                   strokeWidth: 2,
-                                                  color: Color(0xFF5869DB)))
+                                                  color: AppColors.brandPrimaryStrong))
                                           : const Icon(Icons.share_rounded,
                                               size: 20),
                                     ),
@@ -1625,7 +1625,7 @@ class _WcIconBtn extends StatelessWidget {
   const _WcIconBtn(
       {required this.icon, required this.tooltip, required this.onTap});
 
-  static const Color _green = Color(0xFF07C160);
+  static const Color _green = AppColors.wechat;
 
   @override
   Widget build(BuildContext context) {
@@ -1695,7 +1695,7 @@ class _ShareSheet extends StatelessWidget {
             _ShareOption(
               icon: Icons.groups_rounded,
               label: '社区动态',
-              color: const Color(0xFFFF6B35),
+              color: AppColors.brandPrimary,
               onTap: () {
                 Navigator.pop(context);
                 onCommunity();
@@ -1704,7 +1704,7 @@ class _ShareSheet extends StatelessWidget {
             _ShareOption(
               icon: Icons.chat_bubble_rounded,
               label: '微信好友',
-              color: const Color(0xFF07C160),
+              color: AppColors.wechat,
               onTap: () {
                 Navigator.pop(context);
                 onWechat();
@@ -1713,7 +1713,7 @@ class _ShareSheet extends StatelessWidget {
             _ShareOption(
               icon: Icons.wb_sunny_rounded,
               label: '朋友圈',
-              color: const Color(0xFF07C160),
+              color: AppColors.wechat,
               onTap: () {
                 Navigator.pop(context);
                 onTimeline();

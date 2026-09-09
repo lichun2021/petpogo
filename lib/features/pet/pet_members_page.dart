@@ -8,6 +8,7 @@ import '../../shared/utils/wechat_share.dart';
 import '../share/data/repository/share_repository.dart';
 import 'data/models/pet_share_model.dart';
 import 'data/repository/pet_share_repository.dart';
+import '../../shared/widgets/app_error_view.dart';
 
 // ── 宠物成员管理页 ─────────────────────────────────────────
 /// 展示宠物的所有共享成员并支持移除
@@ -30,7 +31,7 @@ class PetMembersPage extends ConsumerStatefulWidget {
 class _PetMembersPageState extends ConsumerState<PetMembersPage> {
   List<PetMemberModel> _members = [];
   bool _loading = true;
-  String? _error;
+  Object? _error;
 
   @override
   void initState() {
@@ -57,7 +58,7 @@ class _PetMembersPageState extends ConsumerState<PetMembersPage> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = e;
         });
       }
     }
@@ -101,9 +102,7 @@ class _PetMembersPageState extends ConsumerState<PetMembersPage> {
       );
     } catch (e) {
       if (mounted) {
-        final msg = e.toString().replaceAll('Exception: ', '');
-        PetToast.error(
-            context, msg.contains('[PetShare]') ? msg : '生成分享失败，请重试');
+        PetToast.error(context, e, fallback: '生成分享失败，请重试');
       }
     } finally {
       if (mounted) setState(() => _sharing = false);
@@ -259,24 +258,7 @@ class _PetMembersPageState extends ConsumerState<PetMembersPage> {
   Widget _buildBody() {
     // 有错误且没有数据时显示错误
     if (_error != null && _members.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.wifi_off_rounded,
-                size: 56, color: AppColors.onSurfaceVariant),
-            const SizedBox(height: 16),
-            Text(_error!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 13,
-                    color: AppColors.onSurfaceVariant)),
-            const SizedBox(height: 16),
-            OutlinedButton(onPressed: _load, child: const Text('重试')),
-          ]),
-        ),
-      );
+      return AppErrorView(error: _error, fallback: '成员列表加载失败，请稍后重试', onRetry: _load);
     }
 
     // 没有成员时显示空状态
@@ -348,10 +330,10 @@ class _MemberTile extends StatelessWidget {
 
     // 角色配色
     final Color roleColor = isOwner
-        ? AppColors.primary
+        ? AppColors.brandPrimary
         : isAdmin
-            ? const Color(0xFF60A5FA)
-            : AppColors.onSurfaceVariant;
+            ? AppColors.brandPrimaryStrong
+            : AppColors.statusNeutral;
     final IconData roleIcon = isOwner
         ? Icons.star_rounded
         : isAdmin

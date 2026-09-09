@@ -174,7 +174,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        PetToast.error(context, e.toString().replaceAll('Exception: ', ''));
+        PetToast.error(context, e);
       }
     }
   }
@@ -207,7 +207,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        PetToast.error(context, e.toString().replaceAll('Exception: ', ''));
+        PetToast.error(context, e);
       }
     }
   }
@@ -298,7 +298,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
                           height: 28,
                           decoration: BoxDecoration(
                             color: _avatarUrl != null
-                                ? Color(0xFF4ADE80)
+                                ? AppColors.statusOnline
                                 : AppColors.primary,
                             shape: BoxShape.circle,
                             border:
@@ -324,7 +324,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
                     fontFamily: AppFonts.primary,
                     fontSize: 11,
                     color: _avatarUrl != null
-                        ? Color(0xFF4ADE80)
+                        ? AppColors.statusOnline
                         : AppColors.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
                   ),
@@ -582,7 +582,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
                     fontFamily: AppFonts.primary,
                     fontSize: 11,
                     color: _avatarFile != null
-                        ? Color(0xFF4ADE80)
+                        ? AppColors.statusOnline
                         : AppColors.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
                   ),

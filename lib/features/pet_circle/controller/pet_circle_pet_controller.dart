@@ -6,6 +6,7 @@ import '../../device/data/repository/device_repository.dart';
 import '../../pet/data/models/pet_peer_models.dart';
 import '../../pet/data/repository/pet_peer_repository.dart';
 import '../../pet/data/repository/pet_share_repository.dart';
+import '../../../shared/utils/error_presenter.dart';
 
 /// 萌宠圈宠物来源
 enum PetCircleSource {
@@ -165,7 +166,7 @@ class PetCirclePetController extends StateNotifier<PetCirclePetState> {
       state = state.copyWith(
         isLoading: false,
         hasLoaded: true,
-        errorMessage: e.toString(),
+        errorMessage: ErrorPresenter.message(e, fallback: '宠物加载失败，请稍后重试'),
       );
     }
   }

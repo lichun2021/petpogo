@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../shared/theme/app_fonts.dart';
 import '../data/models/capture_model.dart';
+import '../../../shared/theme/app_colors.dart';
 
 class AiEmotionCard extends StatelessWidget {
   final AiEmotionResult result;
@@ -27,10 +28,10 @@ class AiEmotionCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0FFF8),
+        color: AppColors.statusOnlineSoft,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-            color: const Color(0xFF43E97B).withOpacity(0.2)),
+            color: AppColors.statusOnline.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,8 +84,8 @@ class AiEmotionCard extends StatelessWidget {
                   backgroundColor: Colors.grey.shade200,
                   valueColor: AlwaysStoppedAnimation(
                     e == result.top
-                        ? const Color(0xFF43E97B)
-                        : const Color(0xFF43E97B).withOpacity(0.4),
+                        ? AppColors.statusOnline
+                        : AppColors.statusOnline.withValues(alpha: 0.4),
                   ),
                 ),
               ),
