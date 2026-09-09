@@ -88,7 +88,7 @@ class AppCenteredModalCard extends StatelessWidget {
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
+              color: AppColors.surfaceCard,
               borderRadius: BorderRadius.circular(28),
               boxShadow: [
                 BoxShadow(

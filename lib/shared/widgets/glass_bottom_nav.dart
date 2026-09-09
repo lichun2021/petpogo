@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_tokens.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
-// ── 玻璃态底部导航栏 ──────────────────────────────────────
-/// 底部导航栏 UI 组件
+// ── 底部导航栏 ────────────────────────────────────────────
+/// 全 App 唯一的底栏激活样式：
+///   brandPrimarySoft 圆角块 + brandPrimary 图标/文字；未选中 textSecondary。
+///   图标始终用线性 glyph，不切换实心变体（见 docs/design-tokens.md §八）。
 class GlassBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -21,41 +24,37 @@ class GlassBottomNav extends StatelessWidget {
     return ClipRect(
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
+          color: AppColors.surfaceCard,
           border: Border(
-            top: BorderSide(
-              color: AppColors.outlineVariant.withValues(alpha: 0.55),
-              width: 0.8,
-            ),
+            top: BorderSide(color: AppColors.borderSubtle, width: 1),
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.ambientShadow.withValues(alpha: 0.22),
+              color: AppColors.ambientShadow,
               blurRadius: 26,
               offset: const Offset(0, -8),
-            ),
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.05),
-              blurRadius: 18,
-              offset: const Offset(0, -2),
             ),
           ],
         ),
         child: SafeArea(
           top: false,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-            child: Row(
-              children: items.asMap().entries.map((entry) {
-                final index = entry.key;
-                return Expanded(
-                  child: NavButton(
-                    item: entry.value,
-                    selected: currentIndex == index,
-                    onTap: () => onTap(index),
-                  ),
-                );
-              }).toList(),
+          child: SizedBox(
+            height: AppSize.tabBarHeight,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.x8, vertical: AppSpacing.x8),
+              child: Row(
+                children: items.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  return Expanded(
+                    child: NavButton(
+                      item: entry.value,
+                      selected: currentIndex == index,
+                      onTap: () => onTap(index),
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
           ),
         ),
@@ -78,6 +77,8 @@ class NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = selected ? AppColors.brandPrimary : AppColors.textSecondary;
+
     return Semantics(
       button: true,
       selected: selected,
@@ -86,40 +87,31 @@ class NavButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppRadius.controlRadius,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeOutCubic,
-            height: 58,
+            constraints: const BoxConstraints(minHeight: AppSize.touchMin),
             alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.x4, vertical: AppSpacing.x4),
             decoration: BoxDecoration(
-              color: selected
-                  ? AppColors.primaryContainer.withValues(alpha: 0.42)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
+              color: selected ? AppColors.brandPrimarySoft : Colors.transparent,
+              borderRadius: AppRadius.controlRadius,
             ),
             child: ExcludeSemantics(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    selected ? item.activeIcon : item.icon,
-                    color: selected
-                        ? AppColors.primary
-                        : AppColors.onSurfaceVariant,
-                    size: 23,
-                  ),
-                  const SizedBox(height: 2),
+                  Icon(item.icon, color: color, size: AppIconSize.tabBar),
+                  const SizedBox(height: AppSpacing.x4),
                   AnimatedDefaultTextStyle(
                     duration: const Duration(milliseconds: 200),
                     style: TextStyle(
                       fontFamily: AppFonts.primary,
                       fontSize: 11,
                       fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                      color: selected
-                          ? AppColors.primary
-                          : AppColors.onSurfaceVariant,
+                      color: color,
                     ),
                     child: Text(
                       item.label,
@@ -138,13 +130,12 @@ class NavButton extends StatelessWidget {
 }
 
 class NavItem {
+  /// 线性图标；选中态只变色，不换实心 glyph
   final IconData icon;
-  final IconData activeIcon;
   final String label;
 
-  NavItem({
+  const NavItem({
     required this.icon,
-    required this.activeIcon,
     required this.label,
   });
 }

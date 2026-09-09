@@ -112,8 +112,8 @@ class AiErrorView extends StatelessWidget {
         ElevatedButton(
           onPressed: onRetry,
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
+            backgroundColor: AppColors.brandPrimary,
+            foregroundColor: AppColors.textOnBrand,
           ),
           child: Text('重试'),
         ),

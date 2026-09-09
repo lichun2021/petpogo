@@ -3,11 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import 'app_fonts.dart';
+import 'app_tokens.dart';
 
-/// PetPogo "The Curated Companion" 主题
-/// 字体：Plus Jakarta Sans（设计规范 §15.3）
+/// PetPogo 暖棕粉红主题
+/// 字体：Plus Jakarta Sans + 中文回退（AppFonts）
+/// 色值 / 间距 / 圆角 / 字号见 docs/design-tokens.md
 /// 设计原则：
-///   — 无 1px 边框分割，用背景色层次
+///   — 分隔优先用背景层次（surfacePage / surfaceCard / surfaceSunken）；
+///     必要时用 1px borderSubtle，不用带透明度的描边
 ///   — 阴影带品牌棕红色调
 ///   — Material3 ColorScheme 精确对齐设计 Token
 class AppTheme {
@@ -72,17 +75,17 @@ class AppTheme {
           headlineMedium: GoogleFonts.plusJakartaSans(fontSize: 28, fontWeight: FontWeight.w600, letterSpacing: -0.01 * 28, color: AppColors.onSurface),
           headlineSmall:  GoogleFonts.plusJakartaSans(fontSize: 24, fontWeight: FontWeight.w600, color: AppColors.onSurface),
           // Title
-          titleLarge:  GoogleFonts.plusJakartaSans(fontSize: 22, fontWeight: FontWeight.w600, color: AppColors.onSurface),
+          titleLarge:  GoogleFonts.plusJakartaSans(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary),   // 页面标题
           titleMedium: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.onSurface),
-          titleSmall:  GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.onSurface),
+          titleSmall:  GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),   // 区块标题
           // Body
           bodyLarge:  GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w400, color: AppColors.onSurface),
-          bodyMedium: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.onSurface),
-          bodySmall:  GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w400, color: AppColors.onSurfaceVariant),
+          bodyMedium: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.textPrimary),   // 正文
+          bodySmall:  GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w400, color: AppColors.textSecondary),
           // Label — 元数据标签
-          labelLarge:  GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.01 * 14, color: AppColors.onSurface),
+          labelLarge:  GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: 0.01 * 13, color: AppColors.textPrimary),   // 列表标题
           labelMedium: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.01 * 12, color: AppColors.onSurface),
-          labelSmall:  GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.01 * 11, color: AppColors.onSurfaceVariant),
+          labelSmall:  GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.01 * 11, color: AppColors.textTertiary),
         ).apply(
           // 中文回退字体：统一从 AppFonts.chineseFallback 读取，改字体只改 app_fonts.dart
           fontFamilyFallback: AppFonts.fallback,
@@ -99,9 +102,9 @@ class AppTheme {
           systemOverlayStyle: SystemUiOverlayStyle.dark,
           titleTextStyle: GoogleFonts.plusJakartaSans(
             fontSize: 22,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
             letterSpacing: -0.5,
-            color: AppColors.primary,
+            color: AppColors.brandPrimaryStrong,
           ).copyWith(
             fontFamilyFallback: AppFonts.fallback,
           ),
@@ -113,47 +116,39 @@ class AppTheme {
           color: AppColors.surfaceContainerLowest,
           elevation: 0,
           shadowColor: AppColors.cardShadow,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppRadius.cardRadius,
           ),
           margin: EdgeInsets.zero,
         ),
 
-        // ── Elevated Button (Primary) ──────────────────
-        // Pill 形，渐变效果通过 BoxDecoration 在自定义 Widget 实现
+        // ── Elevated / Filled Button (Primary) ─────────
+        // 主操作唯一色 brandPrimary；按压态 brandPrimaryStrong
         elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: AppColors.onPrimary,
-            elevation: 0,
-            shadowColor: AppColors.primaryGlow,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(48), // xl pill
-            ),
-            // 不设置 fontFamily，让系统自动选择中文字体
-            textStyle: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          style: _primaryButtonStyle,
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: _primaryButtonStyle,
         ),
 
         // ── Outlined / Text Button ─────────────────────
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.primary,
-            side: BorderSide(color: AppColors.outlineVariant.withOpacity(0.15)),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(48),
+            foregroundColor: AppColors.brandPrimary,
+            side: BorderSide(color: AppColors.borderSubtle),
+            minimumSize: const Size(AppSize.touchMin, AppSize.touchMin),
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.x24, vertical: AppSpacing.x12),
+            shape: const RoundedRectangleBorder(
+              borderRadius: AppRadius.controlRadius,
             ),
           ),
         ),
 
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
-            foregroundColor: AppColors.primary,
+            foregroundColor: AppColors.brandPrimary,
+            minimumSize: const Size(AppSize.touchMin, AppSize.touchMin),
             textStyle: GoogleFonts.plusJakartaSans(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -165,34 +160,35 @@ class AppTheme {
         // 填充式，无任何边框（包括焦点状态）
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: AppColors.surfaceContainer,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+          fillColor: AppColors.surfaceSunken,
+          border: const OutlineInputBorder(
+            borderRadius: AppRadius.controlRadius,
             borderSide: BorderSide.none,
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+          enabledBorder: const OutlineInputBorder(
+            borderRadius: AppRadius.controlRadius,
             borderSide: BorderSide.none,
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+          focusedBorder: const OutlineInputBorder(
+            borderRadius: AppRadius.controlRadius,
             borderSide: BorderSide.none,  // 无焦点边框
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
+            borderRadius: AppRadius.controlRadius,
+            borderSide: BorderSide(color: AppColors.statusAlert),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.x16, vertical: AppSpacing.x16),
           hintStyle: GoogleFonts.plusJakartaSans(
             fontSize: 14,
-            color: AppColors.onSurfaceVariant,
+            color: AppColors.textTertiary,
           ),
         ),
 
-        // ── Divider — 禁止使用！仅保留极低透明度 ────────
+        // ── Divider — 1px border-subtle ───────────────
         dividerTheme: DividerThemeData(
-          color: AppColors.outlineVariant.withOpacity(0.10),
-          thickness: 0,
+          color: AppColors.borderSubtle,
+          thickness: 1,
           space: 0,
         ),
 
@@ -200,8 +196,8 @@ class AppTheme {
         // 玻璃态效果在 app.dart 中用 ClipRRect + BackdropFilter 实现
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
           backgroundColor: Colors.transparent,
-          selectedItemColor: AppColors.primary,
-          unselectedItemColor: AppColors.onSurfaceVariant,
+          selectedItemColor: AppColors.brandPrimary,
+          unselectedItemColor: AppColors.textSecondary,
           type: BottomNavigationBarType.fixed,
           elevation: 0,
           selectedLabelStyle: TextStyle(
@@ -220,35 +216,40 @@ class AppTheme {
 
         // ── Chip ──────────────────────────────────────
         chipTheme: ChipThemeData(
-          backgroundColor: AppColors.surfaceContainerLow,
-          selectedColor: AppColors.primary,
+          backgroundColor: AppColors.surfaceSunken,
+          selectedColor: AppColors.brandPrimarySoft,
           labelStyle: GoogleFonts.plusJakartaSans(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: AppColors.onSurface,
+            color: AppColors.textPrimary,
           ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(48),
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppRadius.pillRadius,
           ),
           side: BorderSide.none,
         ),
 
         // ── FloatingActionButton ───────────────────────
         floatingActionButtonTheme: FloatingActionButtonThemeData(
-          backgroundColor: AppColors.secondaryContainer,
-          foregroundColor: AppColors.onSecondaryContainer,
+          backgroundColor: AppColors.brandPrimary,
+          foregroundColor: AppColors.textOnBrand,
           elevation: 0,
           shape: CircleBorder(),
         ),
 
         // ── Icon ──────────────────────────────────────
         iconTheme: IconThemeData(
-          color: AppColors.onSurface,
+          color: AppColors.textPrimary,
           size: 24,
         ),
         primaryIconTheme: IconThemeData(
-          color: AppColors.primary,
+          color: AppColors.brandPrimary,
           size: 24,
+        ),
+
+        // ── Progress ──────────────────────────────────
+        progressIndicatorTheme: ProgressIndicatorThemeData(
+          color: AppColors.brandPrimary,
         ),
 
         // ── SnackBar ──────────────────────────────────
@@ -258,10 +259,54 @@ class AppTheme {
             fontSize: 14,
             color: AppColors.inverseOnSurface,
           ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppRadius.controlRadius,
           ),
           behavior: SnackBarBehavior.floating,
         ),
+      );
+
+  /// 主按钮样式：brandPrimary 底 / textOnBrand 字 / 按压 brandPrimaryStrong
+  static ButtonStyle get _primaryButtonStyle => ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
+            return AppColors.brandPrimary.withValues(alpha: 0.4);
+          }
+          if (states.contains(WidgetState.pressed)) {
+            return AppColors.brandPrimaryStrong;
+          }
+          return AppColors.brandPrimary;
+        }),
+        foregroundColor: WidgetStatePropertyAll(AppColors.textOnBrand),
+        overlayColor: WidgetStatePropertyAll(
+            AppColors.brandPrimaryStrong.withValues(alpha: 0.12)),
+        elevation: const WidgetStatePropertyAll(0),
+        shadowColor: WidgetStatePropertyAll(AppColors.primaryGlow),
+        minimumSize:
+            const WidgetStatePropertyAll(Size(AppSize.touchMin, AppSize.touchMin)),
+        padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(
+            horizontal: AppSpacing.x24, vertical: AppSpacing.x12)),
+        shape: const WidgetStatePropertyAll(RoundedRectangleBorder(
+          borderRadius: AppRadius.controlRadius,
+        )),
+        textStyle: const WidgetStatePropertyAll(TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+        )),
+      );
+
+  /// 数据 / 时间 / 数字用等宽字体（仅限短数据）
+  static TextStyle monoData({
+    double fontSize = 14,
+    FontWeight fontWeight = FontWeight.w600,
+    Color? color,
+  }) =>
+      TextStyle(
+        fontFamily: 'monospace',
+        fontFamilyFallback: const ['Menlo', 'Roboto Mono', 'Courier New'],
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        color: color ?? AppColors.textPrimary,
+        fontFeatures: const [FontFeature.tabularFigures()],
       );
 }

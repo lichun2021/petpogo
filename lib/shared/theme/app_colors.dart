@@ -90,8 +90,47 @@ class AppColors {
   static LinearGradient get primaryGradient => _scheme.primaryGradient;
   static LinearGradient get heroGradient    => _scheme.heroGradient;
 
-  // ─── 固定色（不随主题变化）────────────────────────────
-  static const Color star    = Color(0xFFfdd34d);
-  static const Color success = Color(0xFF4CAF50);
-  static const Color online  = Color(0xFF4CAF50);
+  // ─── 语义 Token（新页面优先使用，见 docs/design-tokens.md）─
+  // Brand
+  static Color get brandPrimary       => _scheme.brandPrimary;
+  static Color get brandPrimaryStrong => _scheme.brandPrimaryStrong;
+  static Color get brandPrimarySoft   => _scheme.brandPrimarySoft;
+
+  // Status
+  static Color get statusOnline       => _scheme.statusOnline;
+  static Color get statusOnlineStrong => _scheme.statusOnlineStrong;
+  static Color get statusOnlineSoft   => _scheme.statusOnlineSoft;
+  static Color get statusAlert        => _scheme.statusAlert;
+  static Color get statusAlertSoft    => _scheme.statusAlertSoft;
+  static Color get statusNeutral      => _scheme.statusNeutral;
+
+  // Text
+  static Color get textPrimary   => _scheme.textPrimary;
+  static Color get textSecondary => _scheme.textSecondary;
+  static Color get textTertiary  => _scheme.textTertiary;
+  static Color get textOnBrand   => _scheme.textOnBrand;
+
+  // Surface
+  static Color get surfacePage   => _scheme.surfacePage;
+  static Color get surfaceCard   => _scheme.surfaceCard;
+  static Color get surfaceSunken => _scheme.surfaceSunken;
+  static Color get borderSubtle  => _scheme.borderSubtle;
+
+  // ─── 第三方品牌色（不随主题变化，仅用于对应平台的分享入口）─
+  static const Color wechat = Color(0xFF07C160);
+  static const Color tencentMap = Color(0xFF07C160);
+  static const Color amap = Color(0xFF1B9BE0);
+  static const Color baiduMap = Color(0xFF3385FF);
+  static const Color appleMaps = Color(0xFF34C759);
+
+  // ─── 沉浸式媒体查看器底色（视频 / 大图全屏，不随主题变化）─
+  static const Color mediaBackdrop = Color(0xFF0D0D1A);
+
+  // ─── 旧固定色（已废弃，由跟随主题的语义 token 取代）───
+  @Deprecated('Use AppColors.brandPrimary')
+  static Color get star    => _scheme.brandPrimary;
+  @Deprecated('Use AppColors.statusOnline')
+  static Color get success => _scheme.statusOnline;
+  @Deprecated('Use AppColors.statusOnline')
+  static Color get online  => _scheme.statusOnline;
 }

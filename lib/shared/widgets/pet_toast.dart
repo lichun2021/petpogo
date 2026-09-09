@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:petpogo_app/core/providers/raw_error_provider.dart';
 import 'package:petpogo_app/shared/theme/app_colors.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
+import 'package:petpogo_app/shared/theme/app_theme.dart';
+import 'package:petpogo_app/shared/theme/app_tokens.dart';
+import 'package:petpogo_app/shared/utils/error_presenter.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  PetToast — 顶部滑入通知
@@ -8,7 +13,8 @@ import 'package:petpogo_app/shared/theme/app_fonts.dart';
 //  · 支持上滑手动提前关闭
 //  用法：PetToast.show(context, '消息');
 //       PetToast.success(context, '成功');
-//       PetToast.error(context, '错误');
+//       PetToast.error(context, e);          // 传错误对象，自动转设计文案
+//       PetToast.error(context, '已设计好的文案');
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum _ToastStyle { info, success, warning, error }
@@ -28,14 +34,39 @@ class PetToast {
           {Duration? duration}) =>
       _show(context, message, _ToastStyle.warning, duration: duration);
 
-  static void error(BuildContext context, String message,
-          {Duration? duration}) =>
-      _show(context, message, _ToastStyle.error, duration: duration);
+  /// [error] 可以是 String（已设计好的文案）或任意错误对象。
+  /// 错误对象经 [ErrorPresenter] 转成用户文案；「显示原始错误信息」开关
+  /// 打开时在文案下方附带原始错误文本。
+  static void error(BuildContext context, Object? error,
+      {Duration? duration, String? fallback}) {
+    if (error is String) {
+      _show(context, error, _ToastStyle.error, duration: duration);
+      return;
+    }
+    final copy = ErrorPresenter.describe(error, fallback: fallback);
+    _show(
+      context,
+      copy.message,
+      _ToastStyle.error,
+      raw: _rawEnabled(context) ? copy.raw : null,
+      duration: duration ?? const Duration(milliseconds: 3200),
+    );
+  }
+
+  static bool _rawEnabled(BuildContext context) {
+    try {
+      return ProviderScope.containerOf(context, listen: false)
+          .read(showRawErrorProvider);
+    } catch (_) {
+      return false;
+    }
+  }
 
   static void _show(
     BuildContext context,
     String message,
     _ToastStyle style, {
+    String? raw,
     Duration? duration,
   }) {
     _current?.remove();
@@ -56,6 +87,7 @@ class PetToast {
     entry = OverlayEntry(
       builder: (ctx) => _ToastBanner(
         message: message,
+        raw: raw,
         style: style,
         duration: duration ?? const Duration(milliseconds: 2200),
         onClose: () {
@@ -73,6 +105,7 @@ class PetToast {
 
 class _ToastBanner extends StatefulWidget {
   final String message;
+  final String? raw;
   final _ToastStyle style;
   final Duration duration;
   final VoidCallback onClose;
@@ -82,6 +115,7 @@ class _ToastBanner extends StatefulWidget {
     required this.style,
     required this.duration,
     required this.onClose,
+    this.raw,
   });
 
   @override
@@ -136,38 +170,40 @@ class _ToastBannerState extends State<_ToastBanner>
 
   @override
   Widget build(BuildContext context) {
-    final (Color bg, Color fg, IconData icon) = switch (widget.style) {
+    final (Color fg, Color pad, IconData icon) = switch (widget.style) {
       _ToastStyle.success => (
-          const Color(0xFF1A1A2E),
-          const Color(0xFF4ADE80),
-          Icons.check_circle_rounded,
+          AppColors.statusOnlineStrong,
+          AppColors.statusOnlineSoft,
+          Icons.check_circle_outline_rounded,
         ),
       _ToastStyle.warning => (
-          const Color(0xFF1A1A2E),
-          const Color(0xFFFBBF24),
+          AppColors.statusAlert,
+          AppColors.statusAlertSoft,
           Icons.warning_amber_rounded,
         ),
       _ToastStyle.error => (
-          const Color(0xFF1A1A2E),
-          const Color(0xFFFF6B6B),
+          AppColors.statusAlert,
+          AppColors.statusAlertSoft,
           Icons.error_outline_rounded,
         ),
       _ToastStyle.info => (
-          const Color(0xFF1A1A2E),
-          const Color(0xFF60A5FA),
-          Icons.notifications_rounded,
+          AppColors.brandPrimary,
+          AppColors.brandPrimarySoft,
+          Icons.notifications_none_rounded,
         ),
     };
 
     var topPad = 56.0;
     try {
-      topPad = MediaQuery.of(context).padding.top + 12;
+      topPad = MediaQuery.of(context).padding.top + AppSpacing.x12;
     } catch (_) {}
+
+    final raw = widget.raw;
 
     return Positioned(
       top: topPad + _dragOffset,
-      left: 16,
-      right: 16,
+      left: AppSpacing.x16,
+      right: AppSpacing.x16,
       child: GestureDetector(
         onVerticalDragUpdate: (details) {
           if (details.delta.dy < 0 && !_dismissed) {
@@ -190,60 +226,74 @@ class _ToastBannerState extends State<_ToastBanner>
             child: Material(
               color: Colors.transparent,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.x16, vertical: AppSpacing.x12),
                 decoration: BoxDecoration(
-                  color: bg,
-                  borderRadius: BorderRadius.circular(18),
+                  color: AppColors.surfaceCard,
+                  borderRadius: AppRadius.cardRadius,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.ambientShadow.withValues(alpha: 0.28),
+                      color: AppColors.cardShadow,
                       blurRadius: 24,
                       spreadRadius: -4,
                       offset: const Offset(0, 8),
                     ),
-                    BoxShadow(
-                      color: fg.withValues(alpha: 0.18),
-                      blurRadius: 16,
-                      spreadRadius: -2,
-                    ),
                   ],
-                  border: Border.all(
-                    color: fg.withValues(alpha: 0.22),
-                    width: 1,
-                  ),
+                  border: Border.all(color: AppColors.borderSubtle, width: 1),
                 ),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
                       width: 36,
                       height: 36,
-                      decoration: BoxDecoration(
-                        color: fg.withValues(alpha: 0.14),
-                        shape: BoxShape.circle,
-                      ),
+                      decoration: BoxDecoration(color: pad, shape: BoxShape.circle),
                       child: Icon(icon, color: fg, size: 20),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.contentGap),
                     Expanded(
                       child: ExcludeSemantics(
-                        child: Text(
-                          widget.message,
-                          style: TextStyle(
-                            fontFamily: AppFonts.primary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.onPrimary.withValues(alpha: 0.92),
-                            height: 1.4,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                widget.message,
+                                style: TextStyle(
+                                  fontFamily: AppFonts.primary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                            if (raw != null && raw.isNotEmpty) ...[
+                              const SizedBox(height: AppSpacing.x4),
+                              SelectableText(
+                                raw,
+                                maxLines: 3,
+                                style: AppTheme.monoData(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.textTertiary,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Icon(
-                      Icons.keyboard_arrow_up_rounded,
-                      size: 18,
-                      color: fg.withValues(alpha: 0.5),
+                    const SizedBox(width: AppSpacing.iconGap),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 9),
+                      child: Icon(
+                        Icons.keyboard_arrow_up_rounded,
+                        size: 18,
+                        color: AppColors.textTertiary,
+                      ),
                     ),
                   ],
                 ),

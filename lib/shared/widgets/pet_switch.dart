@@ -21,12 +21,12 @@ class PetSwitch extends StatelessWidget {
     return Switch(
       value: value,
       onChanged: onChanged,
-      // thumb 始终白色
-      activeColor: Colors.white,
-      inactiveThumbColor: Colors.white,
-      // track: 开→主色，关→浅灰
-      activeTrackColor: AppColors.primary,
-      inactiveTrackColor: const Color(0xFFD0D0D0),
+      // thumb 始终白色（textOnBrand）
+      activeThumbColor: AppColors.textOnBrand,
+      inactiveThumbColor: AppColors.textOnBrand,
+      // track: 开→品牌色，关→暖色分隔线
+      activeTrackColor: AppColors.brandPrimary,
+      inactiveTrackColor: AppColors.borderSubtle,
       // 去掉 track 边框闪烁
       trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
     );

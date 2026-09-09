@@ -88,6 +88,21 @@ echo -e "${CYAN}${BOLD}║     版本: v${PKG_VERSION}                          
 echo -e "${CYAN}${BOLD}╚══════════════════════════════════════════════════╝${NC}"
 echo ""
 
+# ── 功能开关（assets/config/app_flags.json）────────────────────
+# 该文件的值直接决定上架包行为（与 release 模式无关），打包前务必确认
+FLAGS_FILE="assets/config/app_flags.json"
+if [ -f "${FLAGS_FILE}" ]; then
+  echo -e "${YELLOW}${BOLD}▶ [配置] ${FLAGS_FILE}${NC}"
+  sed 's/^/    /' "${FLAGS_FILE}"
+  if grep -Eq '"showRawError"[[:space:]]*:[[:space:]]*true' "${FLAGS_FILE}"; then
+    echo -e "${YELLOW}  ⚠️  showRawError=true：本包会在错误提示下方显示原始报错文本${NC}"
+  fi
+  echo ""
+else
+  echo -e "${YELLOW}  ⚠️  未找到 ${FLAGS_FILE}，App 将使用默认开关（全部关闭）${NC}"
+  echo ""
+fi
+
 # ── 创建输出目录 ──────────────────────────────────────────────
 mkdir -p "${OUTPUT_DIR}"
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_colors.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
+import '../theme/app_tokens.dart';
 
 /// ── PressableButton ────────────────────────────────────────
 /// 带 scale + 触觉反馈的按钮包装器，适用于任何子 Widget
@@ -202,16 +203,16 @@ class PrimaryButton extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: onPressed != null
-                ? [AppColors.primary, AppColors.primary.withOpacity(0.85)]
-                : [AppColors.outlineVariant, AppColors.outlineVariant],
+                ? [AppColors.brandPrimary, AppColors.brandPrimaryStrong]
+                : [AppColors.borderSubtle, AppColors.borderSubtle],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: AppRadius.pillRadius,
           boxShadow: onPressed != null
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
+                    color: AppColors.primaryGlow,
                     blurRadius: 16,
                     offset: Offset(0, 6),
                   )
@@ -232,7 +233,7 @@ class PrimaryButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (icon != null) ...[
-                      Icon(icon, color: Colors.white, size: 18),
+                      Icon(icon, color: AppColors.textOnBrand, size: 18),
                       SizedBox(width: 8),
                     ],
                     Text(
