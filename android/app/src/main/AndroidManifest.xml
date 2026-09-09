@@ -69,9 +69,35 @@
     </application>
     <queries>
         <package android:name="com.tencent.mm"/>
+        <!-- 地图导航唤起：腾讯 / 高德 / 百度 / Google Maps（Android 11+ 包可见性） -->
+        <package android:name="com.tencent.map"/>
+        <package android:name="com.autonavi.minimap"/>
+        <package android:name="com.baidu.BaiduMap"/>
+        <package android:name="com.google.android.apps.maps"/>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- 自定义地图 scheme 可见性（canLaunchUrl 探测用） -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="qqmap"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="androidamap"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="baidumap"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="comgooglemaps"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="geo"/>
         </intent>
     </queries>
 </manifest>

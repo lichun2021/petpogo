@@ -1,10 +1,17 @@
 # iPet-AI 服务 API 参考
 
-> **服务地址**: `http://49.234.39.11:8007`
+> ⚠️ **当前状态**：本页记录的**服务地址**与**认证方式**已过时。App 现已统一通过 AI 网关
+> `https://ai.jxpetai.com`（`AppConfig.aiConsultBaseUrl`）调用，请求由
+> `ApiClient._AuthInterceptor` 自动注入 `x-api-key` / `x-timestamp` / `x-signature`
+> 签名头（`md5(apiKey + timestamp + apiSecret)`），不再直连内网地址。
+> 下方各接口的**路径**与**响应结构**仍有效，仅地址与认证方式已变更。
+
+> **旧服务地址**: `http://49.234.39.11:8007`（已下线）
+> **现服务地址**: `https://ai.jxpetai.com`
 > **版本**: v0.5.0
 > **框架**: FastAPI
-> **认证**: 无（内网服务）
-> **Swagger UI**: http://49.234.39.11:8007/docs
+> **认证**: `x-api-key` + `x-timestamp` + `x-signature`（MD5 签名）
+> **Swagger UI**: https://ai.jxpetai.com/docs
 
 ---
 
@@ -258,8 +265,8 @@
 2. POST api.jxpetai.com/sdkapi/upload/sign
    → 获取 OSS 预签名 uploadUrl + publicUrl
 3. PUT <uploadUrl> → 直传 OSS（不走业务后端流量）
-4. POST http://49.234.39.11:8007/voice/analyze   ← 语音
-   POST http://49.234.39.11:8007/image/analyze   ← 图片
+4. POST https://ai.jxpetai.com/voice/analyze   ← 语音
+   POST https://ai.jxpetai.com/image/analyze   ← 图片
    Content-Type: multipart/form-data
    Body: url=<publicUrl>
 ```
@@ -282,5 +289,5 @@
 |---|---|
 | `lib/features/home/data/repository/ai_repository.dart` | AI 接口调用、OSS 上传封装 |
 | `lib/features/home/data/models/ai_result_model.dart` | `fromAiDirectJson()` 解析 AI 直连响应 |
-| `lib/core/config/app_config.dart` | `aiConsultBaseUrl = "http://49.234.39.11:8007"` |
+| `lib/core/config/app_config.dart` | `aiConsultBaseUrl = "https://ai.jxpetai.com"` |
 | `lib/features/consultation/data/repository/consultation_repository.dart` | AI 问诊接口 |

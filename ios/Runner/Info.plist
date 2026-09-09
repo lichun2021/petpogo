@@ -52,6 +52,10 @@
 		<string>weixin</string>
 		<string>wechat</string>
 		<string>weixinULAPI</string>
+		<string>qqmap</string>
+		<string>iosamap</string>
+		<string>baidumap</string>
+		<string>comgooglemaps</string>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
