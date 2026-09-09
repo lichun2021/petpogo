@@ -417,29 +417,23 @@ class _PetCard extends ConsumerWidget {
                     ],
                   ),
                 ),
-                PopupMenuButton<String>(
-                  tooltip: '宠物操作',
-                  icon: Icon(Icons.more_horiz_rounded,
-                      color: AppColors.textSecondary),
-                  constraints: const BoxConstraints(minWidth: AppSize.touchMin),
-                  onSelected: (action) {
-                    switch (action) {
-                      case 'edit':
-                        _openEdit(context, ref);
-                      case 'members':
-                        _openMembers(context);
-                      case 'delete':
-                        _confirmDelete(context, ref);
-                    }
-                  },
-                  itemBuilder: (_) => [
-                    const PopupMenuItem(value: 'edit', child: Text('编辑资料')),
-                    const PopupMenuItem(value: 'members', child: Text('成员管理')),
-                    PopupMenuItem(
-                        value: 'delete',
-                        child: Text('删除宠物',
-                            style: TextStyle(color: AppColors.statusAlert))),
-                  ],
+                // 操作按钮：成员管理 + 编辑 + 删除
+                _IconBtn(
+                  icon: Icons.group_outlined,
+                  color: AppColors.statusNeutral,
+                  onTap: () => _openMembers(context),
+                ),
+                const SizedBox(width: 6),
+                _IconBtn(
+                  icon: Icons.edit_outlined,
+                  color: AppColors.brandPrimary,
+                  onTap: () => _openEdit(context, ref),
+                ),
+                const SizedBox(width: 6),
+                _IconBtn(
+                  icon: Icons.delete_outline_rounded,
+                  color: AppColors.statusAlert,
+                  onTap: () => _confirmDelete(context, ref),
                 ),
               ],
             ),
@@ -492,6 +486,33 @@ class _PetCard extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 卡片内的小图标按钮（描边圆形，hover 态）
+class _IconBtn extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  const _IconBtn(
+      {required this.icon, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: AppRadius.controlRadius,
+          border: Border.all(color: color.withValues(alpha: 0.22), width: 1),
+        ),
+        child: Icon(icon, size: 17, color: color),
       ),
     );
   }
