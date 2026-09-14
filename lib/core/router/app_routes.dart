@@ -21,6 +21,8 @@ abstract class AppRoutes {
   static const settings = '/settings';
   static const addPet = '/add-pet';
   static const petList = '/pet-list';
+  static const myPosts = '/my-posts';
+  static const publishPost = '/publish-post';
   static const bindDevice = '/bind-device';
   static const login = '/login'; // 登录页
   static String loginWithReturnTo(String returnTo) => Uri(

@@ -417,24 +417,6 @@ class _PetCard extends ConsumerWidget {
                     ],
                   ),
                 ),
-                // 操作按钮：成员管理 + 编辑 + 删除
-                _IconBtn(
-                  icon: Icons.group_outlined,
-                  color: AppColors.statusNeutral,
-                  onTap: () => _openMembers(context),
-                ),
-                const SizedBox(width: 6),
-                _IconBtn(
-                  icon: Icons.edit_outlined,
-                  color: AppColors.brandPrimary,
-                  onTap: () => _openEdit(context, ref),
-                ),
-                const SizedBox(width: 6),
-                _IconBtn(
-                  icon: Icons.delete_outline_rounded,
-                  color: AppColors.statusAlert,
-                  onTap: () => _confirmDelete(context, ref),
-                ),
               ],
             ),
             // ── 年龄·体重 信息行（有内容才显示）──
@@ -453,6 +435,31 @@ class _PetCard extends ConsumerWidget {
                 ),
               ),
             ],
+            // 三个操作保留直达入口，独立一行，避免挤压长名字与属性。
+            const SizedBox(height: AppSpacing.x12),
+            Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              // 操作按钮：成员管理 + 编辑 + 删除
+              _IconBtn(
+                icon: Icons.group_outlined,
+                label: '成员管理',
+                color: AppColors.statusNeutral,
+                onTap: () => _openMembers(context),
+              ),
+              const SizedBox(width: AppSpacing.x8),
+              _IconBtn(
+                icon: Icons.edit_outlined,
+                label: '编辑资料',
+                color: AppColors.brandPrimary,
+                onTap: () => _openEdit(context, ref),
+              ),
+              const SizedBox(width: AppSpacing.x8),
+              _IconBtn(
+                icon: Icons.delete_outline_rounded,
+                label: '删除宠物',
+                color: AppColors.statusAlert,
+                onTap: () => _confirmDelete(context, ref),
+              ),
+            ]),
             // ── 底部分隔线 + 设备标签 ──
             const SizedBox(height: 10),
             Divider(height: 1, thickness: 1, color: AppColors.outlineVariant),
@@ -495,24 +502,32 @@ class _PetCard extends ConsumerWidget {
 class _IconBtn extends StatelessWidget {
   final IconData icon;
   final Color color;
+  final String label;
   final VoidCallback onTap;
   const _IconBtn(
-      {required this.icon, required this.color, required this.onTap});
+      {required this.icon,
+      required this.label,
+      required this.color,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        width: 34,
-        height: 34,
-        decoration: BoxDecoration(
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        label: label,
+        button: true,
+        child: Material(
           color: color.withValues(alpha: 0.08),
           borderRadius: AppRadius.controlRadius,
-          border: Border.all(color: color.withValues(alpha: 0.22), width: 1),
+          child: InkWell(
+              onTap: onTap,
+              borderRadius: AppRadius.controlRadius,
+              child: SizedBox(
+                  width: AppSize.touchMin,
+                  height: AppSize.touchMin,
+                  child: Icon(icon, size: AppIconSize.card, color: color))),
         ),
-        child: Icon(icon, size: 17, color: color),
       ),
     );
   }

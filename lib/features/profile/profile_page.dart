@@ -654,7 +654,7 @@ class _FeatureGrid extends StatelessWidget {
         label: '我的帖子',
         subtitle: '发布记录',
         color: AppColors.statusNeutral,
-        onTap: () => PetToast.show(context, '我的帖子功能即将上线'),
+        onTap: () => context.push(AppRoutes.myPosts),
       ),
       _FeatureItem(
         icon: Icons.music_note_outlined,

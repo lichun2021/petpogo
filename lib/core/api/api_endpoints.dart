@@ -5,6 +5,7 @@
 /// 注意：语音/图像情绪分析实际直连 AI 网关（AppConfig.aiConsultBaseUrl），
 /// 由 ai_repository.dart 拼接完整 URL；本文件仅保留业务后端路径常量。
 abstract class ApiEndpoints {
+  static const postAuthorsFeed = '/sdkapi/post/feed/friends';
   static const musicList = '/sdkapi/music/list';
   static const musicPlaylists = '/sdkapi/music/playlists';
   static String musicPlaylist(int id) => '/sdkapi/music/playlist/$id';

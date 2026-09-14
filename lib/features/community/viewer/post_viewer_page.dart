@@ -15,12 +15,14 @@ class PostViewerPage extends ConsumerStatefulWidget {
   final List<PostModel> posts;
   final int initialIndex;
   final bool friends;
+  final bool syncWithFeed;
 
   PostViewerPage({
     super.key,
     required this.posts,
     required this.initialIndex,
     this.friends = false,
+    this.syncWithFeed = true,
   });
 
   @override
@@ -49,10 +51,14 @@ class _PostViewerPageState extends ConsumerState<PostViewerPage> {
   @override
   Widget build(BuildContext context) {
     // 监听 Feed 状态（点赞同步）
-    final feedState = widget.friends
-        ? ref.watch(friendFeedControllerProvider)
-        : ref.watch(feedControllerProvider);
-    final updates = {for (final post in feedState.posts) post.id: post};
+    final feedState = !widget.syncWithFeed
+        ? null
+        : widget.friends
+            ? ref.watch(friendFeedControllerProvider)
+            : ref.watch(feedControllerProvider);
+    final updates = {
+      for (final post in feedState?.posts ?? <PostModel>[]) post.id: post
+    };
     // 保持打开时的筛选集合与顺序，仅按 ID 同步更新。
     final posts = widget.posts.map((post) => updates[post.id] ?? post).toList();
 
@@ -72,6 +78,7 @@ class _PostViewerPageState extends ConsumerState<PostViewerPage> {
               key: ValueKey(posts[i].id),
               post: posts[i],
               friends: widget.friends,
+              syncWithFeed: widget.syncWithFeed,
               isActive: i == _currentIndex,
             ),
           ),
@@ -134,11 +141,13 @@ class _PostViewItem extends ConsumerStatefulWidget {
   final PostModel post;
   final bool isActive;
   final bool friends;
+  final bool syncWithFeed;
   const _PostViewItem(
       {super.key,
       required this.post,
       required this.isActive,
-      required this.friends});
+      required this.friends,
+      required this.syncWithFeed});
 
   @override
   ConsumerState<_PostViewItem> createState() => _PostViewItemState();
@@ -208,11 +217,14 @@ class _PostViewItemState extends ConsumerState<_PostViewItem> {
 
   @override
   Widget build(BuildContext context) {
-    final post = (widget.friends
-            ? ref.watch(friendFeedControllerProvider)
-            : ref.watch(feedControllerProvider))
-        .posts
-        .firstWhere((p) => p.id == widget.post.id, orElse: () => widget.post);
+    final post = !widget.syncWithFeed
+        ? widget.post
+        : (widget.friends
+                ? ref.watch(friendFeedControllerProvider)
+                : ref.watch(feedControllerProvider))
+            .posts
+            .firstWhere((p) => p.id == widget.post.id,
+                orElse: () => widget.post);
 
     return GestureDetector(
       onTap: () => setState(() => _showControls = !_showControls),

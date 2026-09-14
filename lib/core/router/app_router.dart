@@ -29,6 +29,8 @@ import '../../features/message/system_notification_page.dart';
 import '../../features/community/community_page.dart';
 import '../../features/pet_circle/pet_circle_page.dart';
 import '../../features/profile/profile_page.dart';
+import '../../features/community/my_posts_page.dart';
+import '../../features/community/publish/publish_page.dart';
 import '../../features/profile/settings_page.dart';
 import '../../features/profile/membership_page.dart';
 import '../../features/profile/points_page.dart';
@@ -155,6 +157,8 @@ final appRouter = GoRouter(
     _slide(AppRoutes.orders, const OrdersPage()),
     _slide(AppRoutes.addPet, const AddPetPage()),
     _slide(AppRoutes.petList, const PetListPage()),
+    _slide(AppRoutes.myPosts, const MyPostsPage()),
+    _slide(AppRoutes.publishPost, const PublishPage()),
     _slide(AppRoutes.bindDevice, const SelectDevicePage()),
 
     GoRoute(

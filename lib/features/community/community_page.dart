@@ -15,6 +15,8 @@ import '../message/controller/im_controller.dart';
 import '../message/data/repository/im_repository.dart';
 import '../../core/router/app_routes.dart';
 import 'controller/feed_controller.dart';
+import 'widgets/community_category_bar.dart';
+import 'widgets/community_post_card.dart';
 import 'data/models/post_model.dart';
 import 'publish/publish_page.dart';
 import 'viewer/post_viewer_page.dart';
@@ -77,10 +79,8 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
     if (!mounted) return;
     final friendIds = result.when(
       success: (friends) {
-        final ids = friends
-            .map((f) => f.userID)
-            .where((id) => id.isNotEmpty)
-            .toList();
+        final ids =
+            friends.map((f) => f.userID).where((id) => id.isNotEmpty).toList();
         debugPrint('[FriendFeed] IM 好友列表: ${ids.length} 个');
         return ids;
       },
@@ -344,35 +344,24 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                     Tab(text: l10n.communityTabDiscover),
                   ],
                 ),
-                SizedBox(
-                  height: 44,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    itemCount: categories.length,
-                    separatorBuilder: (_, __) => SizedBox(width: 8),
-                    itemBuilder: (_, i) => _CategoryChip(
-                      label: categories[i],
-                      selected: _selectedCategory == i,
-                      onTap: () {
-                        setState(() => _selectedCategory = i);
-                        // 如果当前在好友 Tab，同步更新好友流的 tag
-                        if (_tabController.index == 0) {
-                          final tag = i == 0
-                              ? null
-                              : (i == 1
-                                  ? 'dog'
-                                  : i == 2
-                                      ? 'cat'
-                                      : 'other');
-                          ref
-                              .read(friendFeedControllerProvider.notifier)
-                              .setTag(tag);
-                        }
-                      },
-                    ),
-                  ),
+                CommunityCategoryBar(
+                  labels: categories,
+                  selected: _selectedCategory,
+                  onSelected: (i) {
+                    setState(() => _selectedCategory = i);
+                    if (_tabController.index == 0) {
+                      final tag = i == 0
+                          ? null
+                          : i == 1
+                              ? 'dog'
+                              : i == 2
+                                  ? 'cat'
+                                  : 'other';
+                      ref
+                          .read(friendFeedControllerProvider.notifier)
+                          .setTag(tag);
+                    }
+                  },
                 ),
                 Divider(height: 1, thickness: 1, color: AppColors.borderSubtle),
               ],
@@ -464,7 +453,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
               mainAxisSpacing: 10,
               crossAxisSpacing: 10,
               childCount: filtered.length,
-              itemBuilder: (_, i) => _PostCard(
+              itemBuilder: (_, i) => CommunityPostCard(
                 post: filtered[i],
                 index: i,
                 onTap: () => _openViewer(filtered, i),
@@ -559,7 +548,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
               mainAxisSpacing: 10,
               crossAxisSpacing: 10,
               childCount: filtered.length,
-              itemBuilder: (_, i) => _PostCard(
+              itemBuilder: (_, i) => CommunityPostCard(
                 post: filtered[i],
                 index: i,
                 onTap: () => _openViewer(filtered, i, friends: true),
@@ -578,213 +567,6 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
           SliverToBoxAdapter(child: _feedFooter(friendState, true)),
         ],
       ),
-    );
-  }
-}
-
-// ── 帖子卡片（接真实数据）────────────────────────────────────
-class _PostCard extends StatelessWidget {
-  final PostModel post;
-  final int index;
-  final VoidCallback onTap;
-  final VoidCallback onAvatarTap;
-  final VoidCallback? onLike; // null = 自己的帖子，禁止点赞
-
-  const _PostCard({
-    required this.post,
-    required this.index,
-    required this.onTap,
-    required this.onAvatarTap,
-    required this.onLike,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-                color: AppColors.cardShadow, blurRadius: 16, spreadRadius: -4)
-          ],
-        ),
-        clipBehavior: Clip.hardEdge,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── 封面图（不用 Hero，避免新帖刷新时 iOS 出现白色占位框）──
-            if (post.thumbnailUrl != null)
-              _Thumbnail(
-                  url: post.thumbnailUrl!,
-                  isVideo: post.mediaType == MediaType.video),
-
-            // ── 底部信息 ──────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 作者 + 点赞
-                    Row(children: [
-                      GestureDetector(
-                        onTap: onAvatarTap,
-                        child: _SmallAvatar(
-                            url: post.userAvatar, name: post.nickname),
-                      ),
-                      SizedBox(width: 6),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: onAvatarTap,
-                          child: Text(post.nickname,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                  fontFamily: AppFonts.primary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.onSurface)),
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: onLike, // null 时 GestureDetector 不响应
-                        child: Row(children: [
-                          Icon(
-                            post.isLiked
-                                ? Icons.favorite_rounded
-                                : Icons.favorite_border_rounded,
-                            // 自己帖子(onLike==null)：置灰；已点赞：红色；未点赞：浅灰
-                            color: onLike == null
-                                ? AppColors.onSurfaceVariant.withOpacity(0.25)
-                                : post.isLiked
-                                    ? AppColors.error
-                                    : AppColors.onSurfaceVariant
-                                        .withOpacity(0.5),
-                            size: 16,
-                          ),
-                          SizedBox(width: 2),
-                          Text('${post.likeCount}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: onLike == null
-                                    ? AppColors.onSurfaceVariant
-                                        .withOpacity(0.3)
-                                    : AppColors.onSurfaceVariant,
-                              )),
-                        ]),
-                      ),
-                    ]),
-
-                    if (post.content.isNotEmpty) ...[
-                      SizedBox(height: 6),
-                      Text(post.content,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontFamily: AppFonts.primary,
-                              fontSize: 12,
-                              color: AppColors.onSurfaceVariant,
-                              height: 1.4)),
-                    ],
-                  ]),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── 封面图（带视频图标，固定宽高比 3:4 保证卡片等高）──────────
-class _Thumbnail extends StatelessWidget {
-  final String url;
-  final bool isVideo;
-  const _Thumbnail({required this.url, required this.isVideo});
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        AspectRatio(
-          aspectRatio: 3 / 4,
-          child: CachedNetworkImage(
-            imageUrl: url,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            placeholder: (_, __) =>
-                Container(color: AppColors.surfaceContainerHigh),
-            errorWidget: (_, __, ___) => Container(
-              color: AppColors.surfaceContainerHigh,
-              child: Center(
-                child: Icon(Icons.broken_image_outlined,
-                    color: AppColors.onSurfaceVariant, size: 32),
-              ),
-            ),
-          ),
-        ),
-        // ── 视频播放图标（居中大按钮）────────────────
-        if (isVideo)
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.45),
-              shape: BoxShape.circle,
-              border:
-                  Border.all(color: Colors.white.withOpacity(0.7), width: 2),
-            ),
-            child:
-                Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
-          ),
-        // ── 视频标签（右上角小标）────────────────────
-        if (isVideo)
-          Positioned(
-            top: 7,
-            right: 7,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.videocam_rounded, color: Colors.white, size: 11),
-                SizedBox(width: 2),
-                Text('视频',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600)),
-              ]),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-// ── 小头像 ───────────────────────────────────────────────────
-class _SmallAvatar extends StatelessWidget {
-  final String? url;
-  final String name;
-  const _SmallAvatar({this.url, required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    if (url != null && url!.isNotEmpty) {
-      return CircleAvatar(
-          radius: 12, backgroundImage: CachedNetworkImageProvider(url!));
-    }
-    return CircleAvatar(
-      radius: 12,
-      backgroundColor: AppColors.primaryContainer,
-      child: Text(name.isNotEmpty ? name[0] : '?',
-          style: TextStyle(
-              fontSize: 10,
-              color: AppColors.primary,
-              fontWeight: FontWeight.w700)),
     );
   }
 }
@@ -812,41 +594,6 @@ class _ShimmerGrid extends StatelessWidget {
       ),
     );
   }
-}
-
-// ── 分类 Chip ────────────────────────────────────────────────
-class _CategoryChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  const _CategoryChip(
-      {required this.label, required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: Duration(milliseconds: 200),
-          constraints: const BoxConstraints(minHeight: AppSize.touchMin),
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.x16, vertical: AppSpacing.x8),
-          decoration: BoxDecoration(
-            color:
-                selected ? AppColors.brandPrimarySoft : AppColors.surfaceCard,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(label,
-              style: TextStyle(
-                fontFamily: AppFonts.primary,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: selected
-                    ? AppColors.brandPrimaryStrong
-                    : AppColors.textSecondary,
-              )),
-        ),
-      );
 }
 
 // ── 用户操作弹窗（状态机单按钮） ──────────────────────────────
