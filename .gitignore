@@ -48,3 +48,9 @@ app.*.map.json
 # 签名文件（不上传到 Git）
 android/app/petpogo_release.keystore
 android/key.properties
+/.hermes
+/.zcode
+/openspec
+/.zcode
+3-源代码-宠联芯软著申请源代码_修订.docx
+3-源代码-宠联芯软著申请源代码.docx
