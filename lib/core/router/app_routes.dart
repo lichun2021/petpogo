@@ -5,6 +5,7 @@ abstract class AppRoutes {
   // ── Tab 主页 ─────────────────────────────────────────
   static const home = '/';
   static const message = '/message';
+  static const digitalPet = '/digital-pet'; // 数字宠（原「消息」底栏位）
   static const systemNotification = '/system-notification';
   static const community = '/community';
   static const petCircle = '/pet-circle';

@@ -18,6 +18,9 @@ class AppL10nZh extends AppL10n {
   String get navMessage => '消息';
 
   @override
+  String get navDigitalPet => '数字宠';
+
+  @override
   String get navCommunity => '社区';
 
   @override

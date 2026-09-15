@@ -116,5 +116,8 @@
 	<string>宠连芯 需要蓝牙权限，以便连接 KeyTracker 设备。</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>宠连芯 需要蓝牙权限，以便连接 KeyTracker 设备。</string>
+	<!-- ── webview_flutter 内嵌视图（数字宠 3D 场景 / DocReaderPage）开关 ── -->
+	<key>io.flutter.embedded_views_preview</key>
+	<true/>
 </dict>
 </plist>

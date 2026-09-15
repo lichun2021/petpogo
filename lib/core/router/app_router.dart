@@ -26,6 +26,7 @@ import '../../features/auth/controller/auth_controller.dart';
 import '../../features/home/home_page.dart';
 import '../../features/message/message_page.dart';
 import '../../features/message/system_notification_page.dart';
+import '../../features/digital_pet/digital_pet_page.dart';
 import '../../features/community/community_page.dart';
 import '../../features/pet_circle/pet_circle_page.dart';
 import '../../features/profile/profile_page.dart';
@@ -137,7 +138,7 @@ final appRouter = GoRouter(
       routes: [
         // Tab 切换使用淡入动画（不用 slide，避免方向混乱）
         _fade(AppRoutes.home, const HomePage()),
-        _fade(AppRoutes.message, const MessagePage()),
+        _fade(AppRoutes.digitalPet, const DigitalPetPage()),
         _fade(AppRoutes.community, const CommunityPage()),
         _fade(AppRoutes.petCircle, const PetCirclePage()),
         _fade(AppRoutes.profile, const ProfilePage()),
@@ -148,6 +149,7 @@ final appRouter = GoRouter(
     //  子页面 — 从底部滑入（符合 iOS/Android 平台习惯）
     // ══════════════════════════════════════════════════════
     _slide(AppRoutes.settings, const SettingsPage()),
+    _slide(AppRoutes.message, const MessagePage()),
     _slide(AppRoutes.systemNotification, const SystemNotificationPage()),
     _slide(AppRoutes.membership, const MembershipPage()),
     _slide(AppRoutes.points, const PointsPage()),

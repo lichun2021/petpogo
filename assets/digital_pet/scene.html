@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>数字宠</title>
+<style>
+#bg { position: absolute; inset: 0; background-size: cover; background-position: center; z-index: 0; }
+/* touch-action: none 关键：不加这个，WebView 在"按住不放"时会把手势判定为
+   可能的长按/滚动而发出 pointercancel，导致拖拽跟手中断（已用 CDP 探针复现）。*/
+#scene {
+  position: absolute; inset: 0; z-index: 1; display: block;
+  touch-action: none;
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+}
+#loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 2; font-family: sans-serif; color: #7A6A60; }
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<canvas id="scene"></canvas>
+<div id="loading">加载中…</div>
+<script src="./vendor/three/three.min.js"></script>
+<script src="./vendor/three/loaders/GLTFLoader.js"></script>
+<script src="./scene.js"></script>
+</body>
+</html>
+
+
+

@@ -115,6 +115,12 @@ abstract class AppL10n {
   /// **'消息'**
   String get navMessage;
 
+  /// No description provided for @navDigitalPet.
+  ///
+  /// In zh, this message translates to:
+  /// **'数字宠'**
+  String get navDigitalPet;
+
   /// No description provided for @navCommunity.
   ///
   /// In zh, this message translates to:

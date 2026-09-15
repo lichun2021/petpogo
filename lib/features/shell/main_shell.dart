@@ -30,7 +30,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   // 使用 AppRoutes 常量，路径变更只改 AppRoutes 一处
   static const _tabs = [
     AppRoutes.home, // '/'
-    AppRoutes.message, // '/message'
+    AppRoutes.digitalPet, // '/digital-pet'
     AppRoutes.community, // '/community'
     AppRoutes.petCircle, // '/pet-circle'
     AppRoutes.profile, // '/profile'
@@ -49,7 +49,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     final l10n = context.l10n;
     final navItems = [
       NavItem(icon: Icons.home_outlined, label: l10n.navHome),
-      NavItem(icon: Icons.chat_bubble_outline_rounded, label: l10n.navMessage),
+      NavItem(icon: Icons.view_in_ar_rounded, label: l10n.navDigitalPet),
       NavItem(icon: Icons.people_outline_rounded, label: l10n.navCommunity),
       NavItem(icon: Icons.pets_outlined, label: '萌宠圈'),
       NavItem(icon: Icons.person_outline_rounded, label: l10n.navProfile),

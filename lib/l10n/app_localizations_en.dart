@@ -18,6 +18,9 @@ class AppL10nEn extends AppL10n {
   String get navMessage => 'Message';
 
   @override
+  String get navDigitalPet => 'Digital Pet';
+
+  @override
   String get navCommunity => 'Community';
 
   @override
