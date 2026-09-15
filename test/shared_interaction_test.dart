@@ -57,7 +57,6 @@ void main() {
           body: NavButton(
             item: NavItem(
               icon: Icons.home_outlined,
-              activeIcon: Icons.home,
               label: '首页',
             ),
             selected: true,

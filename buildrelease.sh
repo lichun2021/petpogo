@@ -1,6 +1,6 @@
 #!/bin/bash
 # ════════════════════════════════════════════════════════════════
-#  PetPogo 萌宠智伴 - Release 打包脚本
+#  宠连芯 - Release 打包脚本
 #
 #  用法：
 #    ./buildrelease.sh              → 同时打包 Google Play AAB + IPA
@@ -26,7 +26,7 @@ BOLD='\033[1m'
 NC='\033[0m' # No Color
 
 # ── 项目信息 ──────────────────────────────────────────────────
-APP_NAME="萌宠智伴 PetPogo"
+APP_NAME="宠连芯"
 PKG_VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //')
 BUILD_TIME=$(date "+%Y%m%d_%H%M%S")
 OUTPUT_DIR="./release_output"

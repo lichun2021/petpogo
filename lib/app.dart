@@ -59,7 +59,7 @@ class PetPogoApp extends ConsumerWidget {
     return MaterialApp.router(
       // 字体 OR 配色变化时，通过 ValueKey 强制重建整个 App
       key: ValueKey('$fontFamily|$schemeKey'),
-      title: 'PetPogo',
+      title: '宠连芯',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       locale: locale,
