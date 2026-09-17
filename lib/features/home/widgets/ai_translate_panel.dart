@@ -247,8 +247,6 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
                   AiPhase.analyzing => const AiAnalyzingSpinnerView(
                       key: ValueKey('analyze'),
                       label: 'AI 正在聆听中…',
-                      icon: '🧠',
-                      rotateDuration: Duration(seconds: 3),
                     ),
                   AiPhase.result => _ResultView(
                       key: ValueKey('result'),

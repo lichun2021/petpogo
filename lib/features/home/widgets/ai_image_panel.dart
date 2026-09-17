@@ -244,7 +244,6 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
                   AiPhase.analyzing => const AiAnalyzingSpinnerView(
                       key: ValueKey('analyze'),
                       label: 'AI 正在分析表情…',
-                      icon: '🔍',
                     ),
                   AiPhase.result => _ResultView(
                       key: ValueKey('result'),

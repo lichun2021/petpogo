@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_colors.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
@@ -49,25 +48,26 @@ class AiUploadProgressView extends StatelessWidget {
   }
 }
 
-/// AI 分析中的旋转图标 + spinner 视图（语音/图片面板共用）
+/// AI 分析中的 spinner 视图（语音/图片面板共用）
 class AiAnalyzingSpinnerView extends StatelessWidget {
   final String label;
-  final String icon;
-  final Duration rotateDuration;
   const AiAnalyzingSpinnerView({
     super.key,
     required this.label,
-    required this.icon,
-    this.rotateDuration = const Duration(seconds: 2),
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(icon, style: TextStyle(fontSize: 40))
-            .animate(onPlay: (c) => c.repeat())
-            .rotate(duration: rotateDuration),
+        SizedBox(
+          width: 40,
+          height: 40,
+          child: CircularProgressIndicator(
+            color: AppColors.primary,
+            strokeWidth: 3,
+          ),
+        ),
         SizedBox(height: 12),
         Text(label,
             style: TextStyle(
@@ -75,8 +75,6 @@ class AiAnalyzingSpinnerView extends StatelessWidget {
               fontSize: 14,
               color: AppColors.onSurfaceVariant,
             )),
-        SizedBox(height: 12),
-        CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5),
       ],
     );
   }
