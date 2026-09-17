@@ -37,7 +37,7 @@ class PetRepository {
   ///   - Success → 宠物列表（可能为空列表 []）
   ///   - Failure → ApiException（网络错误、401等）
   Future<Result<List<PetModel>>> fetchPets() => guardResult(() async {
-    const path = '/sdkapi/pet/list';
+    const path = ApiEndpoints.petList;
     debugPrint('[🐾宠物] fetchPets → GET $path');
     dynamic rawData;
     try {
@@ -73,56 +73,61 @@ class PetRepository {
         .toList();
   });
 
-  /// 获取单个宠物的详细信息
+  /// 获取单个宠物的详细信息（含养成属性 + 背景/形象 id）
   ///
-  /// [id] - 宠物的唯一 ID（从列表页传入）
-  Future<Result<PetModel>> fetchPetById(String id) => guardResult(() async {
-    // 调用 GET /pets/:id
+  /// [id] - 宠物的唯一 ID（业务后端 id，非 iPet 网关 petId）
+  Future<Result<PetModel>> fetchPetDetail(String id) => guardResult(() async {
+    // 调用 GET /sdkapi/pet/:id
     final data = await _client.get<Map<String, dynamic>>(
       ApiEndpoints.petDetail(id),
     );
     return PetModel.fromJson(data);
   });
 
+  /// 获取单个宠物的详细信息（兼容旧调用名，等价于 [fetchPetDetail]）
+  Future<Result<PetModel>> fetchPetById(String id) => fetchPetDetail(id);
+
   // ── 创建 ──────────────────────────────────────────────
 
   /// 添加新宠物
   ///
-  /// [pet] - 用户填写的宠物信息（id 为空，由服务端生成）
-  ///
-  /// 成功后服务端会返回带有真实 id 的 PetModel
+  /// [pet] - 用户填写的宠物信息，[pet.id] 必须显式传入（调用方通常传
+  ///         iPet 网关的 petId，让业务后端 id 与网关 id 保持一致）。
+  ///         业务后端会原样落库并原样返回这个 id；若该 id 已存在，
+  ///         接口报错而不覆盖已有记录（[ApiClient] 拦截器统一转为
+  ///         [ApiException] 抛出，由调用方决定如何处理冲突）。
   Future<Result<PetModel>> addPet(PetModel pet) => guardResult(() async {
-    // POST /pets，请求体为 pet.toJson()
+    assert(pet.id.isNotEmpty, 'addPet 需要显式传入 id（peer petId）');
+    // POST /sdkapi/pet/create
     final data = await _client.post<Map<String, dynamic>>(
-      ApiEndpoints.pets,
-      data: pet.toJson(), // Freezed 自动生成 toJson
+      ApiEndpoints.petCreate,
+      data: pet.toJson(),
     );
-    // 服务端返回创建后的完整宠物数据（含真实 id）
-    return PetModel.fromJson(data);
+    final returnedId = data['id']?.toString() ?? '';
+    final name = (data['name'] as String?) ?? pet.name;
+    return pet.copyWith(id: returnedId, name: name);
   });
 
   // ── 更新 ──────────────────────────────────────────────
 
-  /// 更新宠物信息（全量替换）
+  /// 更新宠物信息（全量替换，服务端仅返回 { success }）
   ///
-  /// [pet] - 修改后的宠物数据（必须包含 id）
-  Future<Result<PetModel>> updatePet(PetModel pet) => guardResult(() async {
-    // PUT /pets/:id，全量替换
-    final data = await _client.put<Map<String, dynamic>>(
+  /// [pet] - 修改后的宠物数据（必须包含 id 与 name）
+  Future<Result<void>> updatePet(PetModel pet) => guardResult(() async {
+    // PUT /sdkapi/pet/:id
+    await _client.put<Map<String, dynamic>>(
       ApiEndpoints.petDetail(pet.id),
       data: pet.toJson(),
     );
-    return PetModel.fromJson(data);
   });
 
   // ── 删除 ──────────────────────────────────────────────
 
-  /// 删除宠物
+  /// 删除宠物（软删除，服务端仅返回 { success }）
   ///
-  /// [id] - 要删除的宠物 ID
-  /// 成功返回 Result<void>，Controller 收到后从本地列表中移除
+  /// [id] - 要删除的宠物 ID（业务后端 id）
   Future<Result<void>> deletePet(String id) => guardResult(() async {
-    // DELETE /pets/:id
+    // DELETE /sdkapi/pet/:id
     await _client.delete(ApiEndpoints.petDetail(id));
   });
 }

@@ -1,5 +1,5 @@
 // 数字宠 3D 场景（Three.js r128 UMD，非 ES Module）
-// 职责：只做渲染与动画播放，业务状态（饥饿值等）全部由 Flutter 侧管理。
+// 职责：只做渲染与动画播放，业务状态（养成属性等）全部由 Flutter 侧管理。
 //
 // 为什么不用 ES Module：Android WebView 加载 file:// 协议下的
 // <script type="module"> 会被 CORS 策略拦截（origin 为 null），
@@ -11,24 +11,14 @@
 // HTTPS 地址是被允许的。因此模型改为：优先读 IndexedDB 缓存 -> 没有缓存
 // 则 fetch 远程 OSS。两条路径都走 GLTFLoader.parse(arrayBuffer, ...)，
 // 不用 GLTFLoader.load(url, ...)（后者内部固定用 fetch，且无法接入缓存）。
-
-// 宠物模型配置：新增品种时只需在此加一条，不用改渲染逻辑。
-// cacheKey 用作 IndexedDB 里的存储键。
-const PET_MODELS = {
-  dog: {
-    remoteUrl: 'https://pet-20260430.oss-cn-shanghai.aliyuncs.com/pet_3d/dog.glb',
-    cacheKey: 'dog.glb',
-    scale: 1.0,
-  },
-  cat: {
-    remoteUrl: 'https://pet-20260430.oss-cn-shanghai.aliyuncs.com/pet_3d/cat.glb',
-    cacheKey: 'cat.glb',
-    scale: 1.0,
-  },
-};
+//
+// v2：不再依赖内置的品种/动作常量表——模型 URL、背景图 URL、动作片段名
+// 全部由后端驱动（GET /sdkapi/pet/:id/status、/resources），场景只负责
+// 按传入的 url/cacheKey 加载模型、按传入的 clip 名字查找并播放动画。
 
 // 模型二进制缓存：用 IndexedDB（file:// 页面下 Cache Storage API 不可用，
 // IndexedDB 可用且跨会话持久，已用真机验证杀进程重启后缓存仍存在）。
+// cacheKey 由调用方传入（后端资源 id），不再是硬编码的 'dog.glb'/'cat.glb'。
 const CACHE_DB_NAME = 'digital-pet-cache';
 const CACHE_STORE_NAME = 'models';
 
@@ -73,9 +63,8 @@ async function putCachedModel(key, arrayBuffer) {
   }
 }
 
-// 猫、狗共用同一套 4 个动作名（见 tools/blender_pets 美术验收工具）：
-// idle 呼吸待机 / walk 原地走路 / excited 开心跳跃 / look 歪头张望
-const ACTIONS = ['idle', 'walk', 'excited', 'look'];
+// 默认待机动画片段名（后端约定）；模型里若没有同名片段，回退到第一个片段。
+const DEFAULT_IDLE_CLIP = 'Idle1';
 
 const canvas = document.getElementById('scene');
 const bgEl = document.getElementById('bg');
@@ -91,6 +80,21 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 100);
 camera.position.set(0, 1.4, 4.2);
 camera.lookAt(0, 0.6, 0);
+
+// ── 宠物模型缩放 / 位置 / 朝向调节（自己动手改这三个数就行）─────────
+// 试过"按包围盒自动换算缩放"（根据模型自身高度反推倍数），但发现对带
+// 骨骼动画（SkinnedMesh）的模型不可靠——包围盒量出来的"原始高度"和它
+// 实际蒙皮渲染出来的视觉大小可能对不上（同样标注为"1.7 高"的一个普通
+// Mesh 和一个带骨骼的 SkinnedMesh，屏幕占比能差出一个数量级），所以
+// 换回最直接的手动倍数，出问题时改这三个数就行，不用猜：
+// PET_SCALE：整体缩放倍数。1.0 = 模型原始大小，数值越大模型越大。
+// PET_OFFSET_Y：整体上下平移（Three.js 世界坐标，正数向上、负数向下）。
+// PET_ROTATION_Y：整体朝向（弧度）。0 = 模型导出时的原始朝向；
+//   Math.PI（180°）= 转过来对着镜头；模型"屁股对着我们"就是这个数不对，
+//   改这个，不用动摄像机。
+const PET_SCALE = 0.06;
+const PET_OFFSET_Y = -0.02;
+const PET_ROTATION_Y = 0;
 
 const hemi = new THREE.HemisphereLight(0xfff4e6, 0x8a7b6e, 0.9);
 scene.add(hemi);
@@ -113,20 +117,16 @@ const clock = new THREE.Clock();
 const loader = new THREE.GLTFLoader();
 let mixer = null;
 let currentPet = null;
-let clipMap = {};
-
-// 片段名与 ACTIONS 完全一致（美术导出约定），不再需要别名匹配。
-
-// 默认朝向修正：美术导出的模型正面朝 -Z（背对默认摄像机），因此固定加
-// 180°(Math.PI) 的朝向修正，让默认朝向正对摄像机。
-const FRONT_ROTATION_Y = Math.PI;
+let clipMap = {}; // clip 名字 -> THREE.AnimationAction，来自当前加载模型的全部动画片段
+let currentClipName = null; // 当前正在播放的 clip 名字，供 playAction 判断是否需要切换
 
 // 拖拽旋转：手指在场景区域左右滑动可让宠物自由转向；松手后角度保持，
-// 直到用户点击某个动作按钮，才会自动转回正面（FRONT_ROTATION_Y）。
-let targetRotationY = FRONT_ROTATION_Y;
+// 直到用户点击某个动作按钮，才会自动转回正面（PET_ROTATION_Y，见上方
+// "自己动手改这三个数"那一块）。
+let targetRotationY = PET_ROTATION_Y;
 let isDragging = false;
 let dragStartX = 0;
-let dragStartRotationY = FRONT_ROTATION_Y;
+let dragStartRotationY = PET_ROTATION_Y;
 const DRAG_SENSITIVITY = 0.012; // 每像素对应的旋转弧度
 
 function onPointerDown(e) {
@@ -154,76 +154,104 @@ canvas.addEventListener('pointermove', onPointerMove);
 canvas.addEventListener('pointerup', onPointerUp);
 canvas.addEventListener('pointercancel', onPointerUp);
 
-function applyGltfToScene(gltf, kind, config) {
+// 把加载完成的 gltf 应用到场景：替换当前宠物、重建 AnimationMixer、
+// 把模型里的全部动画片段登记进 clipMap（不再按固定 ACTIONS 白名单过滤），
+// 播放默认待机动画（DEFAULT_IDLE_CLIP，没有则用第一个片段兜底）。
+function applyGltfToScene(gltf, cacheKey) {
   if (currentPet) scene.remove(currentPet);
   currentPet = gltf.scene;
-  currentPet.scale.setScalar(config.scale);
-  currentPet.rotation.y = FRONT_ROTATION_Y;
-  targetRotationY = FRONT_ROTATION_Y;
+  currentPet.rotation.y = PET_ROTATION_Y;
+  currentPet.scale.setScalar(PET_SCALE);
+  currentPet.position.y = PET_OFFSET_Y;
+  targetRotationY = PET_ROTATION_Y;
+
+  // 低多边形美术风格需要"平面着色"才能看出清晰的棱面（比如鼻子上的
+  // 鼻孔切面、耳朵的棱角），默认的平滑着色会把相邻面的法线插值到一起，
+  // 让这些棱面糊成一片、边缘发虚。素材本身没有在导出时打上 flatShading
+  // 标记，这里加载后统一给每个 mesh 的材质补上。
+  currentPet.traverse((o) => {
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    mats.forEach((m) => {
+      m.flatShading = true;
+      m.needsUpdate = true;
+    });
+  });
+
   scene.add(currentPet);
 
   mixer = new THREE.AnimationMixer(currentPet);
   mixer.addEventListener('finished', () => {
-    notifyFlutter('actionFinished', {});
+    notifyFlutter('actionFinished', { clip: currentClipName });
   });
+
   clipMap = {};
-  for (const name of ACTIONS) {
-    const clip = gltf.animations.find(c => c.name === name);
-    if (clip) clipMap[name] = mixer.clipAction(clip);
+  for (const clip of gltf.animations) {
+    clipMap[clip.name] = mixer.clipAction(clip);
   }
-  if (!clipMap.idle && gltf.animations[0]) {
-    clipMap.idle = mixer.clipAction(gltf.animations[0]);
+
+  currentClipName = null;
+  const idleClip = clipMap[DEFAULT_IDLE_CLIP] ? DEFAULT_IDLE_CLIP
+    : (gltf.animations[0] ? gltf.animations[0].name : null);
+  if (idleClip) {
+    clipMap[idleClip].play();
+    currentClipName = idleClip;
   }
-  if (clipMap.idle) clipMap.idle.play();
   loadingEl.style.display = 'none';
-  notifyFlutter('petReady', { kind });
+  notifyFlutter('petReady', { cacheKey });
 }
 
-function parseAndApply(arrayBuffer, kind, config) {
+function parseAndApply(arrayBuffer, cacheKey) {
   loader.parse(arrayBuffer, '', (gltf) => {
-    applyGltfToScene(gltf, kind, config);
+    applyGltfToScene(gltf, cacheKey);
   }, (err) => {
     loadingEl.style.display = 'none';
-    notifyFlutter('petError', { kind, message: String(err) });
+    notifyFlutter('petError', { cacheKey, message: String(err) });
   });
 }
 
-async function loadPet(kind) {
-  const config = PET_MODELS[kind];
-  if (!config) return;
+// 加载任意远程 GLB：[url] 是完整的模型下载地址（业务后端 resources/status
+// 返回的 glb_url），[cacheKey] 是 IndexedDB 里的存储键（约定用后端的资源
+// id，保证不同宠物/不同形象各自独立缓存，不再是硬编码的品种名）。
+async function loadModel(url, cacheKey) {
+  if (!url || !cacheKey) return;
   loadingEl.style.display = 'flex';
 
   // 1) 优先读 IndexedDB 缓存，命中则不发任何网络请求。
-  const cached = await getCachedModel(config.cacheKey);
+  const cached = await getCachedModel(cacheKey);
   if (cached) {
-    parseAndApply(cached, kind, config);
+    parseAndApply(cached, cacheKey);
     return;
   }
 
-  // 2) 缓存未命中，fetch 远程 OSS 地址；成功后写入缓存供下次使用。
+  // 2) 缓存未命中，fetch 远程地址；成功后写入缓存供下次使用。
   try {
-    const res = await fetch(config.remoteUrl);
+    const res = await fetch(url);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const buf = await res.arrayBuffer();
-    putCachedModel(config.cacheKey, buf); // 不阻塞渲染，失败也无所谓
-    parseAndApply(buf, kind, config);
+    putCachedModel(cacheKey, buf); // 不阻塞渲染，失败也无所谓
+    parseAndApply(buf, cacheKey);
   } catch (e) {
     loadingEl.style.display = 'none';
-    notifyFlutter('petError', { kind, message: String(e) });
+    notifyFlutter('petError', { cacheKey, message: String(e) });
   }
 }
 
-function playAction(name, opts = {}) {
-  const action = clipMap[name];
+// 按 clip 名字播放动画；模型没有该名字的片段时静默忽略（不报错，不切换），
+// 由 Flutter 侧决定是否要提示用户——场景本身只管"有就播，没有就不动"。
+function playAction(clipName, opts = {}) {
+  const action = clipMap[clipName];
   if (!action || !mixer) return false;
+  if (currentClipName === clipName && !opts.restart) return true; // 已在播放同一个片段，不重复触发
   Object.values(clipMap).forEach(a => a.fadeOut(0.2));
   action.reset().fadeIn(0.2).play();
   if (opts.oneShot) {
     action.setLoop(THREE.LoopOnce, 1);
     action.clampWhenFinished = true;
   }
+  currentClipName = clipName;
   // 点击动作时不管当前被拖到什么角度，都转回正面朝向摄像机。
-  targetRotationY = FRONT_ROTATION_Y;
+  targetRotationY = PET_ROTATION_Y;
   return true;
 }
 
@@ -258,13 +286,9 @@ function animate() {
 animate();
 
 window.DigitalPet = {
-  loadPet,
+  loadModel,
   playAction,
   setBackground(url) {
-    bgEl.style.backgroundImage = `url('${url}')`;
+    bgEl.style.backgroundImage = url ? `url('${url}')` : 'none';
   },
 };
-
-// 默认背景，Flutter 侧可通过 setBackground 切换到 bg2 等其他场景图。
-window.DigitalPet.setBackground('./bg/bg1.jpg');
-window.DigitalPet.loadPet('dog');

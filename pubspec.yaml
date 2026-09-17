@@ -102,8 +102,6 @@ flutter:
     - assets/docs/
     - assets/config/
     - assets/digital_pet/
-    - assets/digital_pet/bg/
-    - assets/digital_pet/models/
     - assets/digital_pet/vendor/three/
     - assets/digital_pet/vendor/three/loaders/
 

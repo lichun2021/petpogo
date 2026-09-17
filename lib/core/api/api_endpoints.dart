@@ -13,7 +13,6 @@ abstract class ApiEndpoints {
   static String musicPlaylistItem(int id, int musicId) =>
       '${musicPlaylist(id)}/item/$musicId';
   // ── 业务后端（PetPogo 自有服务）────────────────────────
-  static const pets = '/pets';
   static const devices = '/devices';
   static const deviceBind = '/devices/bind';
   static const user = '/user/profile';
@@ -25,8 +24,29 @@ abstract class ApiEndpoints {
   static const storeNearby = '/stores/nearby';
 
   // 带参数（用方法生成）
-  static String petDetail(String id) => '/pets/$id';
   static String deviceDetail(String id) => '/devices/$id';
+
+  // ── 宠物档案（业务后端）─────────────────────────────────
+  /// 创建宠物档案  POST /sdkapi/pet/create
+  static const petCreate = '/sdkapi/pet/create';
+
+  /// 我的宠物列表  GET /sdkapi/pet/list
+  static const petList = '/sdkapi/pet/list';
+
+  /// 宠物档案详情/更新/删除  GET|PUT|DELETE /sdkapi/pet/:id
+  static String petDetail(String id) => '/sdkapi/pet/$id';
+
+  /// 查询宠物当前状态（基本信息 + 养成属性 + 背景/形象）  GET /sdkapi/pet/:id/status
+  static String petStatus(String id) => '/sdkapi/pet/$id/status';
+
+  /// 执行互动  POST /sdkapi/pet/:id/interact
+  static String petInteract(String id) => '/sdkapi/pet/$id/interact';
+
+  /// 一次性获取可用资源（背景/形象/动作/互动类型）  GET /sdkapi/pet/resources
+  static const petResources = '/sdkapi/pet/resources';
+
+  /// 获取宠物当前硬件动作 + 动作标识码  GET /sdkapi/pet/:id/action
+  static String petAction(String id) => '/sdkapi/pet/$id/action';
 
   // ── OSS 上传签名 ──────────────────────────────────────
   /// 获取预签名上传地址  POST /sdkapi/upload/sign
@@ -92,6 +112,19 @@ abstract class ApiEndpoints {
 
   /// 查询指定会话的完整聊天记录（POST {session_id}）
   static const aiConsultSessionMessages = '/session/messages';
+
+  // ── 健康数据（独立后端 AppConfig.aiConsultBaseUrl，同 AI 网关）─
+  /// 健康数据概览（POST JSON body {pet_id, date?}）
+  static const healthDataOverview = '/health-data/overview';
+
+  /// 健康数据报告（POST JSON body {pet_id, date?}）
+  static const healthDataReport = '/health-data/health-report';
+
+  /// 行为分析详情（POST JSON body {pet_id, date?, period?}）
+  static const healthDataBehaviorAnalysis = '/health-data/behavior-analysis';
+
+  /// 运动数据详情（POST JSON body {pet_id, date?, period?}）
+  static const healthDataExerciseData = '/health-data/exercise-data';
 
   // ── 视频流自动 AI 分析（router_video_stream.py）──────────
   /// 保存/更新自动分析设置（POST JSON body）

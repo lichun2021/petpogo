@@ -153,15 +153,15 @@ class PetController extends StateNotifier<PetState> {
 
   /// 更新宠物信息（修改名字、品种、健康状态等）
   ///
-  /// 成功后在本地列表中找到对应宠物并替换（不重新请求全部列表）
-  Future<Result<PetModel>> updatePet(PetModel pet) async {
+  /// 服务端只返回 { success: true }，不返回完整宠物数据；
+  /// 成功后直接用传入的 [pet]（调用方已持有的最新数据）替换本地列表项。
+  Future<Result<void>> updatePet(PetModel pet) async {
     final result = await _repo.updatePet(pet);
 
     result.when(
-      success: (updated) {
-        // 用更新后的数据替换列表中的旧数据（保持其他宠物不变）
+      success: (_) {
         final newList = state.pets
-            .map((p) => p.id == updated.id ? updated : p)
+            .map((p) => p.id == pet.id ? pet : p)
             .toList();
         state = state.copyWith(pets: newList);
       },

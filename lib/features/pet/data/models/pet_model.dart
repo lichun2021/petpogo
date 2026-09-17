@@ -43,6 +43,21 @@ class PetModel {
   /// 关联的设备 ID（KeyTracker / PetPhone）
   final String linkedDeviceId;
 
+  /// 饱腹度 0-100（新建宠物默认 100，来自 GET /sdkapi/pet/:id 或 :id/status）
+  final int? satiety;
+
+  /// 心情值 0-100
+  final int? mood;
+
+  /// 清洁度 0-100
+  final int? cleanliness;
+
+  /// 当前配置的背景资源 ID（未配置为 null）
+  final String? backgroundId;
+
+  /// 当前配置的形象（GLB 模型）资源 ID（未配置为 null）
+  final String? modelId;
+
   const PetModel({
     required this.id,
     required this.name,
@@ -56,6 +71,11 @@ class PetModel {
     this.bio = '',
     this.vaccinated = false,
     this.linkedDeviceId = '',
+    this.satiety,
+    this.mood,
+    this.cleanliness,
+    this.backgroundId,
+    this.modelId,
   });
 
   // ── JSON 序列化 ───────────────────────────────────────
@@ -86,6 +106,11 @@ class PetModel {
       weight:         (json['weight'] as num?)?.toDouble() ?? 0,
       bio:            (json['bio'] as String?) ?? '',
       linkedDeviceId: deviceId,
+      satiety:        (json['satiety'] as num?)?.toInt(),
+      mood:           (json['mood'] as num?)?.toInt(),
+      cleanliness:    (json['cleanliness'] as num?)?.toInt(),
+      backgroundId:   json['background_id']?.toString() ?? json['backgroundId']?.toString(),
+      modelId:        json['model_id']?.toString() ?? json['modelId']?.toString(),
     );
   }
 
@@ -101,19 +126,38 @@ class PetModel {
     }
   }
 
-  /// 转为 JSON，用于 POST/PUT 请求体
+  /// 转为 JSON，用于 POST /sdkapi/pet/create、PUT /sdkapi/pet/:id 请求体
+  ///
+  /// 字段名对齐业务后端接口文档（非 iPet 网关的 PetInfoModel 命名）：
+  /// id/name/species/breed/gender(int)/birthday/weight/bio/deviceId/
+  /// backgroundId/modelId
+  ///
+  /// [id] 由调用方显式传入 iPet 网关的 petId（业务后端已支持客户端指定 id，
+  /// 原样落库、原样返回，因此业务后端 id 与 peer petId 始终保持一致，
+  /// 不需要额外的本地映射表）。
   Map<String, dynamic> toJson() => {
-    'id':             id,
-    'name':           name,
-    'type':           type,
-    'breed':          breed,
-    'birthday':       birthday,
-    'gender':         gender,
-    'emoji':          emoji,
-    'vaccinated':     vaccinated,
-    'linkedDeviceId': linkedDeviceId,
-    if (avatar.isNotEmpty) 'avatar': avatar,
+    if (id.isNotEmpty)             'id':           id,
+    'name':    name,
+    'species': type,
+    'breed':   breed,
+    'gender':  _genderToInt(gender),
+    if (avatar.isNotEmpty)         'avatar':       avatar,
+    if (birthday.isNotEmpty)       'birthday':     birthday,
+    if (weight > 0)                'weight':       weight,
+    if (bio.isNotEmpty)            'bio':          bio,
+    if (linkedDeviceId.isNotEmpty) 'deviceId':     linkedDeviceId,
+    if (backgroundId != null)      'backgroundId': backgroundId,
+    if (modelId != null)           'modelId':      modelId,
   };
+
+  /// gender 字符串 → 后端 int（1=男 2=女 0=未知），与 fromJson 的转换互逆
+  static int _genderToInt(String g) {
+    switch (g) {
+      case 'male':   return 1;
+      case 'female': return 2;
+      default:       return 0;
+    }
+  }
 
   /// 不可变更新：生成新的 PetModel（只改需要改的字段）
   PetModel copyWith({
@@ -127,6 +171,11 @@ class PetModel {
     bool? vaccinated,
     String? avatar,
     String? linkedDeviceId,
+    int? satiety,
+    int? mood,
+    int? cleanliness,
+    String? backgroundId,
+    String? modelId,
   }) =>
       PetModel(
         id:             id ?? this.id,
@@ -141,5 +190,10 @@ class PetModel {
         weight:         this.weight,
         bio:            this.bio,
         linkedDeviceId: linkedDeviceId ?? this.linkedDeviceId,
+        satiety:        satiety ?? this.satiety,
+        mood:           mood ?? this.mood,
+        cleanliness:    cleanliness ?? this.cleanliness,
+        backgroundId:   backgroundId ?? this.backgroundId,
+        modelId:        modelId ?? this.modelId,
       );
 }

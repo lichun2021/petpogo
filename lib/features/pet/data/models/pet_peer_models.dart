@@ -119,6 +119,28 @@ class PetInfoModel {
     createTime: (json['createTime'] as int?)   ?? 0,
     avatar:     (json['avatar']     as String?) ?? '',
   );
+
+  PetInfoModel copyWith({
+    String? petId,
+    String? petName,
+    String? breed,
+    int?    age,
+    String? weight,
+    String? sex,
+    String? deviceId,
+    int?    createTime,
+    String? avatar,
+  }) => PetInfoModel(
+    petId:      petId      ?? this.petId,
+    petName:    petName    ?? this.petName,
+    breed:      breed      ?? this.breed,
+    age:        age        ?? this.age,
+    weight:     weight     ?? this.weight,
+    sex:        sex        ?? this.sex,
+    deviceId:   deviceId   ?? this.deviceId,
+    createTime: createTime ?? this.createTime,
+    avatar:     avatar     ?? this.avatar,
+  );
 }
 
 /// 围栏状态模型 — 对应 PeerApi "宠物此刻是否在围栏内"

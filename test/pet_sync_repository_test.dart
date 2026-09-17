@@ -1,0 +1,128 @@
+import 'package:dio/dio.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:petpogo_app/core/api/api_client.dart';
+import 'package:petpogo_app/core/api/api_exception.dart';
+import 'package:petpogo_app/features/pet/data/models/pet_peer_models.dart';
+import 'package:petpogo_app/features/pet/data/repository/pet_repository.dart';
+import 'package:petpogo_app/features/pet/data/repository/pet_sync_repository.dart';
+
+/// 可编程行为的假 ApiClient：按调用序号从 [behaviors] 里取一个动作执行。
+class _Client implements ApiClient {
+  final List<dynamic Function(String path, dynamic data)> behaviors;
+  int _call = 0;
+  final calls = <({String method, String path, dynamic data})>[];
+
+  _Client(this.behaviors);
+
+  dynamic _run(String method, String path, dynamic data) {
+    calls.add((method: method, path: path, data: data));
+    final behavior = behaviors[_call++];
+    return behavior(path, data);
+  }
+
+  @override
+  Future<T> post<T>(String path,
+      {dynamic data, T Function(dynamic)? fromJson, Options? options}) async {
+    final r = _run('POST', path, data);
+    return fromJson != null ? fromJson(r) : r as T;
+  }
+
+  @override
+  Future<T> put<T>(String path,
+      {dynamic data, T Function(dynamic)? fromJson}) async {
+    final r = _run('PUT', path, data);
+    return fromJson != null ? fromJson(r) : r as T;
+  }
+
+  @override
+  Future<void> delete(String path) async {
+    _run('DELETE', path, null);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+dynamic _ok(Map<String, dynamic> body) => (String path, dynamic data) => body;
+
+dynamic Function(String, dynamic) _fail(int statusCode, [String msg = '']) =>
+    (String path, dynamic data) => throw ApiException(
+          message: msg,
+          statusCode: statusCode,
+        );
+
+const _pet = PetInfoModel(
+  petId: 'peer-123',
+  petName: '小白',
+  breed: '英短',
+  sex: 'GG',
+  avatar: 'https://x/a.jpg',
+  deviceId: 'device-1',
+);
+
+void main() {
+  group('PetSyncRepository', () {
+    test('syncCreate calls addPet with peer petId as business backend id',
+        () async {
+      final client = _Client([_ok({'id': 'peer-123', 'name': '小白'})]);
+      await PetSyncRepository(PetRepository(client)).syncCreate(_pet);
+      expect(client.calls.single.method, 'POST');
+      expect(client.calls.single.path, '/sdkapi/pet/create');
+      expect(client.calls.single.data['id'], 'peer-123');
+      expect(client.calls.single.data['gender'], 1); // GG -> male -> 1
+    });
+
+    test('syncCreate swallows a duplicate-id (400) failure without throwing',
+        () async {
+      final client = _Client([_fail(400)]);
+      await PetSyncRepository(PetRepository(client)).syncCreate(_pet);
+      // 未抛出即视为通过；调用确实发生了
+      expect(client.calls.single.path, '/sdkapi/pet/create');
+    });
+
+    test('syncCreate swallows a non-400 failure without throwing', () async {
+      final client = _Client([_fail(500)]);
+      await PetSyncRepository(PetRepository(client)).syncCreate(_pet);
+      expect(client.calls.single.path, '/sdkapi/pet/create');
+    });
+
+    test(
+        'syncUpdate calls PUT directly, without ever calling create '
+        '(POST /sdkapi/pet/create must only ever be triggered by syncCreate)',
+        () async {
+      final client = _Client([_ok({'success': true})]);
+      await PetSyncRepository(PetRepository(client)).syncUpdate(_pet);
+      expect(client.calls.length, 1);
+      expect(client.calls.single.method, 'PUT');
+      expect(client.calls.single.path, '/sdkapi/pet/peer-123');
+    });
+
+    test('syncUpdate swallows a failure (e.g. record never synced, 404) without throwing',
+        () async {
+      final client = _Client([_fail(404)]);
+      await PetSyncRepository(PetRepository(client)).syncUpdate(_pet);
+      expect(client.calls.length, 1);
+      expect(client.calls.single.path, '/sdkapi/pet/peer-123');
+    });
+
+    test('syncDelete calls DELETE with the peer petId as business backend id',
+        () async {
+      final client = _Client([_ok({'success': true})]);
+      await PetSyncRepository(PetRepository(client)).syncDelete('peer-123');
+      expect(client.calls.single.method, 'DELETE');
+      expect(client.calls.single.path, '/sdkapi/pet/peer-123');
+    });
+
+    test('syncDelete swallows a 404 (never synced) without throwing', () async {
+      final client = _Client([_fail(404)]);
+      await PetSyncRepository(PetRepository(client)).syncDelete('peer-123');
+      expect(client.calls.single.path, '/sdkapi/pet/peer-123');
+    });
+
+    test('syncDelete swallows any other failure without throwing', () async {
+      final client = _Client([_fail(500)]);
+      await PetSyncRepository(PetRepository(client)).syncDelete('peer-123');
+      expect(client.calls.single.path, '/sdkapi/pet/peer-123');
+    });
+  });
+}

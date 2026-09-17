@@ -72,13 +72,13 @@ class ApiClient {
 
   /// GET 请求
   ///
-  /// [path]     - API 路径，如 '/pets'（从 ApiEndpoints 获取）
+  /// [path]     - API 路径，如 '/sdkapi/pet/list'（从 ApiEndpoints 获取）
   /// [params]   - URL 查询参数，如 {'page': 1, 'size': 20}
   /// [fromJson] - JSON 反序列化函数，传入时自动解析，不传则返回原始数据
   ///
   /// 示例：
   ///   final pets = await _client.get<List<PetModel>>(
-  ///     ApiEndpoints.pets,
+  ///     ApiEndpoints.petList,
   ///     fromJson: (data) => (data as List).map(PetModel.fromJson).toList(),
   ///   );
   Future<T> get<T>(

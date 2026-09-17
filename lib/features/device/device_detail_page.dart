@@ -8,6 +8,7 @@ import '../device/data/repository/device_repository.dart';
 import '../device/data/models/device_model.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
+import '../pet/data/repository/pet_sync_repository.dart';
 import '../pet/pet_location_page.dart';
 import '../pet/bind_pet_sheet.dart';
 import '../pet_circle/controller/pet_circle_pet_controller.dart';
@@ -502,6 +503,12 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                             petId: pet.petId.isNotEmpty ? pet.petId : null,
                             // 不传 deviceId：避免后端把设备关联一并删除
                           );
+                      // 解绑已成功；同步删除业务后端档案（内部已吞掉所有失败）。
+                      if (pet.petId.isNotEmpty) {
+                        await ref
+                            .read(petSyncRepositoryProvider)
+                            .syncDelete(pet.petId);
+                      }
                       await _loadAll();
                       if (mounted) PetToast.success(context, '宠物已删除');
                     } catch (e) {
@@ -748,6 +755,10 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                               .read(petPeerRepositoryProvider)
                               .deletePet(petId: pet.petId);
                           debugPrint('[设备解绑] 宠物已解绑: ${pet.petName}');
+                          // 同步删除业务后端档案（内部已吞掉所有失败）。
+                          await ref
+                              .read(petSyncRepositoryProvider)
+                              .syncDelete(pet.petId);
                         }
                       } catch (e) {
                         // 如果宠物不存在或已解绑，忽略错误继续解绑设备

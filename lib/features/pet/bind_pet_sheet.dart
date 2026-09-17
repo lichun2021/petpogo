@@ -10,6 +10,7 @@ import '../../shared/widgets/pet_toast.dart';
 import '../community/data/post_repository.dart';
 import 'breed_picker_page.dart';
 import 'data/repository/pet_peer_repository.dart';
+import 'data/repository/pet_sync_repository.dart';
 import 'data/models/pet_peer_models.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
@@ -167,6 +168,16 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
         sex: _sex,
         avatar: _avatarUrl,
       );
+      // 绑定已成功；业务后端同步失败不影响本次绑定结果，失败只记日志。
+      // PeerApi 的 add 接口不返回新分配的 petId，需要再查一次拿到它。
+      try {
+        final newPet = await repo.fetchPetInfo(mac: widget.deviceMac);
+        if (newPet.petId.isNotEmpty) {
+          await ref.read(petSyncRepositoryProvider).syncCreate(newPet);
+        }
+      } catch (e) {
+        debugPrint('[宠物同步] ❌ 绑定后同步失败: $e');
+      }
       if (mounted) {
         HapticFeedback.mediumImpact();
         Navigator.pop(context, true);
@@ -200,6 +211,17 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
         sex: _sex,
         avatar: _avatarChanged ? _avatarUrl : null, // 只有用户主动换头像时才传
       );
+      // 编辑已成功；用编辑后的最新字段同步业务后端（该调用内部已吞掉
+      // 所有失败，不会抛出）。
+      final updatedPet = widget.currentPet!.copyWith(
+        petName: _nameCtrl.text.trim(),
+        breed: _breedCtrl.text.trim(),
+        age: int.tryParse(_ageCtrl.text.trim()) ?? widget.currentPet!.age,
+        weight: _weightCtrl.text.trim(),
+        sex: _sex,
+        avatar: _avatarChanged ? (_avatarUrl ?? '') : widget.currentPet!.avatar,
+      );
+      await ref.read(petSyncRepositoryProvider).syncUpdate(updatedPet);
       if (mounted) {
         HapticFeedback.mediumImpact();
         Navigator.pop(context, true);

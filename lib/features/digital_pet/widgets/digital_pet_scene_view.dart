@@ -1,13 +1,13 @@
 /// 数字宠 3D 场景（WebView 承载）。
 ///
 /// 只做「加载场景 + 转发指令 + 监听场景事件」，不含业务规则。
+/// 模型 URL / 背景 URL / 动作 clip 名称全部由调用方（DigitalPetController）
+/// 从业务后端数据里取得后传入，本文件不内置任何品种/动作常量表。
 library;
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-
-import '../controller/digital_pet_controller.dart';
 
 /// 场景事件回调；对应 scene.js 里 notifyFlutter 上报的事件名。
 typedef DigitalPetEventCallback = void Function(String event, Map<String, dynamic> data);
@@ -25,6 +25,18 @@ class DigitalPetSceneViewState extends State<DigitalPetSceneView> {
   late final WebViewController _webCtrl;
   bool _webReady = false;
 
+  // `loadModel`/`setBackground` 常常在 WebView 还没加载完 scene.html
+  // （Chromium 启动 + Three.js/GLTFLoader 初始化通常比一次 status 接口
+  // 请求慢）时就被调用一次——之前这种情况下命令被直接丢弃，且调用方
+  // （digital_pet_page.dart 的 _syncSceneWithState）用"目标 URL 是否变化"
+  // 做去重，同一个 URL 不会重新下发，导致模型永远不出现、"加载中…"
+  // 一直卡住。这里改成记下"最后一次想要的值"，等 onPageFinished 之后
+  // 统一补发一次。
+  String? _pendingModelUrl;
+  String? _pendingModelCacheKey;
+  bool _hasPendingBackground = false;
+  String? _pendingBackgroundUrl;
+
   @override
   void initState() {
     super.initState();
@@ -36,9 +48,25 @@ class DigitalPetSceneViewState extends State<DigitalPetSceneView> {
         onMessageReceived: _onSceneMessage,
       )
       ..setNavigationDelegate(NavigationDelegate(
-        onPageFinished: (_) => setState(() => _webReady = true),
+        onPageFinished: (_) {
+          setState(() => _webReady = true);
+          _flushPending();
+        },
       ))
       ..loadFlutterAsset('assets/digital_pet/scene.html');
+  }
+
+  void _flushPending() {
+    if (_pendingModelUrl != null) {
+      _sendLoadModel(_pendingModelUrl!, _pendingModelCacheKey!);
+      _pendingModelUrl = null;
+      _pendingModelCacheKey = null;
+    }
+    if (_hasPendingBackground) {
+      _sendSetBackground(_pendingBackgroundUrl);
+      _hasPendingBackground = false;
+      _pendingBackgroundUrl = null;
+    }
   }
 
   void _onSceneMessage(JavaScriptMessage message) {
@@ -52,20 +80,46 @@ class DigitalPetSceneViewState extends State<DigitalPetSceneView> {
     }
   }
 
-  void loadPet(PetKind kind) {
-    if (!_webReady) return;
-    _webCtrl.runJavaScript("window.DigitalPet.loadPet('${kind.name}')");
+  /// 加载任意远程 GLB 模型。[url] 是完整下载地址，[cacheKey] 是
+  /// IndexedDB 缓存键（约定传后端资源 id，保证不同形象各自独立缓存）。
+  ///
+  /// [url]/[cacheKey] 来自后端动态数据，用 jsonEncode 转成安全的 JS 字符串
+  /// 字面量再拼进 runJavaScript 调用，避免里面出现的引号/特殊字符破坏
+  /// 生成的 JS 语句（不能像旧版那样直接裸拼接受信任的枚举名）。
+  void loadModel(String url, String cacheKey) {
+    if (!_webReady) {
+      _pendingModelUrl = url;
+      _pendingModelCacheKey = cacheKey;
+      return;
+    }
+    _sendLoadModel(url, cacheKey);
   }
 
-  void playAction(PetAction action) {
-    if (!_webReady) return;
-    _webCtrl.runJavaScript("window.DigitalPet.playAction('${action.name}')");
+  void _sendLoadModel(String url, String cacheKey) {
+    final args = '${jsonEncode(url)}, ${jsonEncode(cacheKey)}';
+    _webCtrl.runJavaScript('window.DigitalPet.loadModel($args)');
   }
 
-  void setBackground(PetBackground bg) {
+  /// 按 clip 名字播放动画；模型没有该名字的片段时场景侧静默忽略。
+  void playAction(String clipName) {
     if (!_webReady) return;
-    final file = '${bg.name}.jpg';
-    _webCtrl.runJavaScript("window.DigitalPet.setBackground('./bg/$file')");
+    _webCtrl.runJavaScript(
+        'window.DigitalPet.playAction(${jsonEncode(clipName)})');
+  }
+
+  /// 设置背景图为任意远程/本地 URL；传 null 清空背景。
+  void setBackground(String? url) {
+    if (!_webReady) {
+      _hasPendingBackground = true;
+      _pendingBackgroundUrl = url;
+      return;
+    }
+    _sendSetBackground(url);
+  }
+
+  void _sendSetBackground(String? url) {
+    final arg = url == null ? 'null' : jsonEncode(url);
+    _webCtrl.runJavaScript('window.DigitalPet.setBackground($arg)');
   }
 
   @override
@@ -73,4 +127,3 @@ class DigitalPetSceneViewState extends State<DigitalPetSceneView> {
     return WebViewWidget(controller: _webCtrl);
   }
 }
-
