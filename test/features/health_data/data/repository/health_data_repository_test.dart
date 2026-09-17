@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:petpogo_app/core/api/api_client.dart';
 import 'package:petpogo_app/core/api/api_exception.dart';
-import 'package:petpogo_app/core/api/result.dart';
 import 'package:petpogo_app/features/health_data/data/models/health_data_models.dart';
 import 'package:petpogo_app/features/health_data/data/repository/health_data_repository.dart';
 
@@ -160,10 +159,8 @@ void main() {
       result.when(
         success: (_) => fail('Expected failure'),
         failure: (error) {
-          expect(error, isA<ApiException>());
-          final apiError = error as ApiException;
-          expect(apiError.statusCode, 422);
-          expect(apiError.message, '请求参数有误，请重试');
+          expect(error.statusCode, 422);
+          expect(error.message, '请求参数有误，请重试');
         },
       );
     });

@@ -72,6 +72,8 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
                 await PetPickerSheet.show(
                   context,
                   ref: ref,
+                  title: '选择要查看的宠物',
+                  subtitleBuilder: (_) => '查看该宠物的健康数据看板，包含概览、报告、行为与运动数据',
                   onPicked: (petId) {
                     Future.delayed(const Duration(milliseconds: 60), () {
                       if (context.mounted) {

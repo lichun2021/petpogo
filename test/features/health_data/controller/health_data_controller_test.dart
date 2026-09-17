@@ -246,8 +246,7 @@ void main() {
     });
 
     test('初始化时加载全部四个段', () async {
-      final controller =
-          container.read(healthDataControllerProvider('pet123').notifier);
+      container.read(healthDataControllerProvider('pet123').notifier);
 
       // 等待初始化完成
       await Future.delayed(Duration.zero);
@@ -332,8 +331,7 @@ void main() {
         statusCode: 500,
       ));
 
-      final controller =
-          container.read(healthDataControllerProvider('pet123').notifier);
+      container.read(healthDataControllerProvider('pet123').notifier);
       await Future.delayed(Duration.zero);
 
       final state = container.read(healthDataControllerProvider('pet123'));

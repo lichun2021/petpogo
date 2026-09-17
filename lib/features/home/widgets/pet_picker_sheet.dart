@@ -33,13 +33,30 @@ class PetPickerSheet extends ConsumerStatefulWidget {
   /// 预加载的宠物列表（传入则跳过 loading 状态，避免高度闪变）
   final List<_PetWithDevice>? preloaded;
 
-  const PetPickerSheet({super.key, required this.onPicked, this.preloaded});
+  /// 标题文字（默认沿用宠小伊 AI 问诊的文案）
+  final String title;
+
+  /// 副标题文字构造函数：传入积分数（consultPoints 为 null 时表示未加载/占位），返回完整副标题
+  final String Function(int? consultPoints) subtitleBuilder;
+
+  const PetPickerSheet({
+    super.key,
+    required this.onPicked,
+    this.preloaded,
+    this.title = '选择要咨询的宠物',
+    this.subtitleBuilder = _defaultSubtitle,
+  });
+
+  static String _defaultSubtitle(int? consultPoints) =>
+      '宠小伊会基于该宠物的档案进行健康顾问咨询${consultPoints != null ? '（$consultPoints积分/次提问）' : '（X积分/次提问）'}';
 
   /// 预加载宠物数据，再显示 Sheet（避免高度闪变）
   static Future<void> show(
     BuildContext context, {
     required WidgetRef ref,
     required void Function(String petId) onPicked,
+    String title = '选择要咨询的宠物',
+    String Function(int? consultPoints) subtitleBuilder = _defaultSubtitle,
   }) async {
     // 在弹出之前预加载宠物数据，确保 Sheet 高度确定后再显示
     final preloaded = await _preload(ref);
@@ -51,6 +68,8 @@ class PetPickerSheet extends ConsumerStatefulWidget {
       builder: (_) => PetPickerSheet(
         onPicked: onPicked,
         preloaded: preloaded,
+        title: title,
+        subtitleBuilder: subtitleBuilder,
       ),
     );
   }
@@ -198,7 +217,7 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
           ),
           SizedBox(height: 14),
           Text(
-            '选择要咨询的宠物',
+            widget.title,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -207,7 +226,7 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
           ),
           SizedBox(height: 4),
           Text(
-            '宠小伊会基于该宠物的档案进行健康顾问咨询${consultPoints != null ? '（$consultPoints积分/次提问）' : '（X积分/次提问）'}',
+            widget.subtitleBuilder(consultPoints),
             style: TextStyle(
               fontSize: 12,
               color: AppColors.onSurfaceVariant,
