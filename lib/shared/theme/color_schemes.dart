@@ -78,6 +78,8 @@ class PetColorScheme {
   final Color statusOnlineSoft;
   final Color statusAlert;
   final Color statusAlertSoft;
+  final Color statusWarning;
+  final Color statusWarningSoft;
   final Color statusNeutral;
 
   // Text
@@ -142,6 +144,8 @@ class PetColorScheme {
     required this.statusOnlineSoft,
     required this.statusAlert,
     required this.statusAlertSoft,
+    required this.statusWarning,
+    required this.statusWarningSoft,
     required this.statusNeutral,
     required this.textPrimary,
     required this.textSecondary,
@@ -218,6 +222,8 @@ const warmPinkScheme = PetColorScheme(
   statusOnlineSoft: Color(0xFFE4EEE2),
   statusAlert: Color(0xFFC2410C),
   statusAlertSoft: Color(0xFFFBE3D8),
+  statusWarning: Color(0xFFC98A2E),
+  statusWarningSoft: Color(0xFFF5E6C8),
   statusNeutral: Color(0xFF8A7B6E),
   textPrimary: Color(0xFF3A2E2A),
   textSecondary: Color(0xFF7A6A60),
@@ -290,6 +296,8 @@ const blueWhiteScheme = PetColorScheme(
   statusOnlineSoft: Color(0xFFDDEFE8),
   statusAlert: Color(0xFFb31b25),
   statusAlertSoft: Color(0xFFFADADA),
+  statusWarning: Color(0xFFC98A2E),
+  statusWarningSoft: Color(0xFFF5E6C8),
   statusNeutral: Color(0xFF5C8AAA),
   textPrimary: Color(0xFF102040),
   textSecondary: Color(0xFF3D6080),
@@ -391,6 +399,8 @@ const nebulaVioletScheme = PetColorScheme(
   statusOnlineSoft: Color(0xFFDDEFE8),
   statusAlert: Color(0xFFb31b25),
   statusAlertSoft: Color(0xFFFADADA),
+  statusWarning: Color(0xFFC98A2E),
+  statusWarningSoft: Color(0xFFF5E6C8),
   statusNeutral: Color(0xFF7070C8),
   textPrimary: Color(0xFF13104A),
   textSecondary: Color(0xFF4050A0),
@@ -489,6 +499,8 @@ const forestDuskScheme = PetColorScheme(
   statusOnlineSoft: Color(0xFFB6DDD4),
   statusAlert: Color(0xFFb31b25),
   statusAlertSoft: Color(0xFFFADADA),
+  statusWarning: Color(0xFFC98A2E),
+  statusWarningSoft: Color(0xFFF5E6C8),
   statusNeutral: Color(0xFF909AAA),
   textPrimary: Color(0xFF3A4055),
   textSecondary: Color(0xFF627090),

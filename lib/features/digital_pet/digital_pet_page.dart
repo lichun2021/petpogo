@@ -107,7 +107,7 @@ class _DigitalPetPageState extends ConsumerState<DigitalPetPage> {
     final entries = <(String, int, Color)>[
       ('饱腹', after.satiety - before.satiety, AppColors.statusOnline),
       ('情绪', after.mood - before.mood, AppColors.brandPrimary),
-      ('清洁', after.cleanliness - before.cleanliness, AppColors.statusAlert),
+      ('清洁', after.cleanliness - before.cleanliness, AppColors.statusWarning),
     ];
     final popups = <_DeltaPopup>[];
     for (final (label, delta, color) in entries) {
@@ -683,7 +683,7 @@ class _VitalityBars extends StatelessWidget {
           SizedBox(height: AppSpacing.x4),
           _VitalityBarRow(label: '情绪', value: status.mood, color: AppColors.brandPrimary),
           SizedBox(height: AppSpacing.x4),
-          _VitalityBarRow(label: '清洁', value: status.cleanliness, color: AppColors.statusAlert),
+          _VitalityBarRow(label: '清洁', value: status.cleanliness, color: AppColors.statusWarning),
         ],
       ),
     );

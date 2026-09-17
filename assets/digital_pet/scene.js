@@ -171,6 +171,10 @@ function applyGltfToScene(gltf, cacheKey) {
   // 标记，这里加载后统一给每个 mesh 的材质补上。
   currentPet.traverse((o) => {
     if (!o.isMesh) return;
+    // r128 的视锥裁剪使用未蒙皮的 geometry 包围球，不能反映骨骼变换后
+    // 的实际位置。鼻子、耳内等独立小网格会被误判为镜头外而消失。
+    // 单宠物场景只对 SkinnedMesh 禁用裁剪，普通网格仍保留默认行为。
+    if (o.isSkinnedMesh) o.frustumCulled = false;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
     mats.forEach((m) => {
       m.flatShading = true;

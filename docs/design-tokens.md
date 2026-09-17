@@ -39,6 +39,8 @@
 | `status-online-soft` | `AppColors.statusOnlineSoft` | `#E4EEE2` | 在线浅底（标签） |
 | `status-alert` | `AppColors.statusAlert` | `#C2410C` | 高优先级异常 / 告警 / 未上报 / 危险 / 解绑等破坏性操作 |
 | `status-alert-soft` | `AppColors.statusAlertSoft` | `#FBE3D8` | 告警浅底、概率标签 |
+| `status-warning` | `AppColors.statusWarning` | `#C98A2E` | 警示 / 提醒但非危险（如数字宠"清洁"指标，需与 alert/brand 色相明显区分） |
+| `status-warning-soft` | `AppColors.statusWarningSoft` | `#F5E6C8` | 警示浅底 |
 | `status-neutral` | `AppColors.statusNeutral` | `#8A7B6E` | 中性提示 / 次要操作 / 未激活（替代蓝灰） |
 
 > 规则：告警色相（≈18°，朱红）与品牌色相（≈6°，珊瑚红）**必须相差 ≥ 10°**，否则告警与品牌强调在视觉上无法区分；`test/theme/token_semantics_test.dart` 会校验。

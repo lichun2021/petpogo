@@ -41,6 +41,12 @@ abstract final class AppSize {
   /// 所有可点击目标最小尺寸
   static const double touchMin = 44;
 
+  /// 健康报表：环图、柱状绘图区与单列宽度。
+  static const double healthRing = 160;
+  static const double healthLegendWidth = 144;
+  static const double healthPlotHeight = 112;
+  static const double healthColumnWidth = 64;
+
   /// 底栏高度（不含安全区）
   static const double tabBarHeight = 64;
 }
@@ -56,10 +62,12 @@ abstract final class AppRadius {
   /// 标签、小状态、胶囊按钮
   static const double pill = 999;
 
-  static const BorderRadius cardRadius = BorderRadius.all(Radius.circular(card));
+  static const BorderRadius cardRadius =
+      BorderRadius.all(Radius.circular(card));
   static const BorderRadius controlRadius =
       BorderRadius.all(Radius.circular(control));
-  static const BorderRadius pillRadius = BorderRadius.all(Radius.circular(pill));
+  static const BorderRadius pillRadius =
+      BorderRadius.all(Radius.circular(pill));
 }
 
 /// 图标尺寸

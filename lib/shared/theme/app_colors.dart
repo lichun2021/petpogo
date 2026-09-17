@@ -102,6 +102,8 @@ class AppColors {
   static Color get statusOnlineSoft   => _scheme.statusOnlineSoft;
   static Color get statusAlert        => _scheme.statusAlert;
   static Color get statusAlertSoft    => _scheme.statusAlertSoft;
+  static Color get statusWarning      => _scheme.statusWarning;
+  static Color get statusWarningSoft  => _scheme.statusWarningSoft;
   static Color get statusNeutral      => _scheme.statusNeutral;
 
   // Text
