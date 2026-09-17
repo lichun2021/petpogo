@@ -12,6 +12,7 @@ import '../../device/device_detail_page.dart';
 import '../../device/robot_device_page.dart';
 import '../../pet_circle/controller/pet_circle_pet_controller.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
+import 'pet_picker_sheet.dart';
 
 /// 首页"我的宠物"区块
 /// 数据源与萌宠圈一致：petCirclePetControllerProvider
@@ -67,7 +68,19 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
                     color: AppColors.onSurface,
                     height: 1.15)),
             GestureDetector(
-              onTap: () => PetToast.show(context, '健康报告即将上线'),
+              onTap: () async {
+                await PetPickerSheet.show(
+                  context,
+                  ref: ref,
+                  onPicked: (petId) {
+                    Future.delayed(const Duration(milliseconds: 60), () {
+                      if (context.mounted) {
+                        context.push(AppRoutes.healthData, extra: petId);
+                      }
+                    });
+                  },
+                );
+              },
               child: Text('健康数据 ›',
                   style: TextStyle(
                       fontFamily: AppFonts.primary,

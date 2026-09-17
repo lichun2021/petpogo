@@ -55,6 +55,7 @@ import '../../features/consultation/report_diagnosis_page.dart';
 import '../../features/consultation/report_care_page.dart';
 import '../../features/consultation/report_medical_page.dart';
 import '../../features/consultation/data/models/consultation_models.dart';
+import '../../features/health_data/health_data_page.dart';
 import '../../features/device/robot_device_page.dart';
 import '../../features/device/device_detail_page.dart';
 import '../../features/device/data/repository/device_repository.dart';
@@ -277,6 +278,16 @@ final appRouter = GoRouter(
       pageBuilder: (context, state) {
         final report = _extractReport(state.extra);
         return _slidePage(state, ReportMedicalPage(report: report));
+      },
+    ),
+
+    // ── 健康数据看板 ──────────────────────────────────────
+    // 健康数据页（extra: petId）— 全屏，覆盖底部 tab
+    GoRoute(
+      path: AppRoutes.healthData,
+      pageBuilder: (context, state) {
+        final petId = state.extra is String ? state.extra as String : '';
+        return _slidePage(state, HealthDataPage(petId: petId));
       },
     ),
 

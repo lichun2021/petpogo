@@ -49,8 +49,12 @@ abstract class AppRoutes {
   /// 治疗养护建议页（extra: ConsultationReport 对象）
   static const reportCare = '/consultation/report/care';
 
-  /// 医疗检测方案页（extra: ConsultationReport 对象）
+  /// 用药方案页（extra: ConsultationReport 对象）
   static const reportMedical = '/consultation/report/medical';
+
+  // ── 健康数据 ──────────────────────────────────────────
+  /// 健康数据看板页（extra: 宠物 petId 字符串）
+  static const healthData = '/health-data';
 
   // ── 带参数路由（用方法生成，杜绝拼错） ──────────────
   static String scanQr(String productKey) => '/scan-qr/$productKey';
