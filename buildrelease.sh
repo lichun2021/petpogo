@@ -4,7 +4,8 @@
 #
 #  用法：
 #    ./buildrelease.sh              → 同时打包 Google Play AAB + IPA
-#    ./buildrelease.sh --apk        → 仅打包通用 Android APK
+#    ./buildrelease.sh --apk        → 仅打包 ARM 分架构 Android APK
+#    ./buildrelease.sh --apk-universal → 仅打包通用 ARM Android APK
 #    ./buildrelease.sh --apk-split  → 按 ABI 打包 Android APK
 #    ./buildrelease.sh --aab        → 仅打包 Google Play AAB
 #    ./buildrelease.sh --ipa        → 仅打包 iOS IPA
@@ -75,7 +76,7 @@ case "$1" in
     ;;
   *)
     echo "未知参数: $1"
-    echo "用法: ./buildrelease.sh [--apk|--apk-split|--aab|--ipa]"
+    echo "用法: ./buildrelease.sh [--apk|--apk-split|--apk-universal|--aab|--ipa]"
     exit 2
     ;;
 esac
@@ -127,24 +128,23 @@ if [ "$BUILD_APK" = true ]; then
   echo ""
 
   if [ "$SPLIT_APK" = true ]; then
-    flutter build apk --release --split-per-abi
-    FOUND_SPLIT=false
-    for ABI in armeabi-v7a arm64-v8a x86_64; do
+    # 与 android/app/build.gradle.kts 的 ARM ABI 配置一致，避免 Flutter
+    # 等待并不存在的 x86_64 APK，将已成功的构建误判为失败。
+    flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64
+    for ABI in armeabi-v7a arm64-v8a; do
       ABI_SRC="build/app/outputs/flutter-apk/app-${ABI}-release.apk"
       ABI_DST="${OUTPUT_DIR}/petpogo_v${PKG_VERSION}_${BUILD_TIME}_${ABI}.apk"
       if [ -f "${ABI_SRC}" ]; then
         cp "${ABI_SRC}" "${ABI_DST}"
         ABI_SIZE=$(du -sh "${ABI_DST}" | cut -f1)
         echo -e "${GREEN}  📦 ${ABI}: ${ABI_DST} (${ABI_SIZE})${NC}"
-        FOUND_SPLIT=true
+      else
+        echo -e "${RED}  ❌ 未找到 ${ABI} APK: ${ABI_SRC}${NC}"
+        exit 1
       fi
     done
-    if [ "$FOUND_SPLIT" != true ]; then
-      echo -e "${RED}  ❌ 未找到分 ABI APK${NC}"
-      exit 1
-    fi
   else
-    flutter build apk --release
+    flutter build apk --release --target-platform android-arm,android-arm64
     if [ -f "${APK_SRC}" ]; then
       cp "${APK_SRC}" "${APK_DST}"
       APK_SIZE=$(du -sh "${APK_DST}" | cut -f1)

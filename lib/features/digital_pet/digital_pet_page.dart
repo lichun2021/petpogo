@@ -709,10 +709,22 @@ class _VitalityBars extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 不再用卡片包一层背景框，直接浮在场景上；因此每行文字加了轻微投影
-    // 保证在任意背景图上都能看清，进度条轨道也用半透明而不是实色块。
-    return SizedBox(
-      width: 150,
+    // 独立底色隔开场景，避免浅色背景吞掉文字和进度条。
+    return Container(
+      width: 150 + AppSpacing.x12 * 2,
+      padding: const EdgeInsets.all(AppSpacing.x12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceCard.withValues(alpha: 0.96),
+        borderRadius: AppRadius.controlRadius,
+        border: Border.all(color: AppColors.borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.cardShadow,
+            blurRadius: AppSpacing.x12,
+            offset: const Offset(0, AppSpacing.x4),
+          ),
+        ],
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -721,10 +733,10 @@ class _VitalityBars extends StatelessWidget {
               label: '饱腹',
               value: status.satiety,
               color: AppColors.statusOnline),
-          SizedBox(height: AppSpacing.x4),
+          SizedBox(height: AppSpacing.x8),
           _VitalityBarRow(
               label: '情绪', value: status.mood, color: AppColors.brandPrimary),
-          SizedBox(height: AppSpacing.x4),
+          SizedBox(height: AppSpacing.x8),
           _VitalityBarRow(
               label: '清洁',
               value: status.cleanliness,
@@ -746,10 +758,6 @@ class _VitalityBarRow extends StatelessWidget {
     required this.color,
   });
 
-  static const _textShadow = [
-    Shadow(color: Colors.black38, blurRadius: 4),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final clamped = value.clamp(0, 100);
@@ -763,8 +771,7 @@ class _VitalityBarRow extends StatelessWidget {
               fontFamily: AppFonts.primary,
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: Colors.white,
-              shadows: _textShadow,
+              color: AppColors.textPrimary,
             ),
           ),
         ),
@@ -775,7 +782,7 @@ class _VitalityBarRow extends StatelessWidget {
             child: LinearProgressIndicator(
               value: clamped / 100,
               minHeight: 6,
-              backgroundColor: Colors.white.withValues(alpha: 0.35),
+              backgroundColor: AppColors.outlineVariant,
               valueColor: AlwaysStoppedAnimation(color),
             ),
           ),
@@ -790,8 +797,7 @@ class _VitalityBarRow extends StatelessWidget {
               fontFamily: AppFonts.primary,
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: Colors.white,
-              shadows: _textShadow,
+              color: AppColors.textPrimary,
             ),
           ),
         ),
