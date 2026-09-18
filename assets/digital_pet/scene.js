@@ -32,6 +32,7 @@ function openCacheDb() {
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
+    req.onblocked = () => reject(new Error('cache blocked'));
   });
 }
 
@@ -40,10 +41,11 @@ async function getCachedModel(key) {
     const db = await openCacheDb();
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(CACHE_STORE_NAME, 'readonly');
+      tx.onabort = () => reject(tx.error);
       const req = tx.objectStore(CACHE_STORE_NAME).get(key);
       req.onsuccess = () => resolve(req.result || null);
       req.onerror = () => reject(req.error);
-    });
+    }).finally(() => db.close());
   } catch (e) {
     return null; // 缓存读取异常时静默降级，走远程
   }
@@ -57,7 +59,8 @@ async function putCachedModel(key, arrayBuffer) {
       tx.objectStore(CACHE_STORE_NAME).put(arrayBuffer, key);
       tx.oncomplete = resolve;
       tx.onerror = () => reject(tx.error);
-    });
+      tx.onabort = () => reject(tx.error);
+    }).finally(() => db.close());
   } catch (e) {
     // 写缓存失败不影响本次渲染，下次会重新走远程
   }
@@ -205,40 +208,127 @@ function applyGltfToScene(gltf, cacheKey) {
   notifyFlutter('petReady', { cacheKey });
 }
 
+// Bound every asynchronous stage: a blocked cache or stalled response must not
+// leave the UI waiting forever. Keep URLs out of diagnostic bridge messages.
+function withDeadline(promise, milliseconds, stage, onTimeout) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        if (onTimeout) onTimeout();
+        const error = new Error(stage + ' timeout');
+        error.stage = stage;
+        reject(error);
+      }, milliseconds);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
 function parseAndApply(arrayBuffer, cacheKey) {
-  loader.parse(arrayBuffer, '', (gltf) => {
-    applyGltfToScene(gltf, cacheKey);
-  }, (err) => {
-    loadingEl.style.display = 'none';
-    notifyFlutter('petError', { cacheKey, message: String(err) });
+  // Parsing is deliberately separate from applying: an obsolete request must
+  // never replace the current pet, even if its parser finishes late.
+  return new Promise((resolve, reject) => {
+    loader.parse(arrayBuffer, '', resolve, reject);
   });
 }
 
-// 加载任意远程 GLB：[url] 是完整的模型下载地址（业务后端 resources/status
-// 返回的 glb_url），[cacheKey] 是 IndexedDB 里的存储键（约定用后端的资源
-// id，保证不同宠物/不同形象各自独立缓存，不再是硬编码的品种名）。
-async function loadModel(url, cacheKey) {
-  if (!url || !cacheKey) return;
-  loadingEl.style.display = 'flex';
-
-  // 1) 优先读 IndexedDB 缓存，命中则不发任何网络请求。
-  const cached = await getCachedModel(cacheKey);
-  if (cached) {
-    parseAndApply(cached, cacheKey);
-    return;
-  }
-
-  // 2) 缓存未命中，fetch 远程地址；成功后写入缓存供下次使用。
+async function deleteCachedModel(key) {
+  const db = await openCacheDb();
   try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const buf = await res.arrayBuffer();
-    putCachedModel(cacheKey, buf); // 不阻塞渲染，失败也无所谓
-    parseAndApply(buf, cacheKey);
-  } catch (e) {
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(CACHE_STORE_NAME, 'readwrite');
+      tx.objectStore(CACHE_STORE_NAME).delete(key);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  } finally { db.close(); }
+}
+
+let loadSequence = 0;
+let activeLoad = null;
+let activeDownload = null;
+let appliedModel = null;
+
+function loadModel(url, cacheKey) {
+  const identity = JSON.stringify([url, cacheKey]);
+  if (activeLoad && activeLoad.identity === identity) return activeLoad.promise;
+  const sequence = ++loadSequence;
+  if (activeDownload) activeDownload.abort();
+  if (appliedModel === identity) {
+    activeLoad = null;
+    activeDownload = null;
     loadingEl.style.display = 'none';
-    notifyFlutter('petError', { cacheKey, message: String(e) });
+    notifyFlutter('petReady', { cacheKey });
+    return Promise.resolve();
   }
+  const current = () => sequence === loadSequence;
+  const stage = (name, label) => {
+    if (!current()) return;
+    loadingEl.textContent = label;
+    notifyFlutter('petLoadStage', { cacheKey, stage: name });
+  };
+  loadingEl.style.display = 'flex';
+  const promise = (async () => {
+    let phase = 'resource';
+    try {
+      if (!url || !cacheKey) throw new Error('missing model resource');
+      phase = 'cache';
+      stage(phase, '读取模型缓存…');
+      const cached = await withDeadline(getCachedModel(cacheKey), 2000, 'cache').catch(() => null);
+      if (!current()) return;
+      if (cached) {
+        try {
+          phase = 'parse';
+          stage(phase, '解析模型…');
+          const gltf = await withDeadline(parseAndApply(cached, cacheKey), 30000, 'parse');
+          if (!current()) return;
+          applyGltfToScene(gltf, cacheKey);
+          appliedModel = identity;
+          return;
+        } catch (_) {
+          if (!current()) return;
+          await withDeadline(deleteCachedModel(cacheKey), 2000, 'cache').catch(() => {});
+        }
+      }
+      if (!current()) return;
+      phase = 'download';
+      stage(phase, '下载模型…');
+      const abort = new AbortController();
+      activeDownload = abort;
+      const buf = await withDeadline((async () => {
+        const response = await fetch(url, { signal: abort.signal });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        return response.arrayBuffer();
+      })(), 60000, 'download', () => abort.abort());
+      if (!current()) return;
+      activeDownload = null;
+      phase = 'parse';
+      stage(phase, '解析模型…');
+      const gltf = await withDeadline(parseAndApply(buf, cacheKey), 30000, 'parse');
+      if (!current()) return;
+      applyGltfToScene(gltf, cacheKey);
+      appliedModel = identity;
+      // Only successfully parsed files enter the persistent cache.
+      void withDeadline(putCachedModel(cacheKey, buf), 2000, 'cache').catch(() => {});
+    } catch (error) {
+      if (!current()) return;
+      loadingEl.style.display = 'none';
+      notifyFlutter('petError', { cacheKey, stage: phase, message: String(error) });
+    } finally {
+      if (current()) {
+        activeLoad = null;
+        activeDownload = null;
+      }
+    }
+  })();
+  activeLoad = { identity, promise };
+  // The invalid-resource branch can finish before the first await.
+  void promise.finally(() => {
+    if (activeLoad && activeLoad.promise === promise) activeLoad = null;
+  });
+  return promise;
 }
 
 // 按 clip 名字播放动画；模型没有该名字的片段时静默忽略（不报错，不切换），

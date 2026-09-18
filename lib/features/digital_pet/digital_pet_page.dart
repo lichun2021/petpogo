@@ -21,7 +21,8 @@ class _DeltaPopup {
   final String text;
   final Color color;
 
-  const _DeltaPopup({required this.id, required this.text, required this.color});
+  const _DeltaPopup(
+      {required this.id, required this.text, required this.color});
 }
 
 class DigitalPetPage extends ConsumerStatefulWidget {
@@ -41,16 +42,21 @@ class _DigitalPetPageState extends ConsumerState<DigitalPetPage> {
   };
 
   String? _lastLoadedGlbUrl;
+  String? _lastLoadedModelIdentity;
   String? _lastLoadedBgUrl;
   String? _lastAppliedClipCode;
 
   void _onSceneEvent(String event, Map<String, dynamic> data) {
     final controller = ref.read(digitalPetControllerProvider.notifier);
     switch (event) {
+      case 'petLoadStage':
+        debugPrint('[数字宠] 模型阶段: ${data['stage']}');
+        break;
       case 'petReady':
         controller.onSceneReady();
         break;
       case 'petError':
+        debugPrint('[数字宠] 模型加载失败，阶段: ${data['stage'] ?? 'scene'}');
         controller.onSceneError(data['message'] ?? 'unknown error');
         break;
     }
@@ -60,15 +66,22 @@ class _DigitalPetPageState extends ConsumerState<DigitalPetPage> {
   // 用"上次已应用的值"做 diff，避免每次 build 都重复下发相同指令。
   void _syncSceneWithState(DigitalPetState state) {
     final status = state.petStatus;
-    if (status == null) return;
+    if (!mounted || status == null || state.status != DigitalPetStatus.ready) {
+      return;
+    }
     final scene = _sceneKey.currentState;
     if (scene == null) return;
 
-    final glbUrl = status.model?.glbUrl;
-    if (glbUrl != null && glbUrl != _lastLoadedGlbUrl) {
+    final glbUrl = status.model?.glbUrl ?? '';
+    final identity = '${state.selectedPetId}:${status.model?.id ?? ''}';
+    final modelChanged =
+        glbUrl != _lastLoadedGlbUrl || identity != _lastLoadedModelIdentity;
+    if (modelChanged) {
       _lastLoadedGlbUrl = glbUrl;
+      _lastLoadedModelIdentity = identity;
+      ref.read(digitalPetControllerProvider.notifier).onSceneLoading();
       _lastAppliedClipCode = null; // 换模型后动画状态重置，清空去重记录
-      scene.loadModel(glbUrl, status.model!.id);
+      scene.loadModel(glbUrl, status.model?.id ?? '');
     }
 
     final bgUrl = status.background?.imageUrl;
@@ -78,10 +91,26 @@ class _DigitalPetPageState extends ConsumerState<DigitalPetPage> {
     }
 
     final clip = state.lastClipCode;
-    if (clip != null && clip != _lastAppliedClipCode) {
+    if (!modelChanged &&
+        state.sceneReady &&
+        clip != null &&
+        clip != _lastAppliedClipCode) {
       _lastAppliedClipCode = clip;
       scene.playAction(clip);
     }
+  }
+
+  Future<void> _retryScene() async {
+    final controller = ref.read(digitalPetControllerProvider.notifier);
+    _lastLoadedGlbUrl = null;
+    _lastLoadedModelIdentity = null;
+    _lastLoadedBgUrl = null;
+    _lastAppliedClipCode = null;
+    controller.onSceneLoading();
+    // Refresh expiring URLs and rebuild failed WebView initialization as well.
+    final refresh = controller.retry();
+    await _sceneKey.currentState?.reloadScene();
+    await refresh;
   }
 
   void _switchPet(String petId) {
@@ -161,8 +190,7 @@ class _DigitalPetPageState extends ConsumerState<DigitalPetPage> {
     if (state.status == DigitalPetStatus.error && state.petStatus == null) {
       return _ErrorView(
         error: state.error,
-        onRetry: () =>
-            ref.read(digitalPetControllerProvider.notifier).retry(),
+        onRetry: () => ref.read(digitalPetControllerProvider.notifier).retry(),
       );
     }
     return Stack(
@@ -171,6 +199,13 @@ class _DigitalPetPageState extends ConsumerState<DigitalPetPage> {
         DigitalPetSceneView(key: _sceneKey, onEvent: _onSceneEvent),
         if (state.status == DigitalPetStatus.loading)
           const Center(child: CircularProgressIndicator()),
+        if (state.sceneError != null || state.status == DigitalPetStatus.error)
+          Positioned.fill(
+              child: ColoredBox(
+                  color: AppColors.surfacePage,
+                  child: _ErrorView(
+                      error: state.sceneError ?? state.error,
+                      onRetry: _retryScene))),
         if (state.petStatus != null)
           Positioned(
             left: AppSpacing.x16,
@@ -223,7 +258,8 @@ class _DigitalPetPageState extends ConsumerState<DigitalPetPage> {
           Positioned.fill(
             child: Align(
               alignment: Alignment(
-                (_deltaPopups.indexOf(popup) - (_deltaPopups.length - 1) / 2) * 0.3,
+                (_deltaPopups.indexOf(popup) - (_deltaPopups.length - 1) / 2) *
+                    0.3,
                 -0.1,
               ),
               child: _FloatingDeltaText(
@@ -267,7 +303,9 @@ class _FloatingDeltaText extends StatelessWidget {
     )
         .animate(onComplete: (_) => onDone())
         .moveY(begin: 0, end: -36, duration: _duration, curve: Curves.easeOut)
-        .fadeOut(delay: 150.ms, duration: _duration - const Duration(milliseconds: 150));
+        .fadeOut(
+            delay: 150.ms,
+            duration: _duration - const Duration(milliseconds: 150));
   }
 }
 
@@ -679,11 +717,18 @@ class _VitalityBars extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _VitalityBarRow(label: '饱腹', value: status.satiety, color: AppColors.statusOnline),
+          _VitalityBarRow(
+              label: '饱腹',
+              value: status.satiety,
+              color: AppColors.statusOnline),
           SizedBox(height: AppSpacing.x4),
-          _VitalityBarRow(label: '情绪', value: status.mood, color: AppColors.brandPrimary),
+          _VitalityBarRow(
+              label: '情绪', value: status.mood, color: AppColors.brandPrimary),
           SizedBox(height: AppSpacing.x4),
-          _VitalityBarRow(label: '清洁', value: status.cleanliness, color: AppColors.statusWarning),
+          _VitalityBarRow(
+              label: '清洁',
+              value: status.cleanliness,
+              color: AppColors.statusWarning),
         ],
       ),
     );
@@ -754,7 +799,6 @@ class _VitalityBarRow extends StatelessWidget {
     );
   }
 }
-
 
 class _EmptyPetsView extends StatelessWidget {
   const _EmptyPetsView();
@@ -831,4 +875,3 @@ class _ErrorView extends StatelessWidget {
     );
   }
 }
-

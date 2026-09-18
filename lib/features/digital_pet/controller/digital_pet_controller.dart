@@ -21,7 +21,11 @@ import '../data/repository/digital_pet_repository.dart';
 const kLastSelectedPetIdKey = 'digital_pet_last_selected_pet_id';
 
 /// 硬件动作轮询间隔：详见 design.md Decision 7（5s，权衡响应及时性与请求量）。
-const kActionPollInterval = Duration(seconds: 5);
+const kActionPollInterval = Duration(seconds: 10);
+
+/// 待机动画 clip 名，需与 assets/digital_pet/scene.js 的 DEFAULT_IDLE_CLIP 保持一致。
+/// 轮询到"当前无活跃动作"（clipCode 为空）时回落到这个动作。
+const kIdleClipCode = 'Idle1';
 
 enum DigitalPetStatus { loading, ready, error }
 
@@ -121,9 +125,8 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
       return;
     }
     final savedId = await _readLastSelectedPetId();
-    final initial = pets.any((p) => p.petId == savedId)
-        ? savedId
-        : pets.first.petId;
+    final initial =
+        pets.any((p) => p.petId == savedId) ? savedId : pets.first.petId;
     state = state.copyWith(pets: pets, selectedPetId: initial);
     await _loadStatusForSelected();
   }
@@ -274,7 +277,8 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
 
   void _startActionPolling() {
     _stopActionPolling();
-    _actionPollTimer = Timer.periodic(kActionPollInterval, (_) => _pollAction());
+    _actionPollTimer =
+        Timer.periodic(kActionPollInterval, (_) => _pollAction());
   }
 
   void _stopActionPolling() {
@@ -288,8 +292,12 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
     final result = await _digitalRepo.fetchAction(pet.petId);
     result.when(
       success: (action) {
-        if (action.clipCode != null && action.clipCode != state.lastClipCode) {
-          state = state.copyWith(lastClipCode: action.clipCode);
+        // 无活跃动作（硬件没有新上报/已过期）时回落到待机动画；
+        // 有活跃动作时按硬件上报的 clipCode 播放。两种情况都做去重，
+        // 避免同一个 clip 反复触发状态更新。
+        final nextClip = action.clipCode ?? kIdleClipCode;
+        if (nextClip != state.lastClipCode) {
+          state = state.copyWith(lastClipCode: nextClip);
         }
       },
       failure: (err) => debugPrint('[数字宠] ❌ 硬件动作轮询失败: $err'),
@@ -297,6 +305,10 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
   }
 
   // ── 场景事件 ──────────────────────────────────────────
+
+  void onSceneLoading() {
+    state = state.copyWith(sceneReady: false, clearSceneError: true);
+  }
 
   void onSceneReady() {
     state = state.copyWith(sceneReady: true, clearSceneError: true);
@@ -320,4 +332,3 @@ final digitalPetControllerProvider =
     ref.read(digitalPetRepositoryProvider),
   );
 });
-

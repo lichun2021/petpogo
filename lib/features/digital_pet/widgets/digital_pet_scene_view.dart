@@ -6,11 +6,13 @@
 library;
 
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 /// 场景事件回调；对应 scene.js 里 notifyFlutter 上报的事件名。
-typedef DigitalPetEventCallback = void Function(String event, Map<String, dynamic> data);
+typedef DigitalPetEventCallback = void Function(
+    String event, Map<String, dynamic> data);
 
 class DigitalPetSceneView extends StatefulWidget {
   final DigitalPetEventCallback onEvent;
@@ -24,6 +26,9 @@ class DigitalPetSceneView extends StatefulWidget {
 class DigitalPetSceneViewState extends State<DigitalPetSceneView> {
   late final WebViewController _webCtrl;
   bool _webReady = false;
+  Timer? _startupTimer;
+  Timer? _modelTimer;
+  int _commandSequence = 0;
 
   // `loadModel`/`setBackground` 常常在 WebView 还没加载完 scene.html
   // （Chromium 启动 + Three.js/GLTFLoader 初始化通常比一次 status 接口
@@ -48,12 +53,56 @@ class DigitalPetSceneViewState extends State<DigitalPetSceneView> {
         onMessageReceived: _onSceneMessage,
       )
       ..setNavigationDelegate(NavigationDelegate(
-        onPageFinished: (_) {
-          setState(() => _webReady = true);
-          _flushPending();
+        onPageFinished: (_) => _initializeScene(),
+        onWebResourceError: (error) {
+          if (error.isForMainFrame == true) _reportFailure('场景初始化失败');
         },
       ))
       ..loadFlutterAsset('assets/digital_pet/scene.html');
+    _watchStartup();
+  }
+
+  void _watchStartup() {
+    _startupTimer?.cancel();
+    _startupTimer =
+        Timer(const Duration(seconds: 20), () => _reportFailure('场景初始化超时'));
+  }
+
+  Future<void> _initializeScene() async {
+    if (!mounted) return;
+    try {
+      final ready = await _webCtrl.runJavaScriptReturningResult(
+          'typeof window.DigitalPet === "object"');
+      if (!mounted) return;
+      if (ready != true && ready.toString() != 'true') {
+        _reportFailure('场景初始化失败');
+        return;
+      }
+      _startupTimer?.cancel();
+      _webReady = true;
+      _flushPending();
+    } catch (_) {
+      _reportFailure('场景初始化失败');
+    }
+  }
+
+  void _reportFailure(String message) {
+    if (!mounted) return;
+    _startupTimer?.cancel();
+    _modelTimer?.cancel();
+    widget.onEvent('petError', {'message': message});
+  }
+
+  Future<void> reloadScene() async {
+    _webReady = false;
+    _commandSequence++;
+    _modelTimer?.cancel();
+    _watchStartup();
+    try {
+      await _webCtrl.loadFlutterAsset('assets/digital_pet/scene.html');
+    } catch (_) {
+      _reportFailure('场景初始化失败');
+    }
   }
 
   void _flushPending() {
@@ -74,6 +123,8 @@ class DigitalPetSceneViewState extends State<DigitalPetSceneView> {
       final map = jsonDecode(message.message) as Map<String, dynamic>;
       final event = map['event'] as String? ?? 'unknown';
       final data = (map['data'] as Map?)?.cast<String, dynamic>() ?? const {};
+      if (!mounted) return;
+      if (event == 'petReady' || event == 'petError') _modelTimer?.cancel();
       widget.onEvent(event, data);
     } catch (_) {
       // 场景侧消息格式异常时静默丢弃，不影响渲染。
@@ -95,16 +146,24 @@ class DigitalPetSceneViewState extends State<DigitalPetSceneView> {
     _sendLoadModel(url, cacheKey);
   }
 
-  void _sendLoadModel(String url, String cacheKey) {
+  Future<void> _sendLoadModel(String url, String cacheKey) async {
+    final command = ++_commandSequence;
+    _modelTimer?.cancel();
+    _modelTimer =
+        Timer(const Duration(seconds: 130), () => _reportFailure('模型加载超时'));
     final args = '${jsonEncode(url)}, ${jsonEncode(cacheKey)}';
-    _webCtrl.runJavaScript('window.DigitalPet.loadModel($args)');
+    try {
+      await _webCtrl.runJavaScript('window.DigitalPet.loadModel($args)');
+    } catch (_) {
+      if (command == _commandSequence) _reportFailure('模型加载启动失败');
+    }
   }
 
   /// 按 clip 名字播放动画；模型没有该名字的片段时场景侧静默忽略。
   void playAction(String clipName) {
     if (!_webReady) return;
-    _webCtrl.runJavaScript(
-        'window.DigitalPet.playAction(${jsonEncode(clipName)})');
+    _webCtrl
+        .runJavaScript('window.DigitalPet.playAction(${jsonEncode(clipName)})');
   }
 
   /// 设置背景图为任意远程/本地 URL；传 null 清空背景。
@@ -120,6 +179,13 @@ class DigitalPetSceneViewState extends State<DigitalPetSceneView> {
   void _sendSetBackground(String? url) {
     final arg = url == null ? 'null' : jsonEncode(url);
     _webCtrl.runJavaScript('window.DigitalPet.setBackground($arg)');
+  }
+
+  @override
+  void dispose() {
+    _startupTimer?.cancel();
+    _modelTimer?.cancel();
+    super.dispose();
   }
 
   @override
