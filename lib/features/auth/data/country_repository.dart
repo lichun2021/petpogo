@@ -1,34 +1,21 @@
-/// 国家/地区 Repository
-///
-/// 直接调用 iPet 后台（PeerApi）公开接口：
-///   POST {peer}/world/country/list    → fetchList()
-///   GET  {peer}/world/country/default → fetchDefault()
-///
-/// 两个接口均免登录，使用独立 Dio 实例，不走 Nuxt 服务器。
-
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/config/app_config.dart';
+import '../../../core/api/api_client.dart';
+import '../../../core/api/api_endpoints.dart';
 import 'models/country_model.dart';
 
 class CountryRepository {
-  late final Dio _dio;
+  final ApiClient _client;
 
-  CountryRepository() {
-    _dio = Dio(BaseOptions(
-      baseUrl: AppConfig.peerPublicBaseUrl,
-      connectTimeout: const Duration(seconds: 8),
-      receiveTimeout: const Duration(seconds: 8),
-    ));
-  }
+  CountryRepository(this._client);
 
   /// 获取国家/地区列表
   /// 失败时返回仅含中国的 fallback 列表，保证 UI 不崩溃。
   Future<List<CountryInfo>> fetchList() async {
     try {
-      final res = await _dio.post<Map<String, dynamic>>('/world/country/list');
-      final rawList = (res.data?['info'] as List?);
+      final res = await _client
+          .post<Map<String, dynamic>>(ApiEndpoints.peerCountryList);
+      final rawList = (res['info'] as List?);
       if (rawList == null) return [CountryInfo.china];
       return rawList
           .whereType<Map<String, dynamic>>()
@@ -43,26 +30,24 @@ class CountryRepository {
   /// 获取默认国家（中国大陆）
   Future<CountryInfo> fetchDefault() async {
     try {
-      final res =
-          await _dio.get<Map<String, dynamic>>('/world/country/default');
-      final info = res.data;
-      if (info != null) {
-        // default 接口返回的是不带 code 封装的直接对象
-        final raw = info['info'] ?? info;
-        if (raw is Map<String, dynamic>) {
-          // 兼容字段名差异：countryName / country
-          final name = (raw['country'] ?? raw['countryName'] ?? '') as String;
-          final countryId = (raw['countryId'] ?? '') as String;
-          final phoneId = (raw['phoneId'] ?? '') as String;
-          if (countryId.isNotEmpty) {
-            return CountryInfo(
-              id: (raw['id'] ?? '0').toString(),
-              country: name,
-              countryEn: name,
-              countryId: countryId,
-              phoneId: phoneId.isEmpty ? '+86' : phoneId,
-            );
-          }
+      final res = await _client
+          .get<Map<String, dynamic>>(ApiEndpoints.peerCountryDefault);
+      final info = res;
+      // default 接口返回的是不带 code 封装的直接对象
+      final raw = info['info'] ?? info;
+      if (raw is Map<String, dynamic>) {
+        // 兼容字段名差异：countryName / country
+        final name = (raw['country'] ?? raw['countryName'] ?? '') as String;
+        final countryId = (raw['countryId'] ?? '') as String;
+        final phoneId = (raw['phoneId'] ?? '') as String;
+        if (countryId.isNotEmpty) {
+          return CountryInfo(
+            id: (raw['id'] ?? '0').toString(),
+            country: name,
+            countryEn: name,
+            countryId: countryId,
+            phoneId: phoneId.isEmpty ? '+86' : phoneId,
+          );
         }
       }
       return CountryInfo.china;
@@ -75,7 +60,7 @@ class CountryRepository {
 
 // ── Riverpod Provider ─────────────────────────────────────────
 final countryRepositoryProvider = Provider<CountryRepository>((ref) {
-  return CountryRepository();
+  return CountryRepository(ref.watch(apiClientProvider));
 });
 
 /// 国家列表 FutureProvider（缓存一次，页面重建不重复请求）

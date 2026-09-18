@@ -40,21 +40,6 @@ class AppConfig {
   // 完整登录 URL = baseUrl + '/auth/login'
 
   // ──────────────────────────────────────────────
-  // 宠小伊 AI 问诊（独立 HTTPS 后端）
-  // ──────────────────────────────────────────────
-  /// 完整 URL 由 Repository 拼接：[aiConsultBaseUrl] + [ApiEndpoints.aiConsult*]
-  static const String aiConsultBaseUrl = 'https://ai.jxpetai.com';
-
-  /// iPet-AI 鉴权凭证（用于 ai.jxpetai.com 的所有请求）
-  /// 签名规则：md5(apiKey + timestamp + apiSecret) 小写十六进制
-  /// TODO: 上线前通过环境变量或后端下发替换，不应出现在生产包明文中
-  static const String aiApiKey    = '06d03bb5a5bdf4281fa7a15b';
-  static const String aiApiSecret = '9bde45786d7e2cd796da9a423bc8eddda07a4f936be273f9';
-
-  /// iPet 登录前公开接口与登录后硬件网关统一入口。
-  static const String peerPublicBaseUrl = 'https://peer.jxpetai.com';
-
-  // ──────────────────────────────────────────────
   // App 信息
   // ──────────────────────────────────────────────
   static const String appVersion = '1.0.8';

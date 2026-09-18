@@ -14,7 +14,7 @@ import 'package:petpogo_app/shared/theme/app_fonts.dart';
 /// AI 宠物语音识别面板
 ///
 /// 新版流程：
-///   录音 → 上传 OSS → 调 /sdkapi/ai/voice-analyze → 显示结果
+///   录音 → 上传 OSS → 调 /sdkapi/ai-proxy/voice/analyze → 显示结果
 ///   配额由后端控制，超限时显示 VIP 提示
 class AiTranslatePanel extends ConsumerStatefulWidget {
   const AiTranslatePanel({super.key});

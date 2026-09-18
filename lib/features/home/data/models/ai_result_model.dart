@@ -2,14 +2,16 @@
 ///  AI 分析结果统一模型
 ///
 ///  对应后端接口：
-///    POST /sdkapi/ai/voice-analyze  → 语音分析
-///    POST /sdkapi/ai/image-analyze  → 图像分析
+///    POST /sdkapi/ai-proxy/voice/analyze  → 语音分析
+///    POST /sdkapi/ai-proxy/image/analyze  → 图像分析
 ///
 ///  两个接口返回结构相同，共用此模型。
 ///  后端在 AI 调用成功后才扣减配额，返回 _quota 字段。
 /// ════════════════════════════════════════════════════════════
 
 // ── 情绪预测项 ────────────────────────────────────────────
+library;
+
 class AiEmotionItem {
   final String label;
   final String labelZh;
@@ -133,7 +135,7 @@ class AiAnalysisResult {
     );
   }
 
-  /// 直连 AI 服务（AppConfig.aiConsultBaseUrl）时使用此解析器。
+  /// SDKAPI AI 中转保留上游裸响应，使用此解析器。
   ///
   /// AI 服务响应字段与业务后端不同：
   ///   - 语音：primary_emotion / top3_emotions / rejected
@@ -171,7 +173,7 @@ class AiAnalysisResult {
       top3: top3,
       advice: (json['advice'] as String?) ?? '',
       ensembleSize: (json['emotion_model_count'] as int?) ?? 0,
-      // 直连 AI 服务不返回配额，limit=-1 表示无限制
+      // AI 上游不返回配额，limit=-1 表示未知
       quota: const AiQuotaInfo(used: 0, limit: -1, remaining: -1),
     );
   }

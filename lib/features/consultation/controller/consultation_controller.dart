@@ -7,7 +7,10 @@
 ///    - loadHistory() / showHistorySession() / exitHistoryView()
 /// ════════════════════════════════════════════════════════════
 
+library;
+
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/consultation_models.dart';
@@ -61,7 +64,7 @@ class ConsultationState {
     if (isViewingHistory) return false; // 历史模式下不显示
     for (final m in messages) {
       if (m.role != ChatRole.assistant) continue;
-      if (m.isStreaming) continue;
+      if (m.isStreaming || m.isInterrupted) continue;
       if (AiOutputParser.hasDiagnosis(m.content)) return true;
     }
     return false;
@@ -112,6 +115,7 @@ class ConsultationState {
 class ConsultationController extends StateNotifier<ConsultationState> {
   final ConsultationRepository _repo;
   final String _petId;
+  CancelToken? _streamCancel;
 
   static const bool _useSyncFallback = false;
 
@@ -192,12 +196,17 @@ class ConsultationController extends StateNotifier<ConsultationState> {
 
   Future<void> _sendStream(String sessionId, String text) async {
     final buf = StringBuffer();
+    final cancel = CancelToken();
+    _streamCancel = cancel;
+    var completed = false;
     try {
       debugPrint('[宠小伊] _sendStream sessionId=$sessionId');
       await for (final ev in _repo.sendMessageStream(
         sessionId: sessionId,
         text: text,
+        cancelToken: cancel,
       )) {
+        if (!mounted || !identical(_streamCancel, cancel)) return;
         switch (ev) {
           case StreamStart():
             break;
@@ -205,6 +214,7 @@ class ConsultationController extends StateNotifier<ConsultationState> {
             buf.write(t);
             _updateLastAssistant(buf.toString(), streaming: true);
           case StreamDone(fullText: final full):
+            completed = true;
             final bufText = buf.toString();
             String finalText;
             if (bufText.isEmpty && full.isNotEmpty) {
@@ -218,22 +228,26 @@ class ConsultationController extends StateNotifier<ConsultationState> {
               }
             }
             _updateLastAssistant(finalText, streaming: false);
-          case StreamUnknown(event: final e, data: final d):
-            debugPrint('[宠小伊] 未知SSE事件 $e: $d');
+          case StreamUnknown(event: final e):
+            debugPrint('[宠小伊] 未知SSE事件 $e');
         }
+        if (completed) break;
       }
-      if (state.messages.isNotEmpty && state.messages.last.isStreaming) {
-        _updateLastAssistant(buf.toString(), streaming: false);
+      if (!mounted || !identical(_streamCancel, cancel)) return;
+      if (!completed) {
+        _markLastAssistantFailed('回答中断，请重试');
+        state = state.copyWith(
+            isReplying: false, errorMessage: '回答中断，已保留收到的内容，请重试');
+        return;
       }
       state = state.copyWith(isReplying: false);
-      debugPrint('[宠小伊] _sendStream DONE len=${buf.length}');
-    } catch (e) {
-      debugPrint('[宠小伊] _sendStream ERROR: $e');
-      _markLastAssistantFailed(e.toString());
-      state = state.copyWith(
-        isReplying: false,
-        errorMessage: '发送失败，请重试',
-      );
+    } catch (_) {
+      if (!mounted || !identical(_streamCancel, cancel)) return;
+      _markLastAssistantFailed('回答中断，请重试');
+      state =
+          state.copyWith(isReplying: false, errorMessage: '回答中断，已保留收到的内容，请重试');
+    } finally {
+      if (identical(_streamCancel, cancel)) _streamCancel = null;
     }
   }
 
@@ -277,8 +291,9 @@ class ConsultationController extends StateNotifier<ConsultationState> {
     state = state.copyWith(messages: [
       ...msgs.sublist(0, msgs.length - 1),
       last.copyWith(
-        content: last.content.isEmpty ? '[发送失败：$errMsg]' : last.content,
+        content: last.content.isEmpty ? '回答未完成，请重试' : last.content,
         isStreaming: false,
+        isInterrupted: true,
       ),
     ]);
   }
@@ -325,10 +340,10 @@ class ConsultationController extends StateNotifier<ConsultationState> {
     result.when(
       success: (list) {
         // 仅过滤 title==null 的空会话（用户未发送任何消息）
-        final filtered = list
-            .where((s) => s.title != null && s.title!.isNotEmpty)
-            .toList();
-        debugPrint('[宠小伊] loadHistory OK 原始=${list.length} 过滤后=${filtered.length}');
+        final filtered =
+            list.where((s) => s.title != null && s.title!.isNotEmpty).toList();
+        debugPrint(
+            '[宠小伊] loadHistory OK 原始=${list.length} 过滤后=${filtered.length}');
         state = state.copyWith(
           historyList: filtered,
           isLoadingHistory: false,
@@ -350,6 +365,11 @@ class ConsultationController extends StateNotifier<ConsultationState> {
   ///   4. 把历史 turns 加载为当前消息列表
   ///   5. 从 historyList 移除已恢复的条目（它现在是活跃 session）
   Future<void> restoreHistorySession(String sessionId) async {
+    _cancelStream();
+    if (state.isReplying) {
+      _markLastAssistantFailed('回答已取消');
+      state = state.copyWith(isReplying: false);
+    }
     debugPrint('[宠小伊] restoreHistorySession sessionId=$sessionId');
 
     final result = await _repo.getSessionMessages(sessionId: sessionId);
@@ -377,13 +397,11 @@ class ConsultationController extends StateNotifier<ConsultationState> {
         final currentSession = state.session;
 
         // ① 删除当前空 Session A（若从未发送消息）
-        if (currentSession != null &&
-            currentSession.sessionId != sessionId) {
+        if (currentSession != null && currentSession.sessionId != sessionId) {
           final hasUserMsgs =
               state.messages.any((m) => m.role == ChatRole.user);
           if (!hasUserMsgs) {
-            unawaited(
-                _repo.deleteSession(sessionId: currentSession.sessionId));
+            unawaited(_repo.deleteSession(sessionId: currentSession.sessionId));
             debugPrint(
                 '[宠小伊] restoreHistorySession — 删除空 Session A ${currentSession.sessionId}');
           }
@@ -417,7 +435,6 @@ class ConsultationController extends StateNotifier<ConsultationState> {
     );
   }
 
-
   /// 退出历史模式，恢复当前问诊会话
   void exitHistoryView() {
     if (!state.isViewingHistory) return;
@@ -437,9 +454,8 @@ class ConsultationController extends StateNotifier<ConsultationState> {
       success: (_) {
         // 从本地列表移除
         state = state.copyWith(
-          historyList: state.historyList
-              .where((s) => s.sessionId != sessionId)
-              .toList(),
+          historyList:
+              state.historyList.where((s) => s.sessionId != sessionId).toList(),
         );
         // 若正在查看被删除的历史，退出历史模式
         if (state.isViewingHistory && state.historyViewTitle != null) {
@@ -454,7 +470,6 @@ class ConsultationController extends StateNotifier<ConsultationState> {
     );
   }
 
-
   // ── 5. 工具方法 ────────────────────────────────────
 
   void clearError() {
@@ -463,7 +478,20 @@ class ConsultationController extends StateNotifier<ConsultationState> {
     }
   }
 
+  void _cancelStream() {
+    final token = _streamCancel;
+    _streamCancel = null;
+    token?.cancel('conversation closed');
+  }
+
+  @override
+  void dispose() {
+    _cancelStream();
+    super.dispose();
+  }
+
   Future<void> cleanup() async {
+    _cancelStream();
     final sess = state.session;
     if (sess == null) return;
 
@@ -475,7 +503,8 @@ class ConsultationController extends StateNotifier<ConsultationState> {
       unawaited(_repo.deleteSession(sessionId: sess.sessionId));
     } else {
       // 有对话记录 → 保留在数据库（用户可从历史查看）
-      debugPrint('[宠小伊] cleanup() — 保留 session，用户消息数=${state.messages.where((m) => m.role == ChatRole.user).length}');
+      debugPrint(
+          '[宠小伊] cleanup() — 保留 session，用户消息数=${state.messages.where((m) => m.role == ChatRole.user).length}');
     }
   }
 
@@ -493,8 +522,7 @@ void unawaited(Future future) {
 
 // ── Riverpod Provider ─────────────────────────────────────
 final consultationControllerProvider = StateNotifierProvider.autoDispose
-    .family<ConsultationController, ConsultationState, String>(
-        (ref, petId) {
+    .family<ConsultationController, ConsultationState, String>((ref, petId) {
   final ctrl = ConsultationController(
     ref.read(consultationRepositoryProvider),
     petId,

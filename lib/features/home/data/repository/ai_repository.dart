@@ -4,18 +4,20 @@
 ///  流程（三步）：
 ///    1. 调用方先上传文件到 OSS，拿到 publicUrl
 ///    2. 调用 analyzeVoice(audioUrl) 或 analyzeImage(imageUrl)
-///    3. 直连 AI 网关（AppConfig.aiConsultBaseUrl）分析并返回结果
+///    3. 通过 SDKAPI 中转分析并返回结果
 ///
-///  语音/图像分析直连 AI 网关，而非业务后端 /sdkapi/ai/*；
-///  请求经 ApiClient 发出，自动注入 AI 签名鉴权头（见 _AuthInterceptor）。
+///  语音/图像分析使用 /sdkapi/ai-proxy/*；
+///  请求经 ApiClient 发出，自动注入 SDK 签名鉴权头（见 _AuthInterceptor）。
 /// ════════════════════════════════════════════════════════════
+
+library;
 
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/api_client.dart';
-import '../../../../core/config/app_config.dart';
+import '../../../../core/api/api_endpoints.dart';
 import '../models/ai_result_model.dart';
 
 FormData buildAiAnalyzeFormData({
@@ -45,7 +47,7 @@ class AiRepository {
     required String folder,
   }) async {
     final res = await _client.post<Map<String, dynamic>>(
-      '/sdkapi/upload/sign',
+      ApiEndpoints.ossUploadSign,
       data: {'mimeType': mimeType, 'folder': folder},
     );
     return OssUploadToken.fromJson(res);
@@ -83,7 +85,7 @@ class AiRepository {
     }
   }
 
-  // ── 步骤3a：语音分析（直连 AI 网关 aiConsultBaseUrl）─────────────────
+  // ── 步骤3a：语音分析（SDKAPI 中转）─────────────────
   /// [audioUrl] : OSS 公开访问 URL
   /// [petId]    : 可选，关联宠物 ID
   Future<AiAnalysisResult> analyzeVoice({
@@ -93,7 +95,7 @@ class AiRepository {
   }) async {
     debugPrint('[AI] 语音分析 → $audioUrl');
     final res = await _client.post<Map<String, dynamic>>(
-      '${AppConfig.aiConsultBaseUrl}/voice/analyze',
+      ApiEndpoints.aiVoiceAnalyze,
       data: buildAiAnalyzeFormData(
         url: audioUrl,
         account: account,
@@ -103,7 +105,7 @@ class AiRepository {
     return AiAnalysisResult.fromAiDirectJson(res);
   }
 
-  // ── 步骤3b：图像分析（直连 AI 网关 aiConsultBaseUrl）─────────────────
+  // ── 步骤3b：图像分析（SDKAPI 中转）─────────────────
   /// [imageUrl] : OSS 公开访问 URL
   /// [petId]    : 可选，关联宠物 ID
   Future<AiAnalysisResult> analyzeImage({
@@ -113,7 +115,7 @@ class AiRepository {
   }) async {
     debugPrint('[AI] 图像分析 → $imageUrl');
     final res = await _client.post<Map<String, dynamic>>(
-      '${AppConfig.aiConsultBaseUrl}/image/analyze',
+      ApiEndpoints.aiImageAnalyze,
       data: buildAiAnalyzeFormData(
         url: imageUrl,
         account: account,

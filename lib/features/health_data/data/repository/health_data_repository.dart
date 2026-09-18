@@ -1,11 +1,13 @@
 /// ════════════════════════════════════════════════════════════
 ///  健康数据 — HealthDataRepository
 ///
-///  后端：AppConfig.aiConsultBaseUrl (https://ai.jxpetai.com)
-///  鉴权：X-API-Key + X-Timestamp + X-Signature (与 aiConsult 共享)
+///  后端：SDKAPI /sdkapi/ai-proxy
+///  鉴权：SDKAPI Bearer + timestamp/signature/nonce
 ///
 ///  四个接口统一响应格式 {code:0, info:object, tip:string}
 /// ════════════════════════════════════════════════════════════
+
+library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -13,16 +15,12 @@ import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/api/api_exception.dart';
 import '../../../../core/api/result.dart';
-import '../../../../core/config/app_config.dart';
 import '../models/health_data_models.dart';
 
 class HealthDataRepository {
   final ApiClient _client;
 
   HealthDataRepository(this._client);
-
-  // ── URL 拼接 ──────────────────────────────────────────
-  String _url(String path) => '${AppConfig.aiConsultBaseUrl}$path';
 
   // ── 统一响应解包 ──────────────────────────────────────
   /// 所有接口返回 {code:int, info:object|null, tip:string}
@@ -65,7 +63,7 @@ class HealthDataRepository {
         if (date != null) body['date'] = date;
 
         final data = await _client.post<Map<String, dynamic>>(
-          _url(ApiEndpoints.healthDataOverview),
+          ApiEndpoints.healthDataOverview,
           data: body,
         );
         final info = _unwrap(data);
@@ -82,7 +80,7 @@ class HealthDataRepository {
         if (date != null) body['date'] = date;
 
         final data = await _client.post<Map<String, dynamic>>(
-          _url(ApiEndpoints.healthDataReport),
+          ApiEndpoints.healthDataReport,
           data: body,
         );
         final info = _unwrap(data);
@@ -101,7 +99,7 @@ class HealthDataRepository {
         if (period != null) body['period'] = period;
 
         final data = await _client.post<Map<String, dynamic>>(
-          _url(ApiEndpoints.healthDataBehaviorAnalysis),
+          ApiEndpoints.healthDataBehaviorAnalysis,
           data: body,
         );
         final info = _unwrap(data);
@@ -120,7 +118,7 @@ class HealthDataRepository {
         if (period != null) body['period'] = period;
 
         final data = await _client.post<Map<String, dynamic>>(
-          _url(ApiEndpoints.healthDataExerciseData),
+          ApiEndpoints.healthDataExerciseData,
           data: body,
         );
         final info = _unwrap(data);

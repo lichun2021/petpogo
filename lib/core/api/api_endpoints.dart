@@ -2,9 +2,15 @@
 ///
 /// 路径常量只保存路径部分（如 '/pets'），
 /// 完整地址由 ApiClient 拼接（baseUrl + path）。
-/// 注意：语音/图像情绪分析实际直连 AI 网关（AppConfig.aiConsultBaseUrl），
-/// 由 ai_repository.dart 拼接完整 URL；本文件仅保留业务后端路径常量。
+/// Peer 与 AI 均使用 SDKAPI 中转路径，由业务服务器处理上游鉴权。
 abstract class ApiEndpoints {
+  static const peerProxyPrefix = '/sdkapi/peer';
+  static const aiProxyPrefix = '/sdkapi/ai-proxy';
+  static const aiVoiceAnalyze = '$aiProxyPrefix/voice/analyze';
+  static const aiImageAnalyze = '$aiProxyPrefix/image/analyze';
+  static const peerCountryList = '$peerProxyPrefix/world/country/list';
+  static const peerCountryDefault = '$peerProxyPrefix/world/country/default';
+
   static const postAuthorsFeed = '/sdkapi/post/feed/friends';
   static const musicList = '/sdkapi/music/list';
   static const musicPlaylists = '/sdkapi/music/playlists';
@@ -91,66 +97,71 @@ abstract class ApiEndpoints {
   /// 打开 App 后解析分享码  GET /sdkapi/share/resolve
   static const shareResolve = '/sdkapi/share/resolve';
 
-  // ── 宠小伊 AI 问诊（独立后端 AppConfig.aiConsultBaseUrl）─
+  // ── 宠小伊 AI 问诊（SDKAPI 中转）─
   /// 创建新 session（POST JSON body {pet_id}，v0.4 改为 POST）
-  static const aiConsultSessionNew = '/session/new';
+  static const aiConsultSessionNew = '$aiProxyPrefix/session/new';
 
   /// 删除 session（POST JSON body {session_id}）
-  static const aiConsultSessionDelete = '/session/delete';
+  static const aiConsultSessionDelete = '$aiProxyPrefix/session/delete';
 
   /// 同步问诊（一次性返回，调试/降级用）
-  static const aiConsultMessages = '/messages';
+  static const aiConsultMessages = '$aiProxyPrefix/messages';
 
   /// 流式问诊（SSE，主入口）
-  static const aiConsultMessagesStream = '/messages/stream';
+  static const aiConsultMessagesStream = '$aiProxyPrefix/messages/stream';
 
   /// 生成诊断报告
-  static const aiConsultReport = '/report';
+  static const aiConsultReport = '$aiProxyPrefix/report';
 
   /// 查询宠物的全部历史会话列表（POST {pet_id}）
-  static const aiConsultSessionByPet = '/session/by-pet';
+  static const aiConsultSessionByPet = '$aiProxyPrefix/session/by-pet';
 
   /// 查询指定会话的完整聊天记录（POST {session_id}）
-  static const aiConsultSessionMessages = '/session/messages';
+  static const aiConsultSessionMessages = '$aiProxyPrefix/session/messages';
 
-  // ── 健康数据（独立后端 AppConfig.aiConsultBaseUrl，同 AI 网关）─
+  // ── 健康数据（SDKAPI 中转）─
   /// 健康数据概览（POST JSON body {pet_id, date?}）
-  static const healthDataOverview = '/health-data/overview';
+  static const healthDataOverview = '$aiProxyPrefix/health-data/overview';
 
   /// 健康数据报告（POST JSON body {pet_id, date?}）
-  static const healthDataReport = '/health-data/health-report';
+  static const healthDataReport = '$aiProxyPrefix/health-data/health-report';
 
   /// 行为分析详情（POST JSON body {pet_id, date?, period?}）
-  static const healthDataBehaviorAnalysis = '/health-data/behavior-analysis';
+  static const healthDataBehaviorAnalysis =
+      '$aiProxyPrefix/health-data/behavior-analysis';
 
   /// 运动数据详情（POST JSON body {pet_id, date?, period?}）
-  static const healthDataExerciseData = '/health-data/exercise-data';
+  static const healthDataExerciseData =
+      '$aiProxyPrefix/health-data/exercise-data';
 
   // ── 视频流自动 AI 分析（router_video_stream.py）──────────
   /// 保存/更新自动分析设置（POST JSON body）
-  static const autoAnalysisSave = '/video/stream/auto-analysis/settings/save';
+  static const autoAnalysisSave =
+      '$aiProxyPrefix/video/stream/auto-analysis/settings/save';
 
   /// 启用或禁用自动分析设置（POST JSON body）
   static const autoAnalysisToggle =
-      '/video/stream/auto-analysis/settings/disable';
+      '$aiProxyPrefix/video/stream/auto-analysis/settings/disable';
 
   /// 查询设备任务列表（POST JSON body）
-  static const autoAnalysisTasks = '/video/stream/auto-analysis/tasks';
+  static const autoAnalysisTasks =
+      '$aiProxyPrefix/video/stream/auto-analysis/tasks';
 
   // ── 音频流自动 AI 分析（自动打招呼）──────────────────────
   /// 保存/更新音频流自动分析设置（POST JSON body）
-  static const voiceAnalysisSave = '/voice/stream/auto-analysis/settings/save';
+  static const voiceAnalysisSave =
+      '$aiProxyPrefix/voice/stream/auto-analysis/settings/save';
 
   /// 启用或禁用音频流自动分析设置（POST JSON body）
   static const voiceAnalysisToggle =
-      '/voice/stream/auto-analysis/settings/disable';
+      '$aiProxyPrefix/voice/stream/auto-analysis/settings/disable';
 
   // ── 手动录制声网音视频流（router_video_recording.py）───
   /// 开始录制设备音视频流  POST /video/recording/start
-  static const recordingStart = '/video/recording/start';
+  static const recordingStart = '$aiProxyPrefix/video/recording/start';
 
   /// 结束录制并合成 MP4   POST /video/recording/stop
-  static const recordingStop = '/video/recording/stop';
+  static const recordingStop = '$aiProxyPrefix/video/recording/stop';
 
   // ── 积分系统 ────────────────────────────────────────────
   /// 积分余额（周积分/永久积分/总计）  GET /sdkapi/points/balance

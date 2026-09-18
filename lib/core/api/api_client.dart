@@ -15,6 +15,9 @@
 ///    ApiClient ← Repository ← Controller ← View
 /// ════════════════════════════════════════════════════════════
 
+library;
+
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
@@ -24,6 +27,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_config.dart';
 import 'api_exception.dart';
+import 'api_endpoints.dart';
 
 class ApiClient {
   /// 底层 Dio 实例（私有，外部不可直接使用）
@@ -34,7 +38,7 @@ class ApiClient {
   void Function()? onUnauthorized;
 
   /// 构造时可传入初始 Token（从 SecureStorage 读取的持久化 Token）
-  ApiClient({String? token}) {
+  ApiClient({String? token, HttpClientAdapter? adapter}) {
     _dio = Dio(
       BaseOptions(
         // 服务器地址，从 AppConfig 统一管理（dev/prod 不同地址）
@@ -54,10 +58,13 @@ class ApiClient {
       ),
     );
 
+    if (adapter != null) _dio.httpClientAdapter = adapter;
+    if (token != null) setToken(token);
+
     // ── 注册拦截器链（按顺序执行）────────────────────────
     _dio.interceptors.addAll([
       // 1. Auth 拦截器：在每个请求头里自动插入 Token
-      _AuthInterceptor(token: token),
+      _AuthInterceptor(),
 
       // 2. 错误拦截器：把 DioException → ApiException
       //    401 时通过 onUnauthorized 回调通知 AuthController
@@ -77,7 +84,7 @@ class ApiClient {
   /// [fromJson] - JSON 反序列化函数，传入时自动解析，不传则返回原始数据
   ///
   /// 示例：
-  ///   final pets = await _client.get<List<PetModel>>(
+  ///   final pets = await _client.get(
   ///     ApiEndpoints.petList,
   ///     fromJson: (data) => (data as List).map(PetModel.fromJson).toList(),
   ///   );
@@ -144,6 +151,37 @@ class ApiClient {
   ///
   /// 调用方必须用 try/catch 包裹 `await for` 以处理 ApiException。
   Stream<SseFrame> postStream(
+    String url, {
+    Object? data,
+    Map<String, dynamic>? headers,
+    CancelToken? cancelToken,
+  }) async* {
+    final token = cancelToken ?? CancelToken();
+    var timedOut = false;
+    final timer = Timer(const Duration(seconds: 310), () {
+      timedOut = true;
+      token.cancel('stream deadline');
+    });
+    try {
+      yield* _postStreamFrames(url,
+          data: data, headers: headers, cancelToken: token);
+      if (timedOut) {
+        throw const ApiException(
+            message: '回答超时，请重试', type: ApiErrorType.timeout);
+      }
+    } catch (_) {
+      if (timedOut) {
+        throw const ApiException(
+            message: '回答超时，请重试', type: ApiErrorType.timeout);
+      }
+      rethrow;
+    } finally {
+      timer.cancel();
+      if (!token.isCancelled) token.cancel('stream closed');
+    }
+  }
+
+  Stream<SseFrame> _postStreamFrames(
     String url, {
     Object? data,
     Map<String, dynamic>? headers,
@@ -233,8 +271,8 @@ class ApiClient {
 /// Server-Sent Events 单帧
 ///
 /// SSE 协议格式：
-///   event: <name>\n        ← 可选，默认 'message'
-///   data: <payload>\n      ← 多行 data 会被拼成同一帧（用 \n 分隔）
+///   event: name\n        ← 可选，默认 'message'
+///   data: payload\n      ← 多行 data 会被拼成同一帧（用 \n 分隔）
 ///   \n                     ← 空行结束一帧
 class SseFrame {
   /// 事件名，缺省 'message'（SSE 协议规定）
@@ -252,12 +290,9 @@ class SseFrame {
 // ── Auth 拦截器 ───────────────────────────────────────────
 /// 在每个请求的 Header 中注入 Authorization Token
 ///
-/// 注意：这里注入的是初始 Token（构造时传入）。
-/// 登录后通过 ApiClient.setToken() 更新 Dio.options.headers，
-/// 后续请求会自动携带新 Token，不需要重新创建 ApiClient。
+/// 登录凭证由 ApiClient.setToken/clearToken 管理；此处只负责路由与 SDK 签名。
 class _AuthInterceptor extends Interceptor {
-  final String? token;
-  _AuthInterceptor({this.token});
+  _AuthInterceptor();
 
   // nonce 随机数生成器（防重放标识用）
   static final _rand = Random.secure();
@@ -271,9 +306,35 @@ class _AuthInterceptor extends Interceptor {
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    // 如果有初始 Token，注入到请求头
-    if (token != null && token!.isNotEmpty) {
-      options.headers['Authorization'] = 'Bearer $token';
+    final path = Uri.parse(options.path).path;
+    final isAi = path.startsWith('${ApiEndpoints.aiProxyPrefix}/');
+    if (isAi) {
+      options.headers.removeWhere((key, _) => {
+            'x-api-key',
+            'x-signature',
+            'x-timestamp'
+          }.contains(key.toLowerCase()));
+      // Account is authoritative on the server; never trust stale local storage.
+      if (options.data is FormData) {
+        final form = (options.data as FormData).clone();
+        form.fields.removeWhere((entry) => entry.key == 'account');
+        options.data = form;
+      } else if (options.data is Map) {
+        options.data = Map<String, dynamic>.from(options.data as Map)
+          ..remove('account');
+      }
+      if (options.responseType != ResponseType.stream) {
+        options.receiveTimeout = path.endsWith('/video/recording/stop')
+            ? const Duration(seconds: 310)
+            : const Duration(seconds: 130);
+      }
+    } else if (path.startsWith('${ApiEndpoints.peerProxyPrefix}/')) {
+      options.receiveTimeout = const Duration(seconds: 30);
+      if (path == ApiEndpoints.peerCountryList ||
+          path == ApiEndpoints.peerCountryDefault) {
+        options.headers
+            .removeWhere((key, _) => key.toLowerCase() == 'authorization');
+      }
     }
 
     // 如果是 /sdkapi/ 请求，添加签名
@@ -286,20 +347,6 @@ class _AuthInterceptor extends Interceptor {
       options.headers['x-signature'] = signature;
       // x-nonce 防重放：每个请求唯一的随机串（≥8 位），5 分钟窗口内不可重复
       options.headers['x-nonce'] = _genNonce();
-    }
-
-    // 如果是 iPet-AI 服务（AppConfig.aiConsultBaseUrl），注入 AI 鉴权头
-    // 签名规则：md5(apiKey + timestamp + apiSecret) 小写十六进制
-    if (options.uri.toString().startsWith(AppConfig.aiConsultBaseUrl)) {
-      final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-      const apiKey    = AppConfig.aiApiKey;
-      const apiSecret = AppConfig.aiApiSecret;
-      final signature = md5
-          .convert(utf8.encode('$apiKey$timestamp$apiSecret'))
-          .toString();
-      options.headers['x-api-key']   = apiKey;
-      options.headers['x-timestamp'] = timestamp;
-      options.headers['x-signature'] = signature;
     }
 
     // 继续传递请求（必须调用，否则请求会被阻断）
@@ -332,6 +379,10 @@ void _logLong(String msg, {int chunkSize = 500}) {
   }
 }
 
+bool _isProxyRequest(RequestOptions options) =>
+    options.uri.path.startsWith('${ApiEndpoints.peerProxyPrefix}/') ||
+    options.uri.path.startsWith('${ApiEndpoints.aiProxyPrefix}/');
+
 class _DevLogInterceptor extends Interceptor {
   // 记录请求开始时间，用于计算耗时
   final _startTimes = <String, DateTime>{};
@@ -342,18 +393,25 @@ class _DevLogInterceptor extends Interceptor {
     _startTimes[key] = DateTime.now();
 
     debugPrint('\n┌─── [API 请求] ─────────────────────────────');
-    debugPrint('│ ${options.method} ${options.uri}');
+    debugPrint(
+        '│ ${options.method} ${_isProxyRequest(options) ? options.uri.path : options.uri}');
     // 请求头（过滤掉 Authorization 的具体 token 值，只显示是否有）
     final headers = Map<String, dynamic>.from(options.headers);
-    if (headers.containsKey('Authorization')) {
-      headers['Authorization'] = 'Bearer ***';
-    }
+    headers.updateAll((key, value) => {
+          'authorization',
+          'x-api-key',
+          'x-signature',
+          'x-nonce'
+        }.contains(key.toLowerCase())
+            ? '***'
+            : value);
     debugPrint('│ Headers: $headers');
-    if (options.queryParameters.isNotEmpty) {
+    if (!_isProxyRequest(options) && options.queryParameters.isNotEmpty) {
       debugPrint('│ Query: ${options.queryParameters}');
     }
     if (options.data != null) {
-      _logLong('│ Body: ${options.data}');
+      _logLong(
+          '│ Body: ${_isProxyRequest(options) ? '<proxy payload omitted>' : options.data}');
     }
     debugPrint('└─────────────────────────────────────────────');
     handler.next(options);
@@ -373,7 +431,8 @@ class _DevLogInterceptor extends Interceptor {
     if (response.requestOptions.responseType == ResponseType.stream) {
       debugPrint('│ Body: <streaming>');
     } else {
-      _logLong('│ Body: ${response.data}');
+      _logLong(
+          '│ Body: ${_isProxyRequest(response.requestOptions) ? '<proxy payload omitted>' : response.data}');
     }
     debugPrint('└─────────────────────────────────────────────');
     handler.next(response);
@@ -388,8 +447,9 @@ class _DevLogInterceptor extends Interceptor {
     debugPrint('│ ${err.requestOptions.method} ${err.requestOptions.uri}');
     debugPrint('│ Type: ${err.type}');
     debugPrint('│ Status: ${err.response?.statusCode}');
-    _logLong('│ Body: ${err.response?.data}');
-    _logLong('│ Msg: ${err.message}');
+    _logLong(
+        '│ Body: ${_isProxyRequest(err.requestOptions) ? '<proxy payload omitted>' : err.response?.data}');
+    if (!_isProxyRequest(err.requestOptions)) _logLong('│ Msg: ${err.message}');
     debugPrint('└─────────────────────────────────────────────');
     handler.next(err);
   }
@@ -410,6 +470,7 @@ class _DevLogInterceptor extends Interceptor {
 class _ErrorInterceptor extends Interceptor {
   final ApiClient _client;
   _ErrorInterceptor(this._client);
+  @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     ApiException apiEx;
 

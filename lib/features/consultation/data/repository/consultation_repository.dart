@@ -1,7 +1,7 @@
 /// ════════════════════════════════════════════════════════════
 ///  宠小伊 AI 问诊 — ConsultationRepository
 ///
-///  后端：AppConfig.aiConsultBaseUrl (https://ai.jxpetai.com)
+///  后端：SDKAPI /sdkapi/ai-proxy
 ///
 ///  v0.4 API 变更（已全量适配）：
 ///    ① 统一响应格式 {code, info, tip}，通过 _unwrap() 统一解包
@@ -11,6 +11,8 @@
 ///    ⑤ 新增 /session/by-pet 和 /session/messages 历史接口
 /// ════════════════════════════════════════════════════════════
 
+library;
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,7 +20,6 @@ import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/api/api_exception.dart';
 import '../../../../core/api/result.dart';
-import '../../../../core/config/app_config.dart';
 import '../models/auto_analysis_models.dart';
 import '../models/consultation_models.dart';
 
@@ -26,9 +27,6 @@ class ConsultationRepository {
   final ApiClient _client;
 
   ConsultationRepository(this._client);
-
-  // ── URL 拼接 ──────────────────────────────────────────
-  String _url(String path) => '${AppConfig.aiConsultBaseUrl}$path';
 
   // ── 统一响应解包 ──────────────────────────────────────
   /// v0.4 所有接口返回 {code:int, info:object|null, tip:string}
@@ -48,7 +46,7 @@ class ConsultationRepository {
   }) =>
       guardResult(() async {
         final data = await _client.post<Map<String, dynamic>>(
-          _url(ApiEndpoints.aiConsultSessionNew),
+          ApiEndpoints.aiConsultSessionNew,
           data: {'pet_id': petId},
         );
         return ConsultationSession.fromJson(_unwrap(data));
@@ -62,7 +60,7 @@ class ConsultationRepository {
     CancelToken? cancelToken,
   }) async* {
     final frames = _client.postStream(
-      _url(ApiEndpoints.aiConsultMessagesStream),
+      ApiEndpoints.aiConsultMessagesStream,
       data: {'session_id': sessionId, 'text': text},
       cancelToken: cancelToken,
     );
@@ -93,7 +91,7 @@ class ConsultationRepository {
   }) =>
       guardResult(() async {
         final data = await _client.post<Map<String, dynamic>>(
-          _url(ApiEndpoints.aiConsultMessages),
+          ApiEndpoints.aiConsultMessages,
           data: {'session_id': sessionId, 'text': text},
         );
         return ConsultationTurn.fromJson(_unwrap(data));
@@ -105,7 +103,7 @@ class ConsultationRepository {
   }) =>
       guardResult(() async {
         final data = await _client.post<Map<String, dynamic>>(
-          _url(ApiEndpoints.aiConsultReport),
+          ApiEndpoints.aiConsultReport,
           data: {'session_id': sessionId},
         );
         return ConsultationReport.fromJson(_unwrap(data));
@@ -118,7 +116,7 @@ class ConsultationRepository {
       guardResult(() async {
         try {
           final data = await _client.post<Map<String, dynamic>>(
-            _url(ApiEndpoints.aiConsultSessionDelete),
+            ApiEndpoints.aiConsultSessionDelete,
             data: {'session_id': sessionId},
           );
           // code!=0 说明 session 已不存在（报告生成后自动清理），视为成功
@@ -136,7 +134,7 @@ class ConsultationRepository {
   }) =>
       guardResult(() async {
         final data = await _client.post<Map<String, dynamic>>(
-          _url(ApiEndpoints.aiConsultSessionByPet),
+          ApiEndpoints.aiConsultSessionByPet,
           data: {'pet_id': petId},
         );
         final info = _unwrap(data);
@@ -156,7 +154,7 @@ class ConsultationRepository {
   }) =>
       guardResult(() async {
         final data = await _client.post<Map<String, dynamic>>(
-          _url(ApiEndpoints.aiConsultSessionMessages),
+          ApiEndpoints.aiConsultSessionMessages,
           data: {'session_id': sessionId},
         );
         return SessionHistory.fromJson(_unwrap(data));
@@ -173,7 +171,7 @@ class ConsultationRepository {
   }) =>
       guardResult(() async {
         final data = await _client.post<Map<String, dynamic>>(
-          _url(ApiEndpoints.autoAnalysisSave),
+          ApiEndpoints.autoAnalysisSave,
           data: {
             'account': account,
             'device_no': deviceNo,
@@ -195,7 +193,7 @@ class ConsultationRepository {
   }) =>
       guardResult(() async {
         final data = await _client.post<Map<String, dynamic>>(
-          _url(ApiEndpoints.autoAnalysisToggle),
+          ApiEndpoints.autoAnalysisToggle,
           data: {
             'account': account,
             'device_no': deviceNo,
@@ -213,7 +211,7 @@ class ConsultationRepository {
   }) =>
       guardResult(() async {
         final data = await _client.post<Map<String, dynamic>>(
-          _url(ApiEndpoints.autoAnalysisTasks),
+          ApiEndpoints.autoAnalysisTasks,
           data: {'account': account, 'device_no': deviceNo},
         );
         return AutoAnalysisTasksResult.fromJson(_unwrap(data));
@@ -233,7 +231,7 @@ class ConsultationRepository {
   }) =>
       guardResult(() async {
         final data = await _client.post<Map<String, dynamic>>(
-          _url(ApiEndpoints.voiceAnalysisSave),
+          ApiEndpoints.voiceAnalysisSave,
           data: {
             'account': account,
             'device_no': deviceNo,
@@ -255,7 +253,7 @@ class ConsultationRepository {
   }) =>
       guardResult(() async {
         final data = await _client.post<Map<String, dynamic>>(
-          _url(ApiEndpoints.voiceAnalysisToggle),
+          ApiEndpoints.voiceAnalysisToggle,
           data: {'account': account, 'device_no': deviceNo, 'enabled': enabled},
         );
         final info = _unwrap(data);
@@ -272,7 +270,7 @@ class ConsultationRepository {
   }) =>
       guardResult(() async {
         final data = await _client.post<Map<String, dynamic>>(
-          _url(ApiEndpoints.recordingStart),
+          ApiEndpoints.recordingStart,
           data: {'account': account, 'device_no': deviceNo},
         );
         return RecordingStartInfo.fromJson(_unwrap(data));
@@ -286,7 +284,7 @@ class ConsultationRepository {
   }) =>
       guardResult(() async {
         final data = await _client.post<Map<String, dynamic>>(
-          _url(ApiEndpoints.recordingStop),
+          ApiEndpoints.recordingStop,
           data: {'account': account, 'device_no': deviceNo},
           options: Options(receiveTimeout: const Duration(seconds: 310)),
         );

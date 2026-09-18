@@ -13,7 +13,7 @@ import 'package:petpogo_app/shared/theme/app_fonts.dart';
 /// AI 宠物图像情绪识别面板
 ///
 /// 新版流程：
-///   拍照/相册 → 上传 OSS → 调 /sdkapi/ai/image-analyze → 显示结果
+///   拍照/相册 → 上传 OSS → 调 /sdkapi/ai-proxy/image/analyze → 显示结果
 ///   配额由后端控制
 class AiImagePanel extends ConsumerStatefulWidget {
   const AiImagePanel({super.key});

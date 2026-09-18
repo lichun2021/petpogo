@@ -1,7 +1,7 @@
 /// ════════════════════════════════════════════════════════════
 ///  宠小伊 AI 问诊 — 数据模型
 ///
-///  后端：https://ai.jxpetai.com (v0.4+)
+///  后端：SDKAPI /sdkapi/ai-proxy（保留 AI 原始响应）
 ///  API 统一响应格式：{ code: int, info: object|null, tip: string }
 ///  Repository 层负责解包，Model 只处理 info 内的业务字段。
 ///
@@ -10,6 +10,8 @@
 ///    - disease_card 改为英文 key，probability 为 int(0-100)，新增 risk_level
 ///    - 新增历史记录模型：ConsultationSessionSummary / HistoryTurn / SessionHistory
 /// ════════════════════════════════════════════════════════════
+
+library;
 
 import 'dart:convert';
 
@@ -83,6 +85,7 @@ class ChatMessage {
 
   /// 是否处于流式接收中（true 时显示打字机光标，禁用输入框）
   final bool isStreaming;
+  final bool isInterrupted;
 
   final DateTime createdAt;
 
@@ -90,13 +93,17 @@ class ChatMessage {
     required this.role,
     required this.content,
     this.isStreaming = false,
+    this.isInterrupted = false,
     required this.createdAt,
   });
 
-  ChatMessage copyWith({String? content, bool? isStreaming}) => ChatMessage(
+  ChatMessage copyWith(
+          {String? content, bool? isStreaming, bool? isInterrupted}) =>
+      ChatMessage(
         role: role,
         content: content ?? this.content,
         isStreaming: isStreaming ?? this.isStreaming,
+        isInterrupted: isInterrupted ?? this.isInterrupted,
         createdAt: createdAt,
       );
 }
