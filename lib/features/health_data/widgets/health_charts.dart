@@ -29,7 +29,7 @@ Color healthChartColor(int index) => [
 
 class HealthRatioBar extends StatelessWidget {
   final String label;
-  final double ratio;
+  final double? ratio;
   final Color color;
   final String? detail;
 
@@ -44,12 +44,13 @@ class HealthRatioBar extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: AppSpacing.x12),
         child: Semantics(
-          label: '$label ${healthPercent(ratio)} ${detail ?? ''}',
+          label:
+              '$label ${ratio == null ? '待采集' : healthPercent(ratio!)} ${detail ?? ''}',
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Wrap(spacing: AppSpacing.x8, children: [
               Text(label, style: Theme.of(context).textTheme.bodyMedium),
-              Text(healthPercent(ratio),
+              Text(ratio == null ? '—' : healthPercent(ratio!),
                   style: TextStyle(color: color, fontWeight: FontWeight.w700)),
               if (detail != null)
                 Text(detail!, style: TextStyle(color: AppColors.textSecondary)),
@@ -58,7 +59,7 @@ class HealthRatioBar extends StatelessWidget {
             ClipRRect(
               borderRadius: AppRadius.pillRadius,
               child: LinearProgressIndicator(
-                value: healthRatio(ratio),
+                value: ratio == null ? 0 : healthRatio(ratio!),
                 minHeight: AppSpacing.x4,
                 color: color,
                 backgroundColor: AppColors.surfaceSunken,
@@ -71,11 +72,13 @@ class HealthRatioBar extends StatelessWidget {
 
 class HealthRing extends StatelessWidget {
   final List<double> ratios;
+  final double dimension;
   final String value;
   final String label;
   const HealthRing(
       {super.key,
       required this.ratios,
+      this.dimension = AppSize.healthRing,
       required this.value,
       required this.label});
 
@@ -84,8 +87,8 @@ class HealthRing extends StatelessWidget {
         child: Semantics(
           label: '$label $value',
           child: SizedBox.square(
-            dimension: AppSize.healthRing *
-                math.max(1.0, MediaQuery.textScalerOf(context).scale(14) / 18),
+            dimension: dimension *
+                math.max(1.0, MediaQuery.textScalerOf(context).scale(14) / 14),
             child: CustomPaint(
               painter: _RingPainter(
                   ratios,
@@ -95,11 +98,14 @@ class HealthRing extends StatelessWidget {
                   child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.x24),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text(value,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          fontFeatures: const [FontFeature.tabularFigures()])),
+                  if (value.isNotEmpty)
+                    Text(value,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontFeatures: const [
+                              FontFeature.tabularFigures()
+                            ])),
                   Text(label,
                       textAlign: TextAlign.center,
                       style: Theme.of(context)
@@ -184,8 +190,45 @@ class HealthColumnChart extends StatelessWidget {
     if (values.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.x12),
-        child: Text('$title：暂无数据',
-            style: TextStyle(color: AppColors.textSecondary)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: AppSpacing.x12),
+          Container(
+              height: AppSize.healthPlotHeight,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                  border: Border(
+                      left: BorderSide(color: AppColors.borderSubtle),
+                      bottom: BorderSide(color: AppColors.borderSubtle))),
+              child: Stack(children: [
+                for (final alignment in [
+                  Alignment.topCenter,
+                  Alignment.center,
+                  Alignment.bottomCenter
+                ])
+                  Align(
+                      alignment: alignment,
+                      child: Divider(color: AppColors.borderSubtle)),
+                Center(
+                    child: Container(
+                  color: AppColors.surfaceCard,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.x16),
+                  child: Text('—',
+                      semanticsLabel: '暂无数据',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(color: AppColors.textTertiary)),
+                )),
+              ])),
+          const SizedBox(height: AppSpacing.x4),
+          Text('待采集 · $unit',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: AppColors.textSecondary)),
+        ]),
       );
     }
     return Padding(

@@ -93,6 +93,10 @@ class HealthDataState {
 
 class HealthDataController extends StateNotifier<HealthDataState> {
   final HealthDataRepository _repository;
+  int _overviewRequest = 0;
+  int _reportRequest = 0;
+  int _behaviorRequest = 0;
+  int _exerciseRequest = 0;
 
   HealthDataController(String petId, this._repository)
       : super(HealthDataState(
@@ -120,11 +124,13 @@ class HealthDataController extends StateNotifier<HealthDataState> {
 
   // ── 独立 fetch 方法（供初始化和 retry 使用）──────────────────────────
   Future<void> _fetchOverview() async {
+    final request = ++_overviewRequest;
     state = state.copyWith(overview: state.overview.loading());
     final result = await _repository.fetchOverview(
       petId: state.petId,
       date: state.selectedDate,
     );
+    if (!mounted || request != _overviewRequest) return;
     state = state.copyWith(
       overview: result.when(
         success: (data) => state.overview.success(data),
@@ -134,11 +140,13 @@ class HealthDataController extends StateNotifier<HealthDataState> {
   }
 
   Future<void> _fetchReport() async {
+    final request = ++_reportRequest;
     state = state.copyWith(report: state.report.loading());
     final result = await _repository.fetchHealthReport(
       petId: state.petId,
       date: state.selectedDate,
     );
+    if (!mounted || request != _reportRequest) return;
     state = state.copyWith(
       report: result.when(
         success: (data) => state.report.success(data),
@@ -148,12 +156,14 @@ class HealthDataController extends StateNotifier<HealthDataState> {
   }
 
   Future<void> _fetchBehavior() async {
+    final request = ++_behaviorRequest;
     state = state.copyWith(behavior: state.behavior.loading());
     final result = await _repository.fetchBehaviorAnalysis(
       petId: state.petId,
       date: state.selectedDate,
       period: state.selectedPeriod,
     );
+    if (!mounted || request != _behaviorRequest) return;
     state = state.copyWith(
       behavior: result.when(
         success: (data) => state.behavior.success(data),
@@ -163,12 +173,14 @@ class HealthDataController extends StateNotifier<HealthDataState> {
   }
 
   Future<void> _fetchExercise() async {
+    final request = ++_exerciseRequest;
     state = state.copyWith(exercise: state.exercise.loading());
     final result = await _repository.fetchExerciseData(
       petId: state.petId,
       date: state.selectedDate,
       period: state.selectedPeriod,
     );
+    if (!mounted || request != _exerciseRequest) return;
     state = state.copyWith(
       exercise: result.when(
         success: (data) => state.exercise.success(data),
@@ -207,8 +219,8 @@ class HealthDataController extends StateNotifier<HealthDataState> {
 // Provider
 // ═════════════════════════════════════════════════════════════════════════════
 
-final healthDataControllerProvider = StateNotifierProvider.family<
-    HealthDataController, HealthDataState, String>(
+final healthDataControllerProvider =
+    StateNotifierProvider.family<HealthDataController, HealthDataState, String>(
   (ref, petId) {
     return HealthDataController(
       petId,

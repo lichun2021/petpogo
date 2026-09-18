@@ -46,6 +46,9 @@ abstract final class AppSize {
   static const double healthLegendWidth = 144;
   static const double healthPlotHeight = 112;
   static const double healthColumnWidth = 64;
+  static const double healthTimelineHeight = 176;
+  static const double healthAxisWidth = 28;
+  static const double healthCompactRing = 104;
 
   /// 底栏高度（不含安全区）
   static const double tabBarHeight = 64;

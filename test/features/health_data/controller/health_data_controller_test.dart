@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:petpogo_app/core/api/api_client.dart';
@@ -22,6 +23,7 @@ class _FakeRepository extends HealthDataRepository {
   String? lastBehaviorPeriod;
   String? lastExercisePeriod;
 
+  Future<Result<BehaviorAnalysis>> Function(String?)? behaviorHandler;
   Result<HealthOverview>? overviewResult;
   Result<HealthReport>? reportResult;
   Result<BehaviorAnalysis>? behaviorResult;
@@ -53,6 +55,7 @@ class _FakeRepository extends HealthDataRepository {
   }) async {
     behaviorCallCount++;
     lastBehaviorPeriod = period;
+    if (behaviorHandler != null) return behaviorHandler!(period);
     return behaviorResult ?? Success(_mockBehavior(petId));
   }
 
@@ -283,6 +286,26 @@ void main() {
       expect(fakeRepo.lastExercisePeriod, 'week');
     });
 
+    test('rapid period changes ignore the earlier response', () async {
+      final controller =
+          container.read(healthDataControllerProvider('pet123').notifier);
+      await Future.delayed(Duration.zero);
+      final week = Completer<Result<BehaviorAnalysis>>();
+      final month = Completer<Result<BehaviorAnalysis>>();
+      fakeRepo.behaviorHandler =
+          (period) => period == 'week' ? week.future : month.future;
+      final first = controller.setPeriod('week');
+      final second = controller.setPeriod('month');
+      final latest = fakeRepo._mockBehavior('month-result');
+      month.complete(Success(latest));
+      await second;
+      week.complete(Success(fakeRepo._mockBehavior('week-result')));
+      await first;
+      expect(
+          container.read(healthDataControllerProvider('pet123')).behavior.data,
+          same(latest));
+    });
+
     test('setDate 重新加载全部四个段', () async {
       final controller =
           container.read(healthDataControllerProvider('pet123').notifier);
@@ -293,7 +316,13 @@ void main() {
       fakeRepo.behaviorCallCount = 0;
       fakeRepo.exerciseCallCount = 0;
 
-      await controller.setDate('2026-09-18');
+      final initialDate =
+          container.read(healthDataControllerProvider('pet123')).selectedDate;
+      final targetDate = DateTime.parse(initialDate)
+          .subtract(const Duration(days: 1))
+          .toIso8601String()
+          .substring(0, 10);
+      await controller.setDate(targetDate);
 
       expect(fakeRepo.overviewCallCount, 1);
       expect(fakeRepo.reportCallCount, 1);
@@ -301,7 +330,7 @@ void main() {
       expect(fakeRepo.exerciseCallCount, 1);
 
       final state = container.read(healthDataControllerProvider('pet123'));
-      expect(state.selectedDate, '2026-09-18');
+      expect(state.selectedDate, targetDate);
     });
 
     test('selectBehavior 不发起网络请求', () async {

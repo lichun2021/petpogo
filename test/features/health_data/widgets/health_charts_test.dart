@@ -3,6 +3,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:petpogo_app/features/health_data/widgets/health_charts.dart';
 
 void main() {
+  testWidgets('empty ratio keeps its chart track and does not imply zero',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(
+        home: Scaffold(
+            body: HealthRatioBar(
+                label: '休息', ratio: null, color: Colors.green))));
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+    expect(find.text('0%'), findsNothing);
+    expect(
+        tester
+            .widget<LinearProgressIndicator>(
+                find.byType(LinearProgressIndicator))
+            .value,
+        0);
+  });
+
   testWidgets('zero readings remain distinct from missing observations',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
@@ -32,7 +49,9 @@ void main() {
       color: Colors.green,
       points: const [HealthChartPoint('9/1', null, '无数据')],
     ))));
-    expect(find.text('每日记录：暂无数据'), findsOneWidget);
+    expect(find.text('每日记录'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+    expect(find.text('待采集 · 秒'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
