@@ -89,28 +89,6 @@ void main() {
       expect(pet.cleanliness, 50);
     });
 
-    test(
-        'addPet sends the caller-supplied id (peer petId) and business backend echoes it back',
-        () async {
-      final client = _Client()
-        ..response = {'id': '55135763958784', 'name': '小白'};
-      const pet = PetModel(
-          id: '55135763958784', name: '小白', type: 'cat', breed: '英短');
-      final result = await PetRepository(client).addPet(pet);
-      expect(client.path, ApiEndpoints.petCreate);
-      expect(client.path, '/sdkapi/pet/create');
-      expect(client.payload, {
-        'id': '55135763958784',
-        'name': '小白',
-        'species': 'cat',
-        'breed': '英短',
-        'gender': 0,
-      });
-      final created = (result as Success<PetModel>).data;
-      expect(created.id, '55135763958784');
-      expect(created.name, '小白');
-    });
-
     test('updatePet calls PUT /sdkapi/pet/:id with full payload', () async {
       final client = _Client()..response = {'success': true};
       const pet = PetModel(
@@ -136,11 +114,5 @@ void main() {
       expect(result.isSuccess, isTrue);
     });
 
-    test('deletePet calls DELETE /sdkapi/pet/:id', () async {
-      final client = _Client()..response = {'success': true};
-      final result = await PetRepository(client).deletePet('55135763958784');
-      expect(client.path, '/sdkapi/pet/55135763958784');
-      expect(result.isSuccess, isTrue);
-    });
   });
 }

@@ -168,16 +168,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
         sex: _sex,
         avatar: _avatarUrl,
       );
-      // 绑定已成功；业务后端同步失败不影响本次绑定结果，失败只记日志。
-      // PeerApi 的 add 接口不返回新分配的 petId，需要再查一次拿到它。
-      try {
-        final newPet = await repo.fetchPetInfo(mac: widget.deviceMac);
-        if (newPet.petId.isNotEmpty) {
-          await ref.read(petSyncRepositoryProvider).syncCreate(newPet);
-        }
-      } catch (e) {
-        debugPrint('[宠物同步] ❌ 绑定后同步失败: $e');
-      }
+      // SDKAPI Peer 中转已负责创建业务档案，不再额外查询或重复建档。
       if (mounted) {
         HapticFeedback.mediumImpact();
         Navigator.pop(context, true);

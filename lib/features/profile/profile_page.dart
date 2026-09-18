@@ -143,7 +143,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 icon: const Icon(Icons.notifications_rounded, size: 22),
                 color: AppColors.onSurfaceVariant,
                 tooltip: '通知中心',
-                onPressed: () => context.go(AppRoutes.message),
+                onPressed: () => context.push(AppRoutes.message),
               ),
               IconButton(
                 icon: const Icon(Icons.settings_rounded, size: 22),

@@ -198,7 +198,7 @@ class _HomeHero extends ConsumerWidget {
             ),
             Spacer(),
             _HeroTap(
-              onTap: () => context.go(AppRoutes.message),
+              onTap: () => context.push(AppRoutes.message),
               child: Container(
                 width: 40,
                 height: 40,

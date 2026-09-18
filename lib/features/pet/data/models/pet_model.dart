@@ -126,7 +126,7 @@ class PetModel {
     }
   }
 
-  /// 转为 JSON，用于 POST /sdkapi/pet/create、PUT /sdkapi/pet/:id 请求体
+  /// 转为 JSON，用于 PUT /sdkapi/pet/:id 请求体
   ///
   /// 字段名对齐业务后端接口文档（非 iPet 网关的 PetInfoModel 命名）：
   /// id/name/species/breed/gender(int)/birthday/weight/bio/deviceId/

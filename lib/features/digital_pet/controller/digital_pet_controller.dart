@@ -177,9 +177,7 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
 
   /// 拉取当前选中宠物的 status。
   ///
-  /// 不做任何建档/懒同步——`POST /sdkapi/pet/create` 只应该在绑定宠物
-  /// （peer `pet/info/add` 成功后调用 `PetSyncRepository.syncCreate`）
-  /// 时触发一次，本方法只读，查不到业务后端记录就走 error 分支。
+  /// 业务档案由后台在 Peer 创建宠物时维护；本方法只读，缺失时显示错误。
   Future<void> _loadStatusForSelected() async {
     final pet = state.selectedPet;
     if (pet == null) return;

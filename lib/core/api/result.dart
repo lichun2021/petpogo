@@ -6,12 +6,12 @@
 ///    View 层用 .when() 处理成功/失败，不需要写 try/catch。
 ///
 ///  使用示例（Controller 里）：
-///    Future<Result<PetModel>> addPet(PetModel pet) async {
-///      return guardResult(() => _repo.addPet(pet));
+///    Future<Result<void>> updatePet(PetModel pet) async {
+///      return guardResult(() => _repo.updatePet(pet));
 ///    }
 ///
 ///  使用示例（View 里）：
-///    final result = await ref.read(petControllerProvider.notifier).addPet(pet);
+///    final result = await ref.read(petControllerProvider.notifier).updatePet(pet);
 ///    result.when(
 ///      success: (_) => context.go(AppRoutes.profile),   // 成功 → 跳转
 ///      failure: (err) => showSnackBar(err.userMessage), // 失败 → 提示

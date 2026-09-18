@@ -47,6 +47,14 @@ class _MessagePageState extends ConsumerState<MessagePage> {
     super.dispose();
   }
 
+  void _goBack() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(AppRoutes.home);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n  = context.l10n;
@@ -60,6 +68,7 @@ class _MessagePageState extends ConsumerState<MessagePage> {
         slivers: [
           // ── AppBar ──────────────────────────────────────
           SliverAppBar(
+            leading: BackButton(onPressed: _goBack),
             pinned: true,
             floating: false,
             backgroundColor: AppColors.surface.withOpacity(0.95),
@@ -320,6 +329,11 @@ class _MessagePageState extends ConsumerState<MessagePage> {
   Widget _buildNotLoggedIn(dynamic l10n) {
     return Scaffold(
       backgroundColor: AppColors.surface,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        leading: BackButton(onPressed: _goBack),
+        title: Text(l10n.messageTitle),
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

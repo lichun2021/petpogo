@@ -87,27 +87,6 @@ class PetRepository {
   /// 获取单个宠物的详细信息（兼容旧调用名，等价于 [fetchPetDetail]）
   Future<Result<PetModel>> fetchPetById(String id) => fetchPetDetail(id);
 
-  // ── 创建 ──────────────────────────────────────────────
-
-  /// 添加新宠物
-  ///
-  /// [pet] - 用户填写的宠物信息，[pet.id] 必须显式传入（调用方通常传
-  ///         iPet 网关的 petId，让业务后端 id 与网关 id 保持一致）。
-  ///         业务后端会原样落库并原样返回这个 id；若该 id 已存在，
-  ///         接口报错而不覆盖已有记录（[ApiClient] 拦截器统一转为
-  ///         [ApiException] 抛出，由调用方决定如何处理冲突）。
-  Future<Result<PetModel>> addPet(PetModel pet) => guardResult(() async {
-    assert(pet.id.isNotEmpty, 'addPet 需要显式传入 id（peer petId）');
-    // POST /sdkapi/pet/create
-    final data = await _client.post<Map<String, dynamic>>(
-      ApiEndpoints.petCreate,
-      data: pet.toJson(),
-    );
-    final returnedId = data['id']?.toString() ?? '';
-    final name = (data['name'] as String?) ?? pet.name;
-    return pet.copyWith(id: returnedId, name: name);
-  });
-
   // ── 更新 ──────────────────────────────────────────────
 
   /// 更新宠物信息（全量替换，服务端仅返回 { success }）
@@ -121,15 +100,6 @@ class PetRepository {
     );
   });
 
-  // ── 删除 ──────────────────────────────────────────────
-
-  /// 删除宠物（软删除，服务端仅返回 { success }）
-  ///
-  /// [id] - 要删除的宠物 ID（业务后端 id）
-  Future<Result<void>> deletePet(String id) => guardResult(() async {
-    // DELETE /sdkapi/pet/:id
-    await _client.delete(ApiEndpoints.petDetail(id));
-  });
 }
 
 // ── Riverpod Provider ─────────────────────────────────────

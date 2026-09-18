@@ -33,13 +33,10 @@ abstract class ApiEndpoints {
   static String deviceDetail(String id) => '/devices/$id';
 
   // ── 宠物档案（业务后端）─────────────────────────────────
-  /// 创建宠物档案  POST /sdkapi/pet/create
-  static const petCreate = '/sdkapi/pet/create';
-
   /// 我的宠物列表  GET /sdkapi/pet/list
   static const petList = '/sdkapi/pet/list';
 
-  /// 宠物档案详情/更新/删除  GET|PUT|DELETE /sdkapi/pet/:id
+  /// 宠物档案详情/更新  GET|PUT /sdkapi/pet/:id
   static String petDetail(String id) => '/sdkapi/pet/$id';
 
   /// 查询宠物当前状态（基本信息 + 养成属性 + 背景/形象）  GET /sdkapi/pet/:id/status

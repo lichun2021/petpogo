@@ -8,7 +8,6 @@ import '../device/data/repository/device_repository.dart';
 import '../device/data/models/device_model.dart';
 import '../device/device_list_page.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
-import '../pet/data/repository/pet_sync_repository.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/bind_pet_sheet.dart';
 import '../pet/pet_members_page.dart';
@@ -331,10 +330,6 @@ class _PetCard extends ConsumerWidget {
       await ref.read(petPeerRepositoryProvider).deletePet(
             petId: pet.petId.isNotEmpty ? pet.petId : null,
           );
-      // 解绑已成功；同步删除业务后端档案（该调用内部已吞掉所有失败，不会抛出）。
-      if (pet.petId.isNotEmpty) {
-        await ref.read(petSyncRepositoryProvider).syncDelete(pet.petId);
-      }
       if (!context.mounted) return;
       PetToast.success(context, '宠物已删除');
       ref.read(petCirclePetControllerProvider.notifier).load();

@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:petpogo_app/core/api/peer_api_client.dart';
+import 'package:petpogo_app/features/pet/data/repository/pet_peer_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:petpogo_app/core/api/api_client.dart';
 import 'package:petpogo_app/core/api/api_exception.dart';
@@ -61,34 +63,39 @@ const _pet = PetInfoModel(
 );
 
 void main() {
+  test('create and both delete selectors only call the Peer proxy', () async {
+    final client = _Client(List.generate(3, (_) => _ok({'code': 0})));
+    final repo = PetPeerRepository(PeerApiClient(client));
+    final result = await repo.createPet(
+      petName: '小白', breed: '英短', age: 2, sex: 'GG', avatar: 'https://x/a.jpg',
+    );
+    expect(result.isSuccess, isTrue);
+    await repo.deletePet(petId: 'peer-123');
+    await repo.deletePet(deviceId: 'device-1');
+    expect(client.calls.map((c) => c.path), [
+      '/sdkapi/peer/pet/info/add',
+      '/sdkapi/peer/pet/info/del',
+      '/sdkapi/peer/pet/info/del',
+    ]);
+    expect(client.calls.every((c) => c.method == 'POST'), isTrue);
+    expect(Uri.splitQueryString(client.calls[0].data as String), {
+      'petName': '小白', 'breed': '英短', 'age': '2', 'sex': 'GG', 'avatar': 'https://x/a.jpg',
+    });
+    expect(Uri.splitQueryString(client.calls[1].data as String), {'petId': 'peer-123'});
+    expect(Uri.splitQueryString(client.calls[2].data as String), {'deviceId': 'device-1'});
+  });
+
+  test('Peer create failure returns failure without a fallback SDK create', () async {
+    final client = _Client([_fail(502)]);
+    final result = await PetPeerRepository(PeerApiClient(client)).createPet(petName: '小白');
+    expect(result.isError, isTrue);
+    expect(client.calls.length, 1);
+    expect(client.calls.single.path, '/sdkapi/peer/pet/info/add');
+  });
+
   group('PetSyncRepository', () {
-    test('syncCreate calls addPet with peer petId as business backend id',
-        () async {
-      final client = _Client([_ok({'id': 'peer-123', 'name': '小白'})]);
-      await PetSyncRepository(PetRepository(client)).syncCreate(_pet);
-      expect(client.calls.single.method, 'POST');
-      expect(client.calls.single.path, '/sdkapi/pet/create');
-      expect(client.calls.single.data['id'], 'peer-123');
-      expect(client.calls.single.data['gender'], 1); // GG -> male -> 1
-    });
-
-    test('syncCreate swallows a duplicate-id (400) failure without throwing',
-        () async {
-      final client = _Client([_fail(400)]);
-      await PetSyncRepository(PetRepository(client)).syncCreate(_pet);
-      // 未抛出即视为通过；调用确实发生了
-      expect(client.calls.single.path, '/sdkapi/pet/create');
-    });
-
-    test('syncCreate swallows a non-400 failure without throwing', () async {
-      final client = _Client([_fail(500)]);
-      await PetSyncRepository(PetRepository(client)).syncCreate(_pet);
-      expect(client.calls.single.path, '/sdkapi/pet/create');
-    });
-
     test(
-        'syncUpdate calls PUT directly, without ever calling create '
-        '(POST /sdkapi/pet/create must only ever be triggered by syncCreate)',
+        'syncUpdate sends only PUT; create and delete belong to the backend',
         () async {
       final client = _Client([_ok({'success': true})]);
       await PetSyncRepository(PetRepository(client)).syncUpdate(_pet);
@@ -105,24 +112,5 @@ void main() {
       expect(client.calls.single.path, '/sdkapi/pet/peer-123');
     });
 
-    test('syncDelete calls DELETE with the peer petId as business backend id',
-        () async {
-      final client = _Client([_ok({'success': true})]);
-      await PetSyncRepository(PetRepository(client)).syncDelete('peer-123');
-      expect(client.calls.single.method, 'DELETE');
-      expect(client.calls.single.path, '/sdkapi/pet/peer-123');
-    });
-
-    test('syncDelete swallows a 404 (never synced) without throwing', () async {
-      final client = _Client([_fail(404)]);
-      await PetSyncRepository(PetRepository(client)).syncDelete('peer-123');
-      expect(client.calls.single.path, '/sdkapi/pet/peer-123');
-    });
-
-    test('syncDelete swallows any other failure without throwing', () async {
-      final client = _Client([_fail(500)]);
-      await PetSyncRepository(PetRepository(client)).syncDelete('peer-123');
-      expect(client.calls.single.path, '/sdkapi/pet/peer-123');
-    });
   });
 }

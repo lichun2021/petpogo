@@ -6,9 +6,9 @@
 ///
 ///  职责：
 ///    1. 持有并管理宠物列表的状态（PetState）
-///    2. 调用 Repository 执行 CRUD 操作
+///    2. 调用 Repository 查询、更新档案和通过 Peer 创建宠物
 ///    3. 根据操作结果更新状态（state.copyWith(...)）
-///    4. 操作型方法（addPet / deletePet）返回 Result<T>，
+///    4. 操作型方法（createPet / updatePet）返回 Result<T>，
 ///       由 View 决定是否跳转页面 / 显示提示
 ///
 ///  关键设计原则：
@@ -22,6 +22,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/result.dart';
 import '../data/models/pet_model.dart';
 import '../data/repository/pet_repository.dart';
+import '../data/repository/pet_peer_repository.dart';
 
 // ══════════════════════════════════════════════════════════
 //  状态类 — PetState
@@ -76,9 +77,10 @@ class PetState {
 class PetController extends StateNotifier<PetState> {
   /// Repository 通过构造函数注入（依赖倒置）
   final PetRepository _repo;
+  final PetPeerRepository _peerRepo;
 
   /// 初始状态：空列表、未加载、无错误
-  PetController(this._repo) : super(const PetState());
+  PetController(this._repo, {required PetPeerRepository peerRepo}) : _peerRepo = peerRepo, super(const PetState());
 
   // ── 查询 ────────────────────────────────────────────────
 
@@ -110,42 +112,17 @@ class PetController extends StateNotifier<PetState> {
     );
   }
 
-  // ── 创建 ────────────────────────────────────────────────
-
-  /// 添加新宠物
-  ///
-  /// 返回 Result<PetModel> 而不是 void，原因：
-  ///   → 让 View 知道是否成功，成功时执行页面跳转
-  ///   → Controller 自己不跳转，保持无 UI 依赖
-  ///
-  /// View 使用示例：
-  ///   final result = await ref.read(petControllerProvider.notifier).addPet(pet);
-  ///   result.when(
-  ///     success: (_) => context.go(AppRoutes.profile),  // 跳转
-  ///     failure: (e) => showSnackBar(e.userMessage),    // 提示
-  ///   );
-  Future<Result<PetModel>> addPet(PetModel pet) async {
-    state = state.copyWith(isLoading: true);
-
-    final result = await _repo.addPet(pet);
-
-    result.when(
-      success: (newPet) {
-        // 把新宠物追加到本地列表（不需要重新请求列表接口）
-        state = state.copyWith(
-          isLoading: false,
-          pets: [...state.pets, newPet],
-        );
-      },
-      failure: (err) {
-        state = state.copyWith(
-          isLoading: false,
-          errorMessage: err.userMessage,
-        );
-      },
+  Future<Result<void>> createPet({
+    required String petName,
+    String? breed,
+    int? age,
+    String? sex,
+    String? avatar,
+  }) async {
+    final result = await _peerRepo.createPet(
+      petName: petName, breed: breed, age: age, sex: sex, avatar: avatar,
     );
-
-    // 把结果返回给 View，让 View 决定是否跳转
+    if (result.isSuccess) await loadPets();
     return result;
   }
 
@@ -169,27 +146,6 @@ class PetController extends StateNotifier<PetState> {
         state = state.copyWith(errorMessage: err.userMessage);
       },
     );
-
-    return result;
-  }
-
-  // ── 删除 ────────────────────────────────────────────────
-
-  /// 删除宠物
-  ///
-  /// [id] - 要删除的宠物 ID
-  /// 成功后从本地列表中移除（不重新请求全部列表）
-  Future<Result<void>> deletePet(String id) async {
-    final result = await _repo.deletePet(id);
-
-    if (result.isSuccess) {
-      // 从本地列表过滤掉已删除的宠物
-      state = state.copyWith(
-        pets: state.pets.where((p) => p.id != id).toList(),
-      );
-    } else {
-      state = state.copyWith(errorMessage: result.error?.userMessage);
-    }
 
     return result;
   }
@@ -229,5 +185,6 @@ class PetController extends StateNotifier<PetState> {
 ///   ref.read(petControllerProvider.notifier).loadPets();
 final petControllerProvider =
     StateNotifierProvider<PetController, PetState>((ref) {
-  return PetController(ref.watch(petRepositoryProvider));
+  return PetController(ref.watch(petRepositoryProvider),
+      peerRepo: ref.watch(petPeerRepositoryProvider));
 });

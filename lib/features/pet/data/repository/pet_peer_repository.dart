@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/peer_api_client.dart';
+import '../../../../core/api/result.dart';
 import '../models/pet_peer_models.dart';
 
 class PetPeerRepository {
@@ -55,6 +56,17 @@ class PetPeerRepository {
       if (avatar   != null) 'avatar':   avatar,
     });
   }
+
+  /// 独立添加页使用统一结果边界，档案创建由 Peer 中转后台完成。
+  Future<Result<void>> createPet({
+    required String petName,
+    String? breed,
+    int? age,
+    String? sex,
+    String? avatar,
+  }) => guardResult(() => addPet(
+    petName: petName, breed: breed, age: age, sex: sex, avatar: avatar,
+  ));
 
   /// POST /pet/info/update — 更新宠物信息
   Future<void> updatePet({

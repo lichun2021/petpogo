@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../core/api/api_client.dart';
+import '../../shared/widgets/pet_toast.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pressable.dart';
 import '../../app.dart' show AppL10nX;
@@ -38,7 +38,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
   // 步骤2表单
   final _nameCtrl    = TextEditingController();
   final _breedCtrl   = TextEditingController();
-  String? _birthday;
+  final _ageCtrl = TextEditingController();
   String _gender = '公';
   bool _isLoading = false;
 
@@ -65,6 +65,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
   void dispose() {
     _nameCtrl.dispose();
     _breedCtrl.dispose();
+    _ageCtrl.dispose();
     _successCtrl.dispose();
     super.dispose();
   }
@@ -167,44 +168,23 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
   Future<void> _submit() async {
     setState(() => _isLoading = true);
 
-    final selected = _petTypes[_selectedType];
-    final species  = selected['species'] as String;
-    // 后端 gender: 1=男 2=女 0=未知
-    final genderInt = _gender == '公' ? 1 : 2;
-
-    try {
-      final client = ref.read(apiClientProvider);
-      await client.post<Map<String, dynamic>>(
-        '/sdkapi/pet/create',
-        data: {
-          'name':     _nameCtrl.text.trim(),
-          'species':  species,
-          'breed':    _breedCtrl.text.trim(),
-          'gender':   genderInt,
-          if (_birthday  != null) 'birthday': _birthday,
-          if (_avatarUrl != null) 'avatar':   _avatarUrl,
-        },
-      );
-
-      // 刷新宠物列表（让 profile 页实时更新）
-      await ref.read(petControllerProvider.notifier).loadPets();
-
-      if (!mounted) return;
-      setState(() { _isLoading = false; _step = 2; });
-      _successCtrl.forward();
-      HapticFeedback.mediumImpact();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('添加失败：$e',
-              style: TextStyle(fontFamily: AppFonts.primary)),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
+    final result = await ref.read(petControllerProvider.notifier).createPet(
+      petName: _nameCtrl.text.trim(),
+      breed: _breedCtrl.text.trim(),
+      age: int.tryParse(_ageCtrl.text.trim()),
+      sex: _gender == '公' ? 'GG' : 'MM',
+      avatar: _avatarUrl,
+    );
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    result.when(
+      success: (_) {
+        setState(() => _step = 2);
+        _successCtrl.forward();
+        HapticFeedback.mediumImpact();
+      },
+      failure: (error) => PetToast.error(context, error),
+    );
   }
 
   @override
@@ -537,38 +517,12 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
           ),
           SizedBox(height: 20),
 
-          // 生日
-          _FieldLabel('生日（选填）'),
-          SizedBox(height: 8),
-          GestureDetector(
-            onTap: () async {
-              final d = await showDatePicker(
-                context: context,
-                initialDate: DateTime.now().subtract(Duration(days: 365)),
-                firstDate: DateTime(2000),
-                lastDate: DateTime.now(),
-              );
-              if (d != null) setState(() => _birthday = '${d.year}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}');
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12, spreadRadius: -4)],
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.cake_rounded, color: AppColors.primary, size: 20),
-                  SizedBox(width: 12),
-                  Text(_birthday ?? '选择生日',
-                      style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15,
-                          color: _birthday != null ? AppColors.onSurface : AppColors.onSurfaceVariant)),
-                  Spacer(),
-                  Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant, size: 20),
-                ],
-              ),
-            ),
+          _FieldLabel('年龄（岁，选填）'),
+          TextField(
+            controller: _ageCtrl,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: const InputDecoration(hintText: '请输入年龄'),
           ),
           SizedBox(height: 32),
 

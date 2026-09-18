@@ -12,7 +12,6 @@ import '../device/device_members_page.dart';
 import '../device/robot_device_page.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
-import '../pet/data/repository/pet_sync_repository.dart';
 import '../pet/bind_pet_sheet.dart';
 import '../pet_circle/controller/pet_circle_pet_controller.dart';
 import '../bind_device/select_device_page.dart';
@@ -452,24 +451,9 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
     try {
       // 1. 先解绑宠物（如果有）
       try {
-        // 先查询 petId，供解绑成功后同步删除业务后端档案使用；
-        // 查询失败不影响下面的解绑本身（与解绑前的原有行为一致）。
-        String? petId;
-        try {
-          final pet = await ref
-              .read(petPeerRepositoryProvider)
-              .fetchPetInfo(deviceId: device.deviceId);
-          if (pet.petId.isNotEmpty) petId = pet.petId;
-        } catch (_) {
-          // 查不到 petId 不阻断解绑，只是跳过后面的业务后端同步
-        }
         await ref
             .read(petPeerRepositoryProvider)
             .deletePet(deviceId: device.deviceId);
-        if (petId != null) {
-          // 同步删除业务后端档案（内部已吞掉所有失败）。
-          await ref.read(petSyncRepositoryProvider).syncDelete(petId);
-        }
       } catch (e) {
         // 如果宠物不存在或已解绑，忽略错误继续解绑设备
         debugPrint('[设备解绑] 宠物解绑跳过: $e');
