@@ -22,7 +22,7 @@ Future<T?> showAppCenteredModal<T>({
           media.viewInsets.bottom -
           48;
       final maxHeight =
-          availableHeight.clamp(260.0, media.size.height).toDouble() *
+          availableHeight.clamp(0.0, media.size.height).toDouble() *
               heightFactor;
 
       return Material(
@@ -89,7 +89,7 @@ class AppCenteredModalCard extends StatelessWidget {
             width: double.infinity,
             decoration: BoxDecoration(
               color: AppColors.surfaceCard,
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.18),

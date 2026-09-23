@@ -1,3 +1,4 @@
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -115,8 +116,6 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
     final src = await showDialog<ImageSource>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('选择头像来源',
             style: TextStyle(
                 fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
@@ -227,9 +226,25 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return AppCenteredModalCard(
-      child: widget.isEdit ? _buildEditMode() : _buildSelectMode(),
-    );
+    return PopScope(
+        canPop: !_saving,
+        child: AppCenteredModalCard(
+          showCloseButton: false,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                child: ModalHeader(
+                    title: widget.isEdit ? '编辑宠物' : '绑定宠物',
+                    busy: _saving,
+                    onConfirm: _avatarUploading
+                        ? null
+                        : widget.isEdit
+                            ? _saveEdit
+                            : _saveBind)),
+            Flexible(
+                child: widget.isEdit ? _buildEditMode() : _buildSelectMode()),
+          ]),
+        ));
   }
 
   // ══════════════════════════════════════════════════════════
@@ -243,36 +258,6 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(children: [
-                Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                        color: AppColors.primaryContainer.withOpacity(0.25),
-                        shape: BoxShape.circle),
-                    child: Icon(Icons.pets_rounded,
-                        color: AppColors.primary, size: 22)),
-                SizedBox(width: 12),
-                Expanded(
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                      Text('绑定宠物',
-                          style: TextStyle(
-                              fontFamily: AppFonts.primary,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.onSurface)),
-                      SizedBox(height: 2),
-                      Text('填写宠物信息并绑定到此设备',
-                          style: TextStyle(
-                              fontFamily: AppFonts.primary,
-                              fontSize: 12,
-                              color: AppColors.onSurfaceVariant)),
-                    ])),
-              ]),
-              SizedBox(height: 20),
-
               // ── 头像选择 ──
               Center(
                 child: GestureDetector(
@@ -478,30 +463,6 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
                     onTap: (v) => setState(() => _sex = v)),
               ]),
               SizedBox(height: 22),
-
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _saving ? null : _saveBind,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    minimumSize: Size(double.infinity, 52),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                  ),
-                  child: _saving
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : Text('绑定宠物',
-                          style: TextStyle(
-                              fontFamily: AppFonts.primary,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700)),
-                ),
-              ),
             ]),
       ),
     );
@@ -518,25 +479,6 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(children: [
-                Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                        color: AppColors.primaryContainer.withOpacity(0.25),
-                        shape: BoxShape.circle),
-                    child: Icon(Icons.edit_rounded,
-                        color: AppColors.primary, size: 20)),
-                SizedBox(width: 12),
-                Text('编辑宠物信息',
-                    style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.onSurface)),
-              ]),
-              SizedBox(height: 20),
-
               // ── 头像选择（编辑模式同样支持）──
               Center(
                 child: GestureDetector(
@@ -736,30 +678,6 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
                     onTap: (v) => setState(() => _sex = v)),
               ]),
               SizedBox(height: 22),
-
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _saving ? null : _saveEdit,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    minimumSize: Size(double.infinity, 52),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                  ),
-                  child: _saving
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : Text('保存修改',
-                          style: TextStyle(
-                              fontFamily: AppFonts.primary,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700)),
-                ),
-              ),
             ]),
       ),
     );

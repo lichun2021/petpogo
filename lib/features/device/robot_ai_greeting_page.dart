@@ -2,6 +2,8 @@
 /// 录音最长 10 秒，长按录制，松手结束
 library;
 
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
+
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
@@ -1334,32 +1336,10 @@ class _CountPickerSheetState extends State<_CountPickerSheet> {
               ),
             ),
             const SizedBox(height: 14),
-            Row(
-              children: [
-                Text(
-                  'AI 分析次数',
-                  style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.onSurface,
-                  ),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, _selected),
-                  child: Text(
-                    '完成',
-                    style: TextStyle(
-                      fontFamily: AppFonts.primary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            ModalHeader(
+                title: 'AI 分析次数',
+                confirmLabel: '确定',
+                onConfirm: () => Navigator.pop(context, _selected)),
             SizedBox(
               height: 180,
               child: CupertinoPicker(
@@ -1407,11 +1387,11 @@ class _GreetingCell extends StatelessWidget {
 
   // 根据情绪生成左侧渐变色（全部取自语义 token，暖色体系内）
   static List<List<Color>> get _emotionPalettes => [
-    [AppColors.statusOnline, AppColors.statusOnlineStrong], // 兴奋 / 开心
-    [AppColors.statusNeutral, AppColors.textSecondary], // 平静
-    [AppColors.statusAlert, AppColors.brandPrimaryStrong], // 疼痛 / 担忧
-    [AppColors.brandPrimary, AppColors.brandPrimaryStrong], // 其他
-  ];
+        [AppColors.statusOnline, AppColors.statusOnlineStrong], // 兴奋 / 开心
+        [AppColors.statusNeutral, AppColors.textSecondary], // 平静
+        [AppColors.statusAlert, AppColors.brandPrimaryStrong], // 疼痛 / 担忧
+        [AppColors.brandPrimary, AppColors.brandPrimaryStrong], // 其他
+      ];
 
   List<Color> get _gradient {
     final name = item.aiResult?.top?.name ?? '';
@@ -1748,8 +1728,8 @@ class _GreetingDetailSheetState extends ConsumerState<_GreetingDetailSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: bottomPad),
       child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -2100,7 +2080,6 @@ class _GreetingDetailPageState extends State<_GreetingDetailPage>
     _audioPlayer.dispose();
     super.dispose();
   }
-
 
   Future<void> _toggleAudio() async {
     if (_audioPlaying) {
@@ -2505,8 +2484,8 @@ class _SoundPickerSheetState extends State<_SoundPickerSheet> {
         margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(26),
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.12),
@@ -2952,8 +2931,8 @@ class _RecorderSheetState extends State<_RecorderSheet>
         margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(26),
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.12),
@@ -2972,23 +2951,11 @@ class _RecorderSheetState extends State<_RecorderSheet>
             ),
           ),
           const SizedBox(height: 14),
-          Row(children: [
-            _SheetIconButton(
-              icon: Icons.chevron_left_rounded,
-              onTap: widget.onBack,
-            ),
-            Expanded(
-              child: Center(
-                child: Text('录音',
-                    style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.onSurface)),
-              ),
-            ),
-            const SizedBox(width: 40),
-          ]),
+          ModalHeader(
+              title: '录音',
+              busy: _uploading,
+              onClose: widget.onBack,
+              onConfirm: _state == _RecState.done ? _upload : null),
           const SizedBox(height: 18),
           Container(
             width: double.infinity,
@@ -3145,36 +3112,6 @@ class _RecorderSheetState extends State<_RecorderSheet>
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _uploading ? null : _upload,
-                  icon: _uploading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.check_rounded, size: 18),
-                  label: Text(_uploading ? '保存中' : '保存'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size.fromHeight(46),
-                    padding: EdgeInsets.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                    elevation: 0,
-                    textStyle: TextStyle(
-                      fontFamily: AppFonts.primary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      height: 1.0,
-                    ),
-                  ),
-                ),
-              ),
             ]),
           ],
           SizedBox(height: MediaQuery.of(context).viewInsets.bottom),

@@ -1,3 +1,4 @@
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -123,16 +124,13 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
       _restoreBottomNav();
       // 成功后跳设备详情页；popUntil(isFirst) 把绑定流程页全部出栈，
       // 只保留首页（MainShell）在栈底 → 从详情页返回时直接回到首页。
-      final isRobot =
-          DeviceProductType.fromProductKey(widget.productKey) ==
-              DeviceProductType.robot;
+      final isRobot = DeviceProductType.fromProductKey(widget.productKey) ==
+          DeviceProductType.robot;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => isRobot
-              ? RobotDevicePage(
-                  mac: _scannedMac!, name: _scannedMac!)
-              : DeviceDetailPage(
-                  mac: _scannedMac!, name: _scannedMac!),
+              ? RobotDevicePage(mac: _scannedMac!, name: _scannedMac!)
+              : DeviceDetailPage(mac: _scannedMac!, name: _scannedMac!),
         ),
         (route) => route.isFirst,
       );
@@ -497,54 +495,19 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
   }
 
   // ── 手动输入 MAC ────────────────────────────────────────
-  void _showManualInput(BuildContext context) {
+  Future<void> _showManualInput(BuildContext context) async {
     final ctrl = TextEditingController();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) {
-        final bottom = MediaQuery.of(ctx).viewInsets.bottom;
-        return Container(
-          margin: const EdgeInsets.all(16),
-          padding: EdgeInsets.fromLTRB(24, 20, 24, 24 + bottom),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceCard,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                    color: AppColors.borderSubtle,
-                    borderRadius: BorderRadius.circular(2))),
-            SizedBox(height: 20),
-            Text('手动输入设备 MAC',
-                style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontFamily: AppFonts.primary,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700)),
-            SizedBox(height: 16),
-            TextField(
-              controller: ctrl,
-              style: TextStyle(color: AppColors.textPrimary),
-              decoration: InputDecoration(
-                hintText: 'e.g. ipet-esp32-Device',
-                hintStyle: TextStyle(color: AppColors.textTertiary),
-                filled: true,
-                fillColor: AppColors.surfaceSunken,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none),
-              ),
-            ),
-            SizedBox(height: 16),
-            FilledButton(
-              onPressed: () {
+    await showDialog<void>(
+        context: context,
+        builder: (ctx) => FormModal(
+              title: '输入设备 MAC',
+              confirmLabel: '确定',
+              onConfirm: () {
                 final mac = ctrl.text.trim();
-                if (mac.isEmpty) return;
+                if (mac.isEmpty) {
+                  PetToast.warning(ctx, '请输入设备 MAC');
+                  return;
+                }
                 Navigator.pop(ctx);
                 _cameraCtrl.stop();
                 setState(() {
@@ -552,21 +515,14 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
                   _state = _ScanState.found;
                 });
               },
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                minimumSize: Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: Text('确认',
-                  style: TextStyle(
-                      fontFamily: AppFonts.primary,
-                      fontWeight: FontWeight.w700)),
-            ),
-          ]),
-        );
-      },
-    );
+              child: TextField(
+                  controller: ctrl,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                      labelText: '设备 MAC', hintText: 'ipet-esp32-Device')),
+            ));
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    ctrl.dispose();
   }
 
   // ── 四角装饰 ─────────────────────────────────────────────

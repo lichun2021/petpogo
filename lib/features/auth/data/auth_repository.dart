@@ -202,6 +202,8 @@ class AuthRepository {
       'id': await _storage.read(key: _kId),
       'account': await _storage.read(key: _kAccount),
       'name': await _storage.read(key: _kName),
+      for (final field in ['gender', 'birthday', 'email'])
+        field: await _storage.read(key: 'auth_$field'),
       'avatar': await _storage.read(key: _kAvatar),
       'merchantId': await _storage.read(key: _kMerchantId),
       'imUserSig': await _storage.read(key: _kImUserSig),
@@ -272,6 +274,9 @@ class AuthRepository {
       // 用新工厂方法，同时同步 VIP 状态
       final updated = UserInfo.fromProfileJson(current, res);
       await _storage.write(key: _kName, value: updated.name);
+      for (final field in ['gender', 'birthday', 'email']) {
+        await _storage.write(key: 'auth_$field', value: updated.toStorageMap()[field]);
+      }
       await _storage.write(key: _kAvatar, value: updated.avatar);
       await _storage.write(key: _kIsVip, value: updated.isVip ? '1' : '0');
       await _storage.write(
@@ -280,6 +285,19 @@ class AuthRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<void> updateProfile({required String nickname, required int gender,
+      required String birthday, String? email}) async {
+    await _client.put<Map<String, dynamic>>('/sdkapi/user/profile', data: {
+      'nickname': nickname, 'gender': gender,
+      'birthday': birthday.isEmpty ? null : birthday,
+      if (email != null) 'email': email.isEmpty ? null : email,
+    });
+    await _storage.write(key: _kName, value: nickname);
+    await _storage.write(key: 'auth_gender', value: '$gender');
+    await _storage.write(key: 'auth_birthday', value: birthday);
+    if (email != null) await _storage.write(key: 'auth_email', value: email);
   }
 
   // ── 更新昵称 ───────────────────────────────────────────────
@@ -312,6 +330,8 @@ class AuthRepository {
   Future<void> _persist(UserInfo user) async {
     final q = user.aiQuota;
     await Future.wait([
+      for (final field in ['gender', 'birthday', 'email'])
+        _storage.write(key: 'auth_$field', value: user.toStorageMap()[field]),
       _storage.write(key: _kToken, value: user.token),
       _storage.write(key: _kId, value: user.id),
       _storage.write(key: _kAccount, value: user.account),

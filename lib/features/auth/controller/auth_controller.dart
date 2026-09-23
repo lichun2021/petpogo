@@ -326,6 +326,16 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  Future<void> updateProfile({required String nickname, required int gender,
+      required String birthday, String? email}) async {
+    await _repo.updateProfile(nickname: nickname, gender: gender,
+        birthday: birthday, email: email);
+    if (state.user != null) {
+      state = state.copyWith(user: state.user!.copyWith(name: nickname,
+          gender: gender, birthday: birthday, email: email));
+    }
+  }
+
   // ── 更新昵称 ─────────────────────────────────────────────
   Future<void> updateNickname(String nickname) async {
     final normalized = nickname.trim();

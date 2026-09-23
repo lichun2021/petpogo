@@ -94,7 +94,6 @@ void _showNoDeviceDialog(BuildContext context) {
     context: context,
     builder: (ctx) => AlertDialog(
       backgroundColor: AppColors.surfaceContainerLowest,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       title: Text(
         '需要绑定设备',
         style: TextStyle(

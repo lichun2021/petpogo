@@ -1,3 +1,4 @@
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -61,13 +62,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
             ),
           ),
           SizedBox(height: 12),
-          Text('选择照片来源',
-              style: TextStyle(
-                fontFamily: AppFonts.primary,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: AppColors.onSurface,
-              )),
+          const ModalHeader(title: '选择照片来源'),
           SizedBox(height: 4),
           ListTile(
             leading: Container(

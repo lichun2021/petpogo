@@ -1,3 +1,4 @@
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,7 +7,6 @@ import '../../../shared/theme/app_colors.dart';
 import '../../../shared/widgets/pet_toast.dart';
 import '../controller/im_controller.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
-
 
 /// 扫码加好友页
 /// 扫描 petpogo://user/{userId} 格式的二维码，自动弹出加好友确认框
@@ -67,9 +67,9 @@ class _ScanAddFriendPageState extends ConsumerState<ScanAddFriendPage> {
         onConfirm: (wording) async {
           Navigator.pop(ctx); // 关闭 dialog
           final ok = await ref.read(imControllerProvider.notifier).addFriend(
-            toUserId: userId,
-            wording: wording.isNotEmpty ? wording : '我通过扫描二维码添加你为好友',
-          );
+                toUserId: userId,
+                wording: wording.isNotEmpty ? wording : '我通过扫描二维码添加你为好友',
+              );
           if (!mounted) return;
           if (ok) {
             PetToast.success(context, '好友申请已发送 🐾');
@@ -109,7 +109,8 @@ class _ScanAddFriendPageState extends ConsumerState<ScanAddFriendPage> {
               child: Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back_rounded, color: Colors.white, size: 24),
+                    icon: Icon(Icons.arrow_back_rounded,
+                        color: Colors.white, size: 24),
                     onPressed: () => Navigator.pop(context),
                   ),
                   Expanded(
@@ -117,14 +118,17 @@ class _ScanAddFriendPageState extends ConsumerState<ScanAddFriendPage> {
                       '扫码加好友',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontFamily: AppFonts.primary, fontSize: 18,
-                        fontWeight: FontWeight.w700, color: Colors.white,
+                        fontFamily: AppFonts.primary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
                     ),
                   ),
                   // 手电筒
                   IconButton(
-                    icon: Icon(Icons.flashlight_on_rounded, color: Colors.white, size: 24),
+                    icon: Icon(Icons.flashlight_on_rounded,
+                        color: Colors.white, size: 24),
                     onPressed: () => _ctrl.toggleTorch(),
                   ),
                 ],
@@ -143,7 +147,8 @@ class _ScanAddFriendPageState extends ConsumerState<ScanAddFriendPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.55),
                       borderRadius: BorderRadius.circular(24),
@@ -151,8 +156,10 @@ class _ScanAddFriendPageState extends ConsumerState<ScanAddFriendPage> {
                     child: Text(
                       '将对方的 PetPogo 二维码对准扫描框',
                       style: TextStyle(
-                        fontFamily: AppFonts.primary, fontSize: 13,
-                        color: Colors.white, fontWeight: FontWeight.w500,
+                        fontFamily: AppFonts.primary,
+                        fontSize: 13,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -170,11 +177,11 @@ class _ScanAddFriendPageState extends ConsumerState<ScanAddFriendPage> {
 class _ScanOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final size   = MediaQuery.of(context).size;
-    final boxW   = size.width * 0.68;
-    const boxH   = 280.0;
-    final left   = (size.width - boxW) / 2;
-    final top    = (size.height - boxH) / 2 - 30;
+    final size = MediaQuery.of(context).size;
+    final boxW = size.width * 0.68;
+    const boxH = 280.0;
+    final left = (size.width - boxW) / 2;
+    final top = (size.height - boxH) / 2 - 30;
 
     return Stack(
       children: [
@@ -188,7 +195,10 @@ class _ScanOverlay extends StatelessWidget {
             children: [
               Container(color: Colors.transparent),
               Positioned(
-                left: left, top: top, width: boxW, height: boxH,
+                left: left,
+                top: top,
+                width: boxW,
+                height: boxH,
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.black,
@@ -201,7 +211,10 @@ class _ScanOverlay extends StatelessWidget {
         ),
         // 四角装饰线
         Positioned(
-          left: left, top: top, width: boxW, height: boxH,
+          left: left,
+          top: top,
+          width: boxW,
+          height: boxH,
           child: CustomPaint(painter: _CornerPainter()),
         ),
       ],
@@ -223,18 +236,21 @@ class _CornerPainter extends CustomPainter {
 
     // 四个角
     final corners = [
-      Offset(r, 0),      Offset(0, r),      // 左上
-      Offset(size.width - r, 0), Offset(size.width, r),  // 右上
+      Offset(r, 0), Offset(0, r), // 左上
+      Offset(size.width - r, 0), Offset(size.width, r), // 右上
       Offset(0, size.height - r), Offset(r, size.height), // 左下
-      Offset(size.width, size.height - r), Offset(size.width - r, size.height), // 右下
+      Offset(size.width, size.height - r),
+      Offset(size.width - r, size.height), // 右下
     ];
 
     void corner(Offset a, Offset mid, Offset b) {
       final path = Path()
-        ..moveTo(a.dx + (mid.dx - a.dx).sign * len, a.dy + (mid.dy - a.dy).sign * len)
+        ..moveTo(a.dx + (mid.dx - a.dx).sign * len,
+            a.dy + (mid.dy - a.dy).sign * len)
         ..lineTo(a.dx, a.dy)
         ..arcToPoint(b, radius: const Radius.circular(r))
-        ..lineTo(b.dx + (mid.dx - b.dx).sign * len, b.dy + (mid.dy - b.dy).sign * len);
+        ..lineTo(b.dx + (mid.dx - b.dx).sign * len,
+            b.dy + (mid.dy - b.dy).sign * len);
       canvas.drawPath(path, paint);
     }
 
@@ -276,46 +292,23 @@ class _AddFriendDialogState extends State<_AddFriendDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.18),
-              blurRadius: 40, spreadRadius: -4,
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+    return FormModal(
+        title: '添加好友',
+        confirmLabel: '发送申请',
+        busy: _adding,
+        onClose: widget.onCancel,
+        onConfirm: () {
+          setState(() => _adding = true);
+          widget.onConfirm(_ctrl.text.trim());
+        },
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // 图标
-            Container(
-              width: 60, height: 60,
-              decoration: BoxDecoration(
-                color: AppColors.primaryContainer.withOpacity(0.3),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.person_add_rounded, color: AppColors.primary, size: 28),
-            ),
-            SizedBox(height: 16),
-            Text(
-              '添加好友',
-              style: TextStyle(
-                fontFamily: AppFonts.primary, fontSize: 20,
-                fontWeight: FontWeight.w800, color: AppColors.onSurface,
-              ),
-            ),
-            SizedBox(height: 6),
             Text(
               '用户 ID: ${widget.userId}',
               style: TextStyle(
-                fontFamily: AppFonts.primary, fontSize: 12,
+                fontFamily: AppFonts.primary,
+                fontSize: 12,
                 color: AppColors.onSurfaceVariant,
               ),
             ),
@@ -327,69 +320,22 @@ class _AddFriendDialogState extends State<_AddFriendDialog> {
               style: TextStyle(fontFamily: AppFonts.primary, fontSize: 14),
               decoration: InputDecoration(
                 labelText: '验证消息',
-                labelStyle: TextStyle(fontFamily: AppFonts.primary, fontSize: 13),
+                labelStyle:
+                    TextStyle(fontFamily: AppFonts.primary, fontSize: 13),
                 filled: true,
                 fillColor: AppColors.surfaceContainerLow,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                counterStyle: TextStyle(fontSize: 10, color: AppColors.onSurfaceVariant),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                counterStyle:
+                    TextStyle(fontSize: 10, color: AppColors.onSurfaceVariant),
               ),
             ),
             SizedBox(height: 20),
-            // 按钮
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: widget.onCancel,
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.onSurfaceVariant,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(color: AppColors.outlineVariant),
-                      ),
-                    ),
-                    child: Text('取消',
-                      style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w600)),
-                  ),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _adding ? null : () {
-                      setState(() => _adding = true);
-                      widget.onConfirm(_ctrl.text.trim());
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: _adding
-                        ? SizedBox(
-                            width: 20, height: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                          )
-                        : Text('发送申请',
-                            style: TextStyle(
-                              fontFamily: AppFonts.primary,
-                              fontWeight: FontWeight.w700, fontSize: 14,
-                            )),
-                  ),
-                ),
-              ],
-            ),
           ],
-        ),
-      ),
-    );
+        ));
   }
 }

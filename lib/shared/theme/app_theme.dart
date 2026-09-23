@@ -61,6 +61,38 @@ class AppTheme {
           shadow: AppColors.ambientShadow,
         ),
         scaffoldBackgroundColor: AppColors.surface,
+        dialogTheme: DialogThemeData(
+          backgroundColor: AppColors.surfaceContainerLowest,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          titleTextStyle: TextStyle(fontFamily: AppFonts.primary, fontSize: 18,
+              fontWeight: FontWeight.w700, color: AppColors.onSurface),
+          contentTextStyle: TextStyle(fontFamily: AppFonts.primary, fontSize: 14,
+              height: 1.5, color: AppColors.onSurfaceVariant),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        ),
+        datePickerTheme: DatePickerThemeData(
+          backgroundColor: AppColors.surfaceContainerLowest,
+          surfaceTintColor: Colors.transparent,
+          headerBackgroundColor: AppColors.surfaceContainerLow,
+          headerForegroundColor: AppColors.onSurface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        ),
+        timePickerTheme: TimePickerThemeData(
+          backgroundColor: AppColors.surfaceContainerLowest,
+          dialBackgroundColor: AppColors.surfaceContainerLow,
+          dialHandColor: AppColors.primary,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        ),
+        bottomSheetTheme: BottomSheetThemeData(
+          backgroundColor: AppColors.surfaceContainerLowest,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          clipBehavior: Clip.antiAlias,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        ),
 
         // ── 字体：Plus Jakarta Sans（英文）+ Noto Sans SC（中文回退）─
         // 注：google_fonts 包的 plusJakartaSans 即为 Plus Jakarta Sans

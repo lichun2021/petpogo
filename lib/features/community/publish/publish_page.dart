@@ -1,3 +1,4 @@
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -88,8 +89,6 @@ class _PublishPageState extends ConsumerState<PublishPage>
         await showDialog(
           context: context,
           builder: (_) => AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20)),
             title: Row(children: [
               Icon(Icons.no_photography_outlined, color: AppColors.statusAlert),
               SizedBox(width: 8),
@@ -630,8 +629,8 @@ class _MediaPickerSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 30, offset: Offset(0, -4))],
       ),
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
@@ -641,8 +640,7 @@ class _MediaPickerSheet extends StatelessWidget {
           Container(width: 36, height: 4,
             decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
           SizedBox(height: 20),
-          Text('选择媒体',
-            style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w800, fontSize: 17, color: AppColors.onSurface)),
+          const ModalHeader(title: '选择媒体'),
           SizedBox(height: 20),
           Row(children: [
             _SheetOption(
@@ -667,19 +665,7 @@ class _MediaPickerSheet extends StatelessWidget {
             ),
           ]),
           SizedBox(height: 16),
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Text('取消', textAlign: TextAlign.center,
-                style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w600, fontSize: 15, color: AppColors.onSurfaceVariant)),
-            ),
-          ),
+          const SizedBox.shrink(),
         ],
       ),
     );

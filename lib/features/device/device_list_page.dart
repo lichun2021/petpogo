@@ -413,8 +413,6 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('解绑设备',
             style: TextStyle(
                 fontFamily: AppFonts.primary, fontWeight: FontWeight.w800)),
@@ -470,9 +468,6 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
           context: context,
           barrierDismissible: false,
           builder: (dctx) => AlertDialog(
-            backgroundColor: AppColors.surfaceContainerLow,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

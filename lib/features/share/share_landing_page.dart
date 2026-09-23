@@ -550,8 +550,6 @@ class _DeviceShareCardState extends ConsumerState<_DeviceShareCard> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('添加设备',
             style: TextStyle(
                 fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),

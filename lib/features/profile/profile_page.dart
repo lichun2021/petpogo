@@ -1,3 +1,4 @@
+import 'profile_edit_dialog.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,7 +18,6 @@ import 'data/user_stats_provider.dart';
 import 'data/points_repository.dart';
 import '../../core/router/app_routes.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
-import '../../shared/utils/error_presenter.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -46,17 +46,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   // ── 昵称编辑 ──
-  void _showNicknameSheet(BuildContext context, WidgetRef ref) {
-    final user = ref.read(authControllerProvider).user;
-    final ctrl = TextEditingController(text: user?.name ?? '');
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surfaceContainerLowest,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (ctx) => _NicknameInlineSheet(ctrl: ctrl),
-    );
+  void _showProfileDialog(BuildContext context) {
+    showDialog<bool>(context: context,
+      builder: (_) => const ProfileEditDialog()).then((saved) {
+      if (saved == true && context.mounted) PetToast.success(context, '资料已更新');
+    });
   }
 
   // ── 头像上传 ──
@@ -163,7 +157,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 _ProfileHeader(
                   user: auth.user,
                   uploadingAvatar: _uploadingAvatar,
-                  onTapEdit: () => _showNicknameSheet(context, ref),
+                  onTapEdit: () => _showProfileDialog(context),
                   onTapAvatar: () => _pickAndUploadAvatar(context, ref),
                 ),
                 const SizedBox(height: 20),
@@ -924,118 +918,6 @@ class _GuestProfileView extends StatelessWidget {
                 child: Text(l10n.profileLoginRegister)),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ── 昵称编辑 Sheet（内联在 profile_page 中）───────────────
-class _NicknameInlineSheet extends ConsumerStatefulWidget {
-  final TextEditingController ctrl;
-  const _NicknameInlineSheet({required this.ctrl});
-
-  @override
-  ConsumerState<_NicknameInlineSheet> createState() =>
-      _NicknameInlineSheetState();
-}
-
-class _NicknameInlineSheetState extends ConsumerState<_NicknameInlineSheet> {
-  bool _loading = false;
-  String? _error;
-
-  Future<void> _submit() async {
-    final name = widget.ctrl.text.trim();
-    if (name.isEmpty) {
-      setState(() => _error = '昵称不能为空');
-      return;
-    }
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      await ref.read(authControllerProvider.notifier).updateNickname(name);
-      if (!mounted) return;
-      Navigator.pop(context);
-      PetToast.success(context, '昵称已更新');
-    } catch (e) {
-      setState(() {
-        _loading = false;
-        _error = ErrorPresenter.message(e, fallback: '昵称更新失败，请稍后重试');
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('修改昵称',
-              style: TextStyle(
-                  fontFamily: AppFonts.primary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800)),
-          SizedBox(height: 20),
-          Container(
-            decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(14)),
-            child: TextField(
-              controller: widget.ctrl,
-              autofocus: true,
-              style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15),
-              decoration: InputDecoration(
-                hintText: '输入新昵称',
-                hintStyle: TextStyle(
-                    color: AppColors.onSurfaceVariant,
-                    fontFamily: AppFonts.primary,
-                    fontSize: 14),
-                prefixIcon: Icon(Icons.person_rounded,
-                    color: AppColors.primary, size: 20),
-                border: InputBorder.none,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              ),
-            ),
-          ),
-          if (_error != null) ...[
-            SizedBox(height: 8),
-            Text(_error!,
-                style: TextStyle(color: AppColors.error, fontSize: 13)),
-          ],
-          SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: _loading ? null : _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(999)),
-                elevation: 0,
-              ),
-              child: _loading
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : Text('保存',
-                      style: TextStyle(
-                          fontFamily: AppFonts.primary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700)),
-            ),
-          ),
-          SizedBox(height: 8),
-        ],
       ),
     );
   }

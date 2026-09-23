@@ -135,8 +135,6 @@ class _DeviceMembersPageState extends ConsumerState<DeviceMembersPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           '移除成员',
           style: TextStyle(
@@ -516,8 +514,8 @@ class _ShareDeviceSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(
           20, 12, 20, 20 + MediaQuery.of(context).padding.bottom),

@@ -293,8 +293,6 @@ class _PetCard extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('删除宠物',
             style: TextStyle(
                 fontFamily: AppFonts.primary, fontWeight: FontWeight.w800)),

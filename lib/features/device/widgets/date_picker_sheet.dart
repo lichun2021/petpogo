@@ -5,8 +5,10 @@
 ///   - 用 `selectableDayPredicate` 把只有 [availableDates] 里的天设为可选，
 ///     其他天自动置灰
 ///   - 风格与项目其他 Sheet（_CountPickerSheet / _SoundPickerSheet）一致：
-///     圆角 24、拖拽条、标题、底部完成按钮
+///     圆角 24、拖拽条、标题，点选日期即生效
 library;
+
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
 
 import 'package:flutter/material.dart';
 
@@ -118,67 +120,37 @@ class _RecordDatePickerSheetState extends State<_RecordDatePickerSheet> {
             ),
             const SizedBox(height: 14),
             // 标题
-            Row(
-              children: [
-                Text(
-                  '选择日期',
-                  style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.onSurface,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '仅显示有记录的日期',
-                  style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 12,
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    '取消',
-                    style: TextStyle(
-                      fontFamily: AppFonts.primary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            const ModalHeader(title: '选择日期'),
             const SizedBox(height: 4),
             // 日历
-            Theme(
-              data: Theme.of(context).copyWith(
-                colorScheme: Theme.of(context).colorScheme.copyWith(
-                      primary: AppColors.primary,
-                      onPrimary: Colors.white,
-                      surface: AppColors.surface,
-                    ),
+            if (widget.availableDates.isNotEmpty)
+              Theme(
+                data: Theme.of(context).copyWith(
+                  colorScheme: Theme.of(context).colorScheme.copyWith(
+                        primary: AppColors.primary,
+                        onPrimary: Colors.white,
+                        surface: AppColors.surface,
+                      ),
+                ),
+                child: CalendarDatePicker(
+                  initialDate: widget.initialDate != null &&
+                          _selectable(widget.initialDate!)
+                      ? widget.initialDate
+                      : _lastDay,
+                  firstDate: _firstDay,
+                  lastDate: _lastDay,
+                  currentDate: widget.initialDate,
+                  selectableDayPredicate: _selectable,
+                  onDateChanged: (d) {
+                    // 直接选择并关闭
+                    Navigator.pop(context, DateTime(d.year, d.month, d.day));
+                  },
+                ),
               ),
-              child: CalendarDatePicker(
-                initialDate: widget.initialDate ?? _lastDay,
-                firstDate: _firstDay,
-                lastDate: _lastDay,
-                currentDate: widget.initialDate,
-                selectableDayPredicate: _selectable,
-                onDateChanged: (d) {
-                  // 直接选择并关闭
-                  Navigator.pop(context, DateTime(d.year, d.month, d.day));
-                },
-              ),
-            ),
             const SizedBox(height: 4),
             // 提示
             Text(
-              '无记录的日期不可选',
+              widget.availableDates.isEmpty ? '暂无可选日期' : '无记录的日期不可选',
               style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontSize: 11,

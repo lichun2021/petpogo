@@ -1,3 +1,4 @@
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
 /// ════════════════════════════════════════════════════════════
 ///  登录页面
 ///
@@ -792,10 +793,11 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.72,
+    return Padding(padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: Container(
+      height: (MediaQuery.sizeOf(context).height - MediaQuery.viewInsetsOf(context).bottom - MediaQuery.paddingOf(context).top) * 0.82,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
@@ -813,12 +815,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
           SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Text('选择国家/地区',
-                style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.onSurface)),
+            child: const ModalHeader(title: '选择国家/地区'),
           ),
           SizedBox(height: 12),
           // ── 搜索框 ──
@@ -897,7 +894,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 

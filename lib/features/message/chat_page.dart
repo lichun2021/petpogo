@@ -680,8 +680,6 @@ class _ChatInputSectionState extends State<_ChatInputSection> {
     await showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
         title: Row(children: [
           Icon(icon, color: AppColors.statusAlert),
           SizedBox(width: 8),

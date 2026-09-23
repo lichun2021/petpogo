@@ -1,3 +1,4 @@
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -502,9 +503,9 @@ class _DevicePickerSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final navBar = MediaQuery.of(context).viewPadding.bottom;
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
+    return SingleChildScrollView(child: Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + navBar),
@@ -516,16 +517,7 @@ class _DevicePickerSheet extends StatelessWidget {
                 color: Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(99))),
         const SizedBox(height: 16),
-        Row(children: [
-          Icon(Icons.cast_rounded, color: AppColors.primary, size: 20),
-          const SizedBox(width: 8),
-          Text('选择投送设备',
-              style: TextStyle(
-                  fontFamily: AppFonts.primary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.onSurface)),
-        ]),
+        const ModalHeader(title: '选择投送设备'),
         const SizedBox(height: 12),
         ...devices.map((d) => ListTile(
               contentPadding:
@@ -563,7 +555,7 @@ class _DevicePickerSheet extends StatelessWidget {
                   : null,
             )),
       ]),
-    );
+    ));
   }
 }
 

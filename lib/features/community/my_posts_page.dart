@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 import '../../app.dart' show AppL10nX;
 import '../../core/router/app_routes.dart';
@@ -9,7 +8,7 @@ import '../../shared/theme/app_tokens.dart';
 import '../../shared/widgets/app_error_view.dart';
 import 'controller/my_posts_controller.dart';
 import 'viewer/post_viewer_page.dart';
-import 'widgets/community_post_card.dart';
+import 'widgets/my_post_detail_card.dart';
 
 class MyPostsPage extends ConsumerStatefulWidget {
   const MyPostsPage({super.key});
@@ -93,32 +92,30 @@ class _MyPostsPageState extends ConsumerState<MyPostsPage> {
               if (state.posts.isNotEmpty)
                 SliverPadding(
                   padding: const EdgeInsets.all(AppSpacing.x12),
-                  sliver: SliverLayoutBuilder(
-                      builder: (context, constraints) =>
-                          SliverMasonryGrid.count(
-                            crossAxisCount: constraints.crossAxisExtent < 330 &&
-                                    MediaQuery.textScalerOf(context).scale(12) >
-                                        16
-                                ? 1
-                                : 2,
-                            mainAxisSpacing: AppSpacing.x12,
-                            crossAxisSpacing: AppSpacing.x12,
-                            childCount: state.posts.length,
-                            itemBuilder: (_, index) => CommunityPostCard(
-                                key: ValueKey(state.posts[index].id),
-                                post: state.posts[index],
-                                index: index,
-                                onAvatarTap: null,
-                                onLike: null,
-                                onTap: () => Navigator.of(context,
-                                        rootNavigator: true)
-                                    .push(MaterialPageRoute<void>(
-                                        builder: (_) => PostViewerPage(
-                                            posts:
-                                                List.unmodifiable(state.posts),
-                                            initialIndex: index,
-                                            syncWithFeed: false)))),
-                          )),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (_, index) => MyPostDetailCard(
+                        key: ValueKey(state.posts[index].id),
+                        post: state.posts[index],
+                        onOpenMedia: () async {
+                          await Navigator.of(context, rootNavigator: true)
+                              .push(MaterialPageRoute<void>(
+                            builder: (_) => PostViewerPage(
+                              posts: List.unmodifiable(state.posts),
+                              initialIndex: index,
+                              syncWithFeed: false,
+                            ),
+                          ));
+                          if (mounted) {
+                            await ref
+                                .read(myPostsControllerProvider.notifier)
+                                .refresh();
+                          }
+                        },
+                      ),
+                      childCount: state.posts.length,
+                    ),
+                  ),
                 ),
               state.outcome.when(
                 success: (_) => SliverToBoxAdapter(

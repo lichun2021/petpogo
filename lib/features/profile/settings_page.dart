@@ -1,3 +1,4 @@
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -94,8 +95,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('清除缓存',
             style: TextStyle(
                 fontFamily: AppFonts.primary,
@@ -276,28 +275,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  // ── 修改密码 Bottom Sheet ─────────────────────────────
+  // ── 修改密码弹窗 ─────────────────────────────
   void _showPasswordSheet(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surfaceContainerLowest,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (ctx) => _PasswordSheet(ref: ref),
-    );
+    showDialog(context: context, builder: (ctx) => _PasswordSheet(ref: ref));
   }
 
-  // ── 意见反馈 Bottom Sheet ────────────────────────────
+  // ── 意见反馈弹窗 ────────────────────────────
   void _showFeedbackSheet(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surfaceContainerLowest,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (ctx) => _FeedbackSheet(ref: ref),
-    );
+    showDialog(context: context, builder: (ctx) => _FeedbackSheet(ref: ref));
   }
 
   Widget _buildSectionHeader(String title) => Padding(
@@ -478,7 +463,8 @@ class _DeveloperGroup extends ConsumerWidget {
           onChanged: (v) => ref.read(showRawErrorProvider.notifier).set(v),
           activeThumbColor: AppColors.brandPrimary,
           contentPadding: const EdgeInsets.fromLTRB(16, 4, 12, 4),
-          secondary: Icon(Icons.bug_report_outlined, color: AppColors.statusNeutral),
+          secondary:
+              Icon(Icons.bug_report_outlined, color: AppColors.statusNeutral),
           title: Text('显示原始错误信息',
               style: TextStyle(
                   fontFamily: AppFonts.primary,
@@ -589,14 +575,24 @@ class _PasswordSheetState extends ConsumerState<_PasswordSheet> {
 
   Future<void> _sendCode() async {
     if (_sending || _countdown > 0 || _loading) return;
-    setState(() { _sending = true; _error = null; });
-    final error = await ref.read(authControllerProvider.notifier).sendPasswordResetSms();
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
+    final error =
+        await ref.read(authControllerProvider.notifier).sendPasswordResetSms();
     if (!mounted) return;
-    setState(() { _sending = false; _error = error; });
+    setState(() {
+      _sending = false;
+      _error = error;
+    });
     if (error != null) return;
     setState(() => _countdown = 60);
     _smsTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) { timer.cancel(); return; }
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       setState(() => _countdown--);
       if (_countdown == 0) timer.cancel();
     });
@@ -640,85 +636,87 @@ class _PasswordSheetState extends ConsumerState<_PasswordSheet> {
       });
     }
     // 成功后由认证状态触发路由跳转，避免关闭已切换的页面。
-
   }
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return SingleChildScrollView(child: Padding(
-      padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('设置 / 修改密码',
-              style: TextStyle(
-                  fontFamily: AppFonts.primary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800)),
-          SizedBox(height: 20),
-          Text('未设置密码可通过短信验证设置，成功后需重新登录。',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-          TextButton(
-            onPressed: _loading ? null : () => setState(() { _useSms = !_useSms; _error = null; }),
-            child: Text(_useSms ? '改用当前密码验证' : '改用短信验证'),
-          ),
-          if (_useSms)
+    return FormModal(
+        title: '设置 / 修改密码',
+        onConfirm: _submit,
+        busy: _loading,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('未设置密码可通过短信验证设置，成功后需重新登录。',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            TextButton(
+              onPressed: _loading
+                  ? null
+                  : () => setState(() {
+                        _useSms = !_useSms;
+                        _error = null;
+                      }),
+              child: Text(_useSms ? '改用当前密码验证' : '改用短信验证'),
+            ),
+            if (_useSms)
+              _SheetField(
+                controller: _codeCtrl,
+                hint: '6位短信验证码',
+                icon: Icons.sms_outlined,
+                suffix: TextButton(
+                  onPressed:
+                      _sending || _countdown > 0 || _loading ? null : _sendCode,
+                  child: Text(_sending
+                      ? '发送中'
+                      : _countdown > 0
+                          ? '${_countdown}s'
+                          : '获取验证码'),
+                ),
+              )
+            else
+              _SheetField(
+                  controller: _oldCtrl,
+                  hint: '当前密码',
+                  icon: Icons.lock_outline_rounded,
+                  obscure: !_showOld,
+                  suffix: IconButton(
+                      icon: Icon(
+                          _showOld
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
+                          size: 18,
+                          color: AppColors.onSurfaceVariant),
+                      onPressed: () => setState(() => _showOld = !_showOld))),
+            SizedBox(height: 12),
             _SheetField(
-              controller: _codeCtrl,
-              hint: '6位短信验证码',
-              icon: Icons.sms_outlined,
-              suffix: TextButton(
-                onPressed: _sending || _countdown > 0 || _loading ? null : _sendCode,
-                child: Text(_sending ? '发送中' : _countdown > 0 ? '${_countdown}s' : '获取验证码'),
-              ),
-            )
-          else
-          _SheetField(
-              controller: _oldCtrl,
-              hint: '当前密码',
-              icon: Icons.lock_outline_rounded,
-              obscure: !_showOld,
-              suffix: IconButton(
-                  icon: Icon(
-                      _showOld
-                          ? Icons.visibility_off_rounded
-                          : Icons.visibility_rounded,
-                      size: 18,
-                      color: AppColors.onSurfaceVariant),
-                  onPressed: () => setState(() => _showOld = !_showOld))),
-          SizedBox(height: 12),
-          _SheetField(
-              controller: _newCtrl,
-              hint: '新密码（8–128位）',
-              icon: Icons.lock_rounded,
-              obscure: !_showNew,
-              suffix: IconButton(
-                  icon: Icon(
-                      _showNew
-                          ? Icons.visibility_off_rounded
-                          : Icons.visibility_rounded,
-                      size: 18,
-                      color: AppColors.onSurfaceVariant),
-                  onPressed: () => setState(() => _showNew = !_showNew))),
-          SizedBox(height: 12),
-          _SheetField(
-              controller: _cfmCtrl,
-              hint: '确认新密码',
-              icon: Icons.lock_reset_rounded,
-              obscure: true),
-          if (_error != null) ...[
+                controller: _newCtrl,
+                hint: '新密码（8–128位）',
+                icon: Icons.lock_rounded,
+                obscure: !_showNew,
+                suffix: IconButton(
+                    icon: Icon(
+                        _showNew
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
+                        size: 18,
+                        color: AppColors.onSurfaceVariant),
+                    onPressed: () => setState(() => _showNew = !_showNew))),
+            SizedBox(height: 12),
+            _SheetField(
+                controller: _cfmCtrl,
+                hint: '确认新密码',
+                icon: Icons.lock_reset_rounded,
+                obscure: true),
+            if (_error != null) ...[
+              SizedBox(height: 8),
+              Text(_error!,
+                  style: TextStyle(color: AppColors.error, fontSize: 13)),
+            ],
+            SizedBox(height: 20),
             SizedBox(height: 8),
-            Text(_error!,
-                style: TextStyle(color: AppColors.error, fontSize: 13)),
           ],
-          SizedBox(height: 20),
-          _SheetButton(label: '确认修改', loading: _loading, onTap: _submit),
-          SizedBox(height: 8),
-        ],
-      ),
-    ));
+        ));
   }
 }
 
@@ -764,46 +762,6 @@ class _SheetField extends StatelessWidget {
   }
 }
 
-// ── 共用 Sheet 按钮 ────────────────────────────────────────
-class _SheetButton extends StatelessWidget {
-  final String label;
-  final bool loading;
-  final VoidCallback onTap;
-  const _SheetButton(
-      {required this.label, required this.loading, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: ElevatedButton(
-        onPressed: loading ? null : onTap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-          elevation: 0,
-        ),
-        child: loading
-            ? SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white))
-            : Text(label,
-                style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700)),
-      ),
-    );
-  }
-}
-
-// ── 普通设置 Tile ──────────────────────────────────────────
 class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -975,7 +933,7 @@ class _SwitchAccountButton extends ConsumerWidget {
 }
 
 // ════════════════════════════════════════════════════════════
-//  意见反馈 Bottom Sheet
+//  意见反馈弹窗
 // ════════════════════════════════════════════════════════════
 class _FeedbackSheet extends ConsumerStatefulWidget {
   final WidgetRef ref;
@@ -1031,129 +989,103 @@ class _FeedbackSheetState extends ConsumerState<_FeedbackSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
     final charCount = _contentCtrl.text.trim().length;
     final nearLimit = charCount > 40;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(24, 20, 24, 24 + bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.outline.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          SizedBox(height: 16),
-          Row(children: [
-            Icon(Icons.feedback_outlined, color: AppColors.primary, size: 22),
-            SizedBox(width: 8),
-            Text('意见反馈',
+    return FormModal(
+        title: '意见反馈',
+        onConfirm: _submit,
+        busy: _loading,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('反馈类型',
                 style: TextStyle(
                     fontFamily: AppFonts.primary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.onSurface)),
-          ]),
-          SizedBox(height: 20),
-          Text('反馈类型',
-              style: TextStyle(
-                  fontFamily: AppFonts.primary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.onSurfaceVariant)),
-          SizedBox(height: 10),
-          Row(
-            children: _types.map((t) {
-              final selected = _type == t.value;
-              final color = Color(t.hexColor);
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _type = t.value),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    padding: const EdgeInsets.symmetric(vertical: 11),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? color.withValues(alpha: 0.12)
-                          : AppColors.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: selected ? color : Colors.transparent,
-                        width: 1.5,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.onSurfaceVariant)),
+            SizedBox(height: 10),
+            Row(
+              children: _types.map((t) {
+                final selected = _type == t.value;
+                final color = Color(t.hexColor);
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _type = t.value),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 11),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? color.withValues(alpha: 0.12)
+                            : AppColors.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: selected ? color : Colors.transparent,
+                          width: 1.5,
+                        ),
                       ),
+                      child: Text(t.label,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 13,
+                            fontWeight:
+                                selected ? FontWeight.w700 : FontWeight.w500,
+                            color:
+                                selected ? color : AppColors.onSurfaceVariant,
+                          )),
                     ),
-                    child: Text(t.label,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: AppFonts.primary,
-                          fontSize: 13,
-                          fontWeight:
-                              selected ? FontWeight.w700 : FontWeight.w500,
-                          color: selected ? color : AppColors.onSurfaceVariant,
-                        )),
                   ),
-                ),
-              );
-            }).toList(),
-          ),
-          SizedBox(height: 18),
-          Text('反馈内容',
-              style: TextStyle(
-                  fontFamily: AppFonts.primary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.onSurfaceVariant)),
-          SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(14),
+                );
+              }).toList(),
             ),
-            child: TextField(
-              controller: _contentCtrl,
-              maxLines: 4,
-              onChanged: (_) => setState(() {}),
-              style: TextStyle(
-                  fontFamily: AppFonts.primary,
-                  fontSize: 14,
-                  color: AppColors.onSurface),
-              decoration: InputDecoration(
-                hintText: '请输入您的建议或反馈（1 ~ 50 字）',
-                hintStyle: TextStyle(
+            SizedBox(height: 18),
+            Text('反馈内容',
+                style: TextStyle(
                     fontFamily: AppFonts.primary,
                     fontSize: 13,
-                    color: AppColors.onSurfaceVariant),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.all(14),
-                suffix: Text('$charCount/50',
-                    style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.onSurfaceVariant)),
+            SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: TextField(
+                controller: _contentCtrl,
+                maxLines: 4,
+                onChanged: (_) => setState(() {}),
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 14,
+                    color: AppColors.onSurface),
+                decoration: InputDecoration(
+                  hintText: '请输入您的建议或反馈（1 ~ 50 字）',
+                  hintStyle: TextStyle(
                       fontFamily: AppFonts.primary,
-                      fontSize: 11,
-                      color: nearLimit
-                          ? AppColors.error
-                          : AppColors.onSurfaceVariant,
-                    )),
+                      fontSize: 13,
+                      color: AppColors.onSurfaceVariant),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.all(14),
+                  suffix: Text('$charCount/50',
+                      style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 11,
+                        color: nearLimit
+                            ? AppColors.error
+                            : AppColors.onSurfaceVariant,
+                      )),
+                ),
               ),
             ),
-          ),
-          SizedBox(height: 16),
-          _SheetButton(
-            label: '提交反馈',
-            loading: _loading,
-            onTap: _submit,
-          ),
-          SizedBox(height: 8),
-        ],
-      ),
-    );
+            SizedBox(height: 16),
+            SizedBox(height: 8),
+          ],
+        ));
   }
 }

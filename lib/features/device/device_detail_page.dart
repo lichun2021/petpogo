@@ -1,3 +1,4 @@
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -482,9 +483,6 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-              backgroundColor: AppColors.surfaceContainerLow,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20)),
               title: Text('删除宠物',
                   style: TextStyle(
                       fontFamily: AppFonts.primary,
@@ -670,51 +668,36 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     ]);
   }
 
-  void _showRemarkDialog(BuildContext context) {
+  Future<void> _showRemarkDialog(BuildContext context) async {
     final ctrl = TextEditingController(text: widget.name);
-    showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-              backgroundColor: AppColors.surfaceContainerLow,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20)),
-              title: Text('设备备注',
-                  style: TextStyle(
-                      fontFamily: AppFonts.primary,
-                      fontWeight: FontWeight.w700)),
-              content: TextField(
-                  controller: ctrl,
-                  decoration: InputDecoration(
-                      hintText: '输入备注内容',
-                      filled: true,
-                      fillColor: AppColors.surfaceContainer,
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none))),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(ctx), child: Text('取消')),
-                FilledButton(
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    try {
-                      await ref
-                          .read(deviceRepositoryProvider)
-                          .updateDeviceName(widget.mac, ctrl.text);
-                      await ref.read(deviceListProvider.notifier).load();
-                      await _loadAll();
-                    } catch (e) {
-                      debugPrint('[DeviceDetail] 备注失败: $e');
-                    }
-                  },
-                  style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12))),
-                  child: Text('保存'),
-                ),
-              ],
-            ));
+    var saving = false;
+    String? error;
+    await showDialog<void>(context: context, builder: (ctx) => StatefulBuilder(
+      builder: (ctx, update) => FormModal(title: '设备备注', busy: saving,
+        onConfirm: () async {
+          if (saving) return;
+          if (ctrl.text.trim().isEmpty) {
+            update(() => error = '请输入设备备注');
+            return;
+          }
+          update(() { saving = true; error = null; });
+          try {
+            await ref.read(deviceRepositoryProvider).updateDeviceName(widget.mac, ctrl.text.trim());
+            if (!ctx.mounted) return;
+            Navigator.pop(ctx);
+            await ref.read(deviceListProvider.notifier).load();
+            if (mounted) await _loadAll();
+          } catch (_) {
+            if (ctx.mounted) update(() { saving = false; error = '保存失败，请重试'; });
+          }
+        },
+        child: TextField(controller: ctrl, enabled: !saving, maxLength: 50,
+          decoration: InputDecoration(labelText: '备注', hintText: '输入设备备注', errorText: error)),
+      ),
+    ));
+    // 等关闭动画结束，避免文本框仍在使用 controller。
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    ctrl.dispose();
   }
 
 }
@@ -875,8 +858,8 @@ class _DeviceSwitcherSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        color: AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(
           20, 12, 20, 20 + MediaQuery.of(context).padding.bottom),

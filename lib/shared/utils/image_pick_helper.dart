@@ -16,7 +16,6 @@ class ImagePickHelper {
     final source = await showDialog<ImageSource>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('选择图片来源',
             style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
         contentPadding: const EdgeInsets.symmetric(vertical: 8),

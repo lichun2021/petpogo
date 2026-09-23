@@ -1,3 +1,4 @@
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -142,9 +143,7 @@ class _AddPetPageState extends ConsumerState<AddPetPage>
               decoration: BoxDecoration(color: AppColors.onSurfaceVariant.withOpacity(0.25),
                   borderRadius: BorderRadius.circular(2))),
           SizedBox(height: 16),
-          Text('选择头像来源',
-              style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
+          const ModalHeader(title: '选择头像来源'),
           SizedBox(height: 20),
           Row(children: [
             Expanded(child: _SourceOption(

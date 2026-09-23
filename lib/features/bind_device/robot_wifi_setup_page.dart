@@ -310,7 +310,6 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(children: [
           Icon(Icons.wifi_off_rounded, color: AppColors.error, size: 22),
           const SizedBox(width: 8),

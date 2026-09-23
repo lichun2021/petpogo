@@ -1,3 +1,4 @@
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -25,18 +26,18 @@ class _PetEditSheetState extends ConsumerState<PetEditSheet> {
   late final TextEditingController _breedCtrl;
   late final TextEditingController _weightCtrl;
 
-  String  _avatarUrl = '';
-  bool    _uploadingAvatar = false;
-  bool    _saving = false;
+  String _avatarUrl = '';
+  bool _uploadingAvatar = false;
+  bool _saving = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _nameCtrl   = TextEditingController(text: widget.pet.petName);
-    _breedCtrl  = TextEditingController(text: widget.pet.breed);
+    _nameCtrl = TextEditingController(text: widget.pet.petName);
+    _breedCtrl = TextEditingController(text: widget.pet.breed);
     _weightCtrl = TextEditingController(text: widget.pet.weight);
-    _avatarUrl  = widget.pet.avatar;
+    _avatarUrl = widget.pet.avatar;
   }
 
   @override
@@ -54,20 +55,24 @@ class _PetEditSheetState extends ConsumerState<PetEditSheet> {
     final source = await showDialog<ImageSource>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('选择图片来源',
-            style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
+            style: TextStyle(
+                fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
         contentPadding: const EdgeInsets.symmetric(vertical: 8),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           ListTile(
             leading: Icon(Icons.camera_alt_rounded, color: AppColors.primary),
-            title: Text('拍照', style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w600)),
+            title: Text('拍照',
+                style: TextStyle(
+                    fontFamily: AppFonts.primary, fontWeight: FontWeight.w600)),
             onTap: () => Navigator.pop(ctx, ImageSource.camera),
           ),
           ListTile(
-            leading: Icon(Icons.photo_library_rounded, color: AppColors.primary),
-            title: Text('从相册选择', style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w600)),
+            leading:
+                Icon(Icons.photo_library_rounded, color: AppColors.primary),
+            title: Text('从相册选择',
+                style: TextStyle(
+                    fontFamily: AppFonts.primary, fontWeight: FontWeight.w600)),
             onTap: () => Navigator.pop(ctx, ImageSource.gallery),
           ),
         ]),
@@ -94,7 +99,8 @@ class _PetEditSheetState extends ConsumerState<PetEditSheet> {
     setState(() => _uploadingAvatar = true);
     try {
       final repo = ref.read(postRepositoryProvider);
-      final sign = await repo.getOssSign(fileType: 'image', folder: 'pet_avatars');
+      final sign =
+          await repo.getOssSign(fileType: 'image', folder: 'pet_avatars');
       await repo.uploadToOss(
         uploadUrl: sign.uploadUrl,
         file: File(picked.path),
@@ -115,22 +121,29 @@ class _PetEditSheetState extends ConsumerState<PetEditSheet> {
       setState(() => _error = '名字不能为空');
       return;
     }
-    setState(() { _saving = true; _error = null; });
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
 
     try {
       await ref.read(petPeerRepositoryProvider).updatePet(
-        petId:   widget.pet.petId,
-        petName: name,
-        breed:   _breedCtrl.text.trim().isNotEmpty  ? _breedCtrl.text.trim()  : null,
-        weight:  _weightCtrl.text.trim().isNotEmpty ? _weightCtrl.text.trim() : null,
-        avatar:  _avatarUrl.isNotEmpty ? _avatarUrl : null,
-      );
+            petId: widget.pet.petId,
+            petName: name,
+            breed: _breedCtrl.text.trim().isNotEmpty
+                ? _breedCtrl.text.trim()
+                : null,
+            weight: _weightCtrl.text.trim().isNotEmpty
+                ? _weightCtrl.text.trim()
+                : null,
+            avatar: _avatarUrl.isNotEmpty ? _avatarUrl : null,
+          );
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
         setState(() {
           _saving = false;
-          _error  = ErrorPresenter.message(e, fallback: '保存失败，请稍后重试');
+          _error = ErrorPresenter.message(e, fallback: '保存失败，请稍后重试');
         });
       }
     }
@@ -139,22 +152,25 @@ class _PetEditSheetState extends ConsumerState<PetEditSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
+    return SingleChildScrollView(
+        child: Padding(
       padding: EdgeInsets.fromLTRB(24, 20, 24, 24 + bottom),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         // 拖拽条
-        Center(child: Container(width: 40, height: 4,
-            decoration: BoxDecoration(color: AppColors.outlineVariant,
-                borderRadius: BorderRadius.circular(999)))),
+        Center(
+            child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: AppColors.outlineVariant,
+                    borderRadius: BorderRadius.circular(999)))),
         const SizedBox(height: 20),
 
         // 标题
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text('编辑宠物信息',
-              style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 18, fontWeight: FontWeight.w800)),
-        ),
+        ModalHeader(
+            title: '编辑宠物信息',
+            busy: _saving,
+            onConfirm: _uploadingAvatar ? null : _save),
         const SizedBox(height: 20),
 
         // 头像选择
@@ -163,74 +179,78 @@ class _PetEditSheetState extends ConsumerState<PetEditSheet> {
             onTap: _uploadingAvatar ? null : _pickAvatar,
             child: Stack(alignment: Alignment.bottomRight, children: [
               Container(
-                width: 88, height: 88,
+                width: 88,
+                height: 88,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.surfaceContainerHigh,
                   border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [BoxShadow(color: AppColors.cardShadow, blurRadius: 12)],
+                  boxShadow: [
+                    BoxShadow(color: AppColors.cardShadow, blurRadius: 12)
+                  ],
                 ),
-                child: ClipOval(child: _uploadingAvatar
-                    ? const Center(child: CircularProgressIndicator(strokeWidth: 2.5))
-                    : _avatarUrl.isNotEmpty
-                        ? CachedNetworkImage(imageUrl: _avatarUrl, fit: BoxFit.cover,
-                            errorWidget: (_, __, ___) =>
-                                const Center(child: Text('🐾', style: TextStyle(fontSize: 42))))
-                        : const Center(child: Text('🐾', style: TextStyle(fontSize: 42)))),
+                child: ClipOval(
+                    child: _uploadingAvatar
+                        ? const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2.5))
+                        : _avatarUrl.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: _avatarUrl,
+                                fit: BoxFit.cover,
+                                errorWidget: (_, __, ___) => const Center(
+                                    child: Text('🐾',
+                                        style: TextStyle(fontSize: 42))))
+                            : const Center(
+                                child: Text('🐾',
+                                    style: TextStyle(fontSize: 42)))),
               ),
               if (!_uploadingAvatar)
                 Container(
-                  width: 28, height: 28,
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
-                    color: AppColors.primary, shape: BoxShape.circle,
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
                   ),
-                  child: const Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
+                  child: const Icon(Icons.camera_alt_rounded,
+                      size: 14, color: Colors.white),
                 ),
             ]),
           ),
         ),
         const SizedBox(height: 6),
-        Text('点击更换头像', style: TextStyle(fontFamily: AppFonts.primary,
-            fontSize: 12, color: AppColors.onSurfaceVariant)),
+        Text('点击更换头像',
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 12,
+                color: AppColors.onSurfaceVariant)),
         const SizedBox(height: 20),
 
         // 名字
-        _Field(controller: _nameCtrl,   hint: '宠物名字', icon: Icons.pets_rounded),
+        _Field(controller: _nameCtrl, hint: '宠物名字', icon: Icons.pets_rounded),
         const SizedBox(height: 12),
         // 品种
-        _Field(controller: _breedCtrl,  hint: '品种（选填）', icon: Icons.category_rounded),
+        _Field(
+            controller: _breedCtrl,
+            hint: '品种（选填）',
+            icon: Icons.category_rounded),
         const SizedBox(height: 12),
         // 体重
-        _Field(controller: _weightCtrl, hint: '体重 kg（选填）', icon: Icons.monitor_weight_outlined,
+        _Field(
+            controller: _weightCtrl,
+            hint: '体重 kg（选填）',
+            icon: Icons.monitor_weight_outlined,
             keyboardType: TextInputType.number),
 
-        if (_error != null) ...[ 
+        if (_error != null) ...[
           const SizedBox(height: 8),
           Text(_error!, style: TextStyle(color: AppColors.error, fontSize: 13)),
         ],
         const SizedBox(height: 20),
 
-        // 保存按钮
-        SizedBox(
-          width: double.infinity, height: 52,
-          child: ElevatedButton(
-            onPressed: _saving ? null : _save,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-              elevation: 0,
-            ),
-            child: _saving
-                ? const SizedBox(width: 20, height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : Text('保存', style: TextStyle(fontFamily: AppFonts.primary,
-                    fontSize: 16, fontWeight: FontWeight.w700)),
-          ),
-        ),
       ]),
-    );
+    ));
   }
 }
 
@@ -248,20 +268,24 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    decoration: BoxDecoration(color: AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(14)),
-    child: TextField(
-      controller:   controller,
-      keyboardType: keyboardType,
-      style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: AppColors.onSurfaceVariant,
-            fontFamily: AppFonts.primary, fontSize: 14),
-        prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
-        border: InputBorder.none,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      ),
-    ),
-  );
+        decoration: BoxDecoration(
+            color: AppColors.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(14)),
+        child: TextField(
+          controller: controller,
+          keyboardType: keyboardType,
+          style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+                color: AppColors.onSurfaceVariant,
+                fontFamily: AppFonts.primary,
+                fontSize: 14),
+            prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
+            border: InputBorder.none,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
+        ),
+      );
 }

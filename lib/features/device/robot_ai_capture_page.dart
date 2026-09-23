@@ -1,6 +1,8 @@
 /// 自动抓拍页 — 配置面板 + 媒体库（点击展开详情）
 library;
 
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -743,128 +745,65 @@ class _TimelineShareSheet extends StatefulWidget {
 class _TimelineShareSheetState extends State<_TimelineShareSheet> {
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    final navBar = MediaQuery.of(context).viewPadding.bottom;
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + bottom + navBar),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          width: 36,
-          height: 4,
-          decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(2)),
-        ),
-        const SizedBox(height: 16),
-        // 标题
-        Row(children: [
-          const Icon(Icons.wb_sunny_outlined,
-              color: AppColors.wechat, size: 20),
-          const SizedBox(width: 8),
-          Text('分享到朋友圈',
-              style: TextStyle(
-                  fontFamily: AppFonts.primary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.onSurface)),
-          const Spacer(),
-          // 标签提示
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: AppColors.wechat.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: AppColors.wechat.withValues(alpha: 0.25)),
-            ),
-            child: const Text('#宠联芯#',
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.wechat)),
-          ),
-        ]),
-        const SizedBox(height: 14),
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // 媒体预览
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: SizedBox(
-              width: 80,
-              height: 80,
-              child: (widget.item.coverUrl.isNotEmpty ||
-                      widget.item.resourceUrl.isNotEmpty)
-                  ? CachedNetworkImage(
-                      imageUrl: widget.item.coverUrl.isNotEmpty
-                          ? widget.item.coverUrl
-                          : widget.item.resourceUrl,
-                      fit: BoxFit.cover,
-                    )
-                  : Container(
-                      color: Colors.grey.shade200,
-                      child: const Icon(Icons.photo,
-                          color: Colors.grey, size: 32)),
-            ),
-          ),
-          const SizedBox(width: 14),
-          // 文字输入
-          Expanded(
-            child: TextField(
-              controller: widget.ctrl,
-              maxLines: 3,
-              minLines: 3,
-              maxLength: 200,
-              autofocus: true,
-              style: TextStyle(
-                  fontFamily: AppFonts.primary,
-                  fontSize: 15,
-                  color: AppColors.onSurface),
-              decoration: InputDecoration(
-                hintText: '说说宠物的萌照... #宠联芯#',
-                hintStyle: TextStyle(
-                    color: AppColors.onSurfaceVariant.withOpacity(0.5)),
-                filled: true,
-                fillColor: AppColors.surfaceContainerLow,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none),
-                contentPadding: const EdgeInsets.all(12),
-                counterText: '',
+    return FormModal(
+        title: '分享到朋友圈',
+        confirmLabel: '分享',
+        onConfirm: () => Navigator.pop(context, true),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+// 标题
+          const SizedBox(height: 14),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // 媒体预览
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 80,
+                height: 80,
+                child: (widget.item.coverUrl.isNotEmpty ||
+                        widget.item.resourceUrl.isNotEmpty)
+                    ? CachedNetworkImage(
+                        imageUrl: widget.item.coverUrl.isNotEmpty
+                            ? widget.item.coverUrl
+                            : widget.item.resourceUrl,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        color: Colors.grey.shade200,
+                        child: const Icon(Icons.photo,
+                            color: Colors.grey, size: 32)),
               ),
-              onChanged: (_) => setState(() {}),
             ),
-          ),
-        ]),
-        const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.wechat,
-              foregroundColor: Colors.white,
-              minimumSize: const Size.fromHeight(48),
-              padding: EdgeInsets.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              elevation: 0,
-              textStyle: TextStyle(
-                  fontFamily: AppFonts.primary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  height: 1.1),
+            const SizedBox(width: 14),
+            // 文字输入
+            Expanded(
+              child: TextField(
+                controller: widget.ctrl,
+                maxLines: 3,
+                minLines: 3,
+                maxLength: 200,
+                autofocus: true,
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 15,
+                    color: AppColors.onSurface),
+                decoration: InputDecoration(
+                  hintText: '说说宠物的萌照... #宠联芯#',
+                  hintStyle: TextStyle(
+                      color: AppColors.onSurfaceVariant.withOpacity(0.5)),
+                  filled: true,
+                  fillColor: AppColors.surfaceContainerLow,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.all(12),
+                  counterText: '',
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
             ),
-            child: const Text('分享到朋友圈', maxLines: 1),
-          ),
-        ),
-      ]),
-    );
+          ]),
+          const SizedBox(height: 16),
+        ]));
   }
 }
 
@@ -925,32 +864,10 @@ class _CountPickerSheetState extends State<_CountPickerSheet> {
               ),
             ),
             const SizedBox(height: 14),
-            Row(
-              children: [
-                Text(
-                  'AI 分析次数',
-                  style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.onSurface,
-                  ),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, _selected),
-                  child: Text(
-                    '完成',
-                    style: TextStyle(
-                      fontFamily: AppFonts.primary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            ModalHeader(
+                title: 'AI 分析次数',
+                confirmLabel: '确定',
+                onConfirm: () => Navigator.pop(context, _selected)),
             SizedBox(
               height: 180,
               child: CupertinoPicker(
@@ -1201,10 +1118,8 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
   Future<void> _shareToCommunity(BuildContext ctx) async {
     if (!mounted) return;
     final captionCtrl = TextEditingController();
-    final confirmed = await showModalBottomSheet<bool>(
+    final confirmed = await showDialog<bool>(
       context: ctx,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (_) => _CommunityShareSheet(
         item: widget.item,
         captionCtrl: captionCtrl,
@@ -1311,10 +1226,8 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
   /// 先弹文本输入，确认后再分享到朋友圈
   Future<void> _showTimelineSheet(BuildContext ctx) async {
     final ctrl = TextEditingController(text: '🐾我家宝贝超可爱！#宠联芯# ');
-    final confirmed = await showModalBottomSheet<bool>(
+    final confirmed = await showDialog<bool>(
       context: ctx,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (_) => _TimelineShareSheet(
         item: widget.item,
         ctrl: ctrl,
@@ -1361,8 +1274,8 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
       minChildSize: 0.4,
       maxChildSize: 0.95,
       builder: (_, sc) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(children: [
@@ -1475,7 +1388,8 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
                                               height: 16,
                                               child: CircularProgressIndicator(
                                                   strokeWidth: 2,
-                                                  color: AppColors.brandPrimaryStrong))
+                                                  color: AppColors
+                                                      .brandPrimaryStrong))
                                           : const Icon(Icons.share_rounded,
                                               size: 20),
                                     ),
@@ -1640,8 +1554,8 @@ class _ShareSheet extends StatelessWidget {
     // 直接读入局部变量，不通过InheritedWidget依赖链注册依赖
     final bottomPad = MediaQuery.of(context).viewPadding.bottom;
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(24, 12, 24, 20 + bottomPad),
@@ -1741,7 +1655,6 @@ class _ShareOption extends StatelessWidget {
   }
 }
 
-
 // ── 社区分享编辑弹窗 ────────────────────────────────────────────────
 class _CommunityShareSheet extends StatefulWidget {
   final CaptureItem item;
@@ -1755,24 +1668,13 @@ class _CommunityShareSheet extends StatefulWidget {
 class _CommunityShareSheetState extends State<_CommunityShareSheet> {
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + bottom),
-      child: SafeArea(
-        top: false,
+    return FormModal(
+        title: '分享到社区',
+        confirmLabel: '分享',
+        onConfirm: widget.captionCtrl.text.trim().isEmpty
+            ? null
+            : () => Navigator.pop(context, true),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2)),
-          ),
-          const SizedBox(height: 16),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             // 媒体预览缩略图
             ClipRRect(
@@ -1824,29 +1726,6 @@ class _CommunityShareSheetState extends State<_CommunityShareSheet> {
             ),
           ]),
           const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: widget.captionCtrl.text.trim().isNotEmpty
-                  ? () => Navigator.pop(context, true)
-                  : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-                textStyle: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700),
-              ),
-              child: const Text('发布到社区'),
-            ),
-          ),
-        ]),
-      ),
-    );
+        ]));
   }
 }

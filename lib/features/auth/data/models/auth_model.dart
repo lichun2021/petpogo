@@ -106,6 +106,9 @@ class UserInfo {
   final int    merchantId;     // mapped to id parsed as int
   final String id;             // string id
   final String avatar;
+  final int gender;
+  final String birthday;
+  final String email;
   final String imUserSig;
   final String? vipLevel;      // null/'free' = 非会员，'pro'/'pro_max' = 会员
   final String? vipExpireAt;
@@ -123,6 +126,9 @@ class UserInfo {
     required this.merchantId,
     required this.id,
     this.avatar = '',
+    this.gender = 0,
+    this.birthday = '',
+    this.email = '',
     this.imUserSig = '',
     this.vipLevel,
     this.vipExpireAt,
@@ -159,6 +165,9 @@ class UserInfo {
     'merchantId':      merchantId.toString(),
     'id':              id,
     'avatar':          avatar,
+    'gender': gender.toString(),
+    'birthday': birthday,
+    'email': email,
     'imUserSig':       imUserSig,
     'vipLevel':        vipLevel ?? '',
     'vipExpireAt':     vipExpireAt ?? '',
@@ -177,6 +186,9 @@ class UserInfo {
     merchantId:     int.tryParse(map['merchantId'] ?? '0') ?? 0,
     id:             map['id']              ?? '',
     avatar:         map['avatar']          ?? '',
+    gender: int.tryParse(map['gender'] ?? '') ?? 0,
+    birthday: map['birthday'] ?? '',
+    email: map['email'] ?? '',
     imUserSig:      map['imUserSig']       ?? '',
     vipLevel:       (map['vipLevel']?.isNotEmpty ?? false) ? map['vipLevel'] : null,
     vipExpireAt:    (map['vipExpireAt']?.isNotEmpty ?? false) ? map['vipExpireAt'] : null,
@@ -201,6 +213,10 @@ class UserInfo {
       imUserSig:   current.imUserSig,
       name:        (json['nickname'] as String?) ?? current.name,
       avatar:      (json['avatar']   as String?) ?? current.avatar,
+      gender: (json['gender'] as num?)?.toInt() ?? current.gender,
+      birthday: json.containsKey('birthday') ? (json['birthday'] as String? ?? '').split('T').first : current.birthday,
+      email: json.containsKey('email') ? json['email'] as String? ?? '' : current.email,
+      peerGatewayUrl: current.peerGatewayUrl,
       vipLevel:    rawLevel ?? (boolFromOld ? 'pro' : current.vipLevel),
       vipExpireAt: json['vipExpireAt'] as String? ?? current.vipExpireAt,
       aiQuota:     qJson.isNotEmpty ? AiQuota.fromJson(qJson) : current.aiQuota,
@@ -215,6 +231,9 @@ class UserInfo {
 
   UserInfo copyWith({
     String?   name,
+    int? gender,
+    String? birthday,
+    String? email,
     String?   avatar,
     String?   token,
     String?   imUserSig,
@@ -229,6 +248,9 @@ class UserInfo {
     token:          token          ?? this.token,
     account:        account,
     name:           name           ?? this.name,
+    gender: gender ?? this.gender,
+    birthday: birthday ?? this.birthday,
+    email: email ?? this.email,
     merchantId:     merchantId,
     id:             id,
     avatar:         avatar         ?? this.avatar,

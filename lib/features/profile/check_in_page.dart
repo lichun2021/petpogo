@@ -17,6 +17,8 @@
 ///   makeup_available  — 可补签（2 天内缺签 + 配额未用尽）
 ///   missed            — 已错过，不可补签
 library;
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
+
 
 import 'package:flutter/material.dart';
 import '../../shared/widgets/app_error_view.dart';
@@ -1128,12 +1130,7 @@ class _MakeupSheet extends StatelessWidget {
                       borderRadius: BorderRadius.circular(2))),
             ),
             const SizedBox(height: 14),
-            Text('补签 $_dateLabel',
-                style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.onSurface)),
+            ModalHeader(title: '补签 $_dateLabel'),
             const SizedBox(height: 4),
             Text('补签后该日计入连续签到天数',
                 style: TextStyle(
@@ -1160,23 +1157,7 @@ class _MakeupSheet extends StatelessWidget {
                 onTap: onWatchAd,
               ),
             const SizedBox(height: 14),
-            SizedBox(
-              height: 46,
-              child: OutlinedButton(
-                onPressed: () => Navigator.pop(context),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.onSurfaceVariant,
-                  side: BorderSide(color: AppColors.outlineVariant),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-                child: Text('取消',
-                    style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontWeight: FontWeight.w700)),
-              ),
-            ),
-          ],
+            ],
         ),
       ),
     );

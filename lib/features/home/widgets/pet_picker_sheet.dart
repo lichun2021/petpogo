@@ -17,7 +17,6 @@ import '../../device/data/repository/device_repository.dart';
 import '../../device/data/models/device_model.dart';
 import '../../pet/data/models/pet_peer_models.dart';
 import '../../pet/data/repository/pet_peer_repository.dart';
-import '../controller/ai_controller.dart';
 import '../../../shared/utils/error_presenter.dart';
 
 class _PetWithDevice {
@@ -36,19 +35,12 @@ class PetPickerSheet extends ConsumerStatefulWidget {
   /// 标题文字（默认沿用宠小伊 AI 问诊的文案）
   final String title;
 
-  /// 副标题文字构造函数：传入积分数（consultPoints 为 null 时表示未加载/占位），返回完整副标题
-  final String Function(int? consultPoints) subtitleBuilder;
-
   const PetPickerSheet({
     super.key,
     required this.onPicked,
     this.preloaded,
     this.title = '选择要咨询的宠物',
-    this.subtitleBuilder = _defaultSubtitle,
   });
-
-  static String _defaultSubtitle(int? consultPoints) =>
-      '宠小伊会基于该宠物的档案进行健康顾问咨询${consultPoints != null ? '（$consultPoints积分/次提问）' : '（X积分/次提问）'}';
 
   /// 预加载宠物数据，再显示 Sheet（避免高度闪变）
   static Future<void> show(
@@ -56,7 +48,6 @@ class PetPickerSheet extends ConsumerStatefulWidget {
     required WidgetRef ref,
     required void Function(String petId) onPicked,
     String title = '选择要咨询的宠物',
-    String Function(int? consultPoints) subtitleBuilder = _defaultSubtitle,
   }) async {
     // 在弹出之前预加载宠物数据，确保 Sheet 高度确定后再显示
     final preloaded = await _preload(ref);
@@ -69,7 +60,6 @@ class PetPickerSheet extends ConsumerStatefulWidget {
         onPicked: onPicked,
         preloaded: preloaded,
         title: title,
-        subtitleBuilder: subtitleBuilder,
       ),
     );
   }
@@ -193,7 +183,6 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
   Widget build(BuildContext context) {
     final screenH = MediaQuery.of(context).size.height;
     final bottomPad = MediaQuery.of(context).padding.bottom;
-    final consultPoints = ref.watch(aiPointsProvider).valueOrNull?['consult'];
 
     return Container(
       // 最大高度限制，内容不足时自动收缩
@@ -222,14 +211,6 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: AppColors.onSurface,
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            widget.subtitleBuilder(consultPoints),
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.onSurfaceVariant,
             ),
           ),
           SizedBox(height: 12),

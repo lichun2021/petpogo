@@ -1,3 +1,4 @@
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,13 +8,13 @@ import '../pet/data/repository/pet_peer_repository.dart';
 import 'fence_add_flow.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 import '../../shared/widgets/app_error_view.dart';
-import '../../shared/theme/app_tokens.dart';
 
 // ── 围栏管理页 ────────────────────────────────────────────
 class FenceManagePage extends ConsumerStatefulWidget {
   final String deviceMac;
   final String petName;
-  const FenceManagePage({super.key, required this.deviceMac, required this.petName});
+  const FenceManagePage(
+      {super.key, required this.deviceMac, required this.petName});
 
   @override
   ConsumerState<FenceManagePage> createState() => _FenceManagePageState();
@@ -25,16 +26,31 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
   Object? _error;
 
   @override
-  void initState() { super.initState(); _loadFences(); }
+  void initState() {
+    super.initState();
+    _loadFences();
+  }
 
   Future<void> _loadFences() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      final list = await ref.read(petPeerRepositoryProvider)
+      final list = await ref
+          .read(petPeerRepositoryProvider)
           .fetchFences(mac: widget.deviceMac);
-      if (mounted) setState(() { _fences = list; _loading = false; });
+      if (mounted)
+        setState(() {
+          _fences = list;
+          _loading = false;
+        });
     } catch (e) {
-      if (mounted) setState(() { _loading = false; _error = e; });
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _error = e;
+        });
     }
   }
 
@@ -43,20 +59,32 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        backgroundColor: AppColors.surface, surfaceTintColor: Colors.transparent, elevation: 0,
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_rounded, size: 20), color: AppColors.onSurface,
-          onPressed: () => Navigator.pop(context)),
+            icon: Icon(Icons.arrow_back_ios_rounded, size: 20),
+            color: AppColors.onSurface,
+            onPressed: () => Navigator.pop(context)),
         title: Text('${widget.petName} 的围栏',
-            style: TextStyle(fontFamily: AppFonts.primary, fontSize: 17, fontWeight: FontWeight.w700)),
+            style: TextStyle(
+                fontFamily: AppFonts.primary,
+                fontSize: 17,
+                fontWeight: FontWeight.w700)),
         centerTitle: true,
         actions: [
           if (_loading)
-            Padding(padding: EdgeInsets.only(right: 16),
-              child: SizedBox(width: 20, height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)))
+            Padding(
+                padding: EdgeInsets.only(right: 16),
+                child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.primary)))
           else
-            IconButton(icon: Icon(Icons.refresh_rounded), color: AppColors.onSurfaceVariant,
+            IconButton(
+                icon: Icon(Icons.refresh_rounded),
+                color: AppColors.onSurfaceVariant,
                 onPressed: _loadFences),
         ],
       ),
@@ -69,11 +97,15 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.secondary,
               minimumSize: Size(double.infinity, 52),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
             ),
             icon: Icon(Icons.add_location_alt_rounded, size: 22),
-            label: Text('添加围栏', style: TextStyle(
-                fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w700)),
+            label: Text('添加围栏',
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700)),
           ),
         ),
       ),
@@ -82,10 +114,13 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
 
   Widget _buildBody() {
     if (_loading && _fences.isEmpty) {
-      return Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5));
+      return Center(
+          child: CircularProgressIndicator(
+              color: AppColors.primary, strokeWidth: 2.5));
     }
     if (_error != null && _fences.isEmpty) {
-      return AppErrorView(error: _error, fallback: '围栏加载失败，请稍后重试', onRetry: _loadFences);
+      return AppErrorView(
+          error: _error, fallback: '围栏加载失败，请稍后重试', onRetry: _loadFences);
     }
     if (_fences.isEmpty) return _buildEmpty();
     return RefreshIndicator(
@@ -97,7 +132,7 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
         separatorBuilder: (_, __) => SizedBox(height: 12),
         itemBuilder: (_, i) => _FenceCard(
           fence: _fences[i],
-          onEdit:   () => _showEditFenceSheet(context, _fences[i]),
+          onEdit: () => _showEditFenceSheet(context, _fences[i]),
           onDelete: () => _confirmDelete(context, _fences[i]),
         ),
       ),
@@ -105,40 +140,50 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
   }
 
   Widget _buildEmpty() {
-    return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Icon(Icons.fence_rounded, size: 72, color: AppColors.onSurfaceVariant.withOpacity(0.35)),
+    return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Icon(Icons.fence_rounded,
+          size: 72, color: AppColors.onSurfaceVariant.withOpacity(0.35)),
       SizedBox(height: 16),
-      Text('还没有围栏', style: TextStyle(fontFamily: AppFonts.primary,
-          fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.onSurfaceVariant)),
+      Text('还没有围栏',
+          style: TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.onSurfaceVariant)),
       SizedBox(height: 8),
-      Text('添加围栏后，宠物越界会收到提醒', style: TextStyle(fontFamily: AppFonts.primary,
-          fontSize: 13, color: AppColors.onSurfaceVariant)),
+      Text('添加围栏后，宠物越界会收到提醒',
+          style: TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 13,
+              color: AppColors.onSurfaceVariant)),
     ]));
   }
 
   void _showAddFenceSheet(BuildContext context) async {
-    final result = await Navigator.push<bool>(context, MaterialPageRoute(
-      builder: (_) => FenceMapPickerPage(deviceMac: widget.deviceMac),
-    ));
+    final result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FenceMapPickerPage(deviceMac: widget.deviceMac),
+        ));
     if (result == true) _loadFences();
   }
 
   void _showEditFenceSheet(BuildContext context, FenceModel fence) {
-    showModalBottomSheet(
-      context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+    showDialog(
+      context: context,
       builder: (_) => _FenceFormSheet(
         title: '编辑围栏',
         initialName: fence.fenceName,
         initialRadius: fence.radius,
         initialAddress: fence.address,
         onSave: (name, radius, address) async {
-          Navigator.pop(context);
-          try {
-            await ref.read(petPeerRepositoryProvider).updateFence(
-              fenceId: fence.fenceId, fenceName: name, radius: radius, address: address,
-            );
-            await _loadFences();
-          } catch (e) { debugPrint('[Fence] 更新失败: $e'); }
+          await ref.read(petPeerRepositoryProvider).updateFence(
+              fenceId: fence.fenceId,
+              fenceName: name,
+              radius: radius,
+              address: address);
+          await _loadFences();
         },
       ),
     );
@@ -148,10 +193,9 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('删除围栏',
-            style: TextStyle(fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
+            style: TextStyle(
+                fontFamily: AppFonts.primary, fontWeight: FontWeight.w700)),
         content: Text('确定删除「${fence.fenceName}」围栏吗？',
             style: TextStyle(fontFamily: AppFonts.primary)),
         actions: [
@@ -163,13 +207,18 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
             onPressed: () async {
               Navigator.pop(dialogCtx); // 用 dialog 自身 context 关闭
               try {
-                await ref.read(petPeerRepositoryProvider).deleteFence(fence.fenceId);
+                await ref
+                    .read(petPeerRepositoryProvider)
+                    .deleteFence(fence.fenceId);
                 if (mounted) await _loadFences();
-              } catch (e) { debugPrint('[Fence] 删除失败: $e'); }
+              } catch (e) {
+                debugPrint('[Fence] 删除失败: $e');
+              }
             },
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.error,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
             child: Text('删除'),
           ),
@@ -183,57 +232,103 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
 class _FenceCard extends StatelessWidget {
   final FenceModel fence;
   final VoidCallback onEdit, onDelete;
-  const _FenceCard({required this.fence, required this.onEdit, required this.onDelete});
+  const _FenceCard(
+      {required this.fence, required this.onEdit, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(color: AppColors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(18), border: Border.all(color: AppColors.surfaceContainerHigh)),
+      decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.surfaceContainerHigh)),
       child: Column(children: [
-        Padding(padding: const EdgeInsets.fromLTRB(16, 16, 12, 8), child: Row(children: [
-          Container(width: 44, height: 44,
-              decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
-              child: Icon(Icons.fence_rounded, color: AppColors.primary, size: 22)),
-          SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(fence.fenceName, style: TextStyle(fontFamily: AppFonts.primary,
-                fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.onSurface)),
-            if (fence.address.isNotEmpty)
-              Text(fence.address, style: TextStyle(fontFamily: AppFonts.primary,
-                  fontSize: 11, color: AppColors.onSurfaceVariant), overflow: TextOverflow.ellipsis),
-          ])),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: AppColors.statusOnlineSoft,
-                borderRadius: BorderRadius.circular(20)),
-            child: Text('活跃', style: TextStyle(fontFamily: AppFonts.primary,
-                fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.statusOnlineStrong)),
-          ),
-        ])),
+        Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 12, 8),
+            child: Row(children: [
+              Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Icon(Icons.fence_rounded,
+                      color: AppColors.primary, size: 22)),
+              SizedBox(width: 12),
+              Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text(fence.fenceName,
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.onSurface)),
+                    if (fence.address.isNotEmpty)
+                      Text(fence.address,
+                          style: TextStyle(
+                              fontFamily: AppFonts.primary,
+                              fontSize: 11,
+                              color: AppColors.onSurfaceVariant),
+                          overflow: TextOverflow.ellipsis),
+                  ])),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                    color: AppColors.statusOnlineSoft,
+                    borderRadius: BorderRadius.circular(20)),
+                child: Text('活跃',
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.statusOnlineStrong)),
+              ),
+            ])),
         Container(
           margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(color: AppColors.surfaceContainer, borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(
+              color: AppColors.surfaceContainer,
+              borderRadius: BorderRadius.circular(12)),
           child: Row(children: [
-            Icon(Icons.radio_button_checked_rounded, size: 14, color: AppColors.primary),
+            Icon(Icons.radio_button_checked_rounded,
+                size: 14, color: AppColors.primary),
             SizedBox(width: 6),
-            Text('半径 ${fence.displayRadius}', style: TextStyle(fontFamily: AppFonts.primary,
-                fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.onSurface)),
+            Text('半径 ${fence.displayRadius}',
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.onSurface)),
             Spacer(),
             Text('${fence.latitude}°N  ${fence.longitude}°E',
-                style: TextStyle(fontFamily: AppFonts.primary, fontSize: 11, color: AppColors.onSurfaceVariant)),
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 11,
+                    color: AppColors.onSurfaceVariant)),
           ]),
         ),
         Divider(height: 1, color: AppColors.surfaceContainerHigh),
         Row(children: [
-          Expanded(child: TextButton.icon(onPressed: onEdit,
-              icon: Icon(Icons.edit_outlined, size: 16), label: Text('编辑'),
-              style: TextButton.styleFrom(foregroundColor: AppColors.onSurfaceVariant))),
-          Container(width: 1, height: 32, color: AppColors.surfaceContainerHigh),
-          Expanded(child: TextButton.icon(onPressed: onDelete,
-              icon: Icon(Icons.delete_outline_rounded, size: 16), label: Text('删除'),
-              style: TextButton.styleFrom(foregroundColor: AppColors.error))),
+          Expanded(
+              child: TextButton.icon(
+                  onPressed: onEdit,
+                  icon: Icon(Icons.edit_outlined, size: 16),
+                  label: Text('编辑'),
+                  style: TextButton.styleFrom(
+                      foregroundColor: AppColors.onSurfaceVariant))),
+          Container(
+              width: 1, height: 32, color: AppColors.surfaceContainerHigh),
+          Expanded(
+              child: TextButton.icon(
+                  onPressed: onDelete,
+                  icon: Icon(Icons.delete_outline_rounded, size: 16),
+                  label: Text('删除'),
+                  style:
+                      TextButton.styleFrom(foregroundColor: AppColors.error))),
         ]),
       ]),
     );
@@ -244,9 +339,14 @@ class _FenceCard extends StatelessWidget {
 class _FenceFormSheet extends StatefulWidget {
   final String title;
   final String? initialName, initialRadius, initialAddress;
-  final void Function(String name, String radius, String address) onSave;
-  const _FenceFormSheet({required this.title, required this.onSave,
-      this.initialName, this.initialRadius, this.initialAddress});
+  final Future<void> Function(String name, String radius, String address)
+      onSave;
+  const _FenceFormSheet(
+      {required this.title,
+      required this.onSave,
+      this.initialName,
+      this.initialRadius,
+      this.initialAddress});
 
   @override
   State<_FenceFormSheet> createState() => _FenceFormSheetState();
@@ -254,75 +354,126 @@ class _FenceFormSheet extends StatefulWidget {
 
 class _FenceFormSheetState extends State<_FenceFormSheet> {
   late final TextEditingController _nameCtrl, _radiusCtrl, _addressCtrl;
+  bool _saving = false;
+  String? _error;
   @override
   void initState() {
     super.initState();
-    _nameCtrl    = TextEditingController(text: widget.initialName    ?? '');
-    _radiusCtrl  = TextEditingController(text: widget.initialRadius  ?? '200');
+    _nameCtrl = TextEditingController(text: widget.initialName ?? '');
+    _radiusCtrl = TextEditingController(text: widget.initialRadius ?? '200');
     _addressCtrl = TextEditingController(text: widget.initialAddress ?? '');
   }
+
   @override
-  void dispose() { _nameCtrl.dispose(); _radiusCtrl.dispose(); _addressCtrl.dispose(); super.dispose(); }
+  void dispose() {
+    _nameCtrl.dispose();
+    _radiusCtrl.dispose();
+    _addressCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    final radius = double.tryParse(_radiusCtrl.text.trim());
+    if (_nameCtrl.text.trim().isEmpty ||
+        radius == null ||
+        !radius.isFinite ||
+        radius <= 0) {
+      setState(() => _error = '请填写围栏名称和有效半径');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await widget.onSave(_nameCtrl.text.trim(), _radiusCtrl.text.trim(),
+          _addressCtrl.text.trim());
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted)
+        setState(() {
+          _saving = false;
+          _error = '保存失败，请重试';
+        });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: EdgeInsets.fromLTRB(24, 20, 24, 24 + bottom),
-      decoration: BoxDecoration(color: AppColors.surfaceContainerLow, borderRadius: BorderRadius.circular(24)),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Center(child: Container(width: 36, height: 4,
-            decoration: BoxDecoration(color: AppColors.onSurfaceVariant.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(2)))),
-        SizedBox(height: 16),
-        Text(widget.title, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 17, fontWeight: FontWeight.w700)),
-        SizedBox(height: 20),
-        _buildField(label: '围栏名称', controller: _nameCtrl, hint: '如：家、公司、学校'),
-        SizedBox(height: 12),
-        _buildField(label: '半径 (米)', controller: _radiusCtrl, hint: '200', inputType: TextInputType.number),
-        SizedBox(height: 12),
-        _buildField(label: '地址描述', controller: _addressCtrl, hint: '例：上海市静安区南京西路'),
-        SizedBox(height: 14),
-        Container(padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
-            child: Row(children: [
-              Icon(Icons.info_outline_rounded, size: 16, color: AppColors.secondary),
-              SizedBox(width: 8),
-              Expanded(child: Text('围栏中心将设为当前设备位置',
-                  style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12, color: AppColors.secondary))),
-            ])),
-        SizedBox(height: 20),
-        FilledButton(
-          onPressed: () {
-            if (_nameCtrl.text.isEmpty) return;
-            HapticFeedback.mediumImpact();
-            widget.onSave(_nameCtrl.text,
-                _radiusCtrl.text.isEmpty ? '200' : _radiusCtrl.text,
-                _addressCtrl.text);
-          },
-          style: FilledButton.styleFrom(backgroundColor: AppColors.primary,
-              minimumSize: Size(double.infinity, 50),
-              shape: const RoundedRectangleBorder(borderRadius: AppRadius.pillRadius)),
-          child: Text('保存', style: TextStyle(fontFamily: AppFonts.primary, fontSize: 15, fontWeight: FontWeight.w700)),
-        ),
-      ]),
-    );
+    return FormModal(
+        title: widget.title,
+        busy: _saving,
+        onConfirm: _save,
+        child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildField(
+                  label: '围栏名称', controller: _nameCtrl, hint: '如：家、公司、学校'),
+              SizedBox(height: 12),
+              _buildField(
+                  label: '半径 (米)',
+                  controller: _radiusCtrl,
+                  hint: '200',
+                  inputType: TextInputType.number),
+              SizedBox(height: 12),
+              _buildField(
+                  label: '地址描述',
+                  controller: _addressCtrl,
+                  hint: '例：上海市静安区南京西路'),
+              SizedBox(height: 14),
+              Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                      color: AppColors.secondary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Row(children: [
+                    Icon(Icons.info_outline_rounded,
+                        size: 16, color: AppColors.secondary),
+                    SizedBox(width: 8),
+                    Expanded(
+                        child: Text('围栏中心将设为当前设备位置',
+                            style: TextStyle(
+                                fontFamily: AppFonts.primary,
+                                fontSize: 12,
+                                color: AppColors.secondary))),
+                  ])),
+              if (_error != null)
+                Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(_error!,
+                        style: TextStyle(color: AppColors.error))),
+            ]));
   }
 
-  Widget _buildField({required String label, required TextEditingController controller,
-      String? hint, TextInputType? inputType}) {
+  Widget _buildField(
+      {required String label,
+      required TextEditingController controller,
+      String? hint,
+      TextInputType? inputType}) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: TextStyle(fontFamily: AppFonts.primary, fontSize: 12,
-          fontWeight: FontWeight.w700, color: AppColors.onSurfaceVariant)),
+      Text(label,
+          style: TextStyle(
+              fontFamily: AppFonts.primary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.onSurfaceVariant)),
       SizedBox(height: 6),
-      TextField(controller: controller, keyboardType: inputType,
+      TextField(
+          controller: controller,
+          keyboardType: inputType,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: AppColors.onSurfaceVariant.withOpacity(0.5)),
-            filled: true, fillColor: AppColors.surfaceContainer,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            hintStyle:
+                TextStyle(color: AppColors.onSurfaceVariant.withOpacity(0.5)),
+            filled: true,
+            fillColor: AppColors.surfaceContainer,
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           )),
     ]);
   }

@@ -1,3 +1,4 @@
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -174,9 +175,8 @@ class _PetMusicPageState extends ConsumerState<PetMusicPage> {
       );
 
   void _showCreatePlaylist() {
-    showModalBottomSheet<void>(
+    showDialog<void>(
         context: context,
-        isScrollControlled: true,
         useSafeArea: true,
         builder: (_) => const _CreatePlaylistSheet());
   }
@@ -215,19 +215,11 @@ class _CreatePlaylistSheetState extends ConsumerState<_CreatePlaylistSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => PopScope(
-        canPop: !_saving,
-        child: Padding(
-          padding:
-              EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.x24),
-            child: Column(
+  Widget build(BuildContext context) => FormModal(title: '新建歌单', busy: _saving, onConfirm: _name.text.trim().isEmpty ? null : _save, child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('新建歌单', style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: AppSpacing.x16),
+                          const SizedBox(height: AppSpacing.x16),
                   TextField(
                       controller: _name,
                       autofocus: true,
@@ -239,14 +231,7 @@ class _CreatePlaylistSheetState extends ConsumerState<_CreatePlaylistSheet> {
                       decoration: const InputDecoration(
                           labelText: '歌单名称', hintText: '例如：晚安陪伴')),
                   const SizedBox(height: AppSpacing.x16),
-                  FilledButton(
-                      onPressed:
-                          _saving || _name.text.trim().isEmpty ? null : _save,
-                      child: Text(_saving ? '创建中…' : '创建')),
-                ]),
-          ),
-        ),
-      );
+                        ]));
 }
 
 // ── 横幅 ──────────────────────────────────────────────────
