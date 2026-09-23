@@ -228,7 +228,7 @@ class PushService {
           jpushExtra.entries.map((e) => MapEntry(e.key.toString(), e.value.toString())),
         );
       }
-      // ② 降级：过滤掉 JPush 内部 key，返回剩余自定义字段
+      // iOS 的自定义字段位于顶层；过滤 JPush 内部字段
       final filtered = Map.fromEntries(
         raw.entries
           .where((e) => !e.key.toString().startsWith('cn.jpush'))

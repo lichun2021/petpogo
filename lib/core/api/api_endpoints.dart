@@ -101,9 +101,6 @@ abstract class ApiEndpoints {
   /// 删除 session（POST JSON body {session_id}）
   static const aiConsultSessionDelete = '$aiProxyPrefix/session/delete';
 
-  /// 同步问诊（一次性返回，调试/降级用）
-  static const aiConsultMessages = '$aiProxyPrefix/messages';
-
   /// 流式问诊（SSE，主入口）
   static const aiConsultMessagesStream = '$aiProxyPrefix/messages/stream';
 

@@ -50,7 +50,7 @@ class CountryInfo {
     return String.fromCharCode(base + a) + String.fromCharCode(base + b);
   }
 
-  /// 中国大陆默认值（离线 fallback）
+  /// 手机号表单初始选择：中国大陆
   static const china = CountryInfo(
     id:        '1',
     country:   '中国',

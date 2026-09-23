@@ -296,6 +296,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
                 SizedBox(height: 24),
 
+                if (auth.isGuest && auth.errorMessage != null) ...[
+                  Text(auth.errorMessage!,
+                      style: TextStyle(color: AppColors.error)),
+                  const SizedBox(height: 8),
+                ],
+
                 // ── 手机号输入框（带国家选择器前缀）─────────────
                 const _FieldLabel('手机号'),
                 SizedBox(height: 8),
@@ -314,8 +320,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     hint: '请输入手机号',
                     errorText: _phoneError,
                     country: _selectedCountry,
-                    onCountryTap: () => countriesAsync
-                        .whenData((list) => _showCountryPicker(list)),
+                    onCountryTap: () => countriesAsync.when(
+                      data: _showCountryPicker,
+                      loading: () => PetToast.show(context, '国家列表加载中'),
+                      error: (error, _) {
+                        PetToast.error(context, error);
+                        ref.invalidate(countryListProvider);
+                      },
+                    ),
                   ),
                 ),
 
@@ -596,7 +608,7 @@ class _AgreementRow extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => DocReaderPage(title: title, assetPath: assetPath),
+        builder: (_) => DocReaderPage(title: title, src: assetPath),
       ),
     );
   }

@@ -1,22 +1,4 @@
-/// ════════════════════════════════════════════════════════════
-///  结果封装类 — Result<T>
-///
-///  设计目的：
-///    让 Controller 的返回值统一为 Result，而不是抛异常。
-///    View 层用 .when() 处理成功/失败，不需要写 try/catch。
-///
-///  使用示例（Controller 里）：
-///    Future<Result<void>> updatePet(PetModel pet) async {
-///      return guardResult(() => _repo.updatePet(pet));
-///    }
-///
-///  使用示例（View 里）：
-///    final result = await ref.read(petControllerProvider.notifier).updatePet(pet);
-///    result.when(
-///      success: (_) => context.go(AppRoutes.profile),   // 成功 → 跳转
-///      failure: (err) => showSnackBar(err.userMessage), // 失败 → 提示
-///    );
-/// ════════════════════════════════════════════════════════════
+/// API 请求结果及异常转换。
 
 import 'api_exception.dart';
 

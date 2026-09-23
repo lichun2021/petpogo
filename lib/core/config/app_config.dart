@@ -18,16 +18,6 @@ class AppConfig {
   static const String wechatAppId = 'wx02094a124e425dfe';
   static const String wechatUniversalLink = 'https://www.jxpetai.com/';
 
-  /// ⚠️ [仅开发测试] 腾讯 IM SecretKey
-  ///
-  /// 规则：
-  ///   - Debug 构建：本地生成 UserSig（方便联调，无需后端配合）
-  ///   - Release 构建：此值必须清空，UserSig 由后端生成后下发
-  ///
-  /// TODO: 上线前将此值清空，确保 SecretKey 不出现在生产包中
-  static const String timSecretKey =
-      'f10fd3888e0c707830bf398bd51ffa6be657aeff601905c0f5230e0f82907775';
-
   // ──────────────────────────────────────────────
   // 极光推送
   // ──────────────────────────────────────────────

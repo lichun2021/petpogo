@@ -1,13 +1,4 @@
-/// ════════════════════════════════════════════════════════════
-///  IM Controller — 消息模块状态管理
-///
-///  职责：
-///    ✅ 持有会话列表、好友申请、加载状态
-///    ✅ 管理 SDK 监听器生命周期（注册/注销）
-///    ✅ 驱动 ImRepository 调用，把结果映射到 UI 状态
-///    ❌ 不持有 BuildContext（不弹 Dialog / SnackBar）
-///    ❌ 不管路由（由 View 层通过 errorMessage 决定跳转）
-/// ════════════════════════════════════════════════════════════
+/// IM 登录、会话和通知状态。
 
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -22,7 +13,6 @@ import 'package:tencent_cloud_chat_sdk/enum/V2TimFriendshipListener.dart';
 import 'package:tencent_cloud_chat_sdk/enum/V2TimSDKListener.dart';
 import 'package:tencent_cloud_chat_sdk/enum/V2TimAdvancedMsgListener.dart';
 import '../data/repository/im_repository.dart';
-import '../data/debug_user_sig.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../../app.dart' show globalNavigatorKey;
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
@@ -135,34 +125,13 @@ class ImController extends StateNotifier<ImState> {
   ImController(this._repo, this._ref) : super(ImState());
 
   // ── IM 登录 ──────────────────────────────────────────────
-  /// 在用户 PetPogo 登录成功后调用
-  ///
-  /// UserSig 优先级（三级降级）：
-  ///   1. 后端下发的 imUserSig（生产环境标准流程）
-  ///   2. Debug 构建时本地生成（测试期间后端未接入时使用）
-  ///   3. 以上都没有 → 跳过 IM 登录，记录日志
+  /// 使用登录接口下发的 UserSig 登录 IM。
   Future<void> loginIm({required String userId, required String userSig}) async {
-    String? effectiveSig = userSig.isNotEmpty ? userSig : null;
-
-    // 后端 UserSig 为空时，Debug 构建尝试本地生成
-    if (effectiveSig == null) {
-      effectiveSig = DebugUserSig.generate(userId);
-      if (effectiveSig != null) {
-        debugPrint('[ImCtrl] 🔧 使用本地生成的 UserSig（仅开发测试）');
-      }
-    }
-
-    if (effectiveSig == null) {
-      debugPrint('[ImCtrl] ⏭️ 无可用 UserSig，跳过 IM 登录'
-          '（后端请在登录响应中返回 imUserSig 字段）');
+    if (userSig.trim().isEmpty) {
+      state = state.copyWith(isLoggedIn: false, errorMessage: '聊天凭证缺失，请重新登录');
       return;
     }
-
-    final sigSource = userSig.isNotEmpty ? '后端下发' : '本地生成(Debug)';
-    debugPrint('[ImCtrl] 🔑 IM 登录 userId=$userId sigSource=$sigSource '
-        'sig前16位=${effectiveSig.substring(0, effectiveSig.length.clamp(0, 16))}');
-
-    final result = await _repo.login(userId: userId, userSig: effectiveSig);
+    final result = await _repo.login(userId: userId, userSig: userSig);
     result.when(
       success: (_) {
         state = state.copyWith(isLoggedIn: true);

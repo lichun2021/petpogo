@@ -82,12 +82,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
       if (_authResolved) _navigate();
     });
 
-    // ── 保底超时：5 秒强制跳转 ────────────────────────────
-    Future.delayed(const Duration(seconds: 5), () {
-      if (!mounted) return;
-      debugPrint('[SplashPage] ⚠️ 超时兜底，强制跳转');
-      _navigate();
-    });
+
   }
 
   // 统一跳转逻辑，由路由守卫决定去哪

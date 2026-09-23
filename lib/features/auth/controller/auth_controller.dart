@@ -86,29 +86,38 @@ class AuthController extends StateNotifier<AuthState> {
 
   // ── 启动时恢复会话 ─────────────────────────────────────
   Future<void> _restoreSession() async {
-    debugPrint('[AuthCtrl] [状态] restoring → 检查本地会话...');
-    final user = await _repo.restoreSession();
-    if (user != null) {
-      // ── 主动验证 token 是否仍有效 ──
-      debugPrint('[AuthCtrl] 验证 token 有效性...');
-      final valid = await _repo.verifyToken();
-      if (!valid) {
-        // token 已过期 → 清除会话 → 引导重新登录
-        debugPrint('[AuthCtrl] [状态] token 失效 → guest（需重新登录）');
-        await _repo.logout();
-        state = const AuthState(
-          status: AuthStatus.guest,
-          errorMessage: '登录已过期，请重新登录',
-        );
-        return;
+    try {
+      debugPrint('[AuthCtrl] [状态] restoring → 检查本地会话...');
+      final user = await _repo.restoreSession();
+      if (user != null) {
+        // ── 主动验证 token 是否仍有效 ──
+        debugPrint('[AuthCtrl] 验证 token 有效性...');
+        final valid = await _repo.verifyToken();
+        if (!valid) {
+          // token 已过期 → 清除会话 → 引导重新登录
+          debugPrint('[AuthCtrl] [状态] token 失效 → guest（需重新登录）');
+          await _repo.logout();
+          state = const AuthState(
+            status: AuthStatus.guest,
+            errorMessage: '登录已过期，请重新登录',
+          );
+          return;
+        }
+        debugPrint('[AuthCtrl] [状态] restoring → loggedIn (${user.name})');
+        state = AuthState(status: AuthStatus.loggedIn, user: user);
+        _loadUserData();
+        _consumePendingPushRoute(); // ← 认证恢复后跳转 push 待定路由
+      } else {
+        debugPrint('[AuthCtrl] [状态] restoring → guest (无本地会话)');
+        state = const AuthState.guest();
       }
-      debugPrint('[AuthCtrl] [状态] restoring → loggedIn (${user.name})');
-      state = AuthState(status: AuthStatus.loggedIn, user: user);
-      _loadUserData();
-      _consumePendingPushRoute(); // ← 认证恢复后跳转 push 待定路由
-    } else {
-      debugPrint('[AuthCtrl] [状态] restoring → guest (无本地会话)');
-      state = const AuthState.guest();
+    } catch (error) {
+      if (!mounted) return;
+      debugPrint('[AuthCtrl] 会话验证失败: $error');
+      state = const AuthState(
+        status: AuthStatus.guest,
+        errorMessage: '登录状态验证失败，请检查网络后重新登录',
+      );
     }
   }
 
