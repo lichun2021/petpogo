@@ -1,6 +1,6 @@
 #!/bin/bash
 # ════════════════════════════════════════════════════════════════
-#  宠连芯 - Release 打包脚本
+#  宠联芯 - Release 打包脚本
 #
 #  用法：
 #    ./buildrelease.sh              → 同时打包 Google Play AAB + IPA
@@ -27,7 +27,7 @@ BOLD='\033[1m'
 NC='\033[0m' # No Color
 
 # ── 项目信息 ──────────────────────────────────────────────────
-APP_NAME="宠连芯"
+APP_NAME="宠联芯"
 PKG_VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //')
 BUILD_TIME=$(date "+%Y%m%d_%H%M%S")
 OUTPUT_DIR="./release_output"

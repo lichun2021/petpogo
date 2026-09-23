@@ -9,7 +9,7 @@ class AppL10nEn extends AppL10n {
   AppL10nEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appName => '宠连芯';
+  String get appName => '宠联芯';
 
   @override
   String get navHome => 'Home';

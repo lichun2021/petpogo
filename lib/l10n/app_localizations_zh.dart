@@ -9,7 +9,7 @@ class AppL10nZh extends AppL10n {
   AppL10nZh([String locale = 'zh']) : super(locale);
 
   @override
-  String get appName => '宠连芯';
+  String get appName => '宠联芯';
 
   @override
   String get navHome => '首页';
