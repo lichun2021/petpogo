@@ -203,6 +203,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         debugPrint('[LoginPage] 登录成功，等待路由守卫跳转');
       } else if (next.status == AuthStatus.error && next.errorMessage != null) {
         PetToast.error(context, next.errorMessage!);
+        if (!_isSmsLogin && next.errorMessage!.contains('请使用短信登录')) {
+          setState(() => _isSmsLogin = true);
+          _passwordCtrl.clear();
+        }
+
         if (!_isSmsLogin &&
             (next.errorMessage!.contains('未注册') ||
                 next.errorMessage!.contains('验证码登录'))) {

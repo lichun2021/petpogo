@@ -20,7 +20,7 @@ library;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-import 'package:crypto/crypto.dart';
+import 'request_signature.dart';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -33,9 +33,18 @@ class ApiClient {
   /// 底层 Dio 实例（私有，外部不可直接使用）
   late final Dio _dio;
 
-  /// JWT 过期(401)时的回调，由上层（AuthController）注入
+  /// 刷新凭证失效时的回调，由上层（AuthController）注入
   /// 用于触发 forceLogout() 而不造成循环依赖
   void Function()? onUnauthorized;
+  Future<String?> Function()? onRefreshToken;
+  Future<String?>? _refreshInFlight;
+  String? get token => (_dio.options.headers['Authorization'] as String?)
+      ?.replaceFirst('Bearer ', '');
+
+  Future<String?> _refreshToken() {
+    return _refreshInFlight ??= Future.sync(() => onRefreshToken?.call())
+        .whenComplete(() => _refreshInFlight = null);
+  }
 
   /// 构造时可传入初始 Token（从 SecureStorage 读取的持久化 Token）
   ApiClient({String? token, HttpClientAdapter? adapter}) {
@@ -64,11 +73,12 @@ class ApiClient {
     // ── 注册拦截器链（按顺序执行）────────────────────────
     _dio.interceptors.addAll([
       // 1. Auth 拦截器：在每个请求头里自动插入 Token
-      _AuthInterceptor(),
+      _AuthInterceptor(_dio.transformer),
 
       // 2. 错误拦截器：把 DioException → ApiException
-      //    401 时通过 onUnauthorized 回调通知 AuthController
-      _ErrorInterceptor(this),
+      //    _SessionInterceptor 先处理续期，确认失效后才通知 AuthController
+      _SessionInterceptor(this),
+      _ErrorInterceptor(),
 
       // 3. 日志拦截器：仅 Debug 模式开启，完整打印 进/出 参数
       if (AppConfig.isDebug) _DevLogInterceptor(),
@@ -292,20 +302,22 @@ class SseFrame {
 ///
 /// 登录凭证由 ApiClient.setToken/clearToken 管理；此处只负责路由与 SDK 签名。
 class _AuthInterceptor extends Interceptor {
-  _AuthInterceptor();
+  final Transformer _transformer;
+  _AuthInterceptor(this._transformer);
 
   // nonce 随机数生成器（防重放标识用）
   static final _rand = Random.secure();
 
-  /// 生成防重放 nonce：16 位十六进制随机串（8 字节熵）
-  /// 服务端要求 ≥8 位，5 分钟窗口内不可重复。
+  /// 生成防重放 nonce：32 位十六进制随机串（16 字节熵）
+  /// 服务端要求 16–128 位，5 分钟窗口内不可重复。
   String _genNonce() {
-    final bytes = List<int>.generate(8, (_) => _rand.nextInt(256));
+    final bytes = List<int>.generate(16, (_) => _rand.nextInt(256));
     return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
 
   @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+  void onRequest(
+      RequestOptions options, RequestInterceptorHandler handler) async {
     final path = Uri.parse(options.path).path;
     final isAi = path.startsWith('${ApiEndpoints.aiProxyPrefix}/');
     if (isAi) {
@@ -337,20 +349,64 @@ class _AuthInterceptor extends Interceptor {
       }
     }
 
-    // 如果是 /sdkapi/ 请求，添加签名
-    if (options.path.contains('/sdkapi/')) {
-      final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-      const appApiSecret = '1q21ee182efd1gf1g@#\$';
-      final signature =
-          md5.convert(utf8.encode('$timestamp$appApiSecret')).toString();
-      options.headers['x-timestamp'] = timestamp;
-      options.headers['x-signature'] = signature;
-      // x-nonce 防重放：每个请求唯一的随机串（≥8 位），5 分钟窗口内不可重复
-      options.headers['x-nonce'] = _genNonce();
+    if (options.uri.path.startsWith('/sdkapi/')) {
+      try {
+        final body = await _bodyBytes(options);
+        // 固定正文后签名；Dio 直接发送字节，避免再次编码导致验签失败。
+        if (options.data != null) options.data = body;
+        final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+        final nonce = _genNonce();
+        const secret = '1q21ee182efd1gf1g@#\$';
+        options.headers.removeWhere((key, _) => {
+              'x-signature-version',
+              'x-key-id',
+              'x-timestamp',
+              'x-nonce',
+              'x-signature',
+              'content-length',
+            }.contains(key.toLowerCase()));
+        options.headers.addAll({
+          'x-signature-version': '2',
+          'x-key-id': 'primary',
+          'x-timestamp': timestamp,
+          'x-nonce': nonce,
+          'x-signature': sdkSignatureV2(
+            secret: secret,
+            method: options.method,
+            uri: options.uri,
+            timestamp: timestamp,
+            nonce: nonce,
+            body: body,
+          ),
+        });
+      } catch (error, stack) {
+        handler.reject(DioException(
+            requestOptions: options, error: error, stackTrace: stack));
+        return;
+      }
     }
 
     // 继续传递请求（必须调用，否则请求会被阻断）
     handler.next(options);
+  }
+
+  Future<Uint8List> _bodyBytes(RequestOptions options) async {
+    final data = options.data;
+    if (data == null) return Uint8List(0);
+    if (data is Uint8List) return data;
+    if (data is FormData) {
+      options.contentType =
+          '${Headers.multipartFormDataContentType}; boundary=${data.boundary}';
+      return data.readAsBytes();
+    }
+    if (data is Stream) {
+      throw ArgumentError('SDKAPI 签名请求需要可读取的完整正文');
+    }
+    final text = await _transformer.transformRequest(options);
+    final encoder = options.requestEncoder;
+    final bytes =
+        encoder == null ? utf8.encode(text) : await encoder(text, options);
+    return Uint8List.fromList(bytes);
   }
 }
 
@@ -381,7 +437,8 @@ void _logLong(String msg, {int chunkSize = 500}) {
 
 bool _isProxyRequest(RequestOptions options) =>
     options.uri.path.startsWith('${ApiEndpoints.peerProxyPrefix}/') ||
-    options.uri.path.startsWith('${ApiEndpoints.aiProxyPrefix}/');
+    options.uri.path.startsWith('${ApiEndpoints.aiProxyPrefix}/') ||
+    options.uri.path.startsWith('/sdkapi/auth/');
 
 class _DevLogInterceptor extends Interceptor {
   // 记录请求开始时间，用于计算耗时
@@ -411,7 +468,7 @@ class _DevLogInterceptor extends Interceptor {
     }
     if (options.data != null) {
       _logLong(
-          '│ Body: ${_isProxyRequest(options) ? '<proxy payload omitted>' : options.data}');
+          '│ Body: ${_isProxyRequest(options) ? '<proxy payload omitted>' : options.data is Uint8List ? '<${(options.data as Uint8List).length} bytes>' : options.data}');
     }
     debugPrint('└─────────────────────────────────────────────');
     handler.next(options);
@@ -455,6 +512,72 @@ class _DevLogInterceptor extends Interceptor {
   }
 }
 
+/// 仅携带当前登录凭证的请求允许续期；并发 401 共用一次刷新。
+class _SessionInterceptor extends Interceptor {
+  final ApiClient client;
+  _SessionInterceptor(this.client);
+
+  @override
+  void onError(DioException error, ErrorInterceptorHandler handler) async {
+    final request = error.requestOptions;
+    final sent = request.headers['Authorization'];
+    if (error.response?.statusCode != 401 ||
+        sent == null ||
+        !request.uri.path.startsWith('/sdkapi/') ||
+        request.uri.path.startsWith('/sdkapi/auth/') ||
+        request.extra['sessionRetried'] == true) {
+      handler.next(error);
+      return;
+    }
+    final originalToken = client.token;
+    if (originalToken == null) {
+      handler.next(error);
+      return;
+    }
+    String? renewed;
+    try {
+      renewed = sent != 'Bearer $originalToken'
+          ? originalToken
+          : await client._refreshToken();
+    } catch (refreshError) {
+      if (refreshError is DioException) {
+        if (refreshError.response?.statusCode == 401 &&
+            client.token == originalToken) {
+          client.onUnauthorized?.call();
+        }
+        handler.next(DioException(
+            requestOptions: request,
+            type: refreshError.type,
+            response: refreshError.response,
+            error: refreshError.error,
+            message: refreshError.message));
+      } else {
+        handler
+            .next(DioException(requestOptions: request, error: refreshError));
+      }
+      return;
+    }
+    if (renewed == null) {
+      if (client.token == originalToken) client.onUnauthorized?.call();
+      handler.next(error);
+      return;
+    }
+    // 用户在刷新期间退出或换了账号，不重放旧账号的请求。
+    if (client.token != originalToken && client.token != renewed) {
+      handler.next(error);
+      return;
+    }
+    client.setToken(renewed);
+    request.headers['Authorization'] = 'Bearer $renewed';
+    request.extra['sessionRetried'] = true;
+    try {
+      handler.resolve(await client._dio.fetch<dynamic>(request));
+    } on DioException catch (retryError) {
+      handler.next(retryError);
+    }
+  }
+}
+
 /// 把 DioException 转换为 ApiException
 ///
 /// 这是最重要的拦截器：经过这里之后，上层代码（Repository/Controller）
@@ -468,8 +591,7 @@ class _DevLogInterceptor extends Interceptor {
 ///   badResponse 5xx                                  → ApiErrorType.server
 ///   其他                                             → ApiErrorType.unknown
 class _ErrorInterceptor extends Interceptor {
-  final ApiClient _client;
-  _ErrorInterceptor(this._client);
+  _ErrorInterceptor();
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     ApiException apiEx;
@@ -508,7 +630,7 @@ class _ErrorInterceptor extends Interceptor {
             type: ApiErrorType.unauthorized,
           );
           // 通知上层清除会话（避免直接引用 Riverpod）
-          Future.microtask(() => _client.onUnauthorized?.call());
+          // 会话续期与失效处理由 _SessionInterceptor 负责。
         } else if (statusCode == 404) {
           // 资源不存在
           apiEx = ApiException(

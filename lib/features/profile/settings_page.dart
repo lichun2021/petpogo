@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -180,7 +181,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             if (user != null)
               _SettingsTile(
                 icon: Icons.lock_rounded,
-                label: '修改密码',
+                label: '设置 / 修改密码',
                 onTap: () => _showPasswordSheet(context, ref),
               ),
           ]),
@@ -563,6 +564,11 @@ class _PasswordSheet extends ConsumerStatefulWidget {
 }
 
 class _PasswordSheetState extends ConsumerState<_PasswordSheet> {
+  final _codeCtrl = TextEditingController();
+  bool _useSms = true;
+  bool _sending = false;
+  int _countdown = 0;
+  Timer? _smsTimer;
   final _oldCtrl = TextEditingController();
   final _newCtrl = TextEditingController();
   final _cfmCtrl = TextEditingController();
@@ -573,15 +579,41 @@ class _PasswordSheetState extends ConsumerState<_PasswordSheet> {
 
   @override
   void dispose() {
+    _smsTimer?.cancel();
+    _codeCtrl.dispose();
     _oldCtrl.dispose();
     _newCtrl.dispose();
     _cfmCtrl.dispose();
     super.dispose();
   }
 
+  Future<void> _sendCode() async {
+    if (_sending || _countdown > 0 || _loading) return;
+    setState(() { _sending = true; _error = null; });
+    final error = await ref.read(authControllerProvider.notifier).sendPasswordResetSms();
+    if (!mounted) return;
+    setState(() { _sending = false; _error = error; });
+    if (error != null) return;
+    setState(() => _countdown = 60);
+    _smsTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) { timer.cancel(); return; }
+      setState(() => _countdown--);
+      if (_countdown == 0) timer.cancel();
+    });
+  }
+
   Future<void> _submit() async {
-    if (_newCtrl.text.length < 6) {
-      setState(() => _error = '新密码不能少于6位');
+    if (_loading) return;
+    if (_useSms && !RegExp(r'^\d{6}$').hasMatch(_codeCtrl.text.trim())) {
+      setState(() => _error = '请输入6位短信验证码');
+      return;
+    }
+    if (!_useSms && _oldCtrl.text.isEmpty) {
+      setState(() => _error = '请输入当前密码');
+      return;
+    }
+    if (_newCtrl.text.length < 8 || _newCtrl.text.length > 128) {
+      setState(() => _error = '新密码需为8–128位');
       return;
     }
     if (_newCtrl.text != _cfmCtrl.text) {
@@ -595,43 +627,54 @@ class _PasswordSheetState extends ConsumerState<_PasswordSheet> {
 
     final result =
         await ref.read(authControllerProvider.notifier).changePassword(
-              oldPassword: _oldCtrl.text,
+              oldPassword: _useSms ? null : _oldCtrl.text,
+              code: _useSms ? _codeCtrl.text.trim() : null,
               newPassword: _newCtrl.text,
             );
     if (!mounted) return;
 
-    result.when(
-      success: (_) {
-        final messenger = ScaffoldMessenger.of(context);
-        Navigator.pop(context);
-        messenger.showSnackBar(
-          SnackBar(content: Text('密码已更新'), behavior: SnackBarBehavior.floating),
-        );
-      },
-      failure: (err) {
-        setState(() {
-          _loading = false;
-          _error = err.userMessage;
-        });
-      },
-    );
+    if (result.isError) {
+      setState(() {
+        _loading = false;
+        _error = result.error!.userMessage;
+      });
+    }
+    // 成功后由认证状态触发路由跳转，避免关闭已切换的页面。
+
   }
 
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
+    return SingleChildScrollView(child: Padding(
       padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottom),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('修改密码',
+          Text('设置 / 修改密码',
               style: TextStyle(
                   fontFamily: AppFonts.primary,
                   fontSize: 18,
                   fontWeight: FontWeight.w800)),
           SizedBox(height: 20),
+          Text('未设置密码可通过短信验证设置，成功后需重新登录。',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+          TextButton(
+            onPressed: _loading ? null : () => setState(() { _useSms = !_useSms; _error = null; }),
+            child: Text(_useSms ? '改用当前密码验证' : '改用短信验证'),
+          ),
+          if (_useSms)
+            _SheetField(
+              controller: _codeCtrl,
+              hint: '6位短信验证码',
+              icon: Icons.sms_outlined,
+              suffix: TextButton(
+                onPressed: _sending || _countdown > 0 || _loading ? null : _sendCode,
+                child: Text(_sending ? '发送中' : _countdown > 0 ? '${_countdown}s' : '获取验证码'),
+              ),
+            )
+          else
           _SheetField(
               controller: _oldCtrl,
               hint: '当前密码',
@@ -648,7 +691,7 @@ class _PasswordSheetState extends ConsumerState<_PasswordSheet> {
           SizedBox(height: 12),
           _SheetField(
               controller: _newCtrl,
-              hint: '新密码（至少6位）',
+              hint: '新密码（8–128位）',
               icon: Icons.lock_rounded,
               obscure: !_showNew,
               suffix: IconButton(
@@ -675,7 +718,7 @@ class _PasswordSheetState extends ConsumerState<_PasswordSheet> {
           SizedBox(height: 8),
         ],
       ),
-    );
+    ));
   }
 }
 

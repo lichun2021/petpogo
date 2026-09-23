@@ -1,21 +1,3 @@
-/// ════════════════════════════════════════════════════════════
-///  认证 Repository — 纯业务层
-///
-///  会话有效期（由服务端驱动，App 侧被动响应）：
-///
-///  JWT Token (30天)：
-///    - 本地永久保存，无需本地计时
-///    - 服务端过期返回 401 → _ErrorInterceptor 捕获 → 清 Token
-///      → AuthController 切换到 guest 状态 → UI 引导重新登录
-///
-///  IM UserSig (6天 Redis缓存)：
-///    - 本地永久保存，无需本地计时
-///    - 腾讯 IM SDK 触发 onUserSigExpired 回调
-///      → ImController 调用 refreshImUserSig()
-///      → GET /sdkapi/im/sign 获取新的 UserSig → 重新 IM 登录
-///      → 不需要用户重新输入验证码
-/// ════════════════════════════════════════════════════════════
-
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,6 +8,7 @@ import '../../../../core/api/result.dart';
 import 'models/auth_model.dart';
 
 // ── Storage 键名常量 ─────────────────────────────────────────
+const _kRefreshToken = 'auth_refresh_token';
 const _kToken = 'auth_token';
 const _kId = 'auth_id';
 const _kAccount = 'auth_account'; // phone
@@ -41,13 +24,22 @@ class AuthRepository {
   final ApiClient _client;
   final FlutterSecureStorage _storage;
 
+  int _sessionGeneration = 0;
+  Future<void> _storageWrites = Future.value();
+  Future<void> _writeSession(Future<void> Function() action) {
+    final next = _storageWrites.then((_) => action());
+    _storageWrites = next.catchError((Object _) {});
+    return next;
+  }
+
   AuthRepository(this._client, this._storage);
 
   // ── 发送短信验证码 ────────────────────────────────────
-  Future<Result<bool>> sendSms(String phone, {String nationNum = '86'}) async {
+  Future<Result<bool>> sendSms(String phone,
+      {String nationNum = '86', String purpose = 'login'}) async {
     try {
       await _client.post('/sdkapi/auth/sms',
-          data: {'phone': phone, 'nationNum': nationNum});
+          data: {'phone': phone, 'nationNum': nationNum, 'purpose': purpose});
       return const Success(true);
     } on DioException catch (e) {
       final ex = e.error is ApiException
@@ -94,8 +86,18 @@ class AuthRepository {
       final loginResp = LoginResponse.fromJson(res);
       final user = UserInfo.fromLoginResponse(loginResp);
 
+      _sessionGeneration++;
       _client.setToken(user.token);
-      await _persist(user);
+      await _writeSession(() async {
+        await _persist(user);
+        final peer = res['peer'] as Map?;
+        final refresh = peer?['refreshToken'] as String?;
+        if (refresh != null && refresh.isNotEmpty) {
+          await _storage.write(key: _kRefreshToken, value: refresh);
+        } else {
+          await _storage.delete(key: _kRefreshToken);
+        }
+      });
 
       debugPrint('[AuthRepo] ✅ 登录成功: ${user.name} (id=${user.id})');
       return Success(user);
@@ -151,14 +153,19 @@ class AuthRepository {
 
   // ── 修改登录密码 ───────────────────────────────────────
   Future<Result<bool>> changePassword({
-    required String oldPassword,
+    String? oldPassword,
+    String? code,
     required String newPassword,
   }) async {
     try {
+      if ((oldPassword == null) == (code == null)) {
+        return const Failure(ApiException(message: '请选择一种密码验证方式'));
+      }
       await _client.put<Map<String, dynamic>>(
         '/sdkapi/user/password',
         data: {
-          'oldPassword': oldPassword,
+          if (code != null) 'code': code,
+          if (oldPassword != null) 'oldPassword': oldPassword,
           'newPassword': newPassword,
         },
       );
@@ -181,7 +188,7 @@ class AuthRepository {
   /// 返回 null → 从未登录过，进入游客模式
   ///
   /// 注意：不做本地过期校验
-  ///   - JWT 过期由服务端 401 → _ErrorInterceptor → 清 Token 通知上层
+  ///   - 访问凭证到期由 ApiClient 自动续期，刷新凭证失效才退出
   ///   - UserSig 过期由 IM SDK 回调 → refreshImUserSig()
   Future<UserInfo?> restoreSession() async {
     final token = await _storage.read(key: _kToken);
@@ -213,16 +220,45 @@ class AuthRepository {
     try {
       await _client.get<Map<String, dynamic>>('/sdkapi/user/profile');
       return true;
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 401) return false;
+      rethrow;
     } on ApiException catch (error) {
       if (error.statusCode == 401) return false;
       rethrow;
     }
   }
 
+  /// 使用独立刷新凭证续期；失败继续抛出，由客户端区分失效和网络错误。
+  Future<String?> refreshSession() async {
+    final generation = _sessionGeneration;
+    final refresh = await _storage.read(key: _kRefreshToken);
+    if (refresh == null || refresh.isEmpty) return null;
+    final data = await _client.post<Map<String, dynamic>>(
+        '/sdkapi/auth/refresh',
+        data: {'refreshToken': refresh});
+    final newToken = data['token'] as String?;
+    final peer = data['peer'] as Map?;
+    final newRefresh = peer?['refreshToken'] as String?;
+    if (newToken == null || newToken.isEmpty) {
+      throw const FormatException('续期响应缺少登录凭证');
+    }
+    if (generation != _sessionGeneration) return null;
+    await _writeSession(() async {
+      if (generation != _sessionGeneration) return;
+      await _storage.write(key: _kToken, value: newToken);
+      if (newRefresh != null && newRefresh.isNotEmpty) {
+        await _storage.write(key: _kRefreshToken, value: newRefresh);
+      }
+    });
+    return generation == _sessionGeneration ? newToken : null;
+  }
+
   // ── 退出登录 ────────────────────────────────────────────
   Future<void> logout() async {
-    await _storage.deleteAll();
+    _sessionGeneration++;
     _client.clearToken();
+    await _writeSession(() => _storage.deleteAll());
     debugPrint('[AuthRepo] 已退出登录，Token 已清除');
   }
 
@@ -307,8 +343,8 @@ class AuthRepository {
 
 // ── Riverpod Provider ─────────────────────────────────────
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository(
-    ref.watch(apiClientProvider),
-    const FlutterSecureStorage(),
-  );
+  final client = ref.watch(apiClientProvider);
+  final repository = AuthRepository(client, const FlutterSecureStorage());
+  client.onRefreshToken = repository.refreshSession;
+  return repository;
 });

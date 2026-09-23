@@ -37,7 +37,7 @@ class ApiException implements Exception {
       case ApiErrorType.timeout:
         return '请求超时，请稍后重试';
       case ApiErrorType.unauthorized:
-        return '登录已过期，请重新登录';
+        return '登录验证未通过，请重试';
       case ApiErrorType.notFound:
         return '该内容不存在或已被删除';
       case ApiErrorType.server:

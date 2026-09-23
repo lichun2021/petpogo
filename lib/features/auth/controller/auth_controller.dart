@@ -1,3 +1,5 @@
+import '../data/country_repository.dart';
+
 /// ════════════════════════════════════════════════════════════
 ///  认证 Controller — 状态管理层
 ///
@@ -92,14 +94,23 @@ class AuthController extends StateNotifier<AuthState> {
       if (user != null) {
         // ── 主动验证 token 是否仍有效 ──
         debugPrint('[AuthCtrl] 验证 token 有效性...');
-        final valid = await _repo.verifyToken();
+        bool valid;
+        try {
+          valid = await _repo.verifyToken();
+        } catch (error) {
+          // 网络故障不清除已保存会话；后续请求仍由服务端校验及续期。
+          debugPrint('[AuthCtrl] 暂无法验证会话: $error');
+          state = AuthState(status: AuthStatus.loggedIn, user: user);
+          _loadUserData();
+          return;
+        }
         if (!valid) {
           // token 已过期 → 清除会话 → 引导重新登录
           debugPrint('[AuthCtrl] [状态] token 失效 → guest（需重新登录）');
           await _repo.logout();
           state = const AuthState(
             status: AuthStatus.guest,
-            errorMessage: '登录已过期，请重新登录',
+            errorMessage: '登录凭证已失效，请重新登录',
           );
           return;
         }
@@ -201,8 +212,35 @@ class AuthController extends StateNotifier<AuthState> {
     );
   }
 
-  Future<String?> sendSms(String phone, {String nationNum = '86'}) async {
-    final result = await _repo.sendSms(phone, nationNum: nationNum);
+  Future<String?> sendPasswordResetSms() async {
+    final account = state.user?.account ?? '';
+    if (account.isEmpty) return '请先登录';
+    var phone = account;
+    var nationNum = '86';
+    if (account.startsWith('+')) {
+      try {
+        final countries =
+            await _ref.read(countryRepositoryProvider).fetchList();
+        final matches = countries
+            .where((country) =>
+                country.dialCode.isNotEmpty &&
+                account.startsWith('+${country.dialCode}'))
+            .toList()
+          ..sort((a, b) => b.dialCode.length.compareTo(a.dialCode.length));
+        if (matches.isEmpty) return '无法识别账号手机号的国家区号';
+        nationNum = matches.first.dialCode;
+        phone = account.substring(nationNum.length + 1);
+      } catch (_) {
+        return '国家区号加载失败，请重试';
+      }
+    }
+    return sendSms(phone, nationNum: nationNum, purpose: 'password_reset');
+  }
+
+  Future<String?> sendSms(String phone,
+      {String nationNum = '86', String purpose = 'login'}) async {
+    final result =
+        await _repo.sendSms(phone, nationNum: nationNum, purpose: purpose);
     return result.when(
       success: (_) => null,
       failure: (err) => err.userMessage,
@@ -217,15 +255,23 @@ class AuthController extends StateNotifier<AuthState> {
     return loginWithPwd(phone: account, password: password);
   }
 
-  // ── JWT 过期强制登出（由 _ErrorInterceptor 401 触发）──────
+  Future<String?> renewSession() async {
+    final token = await _repo.refreshSession();
+    if (mounted && token != null && state.isLoggedIn && state.user != null) {
+      state = state.copyWith(user: state.user!.copyWith(token: token));
+    }
+    return token;
+  }
+
+  // ── 刷新凭证失效后退出 ───────────────────────────────
   /// 不弹对话框，直接清除本地状态 → guest
   /// UI 层监听 isGuest 后自动提示重新登录
   Future<void> forceLogout() async {
-    debugPrint('[AuthCtrl] JWT 已过期，强制登出');
+    debugPrint('[AuthCtrl] 刷新凭证失效，结束会话');
     await _repo.logout();
     state = const AuthState(
       status: AuthStatus.guest,
-      errorMessage: '登录已过期，请重新验证',
+      errorMessage: '登录凭证已失效，请重新登录',
     );
   }
 
@@ -245,13 +291,21 @@ class AuthController extends StateNotifier<AuthState> {
 
   // ── 修改登录密码 ───────────────────────────────────────
   Future<Result<bool>> changePassword({
-    required String oldPassword,
+    String? oldPassword,
+    String? code,
     required String newPassword,
-  }) {
-    return _repo.changePassword(
+  }) async {
+    final result = await _repo.changePassword(
       oldPassword: oldPassword,
+      code: code,
       newPassword: newPassword,
     );
+    if (result.isSuccess) {
+      await logout();
+      state = const AuthState(
+          status: AuthStatus.guest, errorMessage: '密码已设置，请使用新密码或短信重新登录');
+    }
+    return result;
   }
 
   // ── 退出登录 ───────────────────────────────────────────
@@ -345,7 +399,8 @@ final authControllerProvider =
     ref.read(authRepositoryProvider),
     ref,
   );
-  // 注入 JWT 401 → forceLogout 回调
+  ref.read(apiClientProvider).onRefreshToken = controller.renewSession;
+  // 刷新凭证失效时退出。
   // ApiClient 持有回调函数指针，不直接引用 Riverpod，避免循环依赖
   ref.read(apiClientProvider).onUnauthorized = () {
     controller.forceLogout();
