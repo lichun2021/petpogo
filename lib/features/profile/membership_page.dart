@@ -12,6 +12,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../../shared/widgets/app_error_view.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/theme/app_colors.dart';
@@ -28,6 +29,7 @@ class MembershipPage extends ConsumerStatefulWidget {
 }
 
 class _MembershipPageState extends ConsumerState<MembershipPage> {
+  Object? _loadError;
   String? _selectedPlanId;
   String _billingPeriod = 'monthly';
   bool _ordering = false;
@@ -79,6 +81,7 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
   bool _plansLoading = true;
 
   Future<void> _loadPlans() async {
+    setState(() => _loadError = null);
     try {
       final list = await ref.read(pointsRepositoryProvider).fetchPlans();
       if (!mounted) return;
@@ -96,21 +99,19 @@ class _MembershipPageState extends ConsumerState<MembershipPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      // 回退 mock
-      setState(() {
-        _plans = _mockPlans()['list'].cast<Map<String, dynamic>>();
-        _plansLoading = false;
-        final pro = _plans.firstWhere((p) => _planType(p) == 1,
-            orElse: () => _plans.first);
-        _selectedPlanId = _planId(pro);
-      });
-
-      debugPrint('[会员] plan/list 失败，回退 mock: $e');
+      setState(() => _loadError = e);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_loadError != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('会员计划')),
+        body: AppErrorView(error: _loadError, onRetry: _loadPlans),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: CustomScrollView(
@@ -910,51 +911,4 @@ class _Row extends StatelessWidget {
       ),
     );
   }
-}
-
-// ── Mock 数据（对齐后端字段）──────────────────────────────
-Map<String, dynamic> _mockPlans() {
-  return {
-    'list': [
-      {
-        'id': '1',
-        'plan_type': 0,
-        'name': 'Free',
-        'price_monthly': 0,
-        'price_yearly': 0,
-        'duration_days': null,
-        'grant_period_days': 7,
-        'period_grant_amount': 70,
-        'period_grant_type_code': 'plan_free',
-        'weekly_makeup_quota': 1,
-        'description': '基础功能，适合体验',
-      },
-      {
-        'id': '2',
-        'plan_type': 1,
-        'name': 'Pro',
-        'price_monthly': 30,
-        'price_yearly': 299,
-        'duration_days': 30,
-        'grant_period_days': 30,
-        'period_grant_amount': 700,
-        'period_grant_type_code': 'plan_pro',
-        'weekly_makeup_quota': 3,
-        'description': '更多积分额度，畅享 AI 分析',
-      },
-      {
-        'id': '3',
-        'plan_type': 2,
-        'name': 'ProMax',
-        'price_monthly': 98,
-        'price_yearly': 899,
-        'duration_days': 30,
-        'grant_period_days': 30,
-        'period_grant_amount': 2000,
-        'period_grant_type_code': 'plan_promax',
-        'weekly_makeup_quota': 5,
-        'description': '最高积分额度 + 永久积分赠送',
-      },
-    ],
-  };
 }

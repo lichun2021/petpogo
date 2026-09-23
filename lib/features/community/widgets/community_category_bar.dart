@@ -29,10 +29,18 @@ class CommunityCategoryBar extends StatelessWidget {
                 color: selected == index
                     ? AppColors.brandPrimarySoft
                     : AppColors.surfaceCard,
-                borderRadius: AppRadius.pillRadius,
+                shape: RoundedRectangleBorder(
+                  borderRadius: AppRadius.controlRadius,
+                  side: BorderSide(
+                    color: selected == index
+                        ? AppColors.brandPrimary.withValues(alpha: 0.35)
+                        : AppColors.borderSubtle,
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   onTap: () => onSelected(index),
-                  borderRadius: AppRadius.pillRadius,
+                  borderRadius: AppRadius.controlRadius,
                   child: Container(
                     constraints:
                         const BoxConstraints(minHeight: AppSize.touchMin),
@@ -43,7 +51,9 @@ class CommunityCategoryBar extends StatelessWidget {
                         style: TextStyle(
                             fontFamily: AppFonts.primary,
                             fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: selected == index
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                             color: selected == index
                                 ? AppColors.brandPrimaryStrong
                                 : AppColors.textSecondary)),

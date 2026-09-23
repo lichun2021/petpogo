@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../../shared/widgets/app_error_view.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/router/app_routes.dart';
@@ -38,6 +39,7 @@ class PointsPage extends ConsumerStatefulWidget {
 class _PointsPageState extends ConsumerState<PointsPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  Object? _loadError;
   Map<String, dynamic>? _balance; // null = 加载中
   List<Map<String, dynamic>> _allTx = [];
   int _page = 1;
@@ -59,12 +61,15 @@ class _PointsPageState extends ConsumerState<PointsPage>
   }
 
   Future<void> _loadAll() async {
+    setState(() => _loadError = null);
     final repo = ref.read(pointsRepositoryProvider);
     try {
-      final balance = repo.fetchBalance();
-      final txList = repo.fetchTransactions(page: 1, limit: _limit);
-      final b = await balance;
-      final t = await txList;
+      final results = await Future.wait<Object>([
+        repo.fetchBalance(),
+        repo.fetchTransactions(page: 1, limit: _limit),
+      ]);
+      final b = results[0] as Map<String, dynamic>;
+      final t = results[1] as List<Map<String, dynamic>>;
       if (!mounted) return;
       setState(() {
         _balance = b;
@@ -74,12 +79,7 @@ class _PointsPageState extends ConsumerState<PointsPage>
       });
     } catch (e) {
       if (!mounted) return;
-      // 回退 mock（开发期）
-      setState(() {
-        _balance = _mockBalance();
-        _allTx = _mockTransactions();
-      });
-      debugPrint('[积分] 接口失败，回退 mock: $e');
+      setState(() => _loadError = e);
     }
   }
 
@@ -110,6 +110,13 @@ class _PointsPageState extends ConsumerState<PointsPage>
 
   @override
   Widget build(BuildContext context) {
+    if (_loadError != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('积分明细')),
+        body: AppErrorView(error: _loadError, onRetry: _loadAll),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: NestedScrollView(
@@ -621,73 +628,4 @@ class _TxListState extends State<_TxList> {
       return value;
     }
   }
-}
-
-// ── Mock 数据（对齐后端字段）──────────────────────────────
-Map<String, dynamic> _mockBalance() {
-  return {
-    'expiring': 65,
-    'permanent': 100,
-    'total': 165,
-  };
-}
-
-List<Map<String, dynamic>> _mockTransactions() {
-  return [
-    {
-      'id': '123',
-      'direction': 2, // 1=获得 2=消耗
-      'points_type': 1, // 1=周 2=永久
-      'amount': 5,
-      'balance_after': 60,
-      'reason': '图片情绪分析',
-      'ref_type': 'ai_consumption',
-      'ref_id': 'abc123',
-      'created_at': '2026-07-08T10:00:00.000Z',
-    },
-    {
-      'id': '122',
-      'direction': 2,
-      'points_type': 1,
-      'amount': 5,
-      'balance_after': 65,
-      'reason': '语音情绪分析',
-      'ref_type': 'ai_consumption',
-      'ref_id': 'abc122',
-      'created_at': '2026-07-08T09:30:00.000Z',
-    },
-    {
-      'id': '121',
-      'direction': 1, // 获得
-      'points_type': 2, // 永久
-      'amount': 100,
-      'balance_after': 100,
-      'reason': '开通 Pro 计划赠送',
-      'ref_type': 'plan_grant',
-      'ref_id': 'plan_2',
-      'created_at': '2026-07-07T18:00:00.000Z',
-    },
-    {
-      'id': '120',
-      'direction': 1, // 获得
-      'points_type': 2, // 永久（连续签到奖励）
-      'amount': 10,
-      'balance_after': 65,
-      'reason': '连续签到 3 天奖励',
-      'ref_type': 'checkin_reward',
-      'ref_id': 'rule_2',
-      'created_at': '2026-07-07T09:00:00.000Z',
-    },
-    {
-      'id': '119',
-      'direction': 1,
-      'points_type': 1, // 周
-      'amount': 2,
-      'balance_after': 55,
-      'reason': '每日签到',
-      'ref_type': 'checkin',
-      'ref_id': 'rule_1',
-      'created_at': '2026-07-07T08:50:00.000Z',
-    },
-  ];
 }

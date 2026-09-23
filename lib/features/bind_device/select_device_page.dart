@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/pet_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -68,13 +69,7 @@ class _SelectDevicePageState extends ConsumerState<SelectDevicePage> {
         );
         break;
       case BindFlow.manual:
-        // 未识别类型，统一走扫码兜底（手动输入 MAC）
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ScanQrPage(productKey: product.productKey),
-          ),
-        );
+        PetToast.show(context, '暂不支持绑定此设备类型');
         break;
     }
   }

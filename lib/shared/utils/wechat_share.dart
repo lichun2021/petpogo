@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:fluwx/fluwx.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../core/config/app_config.dart';
 
@@ -56,44 +55,8 @@ Future<bool> shareWechatWebPage({
       if (ok) return true;
     }
   } catch (error) {
-    debugPrint('[微信分享] SDK 分享失败，回退系统分享: $error');
+    debugPrint('[微信分享] SDK 分享失败: $error');
   }
 
-  await _shareBySystem(
-    url: url,
-    title: title,
-    description: description,
-  );
-  return true;
-}
-
-Future<void> _shareBySystem({
-  required String url,
-  required String title,
-  required String description,
-}) {
-  final text = [
-    if (title.trim().isNotEmpty) title.trim(),
-    if (description.trim().isNotEmpty) description.trim(),
-    url.trim(),
-  ].join('\n');
-
-  return SharePlus.instance.share(
-    ShareParams(
-      text: text,
-      subject: title,
-    ),
-  );
-}
-
-Future<void> shareToWechat(String text, {String subject = ''}) {
-  return SharePlus.instance.share(
-    ShareParams(text: text, subject: subject),
-  );
-}
-
-Future<void> shareToWechatTimeline(String text, {String subject = ''}) {
-  return SharePlus.instance.share(
-    ShareParams(text: text, subject: subject),
-  );
+  return false;
 }

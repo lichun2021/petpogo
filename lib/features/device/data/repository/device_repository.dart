@@ -310,12 +310,7 @@ class DeviceListNotifier extends StateNotifier<DeviceListState> {
   Future<void> load() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      var products = state.products;
-      try {
-        products = await _repo.fetchProducts();
-      } catch (error) {
-        debugPrint('[ProductList] 拉取失败，保留已缓存目录: $error');
-      }
+      final products = await _repo.fetchProducts();
       final list = await _repo.fetchDevices();
       final typedDevices = list
           .map((device) => _attachProduct(device, products))

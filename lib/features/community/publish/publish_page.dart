@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:video_player/video_player.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/theme/app_tokens.dart';
 import '../../../shared/widgets/pet_toast.dart';
 import '../controller/feed_controller.dart';
 import '../controller/publish_controller.dart';
@@ -737,32 +738,34 @@ class _CategorySelector extends StatelessWidget {
         final isSel = selected == e.key;
         return Expanded(
           child: Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: AppSpacing.x8),
             child: GestureDetector(
               onTap: () => onSelect(isSel ? null : e.key),
               child: AnimatedContainer(
                 duration: Duration(milliseconds: 160),
-                height: 44,
+                constraints: const BoxConstraints(minHeight: AppSize.touchMin),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.x12, vertical: AppSpacing.x8),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: isSel
-                      ? AppColors.primary.withOpacity(0.10)
-                      : AppColors.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(12),
+                      ? AppColors.brandPrimarySoft
+                      : AppColors.surfaceCard,
+                  borderRadius: AppRadius.controlRadius,
                   border: Border.all(
                     color: isSel
-                        ? AppColors.primary.withOpacity(0.4)
-                        : AppColors.surfaceContainerHigh,
+                        ? AppColors.brandPrimary.withValues(alpha: 0.35)
+                        : AppColors.borderSubtle,
                   ),
                 ),
                 child: Text(e.value,
                     style: TextStyle(
                         fontFamily: AppFonts.primary,
                         fontSize: 13,
-                        fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
+                        fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
                         color: isSel
-                            ? AppColors.primary
-                            : AppColors.onSurfaceVariant)),
+                            ? AppColors.brandPrimaryStrong
+                            : AppColors.textSecondary)),
               ),
             ),
           ),

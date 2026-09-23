@@ -16,7 +16,6 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
-import '../../shared/utils/wechat_share.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:media_kit/media_kit.dart'
@@ -30,7 +29,6 @@ import '../../features/consultation/data/repository/consultation_repository.dart
 import '../../shared/utils/oss_uploader.dart';
 import '../../shared/utils/remote_media_saver.dart';
 import '../../shared/widgets/pet_toast.dart';
-import '../share/data/repository/share_repository.dart';
 import 'data/models/capture_model.dart';
 import 'data/repository/capture_repository.dart';
 import 'widgets/ai_emotion_card.dart';
@@ -247,7 +245,7 @@ class _RobotAiGreetingPageState extends ConsumerState<RobotAiGreetingPage> {
     return pairs;
   }
 
-  // 兼容旧调用：仅返回 emotion key 列表
+  // 返回当前宠物可选的情绪标识
   List<String> _emotionLabelsForPet(String petType) =>
       _emotionPairsForPet(petType).map((p) => p.$1).toList();
 
@@ -1628,7 +1626,6 @@ class _GreetingDetailSheetState extends ConsumerState<_GreetingDetailSheet> {
 
   bool _downloading = false;
   bool _deleting = false;
-  bool _sharingCommunity = false;
 
   @override
   void initState() {
@@ -1738,77 +1735,6 @@ class _GreetingDetailSheetState extends ConsumerState<_GreetingDetailSheet> {
     } finally {
       if (mounted) setState(() => _deleting = false);
     }
-  }
-
-  Future<void> _shareToWechat() {
-    return _shareGreeting(WechatShareScene.session);
-  }
-
-  Future<void> _shareToTimeline() {
-    return _shareGreeting(WechatShareScene.timeline);
-  }
-
-  Future<void> _shareGreeting(WechatShareScene scene) async {
-    final url = widget.item.coverUrl.isNotEmpty
-        ? widget.item.coverUrl
-        : widget.item.responseUrl;
-    if (url.isEmpty) return;
-    final emotion = widget.item.aiResult?.top;
-    final emotionText =
-        emotion != null ? ' Ta现在${emotion.emoji}${emotion.name}' : '';
-    final description = '我家宠物打招呼瞬间$emotionText，快来看看。';
-
-    final result = await ref.read(shareRepositoryProvider).createShare(
-      type: 'greeting',
-      targetId: widget.item.id.toString(),
-      title: '分享一段宠物打招呼',
-      description: description,
-      imageUrl: widget.item.coverUrl,
-      payload: {
-        'deviceId': widget.item.deviceId,
-        'resourceUrl': widget.item.resourceUrl,
-        'responseUrl': widget.item.responseUrl,
-        'coverUrl': widget.item.coverUrl,
-        'createdAt': widget.item.createdAt.toIso8601String(),
-      },
-    );
-
-    await result.when<Future<void>>(
-      success: (share) async {
-        if (share.shareUrl.isEmpty) {
-          if (mounted) PetToast.error(context, '分享链接生成失败');
-          return;
-        }
-        await shareWechatWebPage(
-          url: share.shareUrl,
-          title: share.title.isNotEmpty ? share.title : '宠物打招呼',
-          description:
-              share.description.isNotEmpty ? share.description : description,
-          scene: scene,
-        );
-        if (mounted) PetToast.success(context, '分享已打开');
-      },
-      failure: (error) async {
-        if (mounted) PetToast.error(context, error.userMessage);
-      },
-    );
-  }
-
-  void _showShareSheet(BuildContext ctx) {
-    showModalBottomSheet(
-      context: ctx,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _GreetShareSheet(
-        onWechat: () {
-          Navigator.pop(ctx);
-          _shareToWechat();
-        },
-        onTimeline: () {
-          Navigator.pop(ctx);
-          _shareToTimeline();
-        },
-      ),
-    );
   }
 
   @override
@@ -1985,7 +1911,7 @@ class _GreetingDetailSheetState extends ConsumerState<_GreetingDetailSheet> {
     return const SizedBox.shrink();
   }
 
-  // 视频解码失败降级 UI
+  // 视频播放错误提示
   Widget _buildVideoErrorWidget() => Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           const Icon(Icons.videocam_off_rounded,
@@ -2076,38 +2002,6 @@ class _GreetingDetailSheetState extends ConsumerState<_GreetingDetailSheet> {
 }
 
 // ── 微信图标按钮（46×46）───────────────────────────
-class _WechatIconBtn extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final Color color;
-  final VoidCallback onTap;
-  const _WechatIconBtn(
-      {required this.icon,
-      required this.tooltip,
-      required this.color,
-      required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withValues(alpha: 0.25), width: 1),
-          ),
-          child: Icon(icon, color: color, size: 20),
-        ),
-      ),
-    );
-  }
-}
 
 class _GreetInfoRow extends StatelessWidget {
   final String icon;
@@ -2207,10 +2101,6 @@ class _GreetingDetailPageState extends State<_GreetingDetailPage>
     super.dispose();
   }
 
-  Future<void> _toggleVideo() async {
-    if (_mkPlayer == null) return;
-    _mkPlayer!.state.playing ? _mkPlayer!.pause() : _mkPlayer!.play();
-  }
 
   Future<void> _toggleAudio() async {
     if (_audioPlaying) {
@@ -2371,7 +2261,7 @@ class _GreetingDetailPageState extends State<_GreetingDetailPage>
         child: const Center(child: Text('🐾', style: TextStyle(fontSize: 52))),
       );
 
-  // 视频解码失败降级背景
+  // 视频播放错误提示
   Widget _videoErrorBg() => Container(
         color: AppColors.mediaBackdrop,
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -3301,100 +3191,3 @@ class _RecorderSheetState extends State<_RecorderSheet>
 }
 
 enum _RecState { idle, recording, done }
-
-// ── 打招呼专用分享弹窗（微信好友 + 朋友圈）──────────────────
-class _GreetShareSheet extends StatelessWidget {
-  final VoidCallback onWechat;
-  final VoidCallback onTimeline;
-  const _GreetShareSheet({required this.onWechat, required this.onTimeline});
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomPad = MediaQuery.of(context).viewPadding.bottom;
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottomPad),
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(99),
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text('分享到',
-              style: TextStyle(
-                  fontFamily: AppFonts.primary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.onSurface)),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _GreetShareOption(
-                icon: Icons.chat_bubble_rounded,
-                label: '微信好友',
-                color: AppColors.wechat,
-                onTap: onWechat,
-              ),
-              _GreetShareOption(
-                icon: Icons.wb_sunny_rounded,
-                label: '朋友圈',
-                color: AppColors.wechat,
-                onTap: onTimeline,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-        ]),
-      ),
-    );
-  }
-}
-
-class _GreetShareOption extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-  const _GreetShareOption(
-      {required this.icon,
-      required this.label,
-      required this.color,
-      required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(children: [
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-            border:
-                Border.all(color: color.withValues(alpha: 0.20), width: 1.5),
-          ),
-          child: Icon(icon, color: color, size: 28),
-        ),
-        const SizedBox(height: 8),
-        Text(label,
-            style: TextStyle(
-                fontFamily: AppFonts.primary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.onSurface)),
-      ]),
-    );
-  }
-}

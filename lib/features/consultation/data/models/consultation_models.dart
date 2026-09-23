@@ -136,26 +136,6 @@ class StreamUnknown extends ConsultationStreamEvent {
   const StreamUnknown(this.event, this.data);
 }
 
-// ── 4. 同步问诊响应（/messages，降级/调试用）─────────────
-
-/// `POST /messages` → info 字段内容
-class ConsultationTurn {
-  final String userInput;
-  final String consultation;
-
-  const ConsultationTurn({
-    required this.userInput,
-    required this.consultation,
-  });
-
-  factory ConsultationTurn.fromJson(Map<String, dynamic> json) {
-    return ConsultationTurn(
-      userInput: (json['user_input'] as String?) ?? '',
-      consultation: (json['consultation'] as String?) ?? '',
-    );
-  }
-}
-
 // ── 5. 诊断报告 ───────────────────────────────────────────
 
 /// `POST /report` → info 字段内容
@@ -194,9 +174,7 @@ class ConsultationReport {
   }
 }
 
-/// 单个疾病卡片（v0.4：英文 key，probability 为 int 0-100，新增 riskLevel）
-///
-/// 兼容旧版中文 key（fromJson 同时尝试两套 key）
+/// 疾病卡片；probability 为 0–100 的整数。
 class DiseaseCard {
   /// 疾病名称（如 "猫上呼吸道感染"）
   final String name;
@@ -225,38 +203,15 @@ class DiseaseCard {
   });
 
   factory DiseaseCard.fromJson(Map<String, dynamic> json) {
-    // probability：v0.4 是 int（55），旧版是 String（"65%"）
-    final probRaw = json['probability'];
-    int probInt;
-    if (probRaw is int) {
-      probInt = probRaw;
-    } else if (probRaw is double) {
-      probInt = probRaw.round();
-    } else if (probRaw is String) {
-      final m = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(probRaw);
-      probInt = m != null ? (double.tryParse(m.group(1)!) ?? 0).round() : 0;
-    } else {
-      // 旧版中文 key 回退
-      final legacyStr = json['患病概率'] as String? ?? '';
-      final m = RegExp(r'(\d+)').firstMatch(legacyStr);
-      probInt = m != null ? int.tryParse(m.group(1)!) ?? 0 : 0;
-    }
-
     return DiseaseCard(
-      // 英文 key 优先，兼容旧版中文 key
-      name: (json['name'] as String?) ?? (json['疾病名称'] as String?) ?? '',
-      probability: probInt,
-      riskLevel:
-          (json['risk_level'] as String?) ?? (json['疾病类型'] as String?) ?? '',
-      definition:
-          (json['definition'] as String?) ?? (json['定义'] as String?) ?? '',
-      cause: (json['cause'] as String?) ?? (json['病因'] as String?) ?? '',
-      symptoms:
-          (json['symptoms'] as String?) ?? (json['临床表现'] as String?) ?? '',
-      diagnosis:
-          (json['diagnosis'] as String?) ?? (json['诊断'] as String?) ?? '',
-      treatment:
-          (json['treatment'] as String?) ?? (json['治疗方向'] as String?) ?? '',
+      name: json['name'] as String? ?? '',
+      probability: (json['probability'] as num?)?.round() ?? 0,
+      riskLevel: json['risk_level'] as String? ?? '',
+      definition: json['definition'] as String? ?? '',
+      cause: json['cause'] as String? ?? '',
+      symptoms: json['symptoms'] as String? ?? '',
+      diagnosis: json['diagnosis'] as String? ?? '',
+      treatment: json['treatment'] as String? ?? '',
     );
   }
 

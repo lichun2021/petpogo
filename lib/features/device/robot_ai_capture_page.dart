@@ -1288,14 +1288,19 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
           if (mounted) PetToast.error(context, '分享链接生成失败');
           return;
         }
-        await shareWechatWebPage(
+        final opened = await shareWechatWebPage(
           url: share.shareUrl,
           title: share.title.isNotEmpty ? share.title : title,
           description:
               share.description.isNotEmpty ? share.description : description,
           scene: scene,
         );
-        if (mounted) PetToast.success(context, '分享已打开');
+        if (!mounted) return;
+        if (opened) {
+          PetToast.success(context, '分享已打开');
+        } else {
+          PetToast.error(context, '无法打开微信分享，请确认已安装微信后重试');
+        }
       },
       failure: (error) async {
         if (mounted) PetToast.error(context, error.userMessage);
@@ -1618,36 +1623,6 @@ class _InfoRow extends StatelessWidget {
 }
 
 // ── 微信图标按钮（46×46）────────────────────────────────
-class _WcIconBtn extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onTap;
-  const _WcIconBtn(
-      {required this.icon, required this.tooltip, required this.onTap});
-
-  static const Color _green = AppColors.wechat;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            color: _green.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _green.withValues(alpha: 0.25), width: 1),
-          ),
-          child: Icon(icon, color: _green, size: 20),
-        ),
-      ),
-    );
-  }
-}
 
 // ── 分享操作底部弹窗（3 选项）────────────────────────────
 class _ShareSheet extends StatelessWidget {
@@ -1766,51 +1741,6 @@ class _ShareOption extends StatelessWidget {
   }
 }
 
-class _SharePill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final LinearGradient gradient;
-  final VoidCallback onTap;
-  const _SharePill(
-      {required this.icon,
-      required this.label,
-      required this.gradient,
-      required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 54,
-        decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: gradient.colors.first.withValues(alpha: 0.35),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: 20),
-            const SizedBox(width: 6),
-            Text(label,
-                style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white)),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 // ── 社区分享编辑弹窗 ────────────────────────────────────────────────
 class _CommunityShareSheet extends StatefulWidget {

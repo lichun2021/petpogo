@@ -80,7 +80,6 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   int _recordSeconds = 0; // 录像已进行秒数
   static const _maxRecordSec = 30; // App 限制 30s，到时自动调 stopRecording
   Timer? _recordTimer;
-  String? _serverRecordingId; // 服务端返回的 recording_id
   String? _serverAccount; // 登录账号（录制时缓存）
   List<MediaItem> _recentMedia = []; // 摄影标签预览
 
@@ -460,17 +459,6 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   }
 
   /// 离开频道 + 释放引擎
-  Future<void> _stopAgora() async {
-    final engine = _engine;
-    final streamId = _motorStreamId;
-    await _sendMotorStopOverAgora(engine, streamId);
-    _resetMotorStream();
-    await engine?.leaveChannel();
-    await engine?.release();
-    _engine = null;
-    _agoraJoined = false;
-    _remoteUid = null;
-  }
 
   /// 暂停推流（只离开频道，保留引擎实例和 Token——退出子页后可快速重连）
   Future<void> _pauseAgora() async {
@@ -612,7 +600,6 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
 
       result.when(
         success: (info) {
-          _serverRecordingId = info.recordingId;
           _serverAccount = account;
           debugPrint('[录制] 服务端录制已开始 id=${info.recordingId}');
           // 启动计时（UI 展示用，到 300s 自动提示）
@@ -660,7 +647,6 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
 
     final account = _serverAccount ?? '';
     final secs = _recordSeconds;
-    _serverRecordingId = null;
     _serverAccount = null;
 
     setState(() {
@@ -2201,51 +2187,6 @@ class _DeviceSwitcherSheet extends StatelessWidget {
 }
 
 // ── 顶部图标按钮（带徽章）────────────────────────────────
-class _TopBarIcon extends StatelessWidget {
-  final IconData icon;
-  final int badge;
-  final VoidCallback onTap;
-
-  const _TopBarIcon(
-      {required this.icon, required this.badge, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Stack(clipBehavior: Clip.none, children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: AppColors.onPrimary, size: 20),
-        ),
-        if (badge > 0)
-          Positioned(
-            top: -2,
-            right: -2,
-            child: Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                color: AppColors.error,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                  child: Text(badge.toString(),
-                      style: TextStyle(
-                          fontSize: 9,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800))),
-            ),
-          ),
-      ]),
-    );
-  }
-}
 
 // ── 可滑动摇杆控制盘 ─────────────────────────────────────
 class _JoystickPad extends StatefulWidget {
@@ -2729,97 +2670,8 @@ class _GlassBtn extends StatelessWidget {
 }
 
 // ── 快捷操作按钮 ──────────────────────────────────────────
-class _QuickBtn extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-  const _QuickBtn(
-      {required this.icon,
-      required this.label,
-      required this.color,
-      required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onTap();
-      },
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            shape: BoxShape.circle,
-            border: Border.all(color: color.withOpacity(0.25), width: 1.5),
-          ),
-          child: Icon(icon, color: color, size: 22),
-        ),
-        SizedBox(height: 4),
-        Text(label,
-            style: TextStyle(
-                fontFamily: AppFonts.primary,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: color)),
-      ]),
-    );
-  }
-}
 
 // ── 摄影功能卡片 ──────────────────────────────────────────
-class _PhotoAction extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-  const _PhotoAction(
-      {required this.icon,
-      required this.label,
-      required this.color,
-      required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 120,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-                color: AppColors.cardShadow,
-                blurRadius: 12,
-                offset: Offset(0, 3))
-          ],
-        ),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 28, color: color),
-          ),
-          SizedBox(height: 10),
-          Text(label,
-              style: TextStyle(
-                  fontFamily: AppFonts.primary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: color)),
-        ]),
-      ),
-    );
-  }
-}
 
 // ── AI 按钮（电流扫光 + 主题渐变，无缩放）─────────────────────
 class _AiGlowButton extends StatefulWidget {

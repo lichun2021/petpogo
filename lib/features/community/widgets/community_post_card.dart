@@ -28,11 +28,15 @@ class CommunityPostCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
+          color: AppColors.surfaceCard,
+          border: Border.all(color: AppColors.borderSubtle),
           borderRadius: AppRadius.cardRadius,
           boxShadow: [
             BoxShadow(
-                color: AppColors.cardShadow, blurRadius: 16, spreadRadius: -4)
+                color: AppColors.cardShadow,
+                blurRadius: AppSpacing.x8,
+                offset: const Offset(0, AppSpacing.x4),
+                spreadRadius: -AppSpacing.x4)
           ],
         ),
         clipBehavior: Clip.hardEdge,

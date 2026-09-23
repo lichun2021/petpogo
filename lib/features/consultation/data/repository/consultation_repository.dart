@@ -84,19 +84,6 @@ class ConsultationRepository {
     }
   }
 
-  // ── 3. 同步问诊（降级/调试用）─────────────────────────
-  Future<Result<ConsultationTurn>> sendMessageSync({
-    required String sessionId,
-    required String text,
-  }) =>
-      guardResult(() async {
-        final data = await _client.post<Map<String, dynamic>>(
-          ApiEndpoints.aiConsultMessages,
-          data: {'session_id': sessionId, 'text': text},
-        );
-        return ConsultationTurn.fromJson(_unwrap(data));
-      });
-
   // ── 4. 生成诊断报告 ───────────────────────────────────
   Future<Result<ConsultationReport>> generateReport({
     required String sessionId,

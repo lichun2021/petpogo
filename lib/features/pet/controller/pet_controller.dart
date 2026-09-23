@@ -1,22 +1,4 @@
-/// ════════════════════════════════════════════════════════════
-///  Pet 控制器 — PetController
-///
-///  在架构中的位置：
-///    View → [Controller] → Repository → ApiClient → 服务器
-///
-///  职责：
-///    1. 持有并管理宠物列表的状态（PetState）
-///    2. 调用 Repository 查询、更新档案和通过 Peer 创建宠物
-///    3. 根据操作结果更新状态（state.copyWith(...)）
-///    4. 操作型方法（createPet / updatePet）返回 Result<T>，
-///       由 View 决定是否跳转页面 / 显示提示
-///
-///  关键设计原则：
-///    ❌ 不持有 BuildContext（不弹 Dialog / SnackBar）
-///    ❌ 不调用 context.go / context.push（不管导航）
-///    ✅ 通过 errorMessage 字段通知 View 出错
-///    ✅ 返回 Result<T> 让 View 决定后续行为
-/// ════════════════════════════════════════════════════════════
+/// 宠物列表状态及档案操作。
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/result.dart';

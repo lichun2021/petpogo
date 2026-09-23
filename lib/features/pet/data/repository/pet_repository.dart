@@ -1,19 +1,4 @@
-/// ════════════════════════════════════════════════════════════
-///  Pet 数据仓库 — PetRepository
-///
-///  在架构中的位置：
-///    View → Controller → [Repository] → ApiClient → 服务器
-///
-///  职责（只做这三件事）：
-///    1. 调用 ApiClient 发起 HTTP 请求
-///    2. 把响应 JSON 解析为 PetModel 数据类
-///    3. 用 guardResult 包装，统一处理异常 → Result<T>
-///
-///  不做的事（保持单一职责）：
-///    ❌ 不持有任何状态（无 state）
-///    ❌ 不操作 UI（无 BuildContext）
-///    ❌ 不知道 Riverpod（只接受 ApiClient 依赖注入）
-/// ════════════════════════════════════════════════════════════
+/// 宠物档案查询与更新。
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -83,9 +68,6 @@ class PetRepository {
     );
     return PetModel.fromJson(data);
   });
-
-  /// 获取单个宠物的详细信息（兼容旧调用名，等价于 [fetchPetDetail]）
-  Future<Result<PetModel>> fetchPetById(String id) => fetchPetDetail(id);
 
   // ── 更新 ──────────────────────────────────────────────
 

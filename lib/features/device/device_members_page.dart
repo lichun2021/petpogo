@@ -618,8 +618,7 @@ class _ShareDeviceSheet extends StatelessWidget {
               label: '微信分享',
               filled: true,
               onTap: () async {
-                Navigator.pop(context);
-                await shareWechatWebPage(
+                final opened = await shareWechatWebPage(
                   url: shareUrl,
                   title:
                       '邀请你共同管理${productTypeName.isNotEmpty ? productTypeName : DeviceProductType.fromProductKey(productKey).displayName}「$deviceName」',
@@ -627,6 +626,12 @@ class _ShareDeviceSheet extends StatelessWidget {
                       '这是一台${productTypeName.isNotEmpty ? productTypeName : DeviceProductType.fromProductKey(productKey).displayName}，打开链接即可添加。',
                   scene: WechatShareScene.session,
                 );
+                if (!context.mounted) return;
+                if (opened) {
+                  Navigator.pop(context);
+                } else {
+                  PetToast.error(context, '无法打开微信分享，请确认已安装微信后重试');
+                }
               },
             ),
           ),

@@ -29,15 +29,11 @@ class DocReaderPage extends StatefulWidget {
   ///   - 网页 URL ：'https://example.com/help'（以 http 开头）
   final String src;
 
-  /// 兼容旧参数名 assetPath（只传一个即可）
-  final String? assetPath;
-
   const DocReaderPage({
     super.key,
     required this.title,
-    String? src,
-    this.assetPath,
-  }) : src = src ?? assetPath ?? '';
+    required this.src,
+  });
 
   bool get _isUrl => src.startsWith('http://') || src.startsWith('https://');
 

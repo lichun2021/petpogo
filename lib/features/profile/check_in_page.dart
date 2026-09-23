@@ -19,6 +19,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../../shared/widgets/app_error_view.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/theme/app_colors.dart';
@@ -35,6 +36,7 @@ class CheckInPage extends ConsumerStatefulWidget {
 }
 
 class _CheckInPageState extends ConsumerState<CheckInPage> {
+  Object? _loadError;
   Map<String, dynamic>? _data; // /checkin/calendar 的返回；null = 加载中
   bool _signing = false;
   final Set<String> _claiming = {}; // ruleId → claiming
@@ -47,6 +49,7 @@ class _CheckInPageState extends ConsumerState<CheckInPage> {
 
   /// 拉取月历数据
   Future<void> _loadCalendar() async {
+    setState(() => _loadError = null);
     try {
       final repo = ref.read(pointsRepositoryProvider);
       final month = _ym(DateTime.now());
@@ -55,9 +58,7 @@ class _CheckInPageState extends ConsumerState<CheckInPage> {
       setState(() => _data = data);
     } catch (e) {
       if (!mounted) return;
-      // 接口失败时回退到 mock，避免页面空白（开发期）
-      setState(() => _data = _mockCalendar());
-      debugPrint('[签到] calendar 接口失败，回退 mock: $e');
+      setState(() => _loadError = e);
     }
   }
 
@@ -170,6 +171,13 @@ class _CheckInPageState extends ConsumerState<CheckInPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loadError != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('签到')),
+        body: AppErrorView(error: _loadError, onRetry: _loadCalendar),
+      );
+    }
+
     final data = _data;
     final days = _mapList(data?['calendar']);
     final rules = _mapList(data?['rewardButtons']);
@@ -1247,118 +1255,4 @@ class _MakeupOption extends StatelessWidget {
       ),
     );
   }
-}
-
-// ── Mock 数据（对齐后端 calendar 接口字段）────────────────
-Map<String, dynamic> _mockCalendar() {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final monthStr = _ym(now);
-  String fmt(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-  final calendar = <Map<String, dynamic>>[];
-  final streakStartDay = now.day > 2 ? now.day - 2 : 1;
-  for (var day = 1; day <= now.day; day++) {
-    final date = DateTime(now.year, now.month, day);
-    final diff = today.difference(date).inDays;
-    final signed = day >= streakStartDay && day <= now.day;
-    if (signed) {
-      calendar.add({
-        'date': fmt(date),
-        'day': day,
-        'status': 'signed',
-        'streakCount': day - streakStartDay + 1,
-        'isMakeup': false,
-      });
-    } else if (diff >= 1 && diff <= 2) {
-      calendar.add({
-        'date': fmt(date),
-        'day': day,
-        'status': 'makeup_available',
-        'streakCount': null,
-        'isMakeup': false,
-      });
-    } else {
-      calendar.add({
-        'date': fmt(date),
-        'day': day,
-        'status': 'missed',
-        'streakCount': null,
-        'isMakeup': false,
-      });
-    }
-  }
-
-  return {
-    'month': monthStr,
-    'calendar': calendar,
-    'currentStreak': 3,
-    'signedInToday': true,
-    'weeklyMakeupQuota': 3,
-    'usedMakeupCount': 1,
-    'remainingMakeupQuota': 2,
-    'rewardButtons': [
-      {
-        'id': '1',
-        'ruleType': 1,
-        'streakDays': 1,
-        'pointsAmount': 2,
-        'pointsType': 2,
-        'name': '每日签到',
-        'claimed': false,
-        'claimable': true,
-      },
-      {
-        'id': '2',
-        'ruleType': 2,
-        'streakDays': 3,
-        'pointsAmount': 10,
-        'pointsType': 2,
-        'name': '连续 3 天',
-        'claimed': false,
-        'claimable': true,
-      },
-      {
-        'id': '3',
-        'ruleType': 2,
-        'streakDays': 5,
-        'pointsAmount': 30,
-        'pointsType': 2,
-        'name': '连续 5 天',
-        'claimed': false,
-        'claimable': false,
-      },
-      {
-        'id': '4',
-        'ruleType': 2,
-        'streakDays': 7,
-        'pointsAmount': 100,
-        'pointsType': 2,
-        'name': '连续 7 天',
-        'claimed': false,
-        'claimable': false,
-      },
-      {
-        'id': '5',
-        'ruleType': 2,
-        'streakDays': 15,
-        'pointsAmount': 200,
-        'pointsType': 2,
-        'name': '连续 15 天',
-        'claimed': false,
-        'claimable': false,
-      },
-      {
-        'id': '6',
-        'ruleType': 2,
-        'streakDays': 30,
-        'pointsAmount': 500,
-        'pointsType': 2,
-        'name': '连续 30 天',
-        'claimed': false,
-        'claimable': false,
-      },
-    ],
-  };
 }

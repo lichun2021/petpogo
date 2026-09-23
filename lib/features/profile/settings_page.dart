@@ -226,7 +226,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 MaterialPageRoute(
                   builder: (_) => const DocReaderPage(
                     title: '服务条款',
-                    assetPath: 'assets/docs/terms.html',
+                    src: 'assets/docs/terms.html',
                   ),
                 ),
               ),
@@ -239,7 +239,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 MaterialPageRoute(
                   builder: (_) => const DocReaderPage(
                     title: '隐私政策',
-                    assetPath: 'assets/docs/privacy.html',
+                    src: 'assets/docs/privacy.html',
                   ),
                 ),
               ),

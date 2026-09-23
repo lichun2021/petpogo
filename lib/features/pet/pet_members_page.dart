@@ -610,14 +610,19 @@ class _SharePetSheet extends StatelessWidget {
               label: '微信分享',
               filled: true,
               onTap: () async {
-                Navigator.pop(context);
                 debugPrint('[宠物分享] 微信分享 URL=$shareUrl');
-                await shareWechatWebPage(
+                final opened = await shareWechatWebPage(
                   url: shareUrl,
                   title: '邀请你共同管理宠物「$petName」',
                   description: '这是一只可爱的宠物，打开链接即可添加。',
                   scene: WechatShareScene.session,
                 );
+                if (!context.mounted) return;
+                if (opened) {
+                  Navigator.pop(context);
+                } else {
+                  PetToast.error(context, '无法打开微信分享，请确认已安装微信后重试');
+                }
               },
             ),
           ),

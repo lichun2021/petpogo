@@ -117,8 +117,6 @@ class ConsultationController extends StateNotifier<ConsultationState> {
   final String _petId;
   CancelToken? _streamCancel;
 
-  static const bool _useSyncFallback = false;
-
   ConsultationController(this._repo, this._petId)
       : super(const ConsultationState());
 
@@ -187,11 +185,7 @@ class ConsultationController extends StateNotifier<ConsultationState> {
       clearError: true,
     );
 
-    if (_useSyncFallback) {
-      await _sendSync(session.sessionId, trimmed);
-    } else {
-      await _sendStream(session.sessionId, trimmed);
-    }
+    await _sendStream(session.sessionId, trimmed);
   }
 
   Future<void> _sendStream(String sessionId, String text) async {
@@ -219,7 +213,7 @@ class ConsultationController extends StateNotifier<ConsultationState> {
             String finalText;
             if (bufText.isEmpty && full.isNotEmpty) {
               finalText = full;
-              debugPrint('[宠小伊] done: buf为空，用full_text兜底 len=${full.length}');
+              debugPrint('[宠小伊] done: buf为空，使用服务端full_text len=${full.length}');
             } else {
               finalText = bufText;
               if (full.isNotEmpty && full.length > bufText.length + 50) {
@@ -235,7 +229,7 @@ class ConsultationController extends StateNotifier<ConsultationState> {
       }
       if (!mounted || !identical(_streamCancel, cancel)) return;
       if (!completed) {
-        _markLastAssistantFailed('回答中断，请重试');
+        _markLastAssistantFailed();
         state = state.copyWith(
             isReplying: false, errorMessage: '回答中断，已保留收到的内容，请重试');
         return;
@@ -243,33 +237,12 @@ class ConsultationController extends StateNotifier<ConsultationState> {
       state = state.copyWith(isReplying: false);
     } catch (_) {
       if (!mounted || !identical(_streamCancel, cancel)) return;
-      _markLastAssistantFailed('回答中断，请重试');
+      _markLastAssistantFailed();
       state =
           state.copyWith(isReplying: false, errorMessage: '回答中断，已保留收到的内容，请重试');
     } finally {
       if (identical(_streamCancel, cancel)) _streamCancel = null;
     }
-  }
-
-  Future<void> _sendSync(String sessionId, String text) async {
-    debugPrint('[宠小伊] _sendSync sessionId=$sessionId');
-    final result = await _repo.sendMessageSync(
-      sessionId: sessionId,
-      text: text,
-    );
-    result.when(
-      success: (turn) {
-        _updateLastAssistant(turn.consultation, streaming: false);
-        state = state.copyWith(isReplying: false);
-      },
-      failure: (e) {
-        _markLastAssistantFailed(e.toString());
-        state = state.copyWith(
-          isReplying: false,
-          errorMessage: '发送失败，请重试',
-        );
-      },
-    );
   }
 
   void _updateLastAssistant(String content, {required bool streaming}) {
@@ -283,7 +256,7 @@ class ConsultationController extends StateNotifier<ConsultationState> {
     ]);
   }
 
-  void _markLastAssistantFailed(String errMsg) {
+  void _markLastAssistantFailed() {
     final msgs = state.messages;
     if (msgs.isEmpty) return;
     final last = msgs.last;
@@ -367,7 +340,7 @@ class ConsultationController extends StateNotifier<ConsultationState> {
   Future<void> restoreHistorySession(String sessionId) async {
     _cancelStream();
     if (state.isReplying) {
-      _markLastAssistantFailed('回答已取消');
+      _markLastAssistantFailed();
       state = state.copyWith(isReplying: false);
     }
     debugPrint('[宠小伊] restoreHistorySession sessionId=$sessionId');

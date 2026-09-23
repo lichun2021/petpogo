@@ -261,8 +261,9 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
                           height: 40,
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceContainerLow,
-                            borderRadius: BorderRadius.circular(20),
+                            color: AppColors.surfaceSunken,
+                            borderRadius: AppRadius.controlRadius,
+                            border: Border.all(color: AppColors.borderSubtle),
                           ),
                           child: Row(children: [
                             Icon(Icons.search_rounded,
