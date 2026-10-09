@@ -9,13 +9,14 @@ import '../device/data/models/device_product_model.dart';
 import '../device/data/repository/device_repository.dart';
 import 'scan_qr_page.dart';
 import 'robot_wifi_setup_page.dart';
+import 'collar_bluetooth_setup_page.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 /// 选择要绑定的设备类型。
 ///
 /// 设计：从 `/device/product/list` 拉取产品目录，按每个产品的
-/// [DeviceProductType.bindFlow] 路由到对应的绑定页面。新增产品时
-/// 只需在 `DeviceProductType.bindFlow` 加一行映射，本页无需改动。
+/// [DeviceProductType.bindFlow] 路由到对应的绑定页面。
+/// 项圈先选择蓝牙配网或直接扫码绑定。
 class SelectDevicePage extends ConsumerStatefulWidget {
   const SelectDevicePage({super.key});
 
@@ -38,11 +39,21 @@ class _SelectDevicePageState extends ConsumerState<SelectDevicePage> {
       // 优先用 deviceListProvider 已缓存的目录（首页进来一般已加载）
       final cached = ref.read(deviceListProvider).products;
       if (cached.isNotEmpty) {
-        if (mounted) setState(() { _products = cached; _loading = false; });
+        if (mounted) {
+          setState(() {
+            _products = cached;
+            _loading = false;
+          });
+        }
         return;
       }
       final fresh = await ref.read(deviceRepositoryProvider).fetchProducts();
-      if (mounted) setState(() { _products = fresh; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _products = fresh;
+          _loading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -50,6 +61,10 @@ class _SelectDevicePageState extends ConsumerState<SelectDevicePage> {
 
   void _onTapProduct(DeviceProductModel product) {
     HapticFeedback.mediumImpact();
+    if (product.type == DeviceProductType.collar) {
+      _showCollarModes(product);
+      return;
+    }
     final flow = product.type.bindFlow;
     switch (flow) {
       case BindFlow.scanQr:
@@ -72,6 +87,49 @@ class _SelectDevicePageState extends ConsumerState<SelectDevicePage> {
         PetToast.show(context, '暂不支持绑定此设备类型');
         break;
     }
+  }
+
+  Future<void> _showCollarModes(DeviceProductModel product) async {
+    final bluetooth = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('选择项圈配置方式', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Icon(Icons.bluetooth_rounded,
+                    color: AppColors.brandPrimary),
+                title: const Text('蓝牙配网'),
+                subtitle: const Text('通过蓝牙为项圈设置 WiFi，再扫码绑定'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.pop(sheetContext, true),
+              ),
+              ListTile(
+                leading:
+                    Icon(Icons.qr_code_scanner, color: AppColors.brandPrimary),
+                title: const Text('扫码绑定'),
+                subtitle: const Text('项圈已配置网络，扫描设备二维码绑定'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.pop(sheetContext, false),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted || bluetooth == null) return;
+    Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => bluetooth
+              ? CollarBluetoothSetupPage(productKey: product.productKey)
+              : ScanQrPage(productKey: product.productKey),
+        ));
   }
 
   @override
@@ -164,7 +222,10 @@ class _SelectDevicePageState extends ConsumerState<SelectDevicePage> {
               const SizedBox(width: 10),
               Expanded(
                   child: Text(
-                      _products.map((p) => '${p.displayName}：${_flowHint(p.type.bindFlow)}').join('\n'),
+                      _products
+                          .map((p) =>
+                              '${p.displayName}：${_flowHint(p.type.bindFlow)}')
+                          .join('\n'),
                       style: TextStyle(
                           fontFamily: AppFonts.primary,
                           fontSize: 13,
@@ -180,7 +241,7 @@ class _SelectDevicePageState extends ConsumerState<SelectDevicePage> {
   String _flowHint(BindFlow flow) {
     switch (flow) {
       case BindFlow.scanQr:
-        return '扫设备背面二维码绑定';
+        return '支持蓝牙配网或扫码绑定';
       case BindFlow.wifiSetup:
         return '填写 WiFi 后让设备扫码配网';
       case BindFlow.manual:
@@ -306,7 +367,8 @@ class _ProductCard extends StatelessWidget {
     switch (type) {
       case DeviceProductType.collar:
         return Stack(alignment: Alignment.center, children: [
-          Icon(Icons.circle_outlined, color: color.withValues(alpha: 0.5), size: 32),
+          Icon(Icons.circle_outlined,
+              color: color.withValues(alpha: 0.5), size: 32),
           Icon(Icons.pets_rounded, color: color, size: 16),
         ]);
       case DeviceProductType.robot:
@@ -347,7 +409,7 @@ class _FlowTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color) = switch (flow) {
-      BindFlow.scanQr => ('扫码绑定', AppColors.brandPrimary),
+      BindFlow.scanQr => ('蓝牙 / 扫码', AppColors.brandPrimary),
       BindFlow.wifiSetup => ('WiFi 配网', AppColors.brandPrimary),
       BindFlow.manual => ('手动绑定', AppColors.statusNeutral),
     };

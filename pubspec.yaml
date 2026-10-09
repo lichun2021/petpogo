@@ -75,6 +75,7 @@ dependencies:
   url_launcher: ^6.3.0
   permission_handler: ^12.0.1
   network_info_plus: ^6.0.0
+  flutter_blue_plus: 1.36.8 # 项圈 BLE 配网，锁定已核对 API 的版本
 
   # Icons
   cupertino_icons: ^1.0.6
