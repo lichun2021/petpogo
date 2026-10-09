@@ -32,16 +32,12 @@ class DeviceListPage extends ConsumerWidget {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_rounded, size: 20),
           color: AppColors.onSurface,
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('我的设备',
-            style: TextStyle(
-                fontFamily: AppFonts.primary,
-                fontSize: 17,
-                fontWeight: FontWeight.w700)),
-        centerTitle: true,
+        title: const Text('我的设备'),
+        centerTitle: false,
         actions: [
           // 右上角刷新（加载中显示 loading）
           if (state.isLoading)
@@ -137,8 +133,8 @@ class DeviceListPage extends ConsumerWidget {
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.primary,
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-          shape:
-              const RoundedRectangleBorder(borderRadius: AppRadius.controlRadius),
+          shape: const RoundedRectangleBorder(
+              borderRadius: AppRadius.controlRadius),
         ),
       ),
     ]));
@@ -297,8 +293,7 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
                   ])),
               // 在线状态标签
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
                   color: device.isOnline
                       ? AppColors.statusOnlineSoft
@@ -370,14 +365,19 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
               child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                // ── 解绑按钮 ──
-                _ActionPill(
-                  icon: Icons.link_off_rounded,
-                  label: '解绑设备',
-                  color: AppColors.error,
-                  onTap: () => _confirmUnbind(context, ref),
+                PopupMenuButton<String>(
+                  tooltip: '更多设备操作',
+                  icon: Icon(Icons.more_horiz_rounded,
+                      color: AppColors.textSecondary),
+                  onSelected: (_) => _confirmUnbind(context, ref),
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                        value: 'unbind',
+                        child: Text('解绑设备',
+                            style: TextStyle(color: AppColors.statusAlert)))
+                  ],
                 ),
-                SizedBox(width: 10),
+                const SizedBox(width: 8),
                 // ── 管理共享按钮 ──
                 _ActionPill(
                   icon: Icons.group_outlined,
@@ -439,8 +439,7 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-            child: Text('确认解绑',
-                style: TextStyle(fontFamily: AppFonts.primary)),
+            child: Text('确认解绑', style: TextStyle(fontFamily: AppFonts.primary)),
           ),
         ],
       ),

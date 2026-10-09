@@ -133,10 +133,10 @@ class AppTheme {
           centerTitle: false,
           systemOverlayStyle: SystemUiOverlayStyle.dark,
           titleTextStyle: GoogleFonts.plusJakartaSans(
-            fontSize: 22,
+            fontSize: 18,
             fontWeight: FontWeight.w700,
-            letterSpacing: -0.5,
-            color: AppColors.brandPrimaryStrong,
+            letterSpacing: 0,
+            color: AppColors.textPrimary,
           ).copyWith(
             fontFamilyFallback: AppFonts.fallback,
           ),

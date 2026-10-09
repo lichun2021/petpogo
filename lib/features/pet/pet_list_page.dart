@@ -92,7 +92,7 @@ class _PetListPageState extends ConsumerState<PetListPage> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_rounded, size: 20),
           color: AppColors.onSurface,
           onPressed: () => Navigator.pop(context),
         ),
@@ -516,7 +516,7 @@ class _IconBtn extends StatelessWidget {
         label: label,
         button: true,
         child: Material(
-          color: color.withValues(alpha: 0.08),
+          color: Colors.transparent,
           borderRadius: AppRadius.controlRadius,
           child: InkWell(
               onTap: onTap,

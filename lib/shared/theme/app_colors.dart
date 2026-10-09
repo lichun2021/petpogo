@@ -68,7 +68,7 @@ class AppColors {
   static Color get background       => _scheme.background;
   static Color get onBackground     => _scheme.onSurface;
   static Color get inverseSurface   => _scheme.inverseSurface;
-  static Color get inverseOnSurface => _scheme.onSurfaceVariant;
+  static Color get inverseOnSurface => _scheme.textOnBrand;
 
   // ─── Outline ────────────────────────────────────────────
   static Color get outline        => _scheme.outline;

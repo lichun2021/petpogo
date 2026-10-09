@@ -92,7 +92,8 @@
 
 | 层级 | textTheme 槽位 | 规格 |
 | --- | --- | --- |
-| 页面标题 | `titleLarge` | 22sp / 700 |
+| 页面内容主标题 | `titleLarge` | 22sp / 700 |
+| 二级导航标题 | `appBarTheme.titleTextStyle` | 18sp / 700，左对齐，textPrimary |
 | 区块标题 | `titleSmall` | 14sp / 700 |
 | 列表标题 | `labelLarge` | 13sp / 600 |
 | 正文说明 | `bodyMedium` | 14sp / 400 |
@@ -131,3 +132,12 @@
 
 - 面向用户的错误一律经 `ErrorPresenter.describe(error)`（`lib/shared/utils/error_presenter.dart`）转成设计文案，禁止直接显示 `e.toString()`。
 - 原始错误文本是否附带显示由 `assets/config/app_flags.json` 的 `showRawError` 控制，与 debug / release 无关；`showRawErrorToggle` 决定设置页是否露出运行时开关。
+
+
+## 2026-09-23 组件收敛
+
+- 社区与音乐分类统一使用 `AppCategoryBar`：左对齐、可横滑、胶囊选中态、最小 44dp 热区。
+- 表单确认操作使用品牌色，绿色只用于成功/在线等状态。
+- `inverseOnSurface` 为深色面上的浅色文字，不复用普通次级文字色。
+- 首页语音/图片分析直接展示完整操作面板，不跳转二级页面；积分消耗为独立可读说明。
+- 设备解绑收进更多菜单；宠物成员/编辑/删除保留直达热区，取消重复底色装饰。

@@ -31,14 +31,13 @@ class ModalHeader extends StatelessWidget {
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.statusOnlineStrong)))
+                            strokeWidth: 2, color: AppColors.brandPrimary)))
                 : !showConfirm && onConfirm == null
                     ? const SizedBox.shrink()
                     : IconButton(
                         tooltip: confirmLabel,
                         onPressed: onConfirm,
-                        color: AppColors.statusOnlineStrong,
+                        color: AppColors.brandPrimary,
                         disabledColor: AppColors.outline,
                         icon: const Icon(Icons.check_rounded, size: 28))),
         Expanded(

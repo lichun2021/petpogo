@@ -1,3 +1,4 @@
+import '../../shared/widgets/app_category_bar.dart';
 import 'package:petpogo_app/shared/widgets/modal_header.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -215,97 +216,54 @@ class _CreatePlaylistSheetState extends ConsumerState<_CreatePlaylistSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => FormModal(title: '新建歌单', busy: _saving, onConfirm: _name.text.trim().isEmpty ? null : _save, child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                          const SizedBox(height: AppSpacing.x16),
-                  TextField(
-                      controller: _name,
-                      autofocus: true,
-                      enabled: !_saving,
-                      maxLength: 40,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => _save(),
-                      onChanged: (_) => setState(() {}),
-                      decoration: const InputDecoration(
-                          labelText: '歌单名称', hintText: '例如：晚安陪伴')),
-                  const SizedBox(height: AppSpacing.x16),
-                        ]));
+  Widget build(BuildContext context) => FormModal(
+      title: '新建歌单',
+      busy: _saving,
+      onConfirm: _name.text.trim().isEmpty ? null : _save,
+      child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: AppSpacing.x16),
+            TextField(
+                controller: _name,
+                autofocus: true,
+                enabled: !_saving,
+                maxLength: 40,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _save(),
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                    labelText: '歌单名称', hintText: '例如：晚安陪伴')),
+            const SizedBox(height: AppSpacing.x16),
+          ]));
 }
 
 // ── 横幅 ──────────────────────────────────────────────────
 class _Banner extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(AppSpacing.screenHorizontal,
-      AppSpacing.x16, AppSpacing.screenHorizontal, AppSpacing.x12),
-    child: Container(
-      padding: const EdgeInsets.all(AppSpacing.x24),
-      decoration: BoxDecoration(borderRadius: AppRadius.cardRadius,
-        gradient: LinearGradient(colors: [AppColors.brandPrimary, AppColors.brandPrimaryStrong])),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('安抚 · 陪伴 · 欢乐', style: TextStyle(fontFamily: AppFonts.primary,
-          fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textOnBrand)),
-        const SizedBox(height: AppSpacing.x8),
-        Text('为毛孩子挑一段喜欢的旋律', style: TextStyle(fontFamily: AppFonts.primary,
-          fontSize: 12, color: AppColors.textOnBrand)),
-      ]),
-    ),
-  );
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+        child: Text('为它的每一种心情，挑一段喜欢的旋律',
+            style: TextStyle(
+                fontSize: 14, height: 1.5, color: AppColors.textSecondary)),
+      );
 }
 
-// ── 宠物类型筛选 ──────────────────────────────────────────
 class _PetTypeBar extends StatelessWidget {
   final int selected;
   final void Function(int) onSelect;
   const _PetTypeBar({required this.selected, required this.onSelect});
-
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(AppSpacing.screenHorizontal,
-            AppSpacing.x4, AppSpacing.screenHorizontal, AppSpacing.x12),
-        child: Wrap(
-            spacing: AppSpacing.x8,
-            runSpacing: AppSpacing.x8,
-            children: ['全部', '狗狗', '猫咪'].asMap().entries.map((e) {
-              final active = e.key == selected;
-              return GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  onSelect(e.key);
-                },
-                child: AnimatedContainer(
-                  duration: Duration(milliseconds: 180),
-                  constraints:
-                      const BoxConstraints(minHeight: AppSize.touchMin),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.x16, vertical: AppSpacing.x12),
-                  decoration: BoxDecoration(
-                    color: active
-                        ? AppColors.brandPrimarySoft
-                        : AppColors.surfaceCard,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: active
-                            ? AppColors.brandPrimarySoft
-                            : AppColors.borderSubtle),
-                  ),
-                  child: Text(e.value,
-                      style: TextStyle(
-                          fontFamily: AppFonts.primary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: active
-                              ? AppColors.brandPrimaryStrong
-                              : AppColors.textSecondary)),
-                ),
-              );
-            }).toList()),
+        padding: const EdgeInsets.only(bottom: 12),
+        child: AppCategoryBar(
+            labels: const ['全部', '狗狗', '猫咪'],
+            selected: selected,
+            onSelected: onSelect),
       );
 }
 
-// ── 分类卡片 ──────────────────────────────────────────────
 class _CategoryCard extends StatelessWidget {
   final MusicCategory category;
   final VoidCallback onTap;
