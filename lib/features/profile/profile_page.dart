@@ -15,7 +15,7 @@ import '../pet/controller/pet_controller.dart';
 import '../pet/pet_list_page.dart';
 import '../music/pet_music_page.dart';
 import 'data/user_stats_provider.dart';
-import 'data/points_repository.dart';
+import 'data/account_overview_provider.dart';
 import '../../core/router/app_routes.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
@@ -30,25 +30,17 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   bool _loaded = false;
   bool _uploadingAvatar = false;
   bool _showAllFeatures = false;
-  Map<String, dynamic>? _pointsBalance;
-
-  int _asInt(dynamic value) =>
-      value is num ? value.toInt() : int.tryParse('$value') ?? 0;
 
   Future<void> _loadPointsBalance() async {
-    try {
-      final balance = await ref.read(pointsRepositoryProvider).fetchBalance();
-      if (!mounted) return;
-      setState(() => _pointsBalance = balance);
-    } catch (e) {
-      debugPrint('[积分] 我的页面余额加载失败: $e');
-    }
+    ref.invalidate(pointsBalanceProvider);
+    ref.invalidate(checkInStatusProvider);
   }
 
   // ── 昵称编辑 ──
   void _showProfileDialog(BuildContext context) {
-    showDialog<bool>(context: context,
-      builder: (_) => const ProfileEditDialog()).then((saved) {
+    showDialog<bool>(
+        context: context,
+        builder: (_) => const ProfileEditDialog()).then((saved) {
       if (saved == true && context.mounted) PetToast.success(context, '资料已更新');
     });
   }
@@ -104,6 +96,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final auth = ref.watch(authControllerProvider);
+    final balance = ref.watch(pointsBalanceProvider).valueOrNull;
 
     // 登录后首次刷新数据
     if (auth.isLoggedIn && !_loaded) {
@@ -164,15 +157,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
                 // ── 积分概览：余额、赠送积分、流水入口 ──
                 _PointsOverviewCard(
-                  points: _pointsBalance == null
-                      ? auth.user?.points ?? 0
-                      : _asInt(_pointsBalance?['total']),
-                  permanentPoints: _pointsBalance == null
-                      ? auth.user?.permanentPoints ?? 0
-                      : _asInt(_pointsBalance?['permanent']),
-                  giftedPoints: _pointsBalance == null
-                      ? auth.user?.giftedPoints ?? 0
-                      : _asInt(_pointsBalance?['expiring']),
+                  points: overviewInt(balance?['total']),
+                  permanentPoints: overviewInt(balance?['permanent']),
+                  giftedPoints: overviewInt(balance?['expiring']),
                   onTapTotal: _openPointsPage,
                   onTapGifted: _openGiftedPointsPage,
                   onTapRules: _openPointsRulesPage,
@@ -184,7 +171,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   expanded: _showAllFeatures,
                   onToggleExpanded: () =>
                       setState(() => _showAllFeatures = !_showAllFeatures),
-                  onNav: (route) => context.push(route),
+                  onNav: (route) async {
+                    await context.push(route);
+                    if (mounted) _loadPointsBalance();
+                  },
                   onNavPush: (page) => Navigator.push(
                       context, MaterialPageRoute(builder: (_) => page)),
                 ),
@@ -201,9 +191,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 //  积分概览卡
 // ════════════════════════════════════════════════════════════
 class _PointsOverviewCard extends StatelessWidget {
-  final int points;
-  final int permanentPoints;
-  final int giftedPoints;
+  final int? points;
+  final int? permanentPoints;
+  final int? giftedPoints;
   final VoidCallback onTapTotal;
   final VoidCallback onTapGifted;
   final VoidCallback onTapRules;
@@ -216,7 +206,8 @@ class _PointsOverviewCard extends StatelessWidget {
     required this.onTapRules,
   });
 
-  String _formatPoints(int value) {
+  String _formatPoints(int? value) {
+    if (value == null) return '—';
     final digits = value.toString();
     final buffer = StringBuffer();
     for (var i = 0; i < digits.length; i++) {
@@ -251,7 +242,6 @@ class _PointsOverviewCard extends StatelessWidget {
                     value: _formatPoints(points),
                     subtitle: '积分明细',
                     onTap: onTapTotal,
-                    prominent: true,
                   ),
                 ),
                 const _PointsCardDivider(),
@@ -309,18 +299,15 @@ class _PointsCardEntry extends StatelessWidget {
   final String? value;
   final String? subtitle;
   final VoidCallback? onTap;
-  final bool prominent;
   const _PointsCardEntry({
     required this.label,
     this.value,
     this.subtitle,
     this.onTap,
-    this.prominent = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final accent = AppColors.brandPrimaryStrong;
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(12),
@@ -330,7 +317,7 @@ class _PointsCardEntry extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
           child: Align(
-            alignment: Alignment.bottomCenter,
+            alignment: Alignment.center,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -341,9 +328,9 @@ class _PointsCardEntry extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontFamily: AppFonts.primary,
-                      fontSize: prominent ? 22 : 15,
-                      height: 1.1,
-                      fontWeight: prominent ? FontWeight.w900 : FontWeight.w600,
+                      fontSize: 22,
+                      height: 1.2,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.onSurface,
                     ),
                   ),
@@ -359,11 +346,9 @@ class _PointsCardEntry extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontFamily: AppFonts.primary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: onTap == null
-                              ? AppColors.onSurfaceVariant
-                              : accent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.onSurface,
                         ),
                       ),
                     ),
@@ -376,7 +361,7 @@ class _PointsCardEntry extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                           fontFamily: AppFonts.primary,
-                          fontSize: 9,
+                          fontSize: 12,
                           color: AppColors.onSurfaceVariant)),
                 ],
               ],
@@ -612,7 +597,7 @@ class _VipBadge extends StatelessWidget {
 // ════════════════════════════════════════════════════════════
 //  功能区：两列信息卡，默认最多 6 个功能
 // ════════════════════════════════════════════════════════════
-class _FeatureGrid extends StatelessWidget {
+class _FeatureGrid extends ConsumerWidget {
   final bool expanded;
   final VoidCallback onToggleExpanded;
   final ValueChanged<String> onNav; // 走 AppRoutes（push）
@@ -625,7 +610,9 @@ class _FeatureGrid extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final checkIn = ref.watch(checkInStatusProvider).valueOrNull;
+    final signedToday = overviewBool(checkIn?['signedInToday']);
     const collapsedItemCount = 6;
     // 分层规则：核心资产（宠物 / 设备）用品牌色；内容与活动类用中性色
     final items = <_FeatureItem>[
@@ -660,9 +647,9 @@ class _FeatureGrid extends StatelessWidget {
       _FeatureItem(
         icon: Icons.calendar_month_outlined,
         label: '每日签到',
-        subtitle: '做任务领章卡',
+        subtitle: signedToday ? '今日已签到' : '每天积累小奖励',
         color: AppColors.statusNeutral,
-        badge: '待签', // TODO: 接签到状态后判断是否显示
+        badge: checkIn != null && !signedToday ? '待签' : null,
         onTap: () => onNav(AppRoutes.checkIn),
       ),
       _FeatureItem(
@@ -813,7 +800,7 @@ class _FeatureTile extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: AppFonts.primary,
                         fontSize: 15,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                         color: AppColors.onSurface,
                       ),
                     ),
@@ -824,8 +811,8 @@ class _FeatureTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontFamily: AppFonts.primary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
                         color: AppColors.onSurfaceVariant,
                       ),
                     ),

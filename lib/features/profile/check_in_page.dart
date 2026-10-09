@@ -17,8 +17,8 @@
 ///   makeup_available  — 可补签（2 天内缺签 + 配额未用尽）
 ///   missed            — 已错过，不可补签
 library;
-import 'package:petpogo_app/shared/widgets/modal_header.dart';
 
+import 'package:petpogo_app/shared/widgets/modal_header.dart';
 
 import 'package:flutter/material.dart';
 import '../../shared/widgets/app_error_view.dart';
@@ -29,6 +29,7 @@ import '../../shared/theme/app_fonts.dart';
 import '../../shared/widgets/pet_toast.dart';
 import '../../core/api/api_exception.dart';
 import 'data/points_repository.dart';
+import 'data/account_overview_provider.dart';
 
 class CheckInPage extends ConsumerStatefulWidget {
   const CheckInPage({super.key});
@@ -58,6 +59,8 @@ class _CheckInPageState extends ConsumerState<CheckInPage> {
       final data = await repo.fetchCalendar(month: month);
       if (!mounted) return;
       setState(() => _data = data);
+      ref.invalidate(checkInStatusProvider);
+      ref.invalidate(pointsBalanceProvider);
     } catch (e) {
       if (!mounted) return;
       setState(() => _loadError = e);
@@ -1157,7 +1160,7 @@ class _MakeupSheet extends StatelessWidget {
                 onTap: onWatchAd,
               ),
             const SizedBox(height: 14),
-            ],
+          ],
         ),
       ),
     );

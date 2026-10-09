@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:async';
+import '../controller/hold_recording_session.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -8,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/widgets/ai_loading_views.dart';
 import '../controller/ai_controller.dart';
+import '../../profile/data/account_overview_provider.dart';
 import '../data/models/ai_result_model.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
@@ -29,12 +32,30 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
   final AudioRecorder _recorder = AudioRecorder();
 
   bool _isRecording = false;
-  String? _recordPath;
+  late final HoldRecordingSession _recording;
+  Timer? _recordTimer;
   int _recordSecs = 0;
 
   @override
   void initState() {
     super.initState();
+    _recording = HoldRecordingSession(
+      start: () async {
+        if (!await _recorder.hasPermission()) {
+          _showSnack('请授权麦克风权限');
+          return false;
+        }
+        if (!mounted) return false;
+        final dir = await getTemporaryDirectory();
+        if (!mounted) return false;
+        await _recorder.start(const RecordConfig(encoder: AudioEncoder.wav),
+            path:
+                '${dir.path}/pet_voice_${DateTime.now().millisecondsSinceEpoch}.wav');
+        return true;
+      },
+      stop: _recorder.stop,
+      cancel: _recorder.cancel,
+    );
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 900),
@@ -43,69 +64,58 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
 
   @override
   void dispose() {
+    _recordTimer?.cancel();
     _pulseCtrl.dispose();
-    _recorder.dispose();
+    unawaited(_recording
+        .end(submit: false)
+        .catchError((_) => null)
+        .whenComplete(() => _recorder.dispose()));
     super.dispose();
   }
 
-  // ── 开始录音 ────────────────────────────────────────────────
   Future<void> _startRecording() async {
-    final ctrl = ref.read(aiVoiceControllerProvider);
-    if (ctrl.phase != AiPhase.idle &&
-        ctrl.phase != AiPhase.error &&
-        ctrl.phase != AiPhase.notPet) {
-      return;
+    try {
+      await _recording.begin();
+      if (!mounted || !_recording.isRecording) return;
+      HapticFeedback.mediumImpact();
+      setState(() {
+        _isRecording = true;
+        _recordSecs = 0;
+      });
+      _pulseCtrl.repeat(reverse: true);
+      _recordTimer?.cancel();
+      _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted && _isRecording) setState(() => _recordSecs++);
+      });
+    } catch (_) {
+      _showSnack('无法开始录音，请重试');
     }
-
-    final hasPermission = await _recorder.hasPermission();
-    if (!hasPermission) {
-      _showSnack('请授权麦克风权限');
-      return;
-    }
-
-    HapticFeedback.mediumImpact();
-    final dir = await getTemporaryDirectory();
-    _recordPath =
-        '${dir.path}/pet_voice_${DateTime.now().millisecondsSinceEpoch}.wav';
-
-    await _recorder.start(
-      RecordConfig(encoder: AudioEncoder.wav),
-      path: _recordPath!,
-    );
-
-    if (!mounted) return;
-    setState(() {
-      _isRecording = true;
-      _recordSecs = 0;
-    });
-    _pulseCtrl.repeat(reverse: true);
-
-    // 计时
-    Future.doWhile(() async {
-      await Future.delayed(Duration(seconds: 1));
-      if (!_isRecording || !mounted) return false;
-      setState(() => _recordSecs++);
-      return true;
-    });
   }
 
-  // ── 停止录音 → 分析 ────────────────────────────────────────────────
-  Future<void> _stopAndAnalyze() async {
-    if (!_isRecording) return;
-    HapticFeedback.lightImpact();
-    _pulseCtrl.stop();
-
-    final path = await _recorder.stop();
-    if (!mounted) return;
-    setState(() => _isRecording = false);
-
-    if (path == null) return;
-    if (_recordSecs < 1) {
-      _showSnack('录音时间太短，请至少按住 1 秒');
-      return;
+  Future<void> _finishRecording({required bool submit}) async {
+    _recordTimer?.cancel();
+    final duration = _recordSecs;
+    try {
+      final path = await _recording.end(submit: submit && duration >= 1);
+      if (!mounted) return;
+      _pulseCtrl.stop();
+      setState(() => _isRecording = false);
+      if (!submit) return;
+      if (duration < 1) {
+        _showSnack('录音时间太短，请至少按住 1 秒');
+        return;
+      }
+      if (path != null) {
+        await ref
+            .read(aiVoiceControllerProvider.notifier)
+            .analyzeVoice(File(path));
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isRecording = false);
+        _showSnack('录音未完成，请重试');
+      }
     }
-
-    await ref.read(aiVoiceControllerProvider.notifier).analyzeVoice(File(path));
   }
 
   void _reset() => ref.read(aiVoiceControllerProvider.notifier).reset();
@@ -140,6 +150,12 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
     // 分析完成后弹 SnackBar 提示
     ref.listen(aiVoiceControllerProvider, (prev, next) {
       if (prev?.phase == AiPhase.analyzing &&
+          (next.phase == AiPhase.result ||
+              next.phase == AiPhase.notPet ||
+              next.phase == AiPhase.error)) {
+        ref.invalidate(pointsBalanceProvider);
+      }
+      if (prev?.phase == AiPhase.analyzing &&
           (next.phase == AiPhase.result || next.phase == AiPhase.notPet)) {
         final quota = next.result?.quota;
         if (quota != null) {
@@ -151,7 +167,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: AppColors.outlineVariant.withValues(alpha: 0.14),
         ),
@@ -183,31 +199,21 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
             ),
             SizedBox(width: 10),
             Expanded(
-              child: RichText(
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                text: TextSpan(
-                  text: '听懂宠物的情绪',
-                  style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.onSurface,
-                    height: 1.15,
-                  ),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextSpan(
-                      text: voicePoints != null ? '（$voicePoints积分/次）' : '（X积分/次）',
-                      style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                    Text('听懂宠物的情绪',
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary)),
+                    const SizedBox(height: 4),
+                    Text(
+                        voicePoints == null ? '积分消耗加载中' : '$voicePoints 积分 / 次',
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
+                  ]),
             ),
             if (state.result != null || state.phase == AiPhase.notPet) ...[
               TextButton(
@@ -235,7 +241,8 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
                       isRecording: _isRecording,
                       recordSecs: _recordSecs,
                       onPressDown: _startRecording,
-                      onPressUp: _stopAndAnalyze,
+                      onPressUp: () => _finishRecording(submit: true),
+                      onCancel: () => _finishRecording(submit: false),
                       pulseCtrl: _pulseCtrl,
                     ),
                   AiPhase.uploading => AiUploadProgressView(
@@ -278,6 +285,7 @@ class _IdleView extends StatelessWidget {
   final int recordSecs;
   final Future<void> Function() onPressDown;
   final Future<void> Function() onPressUp;
+  final Future<void> Function() onCancel;
   final AnimationController pulseCtrl;
 
   const _IdleView({
@@ -286,6 +294,7 @@ class _IdleView extends StatelessWidget {
     required this.recordSecs,
     required this.onPressDown,
     required this.onPressUp,
+    required this.onCancel,
     required this.pulseCtrl,
   });
 
@@ -304,10 +313,13 @@ class _IdleView extends StatelessWidget {
           ),
         ),
         SizedBox(height: 20),
-        Listener(
-          onPointerDown: (_) => onPressDown(),
-          onPointerUp: (_) => onPressUp(),
-          onPointerCancel: (_) => onPressUp(),
+        GestureDetector(
+          onLongPressStart: (_) => onPressDown(),
+          onLongPressEnd: (_) => onPressUp(),
+          onLongPressCancel: () => onCancel(),
+          onLongPressMoveUpdate: (details) {
+            if (details.localOffsetFromOrigin.distance > 80) onCancel();
+          },
           child: AnimatedBuilder(
             animation: pulseCtrl,
             builder: (_, __) {
@@ -352,7 +364,7 @@ class _IdleView extends StatelessWidget {
           )
         else
           Text(
-            '按住即可录音',
+            '按住录音，滑开取消',
             style: TextStyle(
               fontFamily: AppFonts.primary,
               fontSize: 11,

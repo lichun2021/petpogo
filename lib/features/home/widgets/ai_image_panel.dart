@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/widgets/ai_loading_views.dart';
 import '../controller/ai_controller.dart';
+import '../../profile/data/account_overview_provider.dart';
 import '../data/models/ai_result_model.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
@@ -129,6 +130,12 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
     // 分析完成后弹 SnackBar
     ref.listen(aiImageControllerProvider, (prev, next) {
       if (prev?.phase == AiPhase.analyzing &&
+          (next.phase == AiPhase.result ||
+              next.phase == AiPhase.notPet ||
+              next.phase == AiPhase.error)) {
+        ref.invalidate(pointsBalanceProvider);
+      }
+      if (prev?.phase == AiPhase.analyzing &&
           (next.phase == AiPhase.result || next.phase == AiPhase.notPet)) {
         final quota = next.result?.quota;
         if (quota != null && mounted) {
@@ -149,7 +156,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: AppColors.outlineVariant.withValues(alpha: 0.14),
         ),
@@ -181,31 +188,21 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
             ),
             SizedBox(width: 10),
             Expanded(
-              child: RichText(
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                text: TextSpan(
-                  text: '看懂宠物的情绪',
-                  style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.onSurface,
-                    height: 1.15,
-                  ),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextSpan(
-                      text: imagePoints != null ? '（$imagePoints积分/次）' : '（X积分/次）',
-                      style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                    Text('看懂宠物的情绪',
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary)),
+                    const SizedBox(height: 4),
+                    Text(
+                        imagePoints == null ? '积分消耗加载中' : '$imagePoints 积分 / 次',
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
+                  ]),
             ),
             if (state.phase == AiPhase.result ||
                 state.phase == AiPhase.notPet ||

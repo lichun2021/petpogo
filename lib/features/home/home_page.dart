@@ -14,7 +14,7 @@ import '../device/data/repository/device_repository.dart';
 import '../device/device_detail_page.dart';
 import '../device/device_list_page.dart';
 import '../device/robot_device_page.dart';
-import '../profile/data/points_repository.dart';
+import '../profile/data/account_overview_provider.dart';
 import 'widgets/ai_image_panel.dart';
 import 'widgets/ai_translate_panel.dart';
 import 'widgets/pet_mood_section.dart';
@@ -38,24 +38,21 @@ class _HomePageState extends ConsumerState<HomePage> {
           SliverSafeArea(
             bottom: false,
             sliver: SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 120),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   const _HomeHero(),
-                  SizedBox(height: 14),
-                  _HomeCheckInCard(),
-                  SizedBox(height: 14),
                   const _MaybePetMoodSection(),
-                  const _SectionHeader(
-                    title: 'AI 解析',
-                  ),
-                  SizedBox(height: 12),
-                  AiTranslatePanel(),
-                  SizedBox(height: 16),
-                  AiImagePanel(),
-                  SizedBox(height: 16),
+                  const _HomeCheckInCard(),
+                  const SizedBox(height: 24),
+                  const _SectionHeader(title: '懂它，也照顾它'),
+                  const SizedBox(height: 12),
+                  const AiTranslatePanel(),
+                  const SizedBox(height: 12),
+                  const AiImagePanel(),
+                  const SizedBox(height: 12),
                   _AiConsultCard(onTap: () => _openConsultation(context, ref)),
-                  SizedBox(height: 28),
+                  const SizedBox(height: 24),
                   const _HomeDeviceSection(),
                 ]),
               ),
@@ -98,7 +95,7 @@ void _showNoDeviceDialog(BuildContext context) {
         '需要绑定设备',
         style: TextStyle(
           fontSize: 16,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600,
           color: AppColors.onSurface,
         ),
       ),
@@ -127,7 +124,7 @@ void _showNoDeviceDialog(BuildContext context) {
             '去绑定',
             style: TextStyle(
               color: AppColors.brandPrimary,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -145,12 +142,16 @@ class _HomeHero extends ConsumerWidget {
     final deviceState = ref.watch(deviceListProvider);
 
     final user = auth.user;
-    final displayName = (user?.name.trim().isNotEmpty ?? false)
-        ? user!.name
-        : '铲屎官';
+    final displayName =
+        (user?.name.trim().isNotEmpty ?? false) ? user!.name : '铲屎官';
     final avatar = user?.avatar ?? '';
     final onlineCount = deviceState.devices.where((d) => d.isOnline).length;
-    final points = user?.points ?? 0;
+    final balance = ref.watch(pointsBalanceProvider);
+    final points = overviewInt(balance.valueOrNull?['total']);
+    final deviceCount =
+        deviceState.isLoading || deviceState.errorMessage != null
+            ? '—'
+            : '$onlineCount';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
@@ -179,28 +180,30 @@ class _HomeHero extends ConsumerWidget {
         children: [
           // 第一行：头像+昵称(→我的) | 🔔通知(→消息页)
           Row(children: [
-            _HeroTap(
+            Expanded(
+                child: _HeroTap(
               onTap: () => context.go(AppRoutes.profile),
               child: Row(children: [
                 PetAvatar(imageUrl: avatar, size: 40, fallbackEmoji: '🐾'),
                 SizedBox(width: 10),
-                Text(displayName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: AppFonts.primary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.onSurface,
-                    )),
+                Expanded(
+                    child: Text(displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onSurface,
+                        ))),
               ]),
-            ),
-            Spacer(),
+            )),
+            const SizedBox(width: 12),
             _HeroTap(
               onTap: () => context.push(AppRoutes.message),
               child: Container(
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.6),
                   shape: BoxShape.circle,
@@ -219,8 +222,12 @@ class _HomeHero extends ConsumerWidget {
                     MaterialPageRoute(builder: (_) => const DeviceListPage())),
                 child: _HeroMetric(
                   icon: Icons.sensors_rounded,
-                  value: '$onlineCount',
-                  label: '在线设备',
+                  value: deviceCount,
+                  label: deviceState.isLoading
+                      ? '加载中'
+                      : deviceState.errorMessage != null
+                          ? '状态待更新'
+                          : '在线设备',
                   color: AppColors.statusOnline,
                 ),
               ),
@@ -231,7 +238,7 @@ class _HomeHero extends ConsumerWidget {
                 onTap: () => context.push(AppRoutes.points),
                 child: _HeroMetric(
                   icon: Icons.account_balance_wallet_rounded,
-                  value: '$points',
+                  value: points?.toString() ?? '—',
                   label: '积分',
                   color: AppColors.brandPrimary,
                 ),
@@ -267,7 +274,10 @@ class _HeroMetric extends StatelessWidget {
   final String value, label;
   final Color color;
   const _HeroMetric(
-      {required this.icon, required this.value, required this.label, required this.color});
+      {required this.icon,
+      required this.value,
+      required this.label,
+      required this.color});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -290,12 +300,12 @@ class _HeroMetric extends StatelessWidget {
                     style: TextStyle(
                         fontFamily: AppFonts.primary,
                         fontSize: 16,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.onSurface)),
                 Text(label,
                     maxLines: 1,
                     style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: AppColors.onSurfaceVariant)),
               ],
@@ -316,20 +326,12 @@ class _AiConsultCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: AppColors.borderSubtle),
-            boxShadow: [
-              BoxShadow(
-                  color: AppColors.cardShadow,
-                  blurRadius: 16,
-                  spreadRadius: -6,
-                  offset: Offset(0, 6)),
-            ],
+            borderRadius: BorderRadius.circular(18),
           ),
           child: Row(children: [
             Container(
@@ -352,7 +354,7 @@ class _AiConsultCard extends StatelessWidget {
                       style: TextStyle(
                           fontFamily: AppFonts.primary,
                           fontSize: 16,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.onSurface)),
                   SizedBox(height: 3),
                   Text('问问宠小伊，基于宠物档案给建议',
@@ -373,23 +375,14 @@ class _AiConsultCard extends StatelessWidget {
 }
 
 // ── 首页签到卡片（调 checkin status 显示连续签到天数）──────────
-final _homeCheckInProvider =
-    FutureProvider.autoDispose<Map<String, dynamic>?>((ref) async {
-  try {
-    return await ref.read(pointsRepositoryProvider).fetchStatus();
-  } catch (e) {
-    return null;
-  }
-});
-
 class _HomeCheckInCard extends ConsumerWidget {
   const _HomeCheckInCard();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final asyncStreak = ref.watch(_homeCheckInProvider);
+    final asyncStreak = ref.watch(checkInStatusProvider);
     final streak = asyncStreak.valueOrNull;
-    final signedToday = streak?['signedInToday'] == true;
+    final signedToday = overviewBool(streak?['signedInToday']);
     final currentStreak = streak == null
         ? null
         : (streak['currentStreak'] is int
@@ -399,15 +392,19 @@ class _HomeCheckInCard extends ConsumerWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => context.push(AppRoutes.checkIn),
+        onTap: () async {
+          await context.push(AppRoutes.checkIn);
+          ref.invalidate(checkInStatusProvider);
+          ref.invalidate(pointsBalanceProvider);
+        },
         borderRadius: BorderRadius.circular(18),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             color: AppColors.surfaceContainerLow,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.15)),
+            border:
+                Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
           ),
           child: Row(children: [
             Container(
@@ -430,7 +427,7 @@ class _HomeCheckInCard extends ConsumerWidget {
                     style: TextStyle(
                         fontFamily: AppFonts.primary,
                         fontSize: 14,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                         color: AppColors.onSurface),
                   ),
                   SizedBox(height: 2),
@@ -553,7 +550,7 @@ class _SectionHeader extends StatelessWidget {
               actionLabel!,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
                 color: AppColors.primary,
               ),
             ),
@@ -577,9 +574,11 @@ class _HomeDeviceSection extends ConsumerWidget {
       children: [
         _SectionHeader(
           title: l10n.homeConnectedDevices,
-          subtitle: state.devices.isEmpty
-              ? '还没有绑定设备'
-              : l10n.homeDevicesActive(onlineCount),
+          subtitle: state.errorMessage != null
+              ? '设备状态暂不可用'
+              : state.devices.isEmpty
+                  ? '还没有绑定设备'
+                  : l10n.homeDevicesActive(onlineCount),
           // 右边始终显示 + 图标，点击添加新设备
           onAdd: () => Navigator.push(
             context,
@@ -596,6 +595,12 @@ class _HomeDeviceSection extends ConsumerWidget {
         SizedBox(height: 12),
         if (state.isLoading && state.devices.isEmpty)
           const _DeviceLoadingPanel()
+        else if (state.errorMessage != null && state.devices.isEmpty)
+          TextButton.icon(
+            onPressed: () => ref.read(deviceListProvider.notifier).load(),
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('设备加载失败，点击重试'),
+          )
         else if (state.devices.isEmpty)
           const _EmptyDevicePanel()
         else ...[
@@ -616,7 +621,7 @@ class _HomeDeviceSection extends ConsumerWidget {
                   '查看全部 ${state.devices.length} 台设备',
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.primary,
                   ),
                 ),
@@ -638,7 +643,7 @@ class _DeviceLoadingPanel extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: CircularProgressIndicator(
         color: AppColors.primary,
@@ -658,7 +663,7 @@ class _EmptyDevicePanel extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
             color: AppColors.cardShadow,
@@ -734,13 +739,14 @@ class _HomeDeviceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isRobot = device.isRobot;
-    final accent = device.isOnline ? AppColors.statusOnline : AppColors.statusNeutral;
+    final accent =
+        device.isOnline ? AppColors.statusOnline : AppColors.statusNeutral;
 
     return Material(
       color: AppColors.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(18),
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         onTap: () {
           HapticFeedback.selectionClick();
           Navigator.push(
@@ -755,7 +761,7 @@ class _HomeDeviceCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
                 color: AppColors.cardShadow,
@@ -827,7 +833,7 @@ class _HomeDeviceCard extends StatelessWidget {
                   device.isOwner ? '我的' : '共享',
                   style: TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.onSurfaceVariant,
                   ),
                 ),
