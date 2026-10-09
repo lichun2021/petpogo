@@ -159,9 +159,20 @@ void main() {
     expect(find.text('点赞 0'), findsOneWidget);
     expect(find.text('评论 0'), findsOneWidget);
     expect(find.text('浏览 0'), findsOneWidget);
+    expect(find.text('展开详情'), findsOneWidget);
+    expect(find.text('查看评论'), findsNothing);
+    expect(find.byType(SelectableText), findsNothing);
+    expect(tester.widget<Text>(find.text('帖子 1')).maxLines, 3);
+    await tester.tap(find.text('展开详情'));
+    await tester.pumpAndSettle();
+    expect(find.text('收起详情'), findsOneWidget);
     expect(find.text('查看评论'), findsOneWidget);
     expect(tester.widget<SelectableText>(find.byType(SelectableText)).maxLines,
         isNull);
+    await tester.tap(find.text('收起详情'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SelectableText), findsNothing);
+    expect(find.text('查看评论'), findsNothing);
     expect(find.text('已经到底了'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
