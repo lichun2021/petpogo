@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'package:petpogo_app/features/digital_pet/controller/digital_pet_controller.dart';
+import 'package:petpogo_app/features/pet/data/models/pet_peer_models.dart';
+import 'package:petpogo_app/features/pet/data/repository/pet_peer_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:petpogo_app/core/api/api_client.dart';
@@ -40,7 +44,86 @@ class _Client implements ApiClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _EmptyPeerRepository implements PetPeerRepository {
+  @override
+  Future<List<PetInfoModel>> fetchPetList() async => [];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _ResourceClient extends _Client {
+  int requests = 0;
+  Completer<Map<String, dynamic>> pending = Completer();
+
+  @override
+  Future<T> get<T>(String path,
+      {Map<String, dynamic>? params, T Function(dynamic)? fromJson}) async {
+    expect(path, ApiEndpoints.petResources);
+    requests++;
+    final data = await pending.future;
+    return fromJson != null ? fromJson(data) : data as T;
+  }
+}
+
 void main() {
+  group('DigitalPetController resource prefetch', () {
+    test('starts on entry, shares in-flight request and reuses loaded options',
+        () async {
+      final client = _ResourceClient();
+      final controller = DigitalPetController(
+          _EmptyPeerRepository(), DigitalPetRepository(client));
+      addTearDown(controller.dispose);
+      expect(client.requests, 1);
+      expect(controller.state.resourcesLoading, isTrue);
+      final first = controller.loadResources();
+      final second = controller.loadResources();
+      expect(client.requests, 1);
+      client.pending.complete({
+        'interactionTypes': [
+          {'id': 'feed', 'code': 'feed', 'name': '喂食'}
+        ],
+      });
+      await Future.wait([first, second]);
+      expect(controller.state.resources!.interactionTypes.single.name, '喂食');
+      expect(controller.state.resourcesLoading, isFalse);
+      await controller.loadResources();
+      await controller.retry();
+      expect(client.requests, 1);
+    });
+
+    test('failed preload can retry and empty results are cached', () async {
+      final client = _ResourceClient();
+      final controller = DigitalPetController(
+          _EmptyPeerRepository(), DigitalPetRepository(client));
+      addTearDown(controller.dispose);
+      final first = controller.loadResources();
+      client.pending.completeError(Exception('offline'));
+      await first;
+      expect(controller.state.resourcesError, isNotNull);
+      expect(controller.state.resourcesLoading, isFalse);
+      client.pending = Completer();
+      final retry = controller.loadResources();
+      expect(controller.state.resourcesError, isNull);
+      client.pending.complete({});
+      await retry;
+      expect(controller.state.resources!.interactionTypes, isEmpty);
+      await controller.loadResources();
+      expect(client.requests, 2);
+    });
+
+    test('preload completion after disposal does not update state', () async {
+      final client = _ResourceClient();
+      final controller = DigitalPetController(
+          _EmptyPeerRepository(), DigitalPetRepository(client));
+      final loading = controller.loadResources();
+      await Future<void>.delayed(Duration.zero);
+      controller.dispose();
+      client.pending.complete({});
+      await loading;
+    });
+  });
+
   group('DigitalPetRepository', () {
     test('fetchStatus parses a fully-configured pet', () async {
       final client = _Client()
@@ -115,7 +198,8 @@ void main() {
       expect(r.clipCode, 'feed');
     });
 
-    test('interact parses a null clipCode (interaction not mapped to an animation)',
+    test(
+        'interact parses a null clipCode (interaction not mapped to an animation)',
         () async {
       final client = _Client()
         ..response = {
@@ -188,7 +272,8 @@ void main() {
       expect(result.value!.clipCode, 'lying');
     });
 
-    test('fetchAction parses an unmapped action code (clipCode null)', () async {
+    test('fetchAction parses an unmapped action code (clipCode null)',
+        () async {
       final client = _Client()
         ..response = {
           'code': 'lying',
@@ -224,7 +309,8 @@ void main() {
       expect(client.payload, {'name': '小白', 'backgroundId': '1'});
     });
 
-    test('updateResourceSelection can set modelId without touching backgroundId',
+    test(
+        'updateResourceSelection can set modelId without touching backgroundId',
         () async {
       final client = _Client()..response = {'success': true};
       await DigitalPetRepository(client).updateResourceSelection(

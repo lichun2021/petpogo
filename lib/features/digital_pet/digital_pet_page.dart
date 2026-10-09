@@ -160,11 +160,6 @@ class _DigitalPetPageState extends ConsumerState<DigitalPetPage> {
 
   void _togglePanel(_PanelKind kind) {
     setState(() => _openPanel = _openPanel == kind ? null : kind);
-    if (kind == _PanelKind.background || kind == _PanelKind.action) {
-      // 背景/形象面板依赖 resources 列表；互动面板也从 resources 里取
-      // interactionTypes，打开时按需拉取（无 spec 要求预取时机）。
-      ref.read(digitalPetControllerProvider.notifier).loadResources();
-    }
   }
 
   void _closePanel() => setState(() => _openPanel = null);
@@ -236,6 +231,9 @@ class _DigitalPetPageState extends ConsumerState<DigitalPetPage> {
               child: _FloatingOptionsPanel(
                 kind: _openPanel!,
                 state: state,
+                onRetryResources: () => ref
+                    .read(digitalPetControllerProvider.notifier)
+                    .loadResources(),
                 onPetChanged: (id) {
                   _switchPet(id);
                   _closePanel();
@@ -432,6 +430,7 @@ class _RailButton extends StatelessWidget {
 class _FloatingOptionsPanel extends StatelessWidget {
   final _PanelKind kind;
   final DigitalPetState state;
+  final VoidCallback onRetryResources;
   final ValueChanged<String> onPetChanged;
   final ValueChanged<String> onInteract;
   final ValueChanged<PetBackgroundResource> onBackgroundChanged;
@@ -439,6 +438,7 @@ class _FloatingOptionsPanel extends StatelessWidget {
   const _FloatingOptionsPanel({
     required this.kind,
     required this.state,
+    required this.onRetryResources,
     required this.onPetChanged,
     required this.onInteract,
     required this.onBackgroundChanged,
@@ -467,6 +467,22 @@ class _FloatingOptionsPanel extends StatelessWidget {
   }
 
   Widget _buildContent() {
+    if (kind != _PanelKind.pet && state.resources == null) {
+      if (state.resourcesError != null) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('选项加载失败'),
+            TextButton(onPressed: onRetryResources, child: const Text('重新加载')),
+          ],
+        );
+      }
+      return const SizedBox(
+        width: 88,
+        height: 48,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
     switch (kind) {
       case _PanelKind.pet:
         return _buildPetList();
@@ -501,17 +517,8 @@ class _FloatingOptionsPanel extends StatelessWidget {
 
   Widget _buildInteractionList() {
     final types = state.resources?.interactionTypes ?? const [];
-    if (types.isEmpty) {
-      return const SizedBox(
-        width: 88,
-        child: Center(
-          child: Padding(
-            padding: EdgeInsets.all(8),
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-      );
-    }
+    if (types.isEmpty) return const Text('暂无互动选项');
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: types
@@ -530,13 +537,8 @@ class _FloatingOptionsPanel extends StatelessWidget {
 
   Widget _buildBackgroundList() {
     final list = state.resources?.backgrounds ?? const [];
-    if (list.isEmpty) {
-      return const SizedBox(
-        width: 48,
-        height: 48,
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      );
-    }
+    if (list.isEmpty) return const Text('暂无背景选项');
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: list

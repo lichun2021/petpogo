@@ -106,6 +106,23 @@ const keyLight = new THREE.DirectionalLight(0xffffff, 1.1);
 keyLight.position.set(2, 3, 2);
 scene.add(keyLight);
 
+// Soft contact shadow anchors the pet without flattening the scene background.
+const shadowCanvas = document.createElement('canvas');
+shadowCanvas.width = shadowCanvas.height = 128;
+const shadowContext = shadowCanvas.getContext('2d');
+const shadowGradient = shadowContext.createRadialGradient(64, 64, 4, 64, 64, 64);
+shadowGradient.addColorStop(0, 'rgba(58,46,42,0.28)');
+shadowGradient.addColorStop(1, 'rgba(58,46,42,0)');
+shadowContext.fillStyle = shadowGradient;
+shadowContext.fillRect(0, 0, 128, 128);
+const contactShadow = new THREE.Mesh(
+  new THREE.PlaneGeometry(1.8, 1.1),
+  new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(shadowCanvas), transparent: true, depthWrite: false})
+);
+contactShadow.rotation.x = -Math.PI / 2;
+contactShadow.position.set(0, PET_OFFSET_Y - 0.005, 0);
+scene.add(contactShadow);
+
 function resize() {
   const w = window.innerWidth;
   const h = window.innerHeight;
@@ -168,10 +185,7 @@ function applyGltfToScene(gltf, cacheKey) {
   currentPet.position.y = PET_OFFSET_Y;
   targetRotationY = PET_ROTATION_Y;
 
-  // 低多边形美术风格需要"平面着色"才能看出清晰的棱面（比如鼻子上的
-  // 鼻孔切面、耳朵的棱角），默认的平滑着色会把相邻面的法线插值到一起，
-  // 让这些棱面糊成一片、边缘发虚。素材本身没有在导出时打上 flatShading
-  // 标记，这里加载后统一给每个 mesh 的材质补上。
+  // Preserve the asset’s authored shading rather than forcing faceted normals.
   currentPet.traverse((o) => {
     if (!o.isMesh) return;
     // r128 的视锥裁剪使用未蒙皮的 geometry 包围球，不能反映骨骼变换后
@@ -180,7 +194,7 @@ function applyGltfToScene(gltf, cacheKey) {
     if (o.isSkinnedMesh) o.frustumCulled = false;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
     mats.forEach((m) => {
-      m.flatShading = true;
+      m.flatShading = false;
       m.needsUpdate = true;
     });
   });

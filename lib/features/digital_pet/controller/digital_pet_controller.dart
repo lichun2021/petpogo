@@ -49,6 +49,8 @@ class DigitalPetState {
 
   /// GET /sdkapi/pet/resources 的缓存结果；背景/形象/互动面板打开时用。
   final PetResourcesModel? resources;
+  final bool resourcesLoading;
+  final Object? resourcesError;
 
   /// Three.js 场景是否已加载完成（petReady 事件）。
   final bool sceneReady;
@@ -66,6 +68,8 @@ class DigitalPetState {
     this.petStatus,
     this.error,
     this.resources,
+    this.resourcesLoading = false,
+    this.resourcesError,
     this.sceneReady = false,
     this.sceneError,
     this.lastClipCode,
@@ -88,6 +92,9 @@ class DigitalPetState {
     PetStatusModel? petStatus,
     Object? error,
     PetResourcesModel? resources,
+    bool? resourcesLoading,
+    Object? resourcesError,
+    bool clearResourcesError = false,
     bool? sceneReady,
     Object? sceneError,
     String? lastClipCode,
@@ -101,6 +108,10 @@ class DigitalPetState {
         petStatus: petStatus ?? this.petStatus,
         error: clearError ? null : (error ?? this.error),
         resources: resources ?? this.resources,
+        resourcesLoading: resourcesLoading ?? this.resourcesLoading,
+        resourcesError: clearResourcesError
+            ? null
+            : (resourcesError ?? this.resourcesError),
         sceneReady: sceneReady ?? this.sceneReady,
         sceneError: clearSceneError ? null : (sceneError ?? this.sceneError),
         lastClipCode: lastClipCode ?? this.lastClipCode,
@@ -112,9 +123,11 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
   final DigitalPetRepository _digitalRepo;
 
   Timer? _actionPollTimer;
+  Future<void>? _resourcesRequest;
 
   DigitalPetController(this._peerRepo, this._digitalRepo)
       : super(const DigitalPetState()) {
+    unawaited(loadResources());
     _init();
   }
 
@@ -199,7 +212,9 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
   }
 
   /// 页面里点击"重试"按钮时调用。
-  Future<void> retry() => _loadStatusForSelected();
+  Future<void> retry() async {
+    await Future.wait([_loadStatusForSelected(), loadResources()]);
+  }
 
   // ── 互动 ──────────────────────────────────────────────
 
@@ -229,11 +244,28 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
 
   // ── 资源选择 ──────────────────────────────────────────
 
-  Future<void> loadResources() async {
+  /// 页面初始化即预取；面板直接复用缓存，并合并进行中的请求。
+  Future<void> loadResources() {
+    if (!mounted || state.resources != null) return Future.value();
+    return _resourcesRequest ??= _fetchResources().whenComplete(() {
+      _resourcesRequest = null;
+    });
+  }
+
+  Future<void> _fetchResources() async {
+    state = state.copyWith(resourcesLoading: true, clearResourcesError: true);
     final result = await _digitalRepo.fetchResources();
+    if (!mounted) return;
     result.when(
-      success: (res) => state = state.copyWith(resources: res),
-      failure: (err) => debugPrint('[数字宠] ❌ 获取资源列表失败: $err'),
+      success: (res) => state = state.copyWith(
+        resources: res,
+        resourcesLoading: false,
+        clearResourcesError: true,
+      ),
+      failure: (err) => state = state.copyWith(
+        resourcesLoading: false,
+        resourcesError: err,
+      ),
     );
   }
 
