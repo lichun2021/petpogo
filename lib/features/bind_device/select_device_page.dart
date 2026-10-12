@@ -9,7 +9,7 @@ import '../device/data/models/device_product_model.dart';
 import '../device/data/repository/device_repository.dart';
 import 'scan_qr_page.dart';
 import 'robot_wifi_setup_page.dart';
-import 'collar_bluetooth_setup_page.dart';
+import 'device_wifi_setup_entry.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 /// 选择要绑定的设备类型。
@@ -105,7 +105,7 @@ class _SelectDevicePageState extends ConsumerState<SelectDevicePage> {
                 leading: Icon(Icons.bluetooth_rounded,
                     color: AppColors.brandPrimary),
                 title: const Text('蓝牙配网'),
-                subtitle: const Text('通过蓝牙为项圈设置 WiFi，再扫码绑定'),
+                subtitle: const Text('通过蓝牙配置 WiFi，联网后自动绑定账号'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.pop(sheetContext, true),
               ),
@@ -123,13 +123,14 @@ class _SelectDevicePageState extends ConsumerState<SelectDevicePage> {
       ),
     );
     if (!mounted || bluetooth == null) return;
-    Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => bluetooth
-              ? CollarBluetoothSetupPage(productKey: product.productKey)
-              : ScanQrPage(productKey: product.productKey),
-        ));
+    if (bluetooth) {
+      await openCollarSetup(context, productKey: product.productKey);
+    } else {
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => ScanQrPage(productKey: product.productKey)));
+    }
   }
 
   @override

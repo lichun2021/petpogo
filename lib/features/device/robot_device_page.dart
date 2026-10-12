@@ -21,6 +21,7 @@ import '../device/data/models/media_model.dart';
 import '../device/data/repository/media_repository.dart';
 import '../device/media_gallery_page.dart';
 import 'device_detail_page.dart';
+import '../bind_device/device_wifi_setup_entry.dart';
 
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 import 'robot_ai_home_page.dart';
@@ -929,6 +930,31 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 ]),
               ),
             ),
+            if (ref.watch(deviceListProvider).devices.any((device) =>
+                device.mac.toUpperCase() == widget.mac.toUpperCase() &&
+                device.isOwner &&
+                !device.isShared))
+              IconButton(
+                  icon: Icon(Icons.wifi_rounded, color: AppColors.onPrimary),
+                  tooltip: '更换 WiFi / 重新配网',
+                  onPressed: () async {
+                    final device = ref
+                        .read(deviceListProvider)
+                        .devices
+                        .firstWhere((device) =>
+                            device.mac.toUpperCase() ==
+                            widget.mac.toUpperCase());
+                    await _pauseAgora();
+                    if (!mounted) return;
+                    await openRobotWifiSetup(context,
+                        productKey: device.productKey,
+                        existingMac: widget.mac,
+                        deviceName: widget.name);
+                    if (mounted) {
+                      _rejoinChannel();
+                      ref.read(deviceListProvider.notifier).load();
+                    }
+                  }),
             // AI 荧光按钮
             _AiGlowButton(
               onTap: () async {
@@ -1952,7 +1978,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                     decoration: BoxDecoration(
                       gradient: _micOn
                           ? LinearGradient(
-                              colors: [AppColors.statusOnlineStrong, AppColors.statusOnline],
+                              colors: [
+                                  AppColors.statusOnlineStrong,
+                                  AppColors.statusOnline
+                                ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight)
                           : AppColors.primaryGradient,

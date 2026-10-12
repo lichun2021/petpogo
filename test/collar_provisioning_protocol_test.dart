@@ -7,7 +7,7 @@ class _Transport implements CollarProvisioningTransport {
   String? failAt;
   final writes = <(String, List<int>)>[];
   @override
-  Future<int> negotiatedMtu() async => mtu;
+  Future<int> negotiatedMtu(int minimum) async => mtu;
   @override
   Future<void> write(String uuid, List<int> value) async {
     if (uuid == failAt) throw StateError('write rejected or disconnected');
@@ -16,6 +16,74 @@ class _Transport implements CollarProvisioningTransport {
 }
 
 void main() {
+  test('fetches fresh token after credentials and writes token before save',
+      () async {
+    final transport = _Transport()..mtu = 67;
+    var calls = 0;
+    Future<String> acquire() async {
+      calls++;
+      expect(transport.writes.last.$1, CollarProvisioningProtocol.password);
+      return 'A' * 64;
+    }
+
+    await CollarProvisioningProtocol.send(transport, 'wifi', 'password',
+        acquireBindToken: acquire);
+    expect(transport.writes.map((e) => e.$1), [
+      CollarProvisioningProtocol.ssid,
+      CollarProvisioningProtocol.password,
+      CollarProvisioningProtocol.bindToken,
+      CollarProvisioningProtocol.control
+    ]);
+    expect(transport.writes[2].$2, utf8.encode('A' * 64));
+    await CollarProvisioningProtocol.send(transport, 'wifi', 'password',
+        acquireBindToken: acquire);
+    expect(calls, 2);
+  });
+
+  for (final token in ['', 'A' * 65, 'abc-def', '令牌', 'abc\n']) {
+    test('rejects invalid token ${token.length} before committing', () async {
+      final transport = _Transport();
+      await expectLater(
+          CollarProvisioningProtocol.send(transport, 'wifi', 'password',
+              acquireBindToken: () async => token),
+          throwsA(isA<CollarProvisioningException>()));
+      expect(
+          transport.writes
+              .any((e) => e.$1 == CollarProvisioningProtocol.control),
+          isFalse);
+    });
+  }
+
+  test('64-byte token requires MTU 67', () async {
+    final transport = _Transport()..mtu = 66;
+    await expectLater(
+        CollarProvisioningProtocol.send(transport, 'wifi', 'password',
+            acquireBindToken: () async => 'A' * 64),
+        throwsA(isA<CollarProvisioningException>()));
+    expect(
+        transport.writes.any((e) => e.$1 == CollarProvisioningProtocol.control),
+        isFalse);
+  });
+
+  test('token retrieval failure never commits configuration', () async {
+    final transport = _Transport();
+    await expectLater(
+        CollarProvisioningProtocol.send(transport, 'wifi', 'password',
+            acquireBindToken: () async => throw StateError('network failure')),
+        throwsStateError);
+    expect(transport.writes.length, 2);
+  });
+
+  test('token write rejection never commits configuration', () async {
+    final transport = _Transport()
+      ..failAt = CollarProvisioningProtocol.bindToken;
+    await expectLater(
+        CollarProvisioningProtocol.send(transport, 'wifi', 'password',
+            acquireBindToken: () async => 'abc123'),
+        throwsStateError);
+    expect(transport.writes.length, 2);
+  });
+
   test('writes UTF-8 SSID, password and save in order without terminators',
       () async {
     final transport = _Transport();
@@ -64,9 +132,9 @@ void main() {
     expect(transport.writes, isEmpty);
   });
 
-  test('rejects insufficient MTU even for short credentials', () async {
-    final transport = _Transport()..mtu = 65;
-    await expectLater(CollarProvisioningProtocol.send(transport, 'a', 'b'),
+  test('rejects insufficient MTU for actual payload', () async {
+    final transport = _Transport()..mtu = 23;
+    await expectLater(CollarProvisioningProtocol.send(transport, 'a' * 32, 'b'),
         throwsA(isA<CollarProvisioningException>()));
     expect(transport.writes, isEmpty);
   });

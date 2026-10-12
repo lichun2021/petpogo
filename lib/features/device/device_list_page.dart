@@ -15,6 +15,8 @@ import '../pet/data/repository/pet_peer_repository.dart';
 import '../pet/bind_pet_sheet.dart';
 import '../pet_circle/controller/pet_circle_pet_controller.dart';
 import '../bind_device/select_device_page.dart';
+import '../bind_device/device_wifi_setup_entry.dart';
+import 'data/wifi_setup_capability.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 import '../../shared/theme/app_tokens.dart';
 
@@ -209,6 +211,8 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
   @override
   Widget build(BuildContext context) {
     final device = widget.device;
+    final wifiCollars =
+        ref.watch(wifiCollarMacsProvider).valueOrNull ?? const <String>{};
     final deviceType = device.productType;
 
     return GestureDetector(
@@ -369,8 +373,25 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
                   tooltip: '更多设备操作',
                   icon: Icon(Icons.more_horiz_rounded,
                       color: AppColors.textSecondary),
-                  onSelected: (_) => _confirmUnbind(context, ref),
+                  onSelected: (action) async {
+                    if (action == 'wifi') {
+                      final open =
+                          device.isRobot ? openRobotWifiSetup : openCollarSetup;
+                      await open(context,
+                          productKey: device.productKey,
+                          existingMac: device.mac,
+                          deviceName: device.displayName);
+                      if (mounted)
+                        await ref.read(deviceListProvider.notifier).load();
+                    } else {
+                      _confirmUnbind(context, ref);
+                    }
+                  },
                   itemBuilder: (_) => [
+                    if (supportsWifiSetup(device, wifiCollars) &&
+                        !device.isShared)
+                      const PopupMenuItem(
+                          value: 'wifi', child: Text('更换 WiFi / 重新配网')),
                     PopupMenuItem(
                         value: 'unbind',
                         child: Text('解绑设备',

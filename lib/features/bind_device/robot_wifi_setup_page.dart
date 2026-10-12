@@ -8,8 +8,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:network_info_plus/network_info_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../shared/theme/app_colors.dart';
@@ -19,15 +17,23 @@ import '../device/data/repository/device_repository.dart';
 import '../device/data/models/device_product_model.dart';
 import '../../shared/utils/error_presenter.dart';
 import '../../shared/theme/app_tokens.dart';
+import 'services/device_reconnect_tracker.dart';
+import 'services/current_wifi.dart';
+import 'services/provisioning_account.dart';
+import '../auth/controller/auth_controller.dart';
 
 // ── 配网步骤枚举 ──────────────────────────────────────────
 enum _SetupStep { wifi, qrcode, waiting, success }
 
 class RobotWifiSetupPage extends ConsumerStatefulWidget {
   final String productKey;
+  final String? existingMac;
+  final String? deviceName;
   const RobotWifiSetupPage({
     super.key,
     this.productKey = DeviceProductKeys.robot,
+    this.existingMac,
+    this.deviceName,
   });
 
   @override
@@ -37,6 +43,8 @@ class RobotWifiSetupPage extends ConsumerStatefulWidget {
 class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
     with TickerProviderStateMixin {
   _SetupStep _step = _SetupStep.wifi;
+  bool get _reconfiguring => widget.existingMac != null;
+  DeviceReconnectTracker? _reconnect;
 
   // ── 表单 ─────────────────────────────────────────────────
   final _ssidCtrl = TextEditingController();
@@ -44,9 +52,31 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
   final _formKey = GlobalKey<FormState>();
   bool _pwdVisible = false;
   bool _loadingWifi = true;
+  bool _wifiNameEdited = false;
 
   // ── 二维码 ───────────────────────────────────────────────
+  String? _accountUserId;
   String _qrData = '';
+
+  void _checkAccount() {
+    if (!mounted ||
+        !isProvisioningAccount(
+            _accountUserId, ref.read(authControllerProvider).user?.id)) {
+      throw StateError('登录账号已变化，请重新开始配网');
+    }
+  }
+
+  void _stopForAccountChange() {
+    _qrCountdownTimer?.cancel();
+    _provisionTimeoutTimer?.cancel();
+    _pollTimer?.cancel();
+    setState(() {
+      _qrData = '';
+      _step = _SetupStep.wifi;
+      _qrError = '登录账号已变化，请重新开始配网';
+    });
+  }
+
   bool _generatingQr = false;
   int _qrExpireIn = 0;
   String? _qrError;
@@ -102,26 +132,12 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
   // ── 自动获取当前连接的 WiFi SSID ─────────────────
   Future<void> _fetchCurrentWifi() async {
     try {
-      // Android 需要位置权限才能读取 WiFi SSID
-      final locStatus = await Permission.locationWhenInUse.status;
-      debugPrint('[WiFi] 位置权限状态: $locStatus');
-      if (!locStatus.isGranted) {
-        final result = await Permission.locationWhenInUse.request();
-        debugPrint('[WiFi] 权限请求结果: $result');
-        if (!result.isGranted) {
-          debugPrint('[WiFi] 未授权位置权限，无法读取 SSID');
-          return;
-        }
-      }
-      final info = NetworkInfo();
-      final ssid = await info.getWifiName();
-      debugPrint('[WiFi] 获取到 SSID: $ssid');
-      if (ssid != null && ssid.isNotEmpty && mounted) {
-        final cleaned = ssid.replaceAll('"', '');
-        debugPrint('[WiFi] 清洗后 SSID: $cleaned');
-        setState(() => _ssidCtrl.text = cleaned);
-      } else {
-        debugPrint('[WiFi] SSID 为空或 null');
+      final ssid = await readCurrentWifiName();
+      if (ssid != null &&
+          mounted &&
+          !_wifiNameEdited &&
+          _ssidCtrl.text.isEmpty) {
+        _ssidCtrl.text = ssid;
       }
     } catch (e) {
       debugPrint('[WiFi] 获取失败: $e');
@@ -141,20 +157,35 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
       _generatingQr = true;
       _qrError = null;
     });
+    _accountUserId = ref.read(authControllerProvider).user?.id;
     try {
+      _checkAccount();
       final repository = ref.read(deviceRepositoryProvider);
-      try {
-        final current = await repository.fetchDevices();
-        _existingMacs = current.map((device) => device.mac).toSet();
-      } catch (error) {
-        _existingMacs = ref
-            .read(deviceListProvider)
-            .devices
-            .map((device) => device.mac)
-            .toSet();
-        debugPrint('[机器人配网] 设备快照请求失败，使用本地缓存: $error');
+      final current =
+          await repository.fetchDevices().timeout(const Duration(seconds: 10));
+      _checkAccount();
+      _existingMacs = current.map((device) => device.mac.toUpperCase()).toSet();
+      if (_reconfiguring) {
+        final current = await repository
+            .fetchDevices()
+            .timeout(const Duration(seconds: 10));
+        if (!current.any((device) =>
+            device.mac.toUpperCase() == widget.existingMac!.toUpperCase() &&
+            device.isOwner &&
+            !device.isShared)) {
+          throw StateError('仅设备主人可以重新配网');
+        }
+        final detail = await repository
+            .fetchDeviceDetail(widget.existingMac!)
+            .timeout(const Duration(seconds: 10));
+        _reconnect = DeviceReconnectTracker(
+            initiallyOnline: detail.onlineStatus,
+            previousLastOnlineTime: detail.lastOnlineTime,
+            startedAt: DateTime.now().millisecondsSinceEpoch);
       }
+      _checkAccount();
       final credential = await repository.createDeviceQrToken();
+      _checkAccount();
       final data = jsonEncode({
         's': ssid,
         'p': pwd,
@@ -219,6 +250,12 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
 
   Future<void> _startWaiting() async {
     if (_step != _SetupStep.qrcode) return;
+    try {
+      _checkAccount();
+    } catch (_) {
+      if (mounted) _stopForAccountChange();
+      return;
+    }
     _qrCountdownTimer?.cancel();
     final deadline = _provisionDeadline;
     if (deadline == null || !deadline.isAfter(DateTime.now())) {
@@ -243,13 +280,41 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
     _updateProgress();
     var found = false;
     try {
-      final devices = await ref.read(deviceRepositoryProvider).fetchDevices();
-      final newMac = devices
+      _checkAccount();
+      final devices = await ref
+          .read(deviceRepositoryProvider)
+          .fetchDevices()
+          .timeout(const Duration(seconds: 8));
+      _checkAccount();
+      var newMac = devices
           .where((device) =>
+              device.isOwner &&
+              !device.isShared &&
+              device.mac.isNotEmpty &&
               device.productKey.toUpperCase() ==
-              widget.productKey.toUpperCase())
+                  widget.productKey.toUpperCase())
           .map((d) => d.mac)
-          .firstWhere((m) => !_existingMacs.contains(m), orElse: () => '');
+          .firstWhere((m) => !_existingMacs.contains(m.toUpperCase()),
+              orElse: () => '');
+      if (_reconfiguring) {
+        newMac = '';
+        final owned = devices.any((device) =>
+            device.mac.toUpperCase() == widget.existingMac!.toUpperCase() &&
+            device.isOwner &&
+            !device.isShared);
+        if (owned) {
+          final detail = await ref
+              .read(deviceRepositoryProvider)
+              .fetchDeviceDetail(widget.existingMac!)
+              .timeout(const Duration(seconds: 8));
+          if (_reconnect!.observe(
+              online: detail.onlineStatus,
+              lastOnlineTime: detail.lastOnlineTime)) {
+            newMac = widget.existingMac!;
+          }
+        }
+      }
+      _checkAccount();
       final beforeDeadline = DateTime.now().isBefore(
         _provisionDeadline ?? DateTime.fromMillisecondsSinceEpoch(0),
       );
@@ -258,6 +323,7 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
         _provisionTimeoutTimer?.cancel();
         _pollTimer?.cancel();
         await ref.read(deviceListProvider.notifier).load();
+        _checkAccount();
         if (mounted) {
           setState(() {
             _boundMac = newMac;
@@ -267,6 +333,10 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
         }
       }
     } catch (error) {
+      if (mounted &&
+          ref.read(authControllerProvider).user?.id != _accountUserId) {
+        _stopForAccountChange();
+      }
       debugPrint('[机器人配网] 检测设备失败: $error');
     } finally {
       _checkingDevices = false;
@@ -318,7 +388,7 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
                   fontFamily: AppFonts.primary, fontWeight: FontWeight.w800)),
         ]),
         content: Text(
-          '机器人未能在 60 秒内连接 WiFi\n\n请检查：\n• WiFi 名称和密码是否正确\n• 确保使用 2.4GHz 频段\n• 机器人是否已扫描二维码',
+          '${_reconfiguring ? '尚未确认这台机器人重新上线，可先在设备列表核对，账号绑定保持不变。' : '机器人未能在 60 秒内连接 WiFi'}\n\n请检查：\n• WiFi 名称和密码是否正确\n• 确保使用 2.4GHz 频段\n• 机器人是否已扫描二维码',
           style: TextStyle(
               fontFamily: AppFonts.primary,
               fontSize: 13,
@@ -365,6 +435,16 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
   // ════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
+    ref.listen(authControllerProvider.select((state) => state.user?.id),
+        (previous, next) {
+      if (_accountUserId != null &&
+          next != _accountUserId &&
+          (_generatingQr ||
+              _step == _SetupStep.qrcode ||
+              _step == _SetupStep.waiting)) {
+        _stopForAccountChange();
+      }
+    });
     return PopScope(
       canPop: _step == _SetupStep.wifi || _step == _SetupStep.success,
       onPopInvokedWithResult: (didPop, _) {
@@ -383,7 +463,12 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
 
   // ── 顶部渐变栏 ────────────────────────────────────────────
   Widget _buildHeader() {
-    const titles = ['配置 WiFi', '让机器人扫码', '等待连接', '配网成功 🎉'];
+    final titles = [
+      _reconfiguring ? '更换机器人 WiFi' : '配置 WiFi',
+      '让机器人扫码',
+      _reconfiguring ? '等待原设备上线' : '等待连接',
+      _reconfiguring ? '机器人已重新上线' : '配网成功 🎉'
+    ];
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -572,6 +657,7 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
           const SizedBox(height: 6),
           TextFormField(
             controller: _ssidCtrl,
+            onChanged: (_) => _wifiNameEdited = true,
             textInputAction: TextInputAction.next,
             style: TextStyle(
                 fontFamily: AppFonts.primary,
@@ -929,7 +1015,10 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
           //     color: AppColors.onSurface,
           //   )),
           const SizedBox(height: 6),
-          Text('机器人连接 WiFi 后会自动完成绑定\n请保持手机在附近',
+          Text(
+              _reconfiguring
+                  ? '正在确认「${widget.deviceName ?? '机器人'}」重新上线\n账号绑定保持不变，请保持手机在附近'
+                  : '机器人连接 WiFi 后会自动完成绑定\n请保持手机在附近',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: AppFonts.primary,
@@ -1008,7 +1097,7 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
             ),
           ),
           const SizedBox(height: 28),
-          Text('配网成功！',
+          Text(_reconfiguring ? '机器人已重新上线' : '配网成功！',
               style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontSize: 24,
@@ -1017,7 +1106,10 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
                 letterSpacing: -0.4,
               )),
           const SizedBox(height: 8),
-          Text('已连接到 ${_ssidCtrl.text.trim()}\n设备已与账号绑定',
+          Text(
+              _reconfiguring
+                  ? '新 WiFi 配置已提供，原设备已重新上线\n仍绑定当前账号'
+                  : '已连接到 ${_ssidCtrl.text.trim()}\n设备已与账号绑定',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: AppFonts.primary,

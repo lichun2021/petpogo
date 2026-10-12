@@ -15,6 +15,8 @@ import '../pet_circle/controller/pet_circle_pet_controller.dart';
 import 'safety_scene_page.dart';
 import 'robot_device_page.dart';
 import '../bind_device/select_device_page.dart';
+import '../bind_device/device_wifi_setup_entry.dart';
+import 'data/wifi_setup_capability.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 设备详情页 ────────────────────────────────────────────
@@ -136,6 +138,14 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   }
 
   Widget _buildAppBar(BuildContext context) {
+    final wifiCollars =
+        ref.watch(wifiCollarMacsProvider).valueOrNull ?? const <String>{};
+    final owned = ref.watch(deviceListProvider).devices.where((device) =>
+        device.mac.toUpperCase() == widget.mac.toUpperCase() &&
+        device.isCollar &&
+        supportsWifiSetup(device, wifiCollars) &&
+        device.isOwner &&
+        !device.isShared);
     return SliverAppBar(
       pinned: true,
       backgroundColor: AppColors.surface,
@@ -170,6 +180,17 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
       ),
       centerTitle: true,
       actions: [
+        if (owned.isNotEmpty)
+          IconButton(
+              icon: const Icon(Icons.wifi_rounded),
+              tooltip: '更换 WiFi / 重新配网',
+              onPressed: () async {
+                await openCollarSetup(context,
+                    productKey: owned.first.productKey,
+                    existingMac: widget.mac,
+                    deviceName: _detail?.displayName ?? widget.name);
+                if (mounted) _loadAll();
+              }),
         IconButton(
           icon: Icon(Icons.add_circle_outline_rounded),
           color: AppColors.primary,
@@ -286,7 +307,9 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                       width: 7,
                       height: 7,
                       decoration: BoxDecoration(
-                          color: online ? AppColors.statusOnlineSoft : AppColors.textOnBrand.withValues(alpha: 0.38),
+                          color: online
+                              ? AppColors.statusOnlineSoft
+                              : AppColors.textOnBrand.withValues(alpha: 0.38),
                           shape: BoxShape.circle)),
                   SizedBox(width: 5),
                   Text(online ? '在线' : '离线',
@@ -294,7 +317,9 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                           fontFamily: AppFonts.primary,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: online ? AppColors.statusOnlineSoft : AppColors.textOnBrand.withValues(alpha: 0.6))),
+                          color: online
+                              ? AppColors.statusOnlineSoft
+                              : AppColors.textOnBrand.withValues(alpha: 0.6))),
                 ]),
                 SizedBox(height: 8),
                 // 电量 + 设备码（PeerApi 电量接口未就绪，电量先占位）
@@ -672,34 +697,50 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     final ctrl = TextEditingController(text: widget.name);
     var saving = false;
     String? error;
-    await showDialog<void>(context: context, builder: (ctx) => StatefulBuilder(
-      builder: (ctx, update) => FormModal(title: '设备备注', busy: saving,
-        onConfirm: () async {
-          if (saving) return;
-          if (ctrl.text.trim().isEmpty) {
-            update(() => error = '请输入设备备注');
-            return;
-          }
-          update(() { saving = true; error = null; });
-          try {
-            await ref.read(deviceRepositoryProvider).updateDeviceName(widget.mac, ctrl.text.trim());
-            if (!ctx.mounted) return;
-            Navigator.pop(ctx);
-            await ref.read(deviceListProvider.notifier).load();
-            if (mounted) await _loadAll();
-          } catch (_) {
-            if (ctx.mounted) update(() { saving = false; error = '保存失败，请重试'; });
-          }
-        },
-        child: TextField(controller: ctrl, enabled: !saving, maxLength: 50,
-          decoration: InputDecoration(labelText: '备注', hintText: '输入设备备注', errorText: error)),
-      ),
-    ));
+    await showDialog<void>(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+              builder: (ctx, update) => FormModal(
+                title: '设备备注',
+                busy: saving,
+                onConfirm: () async {
+                  if (saving) return;
+                  if (ctrl.text.trim().isEmpty) {
+                    update(() => error = '请输入设备备注');
+                    return;
+                  }
+                  update(() {
+                    saving = true;
+                    error = null;
+                  });
+                  try {
+                    await ref
+                        .read(deviceRepositoryProvider)
+                        .updateDeviceName(widget.mac, ctrl.text.trim());
+                    if (!ctx.mounted) return;
+                    Navigator.pop(ctx);
+                    await ref.read(deviceListProvider.notifier).load();
+                    if (mounted) await _loadAll();
+                  } catch (_) {
+                    if (ctx.mounted)
+                      update(() {
+                        saving = false;
+                        error = '保存失败，请重试';
+                      });
+                  }
+                },
+                child: TextField(
+                    controller: ctrl,
+                    enabled: !saving,
+                    maxLength: 50,
+                    decoration: InputDecoration(
+                        labelText: '备注', hintText: '输入设备备注', errorText: error)),
+              ),
+            ));
     // 等关闭动画结束，避免文本框仍在使用 controller。
     await Future<void>.delayed(const Duration(milliseconds: 300));
     ctrl.dispose();
   }
-
 }
 
 // ── 小操作按钮（用于宠物区块右上角 编辑/删除）────────────
@@ -915,7 +956,10 @@ class _DeviceSwitcherSheet extends StatelessWidget {
                   height: 44,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppColors.brandPrimary, AppColors.brandPrimaryStrong],
+                      colors: [
+                        AppColors.brandPrimary,
+                        AppColors.brandPrimaryStrong
+                      ],
                     ),
                     borderRadius: BorderRadius.circular(14),
                   ),
