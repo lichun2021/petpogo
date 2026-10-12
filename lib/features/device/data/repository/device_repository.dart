@@ -83,7 +83,8 @@ class DeviceRepository {
   }
 
   /// POST /user/device/qr/token
-  /// Header 中的 ipet token 由 PeerApiClient 统一注入，Body 为空。
+  /// App 携带 Bearer 登录凭证和 SDK 签名，Body 为空表单。
+  /// 服务端转发时将登录凭证放入上游 token Header；返回 info.token 为配网令牌。
   Future<DeviceQrTokenModel> createDeviceQrToken() async {
     final res = await _peer.post<DeviceQrTokenModel>(
       '/user/device/qr/token',

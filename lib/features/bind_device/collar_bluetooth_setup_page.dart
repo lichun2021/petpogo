@@ -60,6 +60,15 @@ class _CollarBluetoothSetupPageState
   DeviceReconnectTracker? _reconnect;
   bool get _reconfiguring => widget.existingMac != null;
 
+  @override
+  void initState() {
+    super.initState();
+    // 入口已完成权限检测，首次显示页面后直接寻找项圈。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_scan());
+    });
+  }
+
   Future<void> _fillCurrentWifi() async {
     if (_loadingWifi || _wifiNameEdited || _ssid.text.isNotEmpty) return;
     setState(() => _loadingWifi = true);

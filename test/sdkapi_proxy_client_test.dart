@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:petpogo_app/features/device/data/repository/device_repository.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
@@ -37,6 +38,51 @@ class RecordingAdapter implements HttpClientAdapter {
 }
 
 void main() {
+  test('QR token sends empty signed form and parses provisioning credential',
+      () async {
+    final adapter = RecordingAdapter()
+      ..response =
+          '{"code":0,"tip":"success","info":{"token":"BindToken123","expireIn":120}}';
+    final repo = DeviceRepository(
+        PeerApiClient(ApiClient(token: 'account-session', adapter: adapter)));
+    final credential = await repo.createDeviceQrToken();
+    final request = adapter.requests.single;
+    expect(request.method, 'POST');
+    expect(request.uri.path, '/sdkapi/peer/user/device/qr/token');
+    expect(request.uri.query, isEmpty);
+    expect(request.contentType, Headers.formUrlEncodedContentType);
+    expect(adapter.bodies.single, isEmpty);
+    expect(request.headers['Authorization'], 'Bearer account-session');
+    expect(request.headers['x-signature-version'], '2');
+    expect(request.headers['x-signature'], isNotEmpty);
+    expect(request.headers['token'], isNull); // 网关负责转换上游 Header。
+    expect(credential.token, 'BindToken123');
+    expect(credential.expireIn, 120);
+  });
+
+  test('QR token rejects business errors rather than using response credential',
+      () async {
+    final adapter = RecordingAdapter()
+      ..response = '{"code":7,"tip":"credential rejected","info":null}';
+    final repo = DeviceRepository(
+        PeerApiClient(ApiClient(token: 'session', adapter: adapter)));
+    await expectLater(repo.createDeviceQrToken(), throwsA(isA<Exception>()));
+  });
+
+  test('QR token rejects missing token or expired credential', () async {
+    final adapter = RecordingAdapter();
+    final repo = DeviceRepository(
+        PeerApiClient(ApiClient(token: 'session', adapter: adapter)));
+    for (final info in [
+      null,
+      {'token': '', 'expireIn': 120},
+      {'token': 'abc', 'expireIn': 0}
+    ]) {
+      adapter.response = jsonEncode({'code': 0, 'info': info});
+      await expectLater(repo.createDeviceQrToken(), throwsA(isA<Exception>()));
+    }
+  });
+
   test('direct SDK AI paths are signed and token refresh is respected',
       () async {
     final adapter = RecordingAdapter();
