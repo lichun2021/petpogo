@@ -100,7 +100,10 @@ class AuthController extends StateNotifier<AuthState> {
         } catch (error) {
           // 网络故障不清除已保存会话；后续请求仍由服务端校验及续期。
           debugPrint('[AuthCtrl] 暂无法验证会话: $error');
-          state = AuthState(status: AuthStatus.loggedIn, user: user);
+          state = AuthState(
+              status: AuthStatus.loggedIn,
+              user: user.copyWith(
+                  token: _ref.read(apiClientProvider).token ?? user.token));
           _loadUserData();
           return;
         }
@@ -115,7 +118,10 @@ class AuthController extends StateNotifier<AuthState> {
           return;
         }
         debugPrint('[AuthCtrl] [状态] restoring → loggedIn (${user.name})');
-        state = AuthState(status: AuthStatus.loggedIn, user: user);
+        state = AuthState(
+            status: AuthStatus.loggedIn,
+            user: user.copyWith(
+                token: _ref.read(apiClientProvider).token ?? user.token));
         _loadUserData();
         _consumePendingPushRoute(); // ← 认证恢复后跳转 push 待定路由
       } else {
@@ -326,13 +332,20 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> updateProfile({required String nickname, required int gender,
-      required String birthday, String? email}) async {
-    await _repo.updateProfile(nickname: nickname, gender: gender,
-        birthday: birthday, email: email);
+  Future<void> updateProfile(
+      {required String nickname,
+      required int gender,
+      required String birthday,
+      String? email}) async {
+    await _repo.updateProfile(
+        nickname: nickname, gender: gender, birthday: birthday, email: email);
     if (state.user != null) {
-      state = state.copyWith(user: state.user!.copyWith(name: nickname,
-          gender: gender, birthday: birthday, email: email));
+      state = state.copyWith(
+          user: state.user!.copyWith(
+              name: nickname,
+              gender: gender,
+              birthday: birthday,
+              email: email));
     }
   }
 

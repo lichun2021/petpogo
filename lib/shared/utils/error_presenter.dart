@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:dio/dio.dart';
 
 import '../../core/api/api_exception.dart';
 import '../../core/api/result.dart';
@@ -44,6 +45,11 @@ abstract final class ErrorPresenter {
     final generic = fallback ?? genericMessage;
 
     if (error == null) return ErrorCopy(message: generic, raw: raw);
+
+    if (error is DioException && error.error is ApiException) {
+      return ErrorCopy(
+          message: (error.error as ApiException).userMessage, raw: raw);
+    }
 
     if (error is Failure) {
       return describe(error.exception, fallback: fallback);

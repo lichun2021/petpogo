@@ -210,7 +210,8 @@ void sessionTests() {
     final req = RequestOptions(path: '/sdkapi/auth/refresh');
     client.onRefreshToken = () async => throw DioException(
         requestOptions: req,
-        response: Response(requestOptions: req, statusCode: 401),
+        response: Response(
+            requestOptions: req, statusCode: 401, data: {'message': '登录凭证已失效'}),
         type: DioExceptionType.badResponse);
     await expectLater(client.get('/sdkapi/a'), throwsA(anything));
     expect(logouts, 1);

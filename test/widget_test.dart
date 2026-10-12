@@ -17,6 +17,8 @@ import 'package:petpogo_app/shared/widgets/app_error_view.dart';
 class _FailingClient implements ApiClient {
   final calls = <String>[];
   final int statusCode;
+  @override
+  String? get token => null;
   _FailingClient({this.statusCode = 503});
   @override
   Future<T> post<T>(String path,
@@ -112,7 +114,7 @@ void main() {
     final repo = AuthRepository(_FailingClient(), const FlutterSecureStorage());
     await expectLater(repo.verifyToken(), throwsA(isA<ApiException>()));
   });
-  test('session validation identifies an expired token', () async {
+  test('session validation identifies a confirmed expired and cleared session', () async {
     final repo = AuthRepository(
         _FailingClient(statusCode: 401), const FlutterSecureStorage());
     expect(await repo.verifyToken(), isFalse);
@@ -197,7 +199,7 @@ class _RefreshClient extends _PasswordClient {
   }
 
   @override
-  void setToken(String token) {}
+  void setToken(String token, {bool newSession = false}) {}
   @override
   void clearToken() {}
 }

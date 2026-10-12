@@ -38,12 +38,17 @@ class ApiClient {
   void Function()? onUnauthorized;
   Future<String?> Function()? onRefreshToken;
   Future<String?>? _refreshInFlight;
+  int _sessionEpoch = 0;
   String? get token => (_dio.options.headers['Authorization'] as String?)
       ?.replaceFirst('Bearer ', '');
 
   Future<String?> _refreshToken() {
-    return _refreshInFlight ??= Future.sync(() => onRefreshToken?.call())
-        .whenComplete(() => _refreshInFlight = null);
+    if (_refreshInFlight != null) return _refreshInFlight!;
+    late final Future<String?> pending;
+    pending = Future.sync(() => onRefreshToken?.call()).whenComplete(() {
+      if (identical(_refreshInFlight, pending)) _refreshInFlight = null;
+    });
+    return _refreshInFlight = pending;
   }
 
   /// 构造时可传入初始 Token（从 SecureStorage 读取的持久化 Token）
@@ -73,7 +78,7 @@ class ApiClient {
     // ── 注册拦截器链（按顺序执行）────────────────────────
     _dio.interceptors.addAll([
       // 1. Auth 拦截器：在每个请求头里自动插入 Token
-      _AuthInterceptor(_dio.transformer),
+      _AuthInterceptor(this, _dio.transformer),
 
       // 2. 错误拦截器：把 DioException → ApiException
       //    _SessionInterceptor 先处理续期，确认失效后才通知 AuthController
@@ -267,12 +272,18 @@ class ApiClient {
   ///
   /// 用法：
   ///   ref.read(apiClientProvider).setToken(loginResponse.token);
-  void setToken(String token) {
+  void setToken(String token, {bool newSession = false}) {
+    if (newSession) {
+      _sessionEpoch++;
+      _refreshInFlight = null;
+    }
     _dio.options.headers['Authorization'] = 'Bearer $token';
   }
 
   /// 退出登录后清除 Token
   void clearToken() {
+    _sessionEpoch++;
+    _refreshInFlight = null;
     _dio.options.headers.remove('Authorization');
   }
 }
@@ -303,7 +314,8 @@ class SseFrame {
 /// 登录凭证由 ApiClient.setToken/clearToken 管理；此处只负责路由与 SDK 签名。
 class _AuthInterceptor extends Interceptor {
   final Transformer _transformer;
-  _AuthInterceptor(this._transformer);
+  final ApiClient client;
+  _AuthInterceptor(this.client, this._transformer);
 
   // nonce 随机数生成器（防重放标识用）
   static final _rand = Random.secure();
@@ -318,6 +330,7 @@ class _AuthInterceptor extends Interceptor {
   @override
   void onRequest(
       RequestOptions options, RequestInterceptorHandler handler) async {
+    options.extra.putIfAbsent('sessionEpoch', () => client._sessionEpoch);
     final path = Uri.parse(options.path).path;
     final isAi = path.startsWith('${ApiEndpoints.aiProxyPrefix}/');
     if (isAi) {
@@ -517,11 +530,22 @@ class _SessionInterceptor extends Interceptor {
   final ApiClient client;
   _SessionInterceptor(this.client);
 
+  // 当前服务端仅在响应 message 中明确返回凭证失效；AUTH_* 是日志字段。
+  bool _refreshCredentialRevoked(DioException error) {
+    final data = error.response?.data;
+    final message = data is Map ? data['message'] : null;
+    return error.response?.statusCode == 401 &&
+        (message == '请重新登录' ||
+            message == '登录凭证已失效' ||
+            message == '登录凭证已失效，请重新登录');
+  }
+
   @override
   void onError(DioException error, ErrorInterceptorHandler handler) async {
     final request = error.requestOptions;
     final sent = request.headers['Authorization'];
-    if (error.response?.statusCode != 401 ||
+    if (request.extra['sessionEpoch'] != client._sessionEpoch ||
+        error.response?.statusCode != 401 ||
         sent == null ||
         !request.uri.path.startsWith('/sdkapi/') ||
         request.uri.path.startsWith('/sdkapi/auth/') ||
@@ -534,14 +558,19 @@ class _SessionInterceptor extends Interceptor {
       handler.next(error);
       return;
     }
+    final epoch = client._sessionEpoch;
     String? renewed;
     try {
       renewed = sent != 'Bearer $originalToken'
           ? originalToken
           : await client._refreshToken();
     } catch (refreshError) {
+      if (epoch != client._sessionEpoch) {
+        handler.next(error);
+        return;
+      }
       if (refreshError is DioException) {
-        if (refreshError.response?.statusCode == 401 &&
+        if (_refreshCredentialRevoked(refreshError) &&
             client.token == originalToken) {
           client.onUnauthorized?.call();
         }
@@ -549,12 +578,19 @@ class _SessionInterceptor extends Interceptor {
             requestOptions: request,
             type: refreshError.type,
             response: refreshError.response,
-            error: refreshError.error,
+            error: _refreshCredentialRevoked(refreshError)
+                ? refreshError.error
+                : const ApiException(message: '登录恢复暂时失败，请稍后重试'),
             message: refreshError.message));
       } else {
-        handler
-            .next(DioException(requestOptions: request, error: refreshError));
+        handler.next(DioException(
+            requestOptions: request,
+            error: const ApiException(message: '登录恢复暂时失败，请稍后重试')));
       }
+      return;
+    }
+    if (epoch != client._sessionEpoch) {
+      handler.next(error);
       return;
     }
     if (renewed == null) {
@@ -594,6 +630,10 @@ class _ErrorInterceptor extends Interceptor {
   _ErrorInterceptor();
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
+    if (err.error is ApiException) {
+      handler.next(err);
+      return;
+    }
     ApiException apiEx;
 
     switch (err.type) {

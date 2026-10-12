@@ -8,6 +8,7 @@ import '../../../../core/api/result.dart';
 import 'models/auth_model.dart';
 
 // ── Storage 键名常量 ─────────────────────────────────────────
+const _kPeerGranwinToken = 'auth_peer_granwin_token';
 const _kRefreshToken = 'auth_refresh_token';
 const _kToken = 'auth_token';
 const _kId = 'auth_id';
@@ -87,11 +88,14 @@ class AuthRepository {
       final user = UserInfo.fromLoginResponse(loginResp);
 
       _sessionGeneration++;
-      _client.setToken(user.token);
+      _client.setToken(user.token, newSession: true);
       await _writeSession(() async {
         await _persist(user);
         final peer = res['peer'] as Map?;
         final refresh = peer?['refreshToken'] as String?;
+        await _storage.write(
+            key: _kPeerGranwinToken,
+            value: (peer?['granwinToken'] as String?) ?? user.token);
         if (refresh != null && refresh.isNotEmpty) {
           await _storage.write(key: _kRefreshToken, value: refresh);
         } else {
@@ -217,16 +221,18 @@ class AuthRepository {
     return user;
   }
 
-  /// 仅 401 表示登录过期；网络及服务端错误继续抛出。
+  /// 仅刷新流程确认失效并清除访问凭证后返回 false，其余失败保留会话。
   Future<bool> verifyToken() async {
     try {
       await _client.get<Map<String, dynamic>>('/sdkapi/user/profile');
       return true;
     } on DioException catch (error) {
-      if (error.response?.statusCode == 401) return false;
+      if (error.response?.statusCode == 401 && _client.token == null) {
+        return false;
+      }
       rethrow;
     } on ApiException catch (error) {
-      if (error.statusCode == 401) return false;
+      if (error.statusCode == 401 && _client.token == null) return false;
       rethrow;
     }
   }
@@ -249,11 +255,16 @@ class AuthRepository {
     await _writeSession(() async {
       if (generation != _sessionGeneration) return;
       await _storage.write(key: _kToken, value: newToken);
+      await _storage.write(
+          key: _kPeerGranwinToken,
+          value: (peer?['granwinToken'] as String?) ?? newToken);
       if (newRefresh != null && newRefresh.isNotEmpty) {
         await _storage.write(key: _kRefreshToken, value: newRefresh);
       }
     });
-    return generation == _sessionGeneration ? newToken : null;
+    if (generation != _sessionGeneration) return null;
+    _client.setToken(newToken);
+    return newToken;
   }
 
   // ── 退出登录 ────────────────────────────────────────────
@@ -275,7 +286,8 @@ class AuthRepository {
       final updated = UserInfo.fromProfileJson(current, res);
       await _storage.write(key: _kName, value: updated.name);
       for (final field in ['gender', 'birthday', 'email']) {
-        await _storage.write(key: 'auth_$field', value: updated.toStorageMap()[field]);
+        await _storage.write(
+            key: 'auth_$field', value: updated.toStorageMap()[field]);
       }
       await _storage.write(key: _kAvatar, value: updated.avatar);
       await _storage.write(key: _kIsVip, value: updated.isVip ? '1' : '0');
@@ -287,10 +299,14 @@ class AuthRepository {
     }
   }
 
-  Future<void> updateProfile({required String nickname, required int gender,
-      required String birthday, String? email}) async {
+  Future<void> updateProfile(
+      {required String nickname,
+      required int gender,
+      required String birthday,
+      String? email}) async {
     await _client.put<Map<String, dynamic>>('/sdkapi/user/profile', data: {
-      'nickname': nickname, 'gender': gender,
+      'nickname': nickname,
+      'gender': gender,
       'birthday': birthday.isEmpty ? null : birthday,
       if (email != null) 'email': email.isEmpty ? null : email,
     });
