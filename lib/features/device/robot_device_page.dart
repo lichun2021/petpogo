@@ -2169,6 +2169,8 @@ class _DeviceSwitcherSheet extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                       Text(d.displayName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                               fontFamily: AppFonts.primary,
                               fontSize: 14,
@@ -2177,31 +2179,35 @@ class _DeviceSwitcherSheet extends StatelessWidget {
                                   ? AppColors.primary
                                   : AppColors.onSurface)),
                       SizedBox(height: 2),
-                      Row(children: [
-                        Text(isRobot ? '智能宠物机器人' : '智能项圈',
-                            style: TextStyle(
-                                fontFamily: AppFonts.primary,
-                                fontSize: 11,
-                                color: AppColors.onSurfaceVariant)),
-                        SizedBox(width: 8),
-                        Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: d.isOnline
-                                  ? AppColors.success
-                                  : AppColors.onSurfaceVariant,
-                              shape: BoxShape.circle,
-                            )),
-                        SizedBox(width: 4),
-                        Text(d.isOnline ? '在线' : '离线',
-                            style: TextStyle(
-                                fontFamily: AppFonts.primary,
-                                fontSize: 11,
-                                color: d.isOnline
-                                    ? AppColors.secondary
-                                    : AppColors.onSurfaceVariant)),
-                      ]),
+                      Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(isRobot ? '智能宠物机器人' : '智能项圈',
+                                style: TextStyle(
+                                    fontFamily: AppFonts.primary,
+                                    fontSize: 11,
+                                    color: AppColors.onSurfaceVariant)),
+                            SizedBox(width: 8),
+                            Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: d.isOnline
+                                      ? AppColors.success
+                                      : AppColors.onSurfaceVariant,
+                                  shape: BoxShape.circle,
+                                )),
+                            SizedBox(width: 4),
+                            Text(d.isOnline ? '在线' : '离线',
+                                style: TextStyle(
+                                    fontFamily: AppFonts.primary,
+                                    fontSize: 11,
+                                    color: d.isOnline
+                                        ? AppColors.secondary
+                                        : AppColors.onSurfaceVariant)),
+                          ]),
                     ])),
                 if (isSelected)
                   Icon(Icons.check_circle_rounded,

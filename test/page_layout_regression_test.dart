@@ -1,3 +1,7 @@
+import 'package:petpogo_app/features/device/device_detail_page.dart';
+import 'package:petpogo_app/features/device/device_list_page.dart';
+import 'package:petpogo_app/features/device/data/models/device_model.dart';
+import 'package:petpogo_app/features/device/data/wifi_setup_capability.dart';
 import 'package:petpogo_app/core/api/api_client.dart';
 import 'package:petpogo_app/features/auth/data/auth_repository.dart';
 import 'package:petpogo_app/features/auth/data/models/auth_model.dart';
@@ -47,7 +51,93 @@ class _Devices implements DeviceRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+const _longMac = 'ipet-esp32-Dev-030012345678901234567890';
+const _longName = '这是一个很长很长的项圈名称用于测试小屏幕';
+
+class _LayoutDeviceRepository extends _Devices {
+  @override
+  Future<DeviceDetailModel> fetchDeviceDetail(String mac) async =>
+      const DeviceDetailModel(name: _longName, mac: _longMac);
+  @override
+  Future<OtaInfoModel> fetchOtaInfo(String mac) async => const OtaInfoModel();
+  @override
+  Future<bool> fetchOnlineState(String mac) async => false;
+}
+
+class _LayoutPetRepository extends _Pets {
+  @override
+  Future<PetInfoModel> fetchPetInfo({String? mac, String? deviceId}) async =>
+      const PetInfoModel();
+}
+
+class _LayoutDeviceList extends DeviceListNotifier {
+  _LayoutDeviceList() : super(_LayoutDeviceRepository()) {
+    state = const DeviceListState(devices: [
+      DeviceModel(
+          deviceId: '1', mac: _longMac, name: _longName, productAlias: 'COLLAR')
+    ]);
+  }
+}
+
 void main() {
+  for (final width in [320.0, 390.0]) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('device cards and switcher fit long IDs at $width / $scale',
+          (tester) async {
+        tester.view.physicalSize = Size(width, 900);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        Widget app(Widget page) => ProviderScope(
+                overrides: [
+                  deviceRepositoryProvider
+                      .overrideWithValue(_LayoutDeviceRepository()),
+                  petPeerRepositoryProvider
+                      .overrideWithValue(_LayoutPetRepository()),
+                  deviceListProvider.overrideWith((_) => _LayoutDeviceList()),
+                  wifiCollarMacsProvider
+                      .overrideWith((_) async => {_longMac.toUpperCase()}),
+                ],
+                child: MaterialApp(
+                    builder: (context, child) => MediaQuery(
+                        data: MediaQuery.of(context)
+                            .copyWith(textScaler: TextScaler.linear(scale)),
+                        child: child!),
+                    home: page));
+        await tester.pumpWidget(
+            app(const DeviceDetailPage(mac: _longMac, name: _longName)));
+        await tester.pumpAndSettle();
+        expect(find.text('设备码 $_longMac'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.byIcon(Icons.keyboard_arrow_down_rounded).first);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpWidget(app(const DeviceListPage()));
+        await tester.pumpAndSettle();
+        expect(find.text('设备码 $_longMac'), findsOneWidget);
+        expect(find.text('重新配网'), findsOneWidget);
+        expect(find.text('解绑设备'), findsOneWidget);
+        expect(find.byIcon(Icons.more_horiz_rounded), findsNothing);
+        final actionY = tester.getCenter(find.text('重新配网')).dy;
+        expect(tester.getCenter(find.text('管理共享')).dy, closeTo(actionY, 1));
+        expect(tester.getCenter(find.text('解绑设备')).dy, closeTo(actionY, 1));
+        expect(tester.takeException(), isNull);
+        await tester.ensureVisible(find.text('解绑设备'));
+        await tester.tap(find.text('解绑设备'));
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertDialog), findsOneWidget);
+        await tester.tap(find.text('取消'));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('重新配网'));
+        await tester.tap(find.text('重新配网'));
+        await tester.pumpAndSettle();
+        expect(find.text('更换项圈 WiFi'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
   test('Profile fields survive storage and can be cleared by server', () {
     const user = UserInfo(
         token: 'test',

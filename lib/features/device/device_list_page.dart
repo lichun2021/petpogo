@@ -258,6 +258,8 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                     Text(device.displayName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                             fontFamily: AppFonts.primary,
                             fontSize: 16,
@@ -265,35 +267,28 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
                             color: AppColors.onSurface,
                             letterSpacing: -0.2)),
                     SizedBox(height: 4),
-                    Row(children: [
-                      Text(device.productDisplayName,
-                          style: TextStyle(
-                              fontFamily: AppFonts.primary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.onSurfaceVariant)),
-                      SizedBox(width: 8),
-                      // ── 角色标签 ──────────────────────────
-                      _RoleBadge(device: device),
-                      SizedBox(width: 8),
-                      Container(
-                          width: 3,
-                          height: 3,
-                          decoration: BoxDecoration(
-                              color: AppColors.outlineVariant,
-                              shape: BoxShape.circle)),
-                      SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'MAC: ${device.mac.length > 14 ? '...${device.mac.substring(device.mac.length - 10)}' : device.mac}',
-                          style: TextStyle(
-                              fontFamily: AppFonts.primary,
-                              fontSize: 10,
-                              color: AppColors.onSurfaceVariant),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ]),
+                    Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(device.productDisplayName,
+                              style: TextStyle(
+                                  fontFamily: AppFonts.primary,
+                                  fontSize: 11,
+                                  color: AppColors.onSurfaceVariant)),
+                          _RoleBadge(device: device),
+                        ]),
+                    const SizedBox(height: 4),
+                    Tooltip(
+                        message: device.mac,
+                        child: Text('设备码 ${device.mac}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontFamily: AppFonts.primary,
+                                fontSize: 10,
+                                color: AppColors.onSurfaceVariant))),
                   ])),
               // 在线状态标签
               Container(
@@ -368,58 +363,63 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
                 color: AppColors.outlineVariant),
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-              child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                PopupMenuButton<String>(
-                  tooltip: '更多设备操作',
-                  icon: Icon(Icons.more_horiz_rounded,
-                      color: AppColors.textSecondary),
-                  onSelected: (action) async {
-                    if (action == 'wifi') {
-                      final open =
-                          device.isRobot ? openRobotWifiSetup : openCollarSetup;
-                      await open(context,
-                          productKey: device.productKey,
-                          existingMac: device.mac,
-                          deviceName: device.displayName);
-                      if (mounted)
-                        await ref.read(deviceListProvider.notifier).load();
-                    } else {
-                      _confirmUnbind(context, ref);
-                    }
-                  },
-                  itemBuilder: (_) => [
-                    if (supportsWifiSetup(device, wifiCollars) &&
-                        !device.isShared)
-                      const PopupMenuItem(
-                          value: 'wifi', child: Text('更换 WiFi / 重新配网')),
-                    PopupMenuItem(
-                        value: 'unbind',
-                        child: Text('解绑设备',
-                            style: TextStyle(color: AppColors.statusAlert)))
-                  ],
-                ),
-                const SizedBox(width: 8),
-                // ── 管理共享按钮 ──
-                _ActionPill(
-                  icon: Icons.group_outlined,
-                  label: '管理共享',
-                  color: AppColors.statusNeutral,
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => DeviceMembersPage(
-                            mac: device.mac,
-                            deviceId: device.deviceId,
-                            deviceName: device.displayName,
-                            productKey: device.productKey,
-                            productTypeName: device.productDisplayName,
-                          ),
-                        ));
-                  },
-                ),
-              ]),
+              child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          spacing: 6,
+                          children: [
+                            if (supportsWifiSetup(device, wifiCollars) &&
+                                !device.isShared)
+                              _ActionPill(
+                                icon: Icons.wifi_rounded,
+                                label: '重新配网',
+                                color: AppColors.brandPrimary,
+                                onTap: () async {
+                                  final open = device.isRobot
+                                      ? openRobotWifiSetup
+                                      : openCollarSetup;
+                                  await open(context,
+                                      productKey: device.productKey,
+                                      existingMac: device.mac,
+                                      deviceName: device.displayName);
+                                  if (mounted)
+                                    await ref
+                                        .read(deviceListProvider.notifier)
+                                        .load();
+                                },
+                              ),
+                            // ── 管理共享按钮 ──
+                            _ActionPill(
+                              icon: Icons.group_outlined,
+                              label: '管理共享',
+                              color: AppColors.statusNeutral,
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => DeviceMembersPage(
+                                        mac: device.mac,
+                                        deviceId: device.deviceId,
+                                        deviceName: device.displayName,
+                                        productKey: device.productKey,
+                                        productTypeName:
+                                            device.productDisplayName,
+                                      ),
+                                    ));
+                              },
+                            ),
+                            _ActionPill(
+                              icon: Icons.link_off_rounded,
+                              label: '解绑设备',
+                              color: AppColors.statusAlert,
+                              onTap: () => _confirmUnbind(context, ref),
+                            ),
+                          ]))),
             ),
           ],
         ]),
@@ -614,13 +614,14 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
                     color: AppColors.primary.withValues(alpha: 0.22))),
             child: Icon(Icons.add_rounded, color: AppColors.primary, size: 20)),
         SizedBox(width: 10),
-        Text('点击绑定宠物',
-            style: TextStyle(
-                fontFamily: AppFonts.primary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.onSurfaceVariant)),
-        Spacer(),
+        Expanded(
+            child: Text('点击绑定宠物',
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.onSurfaceVariant))),
+        const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
@@ -658,19 +659,19 @@ class _ActionPill extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: color.withValues(alpha: 0.22), width: 1),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 13, color: color),
-          SizedBox(width: 5),
+          Icon(icon, size: 12, color: color),
+          SizedBox(width: 3),
           Text(label,
               style: TextStyle(
                   fontFamily: AppFonts.primary,
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
                   color: color)),
         ]),

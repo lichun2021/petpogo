@@ -238,7 +238,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
 
   Widget _buildStatusHero() {
     final online = _isOnline;
-    final deviceName = _detail?.name ?? widget.name;
+    final deviceName = _detail?.displayName ?? widget.name;
     return GestureDetector(
       onTap: () => _showRemarkDialog(context), // 点击卡片任意区域也可编辑
       child: Container(
@@ -322,32 +322,28 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                               : AppColors.textOnBrand.withValues(alpha: 0.6))),
                 ]),
                 SizedBox(height: 8),
-                // 电量 + 设备码（PeerApi 电量接口未就绪，电量先占位）
+                // 分行展示，长设备码不与电量争夺横向空间。
                 Row(children: [
-                  Icon(Icons.battery_std_rounded,
+                  const Icon(Icons.battery_std_rounded,
                       size: 12, color: Colors.white70),
-                  SizedBox(width: 4),
-                  Text('电量 -',
-                      style: TextStyle(
-                          fontFamily: AppFonts.primary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white70)),
-                  SizedBox(width: 12),
-                  Text('设备码',
-                      style: TextStyle(
-                          fontFamily: AppFonts.primary,
-                          fontSize: 10,
-                          color: Colors.white54)),
-                  SizedBox(width: 4),
-                  Text(widget.mac,
-                      style: TextStyle(
-                          fontFamily: AppFonts.primary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white70,
-                          letterSpacing: 0.5)),
+                  const SizedBox(width: 4),
+                  Flexible(
+                      child: Text('电量 -',
+                          style: TextStyle(
+                              fontFamily: AppFonts.primary,
+                              fontSize: 11,
+                              color: Colors.white70))),
                 ]),
+                const SizedBox(height: 6),
+                Tooltip(
+                    message: widget.mac,
+                    child: Text('设备码 ${widget.mac}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 10,
+                            color: Colors.white70))),
               ])),
         ]),
       ),
@@ -975,6 +971,8 @@ class _DeviceSwitcherSheet extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                       Text(d.displayName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontFamily: AppFonts.primary,
                             fontSize: 14,
@@ -984,29 +982,33 @@ class _DeviceSwitcherSheet extends StatelessWidget {
                                 : AppColors.onSurface,
                           )),
                       SizedBox(height: 2),
-                      Row(children: [
-                        Text(isRobot ? '智能宠物机器人' : '智能项圈',
-                            style: TextStyle(
-                                fontFamily: AppFonts.primary,
-                                fontSize: 11,
-                                color: AppColors.onSurfaceVariant)),
-                        SizedBox(width: 8),
-                        Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: d.isOnline
-                                  ? AppColors.statusOnline
-                                  : AppColors.statusNeutral,
-                              shape: BoxShape.circle,
-                            )),
-                        SizedBox(width: 4),
-                        Text(d.isOnline ? '在线' : '离线',
-                            style: TextStyle(
-                                fontFamily: AppFonts.primary,
-                                fontSize: 11,
-                                color: AppColors.onSurfaceVariant)),
-                      ]),
+                      Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(isRobot ? '智能宠物机器人' : '智能项圈',
+                                style: TextStyle(
+                                    fontFamily: AppFonts.primary,
+                                    fontSize: 11,
+                                    color: AppColors.onSurfaceVariant)),
+                            SizedBox(width: 8),
+                            Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: d.isOnline
+                                      ? AppColors.statusOnline
+                                      : AppColors.statusNeutral,
+                                  shape: BoxShape.circle,
+                                )),
+                            SizedBox(width: 4),
+                            Text(d.isOnline ? '在线' : '离线',
+                                style: TextStyle(
+                                    fontFamily: AppFonts.primary,
+                                    fontSize: 11,
+                                    color: AppColors.onSurfaceVariant)),
+                          ]),
                     ])),
                 if (isSelected)
                   Icon(Icons.check_circle_rounded,
