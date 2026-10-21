@@ -14,7 +14,7 @@ import '../../shared/theme/app_tokens.dart';
 import '../../shared/widgets/pet_toast.dart';
 import 'services/collar_bluetooth_service.dart';
 import 'services/device_reconnect_tracker.dart';
-import 'services/current_wifi.dart';
+import 'widgets/current_wifi_name_field.dart';
 import 'services/provisioning_account.dart';
 import 'widgets/collar_discovery_panel.dart';
 import 'widgets/collar_binding_status.dart';
@@ -51,8 +51,6 @@ class _CollarBluetoothSetupPageState
   List<ScanResult> _results = [];
   BluetoothDevice? _selected;
   bool _scanning = false;
-  bool _loadingWifi = false;
-  bool _wifiNameEdited = false;
   bool _sending = false;
   bool _sent = false;
   bool _showPassword = false;
@@ -79,25 +77,6 @@ class _CollarBluetoothSetupPageState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_scan());
     });
-  }
-
-  Future<void> _fillCurrentWifi() async {
-    if (_loadingWifi || _wifiNameEdited || _ssid.text.isNotEmpty) return;
-    setState(() => _loadingWifi = true);
-    try {
-      final name = await readCurrentWifiName();
-      if (mounted &&
-          !_sending &&
-          !_wifiNameEdited &&
-          _ssid.text.isEmpty &&
-          name != null) {
-        _ssid.text = name;
-      }
-    } catch (error) {
-      _service.log.failure('read current WiFi', error);
-    } finally {
-      if (mounted) setState(() => _loadingWifi = false);
-    }
   }
 
   void _startClock() {
@@ -273,7 +252,9 @@ class _CollarBluetoothSetupPageState
           }
           if (!mounted || attempt != _attempt) return;
           _boundDevice = candidates.single.displayName;
-          ref.read(deviceListProvider.notifier).allowDevice(candidates.single.mac);
+          ref
+              .read(deviceListProvider.notifier)
+              .allowDevice(candidates.single.mac);
           _status('账号已确认绑定成功');
           unawaited(ref.read(deviceListProvider.notifier).load());
           setState(() {
@@ -534,7 +515,6 @@ class _CollarBluetoothSetupPageState
       _selected = result.device;
       _error = null;
     });
-    unawaited(_fillCurrentWifi());
     unawaited(FlutterBluePlus.stopScan()
         .timeout(const Duration(seconds: 3))
         .catchError((Object error) {
@@ -566,15 +546,12 @@ class _CollarBluetoothSetupPageState
         Form(
           key: _formKey,
           child: Column(children: [
-            TextFormField(
+            CurrentWifiNameField(
               controller: _ssid,
-              onChanged: (_) => _wifiNameEdited = true,
-              textInputAction: TextInputAction.next,
-              autocorrect: false,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                   labelText: 'WiFi 名称',
-                  hintText: _loadingWifi ? '正在获取当前 WiFi…' : '输入 WiFi 名称',
-                  prefixIcon: const Icon(Icons.wifi_rounded)),
+                  hintText: '输入 WiFi 名称',
+                  prefixIcon: Icon(Icons.wifi_rounded)),
               validator: (value) =>
                   CollarProvisioningProtocol.validateSsid(value ?? ''),
             ),

@@ -68,4 +68,5 @@ android/key.properties
 !/test/review_regressions_test.dart
 !/test/device_unbind_refresh_test.dart
 !/test/account_session_cleanup_test.dart
+!/test/current_wifi_name_test.dart
 /tools

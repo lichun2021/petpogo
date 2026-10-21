@@ -19,7 +19,7 @@ import '../device/data/models/device_product_model.dart';
 import '../../shared/utils/error_presenter.dart';
 import '../../shared/theme/app_tokens.dart';
 import 'services/device_reconnect_tracker.dart';
-import 'services/current_wifi.dart';
+import 'widgets/current_wifi_name_field.dart';
 import 'services/provisioning_account.dart';
 import '../auth/controller/auth_controller.dart';
 
@@ -52,8 +52,6 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
   final _pwdCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _pwdVisible = false;
-  bool _loadingWifi = true;
-  bool _wifiNameEdited = false;
 
   // ── 二维码 ───────────────────────────────────────────────
   String? _accountUserId;
@@ -115,7 +113,6 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
     _progressAnim = Tween<double>(begin: 0, end: 0).animate(
       CurvedAnimation(parent: _progressCtrl, curve: Curves.easeInOut),
     );
-    _fetchCurrentWifi();
   }
 
   @override
@@ -128,23 +125,6 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
     _rotateCtrl.dispose();
     _progressCtrl.dispose();
     super.dispose();
-  }
-
-  // ── 自动获取当前连接的 WiFi SSID ─────────────────
-  Future<void> _fetchCurrentWifi() async {
-    try {
-      final ssid = await readCurrentWifiName();
-      if (ssid != null &&
-          mounted &&
-          !_wifiNameEdited &&
-          _ssidCtrl.text.isEmpty) {
-        _ssidCtrl.text = ssid;
-      }
-    } catch (e) {
-      AppLog.debug('[WiFi] 获取失败: $e');
-    } finally {
-      if (mounted) setState(() => _loadingWifi = false);
-    }
   }
 
   // ── 步骤1→2 生成二维码 ───────────────────────────────────
@@ -657,28 +637,15 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
           // ── WiFi SSID ────────────────────────────────────
           _Label('WiFi 名称'),
           const SizedBox(height: 6),
-          TextFormField(
+          CurrentWifiNameField(
             controller: _ssidCtrl,
-            onChanged: (_) => _wifiNameEdited = true,
-            textInputAction: TextInputAction.next,
             style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontSize: 15,
                 color: AppColors.onSurface),
             decoration: _deco(
-              hint: _loadingWifi ? '正在获取当前 WiFi...' : '输入 WiFi 名称',
+              hint: '输入 WiFi 名称',
               icon: Icons.wifi_rounded,
-              suffix: _loadingWifi
-                  ? Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: AppColors.primary),
-                      ),
-                    )
-                  : null,
             ),
             validator: (v) {
               if (v == null || v.trim().isEmpty) return '请输入 WiFi 名称';

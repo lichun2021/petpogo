@@ -1,4 +1,4 @@
-/// 宠物选择 BottomSheet — 用于宠小伊 AI 问诊入口
+/// 宠物选择 BottomSheet — 用于健康顾问和健康数据入口
 ///
 /// 加载流程：
 ///   1. 从 deviceListProvider 拿设备列表
@@ -20,6 +20,9 @@ import '../../pet/data/models/pet_peer_models.dart';
 import '../../pet/data/repository/pet_peer_repository.dart';
 import '../../../shared/utils/error_presenter.dart';
 
+const _defaultEmptyTitle = '健康顾问功能暂不可用';
+const _defaultEmptyDescription = '请先绑定设备并完善宠物档案\n才能使用 AI 健康顾问功能';
+
 class _PetWithDevice {
   final PetInfoModel pet;
   final DeviceModel device;
@@ -35,12 +38,16 @@ class PetPickerSheet extends ConsumerStatefulWidget {
 
   /// 标题文字（默认沿用宠小伊 AI 问诊的文案）
   final String title;
+  final String emptyTitle;
+  final String emptyDescription;
 
   const PetPickerSheet({
     super.key,
     required this.onPicked,
     this.preloaded,
     this.title = '选择要咨询的宠物',
+    this.emptyTitle = _defaultEmptyTitle,
+    this.emptyDescription = _defaultEmptyDescription,
   });
 
   /// 预加载宠物数据，再显示 Sheet（避免高度闪变）
@@ -49,6 +56,8 @@ class PetPickerSheet extends ConsumerStatefulWidget {
     required WidgetRef ref,
     required void Function(String petId) onPicked,
     String title = '选择要咨询的宠物',
+    String emptyTitle = _defaultEmptyTitle,
+    String emptyDescription = _defaultEmptyDescription,
   }) async {
     // 在弹出之前预加载宠物数据，确保 Sheet 高度确定后再显示
     final preloaded = await _preload(ref);
@@ -61,6 +70,8 @@ class PetPickerSheet extends ConsumerStatefulWidget {
         onPicked: onPicked,
         preloaded: preloaded,
         title: title,
+        emptyTitle: emptyTitle,
+        emptyDescription: emptyDescription,
       ),
     );
   }
@@ -251,7 +262,10 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
           key: ValueKey('error'), message: _error!, onRetry: _load);
     }
     if (_pets.isEmpty) {
-      return const _EmptyState(key: ValueKey('empty'));
+      return _EmptyState(
+          key: const ValueKey('empty'),
+          title: widget.emptyTitle,
+          description: widget.emptyDescription);
     }
 
     // ── 动态高度计算 ──────────────────────────────────────
@@ -374,7 +388,9 @@ class _PetTile extends StatelessWidget {
 
 // ── 空状态 ────────────────────────────────────────────────
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({super.key});
+  final String title;
+  final String description;
+  const _EmptyState({super.key, required this.title, required this.description});
 
   @override
   Widget build(BuildContext context) {
@@ -396,7 +412,7 @@ class _EmptyState extends StatelessWidget {
           ),
           SizedBox(height: 14),
           Text(
-            '健康顾问功能暂不可用',
+            title,
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
@@ -405,7 +421,7 @@ class _EmptyState extends StatelessWidget {
           ),
           SizedBox(height: 6),
           Text(
-            '请先绑定设备并完善宠物档案\n才能使用 AI 健康顾问功能',
+            description,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,

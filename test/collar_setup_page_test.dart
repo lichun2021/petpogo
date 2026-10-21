@@ -10,6 +10,7 @@ import 'package:petpogo_app/features/auth/data/models/auth_model.dart';
 import 'package:petpogo_app/features/bind_device/collar_bluetooth_setup_page.dart';
 import 'package:petpogo_app/features/bind_device/services/collar_bluetooth_service.dart';
 import 'package:petpogo_app/features/bind_device/services/collar_provisioning_protocol.dart';
+import 'package:petpogo_app/features/bind_device/services/current_wifi.dart';
 import 'package:petpogo_app/features/device/data/repository/device_repository.dart';
 
 class _FakeService extends CollarBluetoothService {
@@ -43,6 +44,13 @@ class _Devices implements DeviceRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _UnavailableWifi extends CurrentWifiReader {
+  const _UnavailableWifi();
+  @override
+  Future<CurrentWifiResult> read({bool requestPermission = true}) async =>
+      const CurrentWifiResult.failure(CurrentWifiIssue.unavailable);
+}
+
 ScanResult _collar([String id = 'AA:BB:CC:DD:EE:01']) => ScanResult(
     device: BluetoothDevice.fromId(id),
     advertisementData: AdvertisementData(
@@ -63,6 +71,7 @@ Widget _page(_FakeService service,
           apiClientProvider.overrideWithValue(_Client()),
           authRepositoryProvider.overrideWithValue(_GuestRepo()),
           deviceRepositoryProvider.overrideWithValue(_Devices()),
+          currentWifiReaderProvider.overrideWithValue(const _UnavailableWifi()),
         ],
         child: MaterialApp(
             builder: (context, child) => MediaQuery(

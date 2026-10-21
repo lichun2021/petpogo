@@ -77,6 +77,8 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
                   context,
                   ref: ref,
                   title: '选择要查看的宠物',
+                  emptyTitle: '健康数据暂不可用',
+                  emptyDescription: '请先绑定设备并完善宠物档案\n才能查看宠物健康数据',
                   onPicked: (petId) {
                     Future.delayed(const Duration(milliseconds: 60), () {
                       if (context.mounted) {
