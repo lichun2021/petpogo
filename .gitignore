@@ -63,4 +63,6 @@ android/key.properties
 !/test/device_reconnect_tracker_test.dart
 !/test/wifi_setup_capability_test.dart
 !/test/sdkapi_proxy_client_test.dart
+!/test/collar_ui_test.dart
+!/test/collar_setup_page_test.dart
 /tools
