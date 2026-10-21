@@ -273,6 +273,7 @@ class _CollarBluetoothSetupPageState
           }
           if (!mounted || attempt != _attempt) return;
           _boundDevice = candidates.single.displayName;
+          ref.read(deviceListProvider.notifier).allowDevice(candidates.single.mac);
           _status('账号已确认绑定成功');
           unawaited(ref.read(deviceListProvider.notifier).load());
           setState(() {

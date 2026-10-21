@@ -1,3 +1,4 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
@@ -25,31 +26,31 @@ class DeepLinkService {
       final initial = await _appLinks.getInitialLink();
       if (initial != null) _handleUri(initial);
     } catch (error) {
-      debugPrint('[DeepLink] 初始链接读取失败: $error');
+      AppLog.debug('[DeepLink] 初始链接读取失败: $error');
     }
 
     _subscription = _appLinks.uriLinkStream.listen(
       _handleUri,
-      onError: (error) => debugPrint('[DeepLink] 链接监听失败: $error'),
+      onError: (error) => AppLog.debug('[DeepLink] 链接监听失败: $error'),
     );
   }
 
   static void _handleUri(Uri uri) {
     final raw = uri.toString();
-    debugPrint('[DeepLink] 收到链接: $raw');
+    AppLog.debug('[DeepLink] 收到链接: $raw');
     if (_lastHandledUri == raw) {
-      debugPrint('[DeepLink] 忽略重复链接: $raw');
+      AppLog.debug('[DeepLink] 忽略重复链接: $raw');
       return;
     }
     final route = _routeFromUri(uri);
     if (route == null) return;
     _lastHandledUri = raw;
-    debugPrint('[DeepLink] 解析路由: $route');
+    AppLog.debug('[DeepLink] 解析路由: $route');
 
     final auth = _container?.read(authControllerProvider);
     if (auth == null || auth.isRestoring) {
       _pendingRoute = route;
-      debugPrint('[DeepLink] 等待认证恢复后跳转: $route');
+      AppLog.debug('[DeepLink] 等待认证恢复后跳转: $route');
       return;
     }
 
@@ -71,9 +72,9 @@ class DeepLinkService {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
         appRouter.go(route);
-        debugPrint('[DeepLink] 跳转: $route');
+        AppLog.debug('[DeepLink] 跳转: $route');
       } catch (error) {
-        debugPrint('[DeepLink] 跳转失败: $error');
+        AppLog.debug('[DeepLink] 跳转失败: $error');
       }
     });
   }

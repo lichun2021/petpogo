@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:fluwx/fluwx.dart';
 
 import '../../core/config/app_config.dart';
@@ -21,9 +21,9 @@ Future<void> initWechatShare() async {
           ? null
           : AppConfig.wechatUniversalLink,
     );
-    debugPrint('[微信分享] SDK 注册: $_wechatRegistered');
+    AppLog.debug('[微信分享] SDK 注册: $_wechatRegistered');
   } catch (error) {
-    debugPrint('[微信分享] SDK 注册失败: $error');
+    AppLog.debug('[微信分享] SDK 注册失败: $error');
     _wechatRegistered = false;
   }
 }
@@ -35,7 +35,7 @@ Future<bool> shareWechatWebPage({
   required WechatShareScene scene,
 }) async {
   if (url.trim().isEmpty) return false;
-  debugPrint('[微信分享] 准备分享 URL=${url.trim()}');
+  AppLog.debug('[微信分享] 准备分享 URL=${url.trim()}');
 
   await initWechatShare();
 
@@ -55,7 +55,7 @@ Future<bool> shareWechatWebPage({
       if (ok) return true;
     }
   } catch (error) {
-    debugPrint('[微信分享] SDK 分享失败: $error');
+    AppLog.debug('[微信分享] SDK 分享失败: $error');
   }
 
   return false;

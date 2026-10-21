@@ -39,7 +39,7 @@ abstract final class AppSpacing {
 /// 固定尺寸
 abstract final class AppSize {
   /// 所有可点击目标最小尺寸
-  static const double touchMin = 44;
+  static const double touchMin = 48;
 
   /// 健康报表：环图、柱状绘图区与单列宽度。
   static const double healthRing = 160;

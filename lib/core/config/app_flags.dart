@@ -1,3 +1,4 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -36,10 +37,10 @@ class AppFlags {
       final raw = await (bundle ?? rootBundle).loadString(assetPath);
       _current = AppFlags.fromJson(raw);
     } catch (e) {
-      debugPrint('[AppFlags] 读取 $assetPath 失败，使用默认值: $e');
+      AppLog.debug('[AppFlags] 读取 $assetPath 失败，使用默认值: $e');
       _current = const AppFlags();
     }
-    debugPrint('[AppFlags] showRawError=${_current.showRawError} '
+    AppLog.debug('[AppFlags] showRawError=${_current.showRawError} '
         'showRawErrorToggle=${_current.showRawErrorToggle}');
     return _current;
   }

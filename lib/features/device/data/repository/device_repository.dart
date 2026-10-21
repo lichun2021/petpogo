@@ -1,6 +1,7 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
+import 'package:petpogo_app/core/providers/account_session_provider.dart';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/peer_api_client.dart';
 import '../models/device_model.dart';
@@ -114,9 +115,9 @@ class DeviceRepository {
         .where((product) =>
             product.isEnabled && product.productKey.trim().isNotEmpty)
         .toList(growable: false);
-    debugPrint('[ProductList] 已加载 ${products.length} 条启用产品');
+    AppLog.debug('[ProductList] 已加载 ${products.length} 条启用产品');
     for (final product in products) {
-      debugPrint(
+      AppLog.debug(
         '[ProductList] productKey=${product.productKey} '
         'alias=${product.alias} name=${product.displayName}',
       );
@@ -274,21 +275,26 @@ class DeviceListState {
   final List<DeviceProductModel> products;
   final bool isLoading;
   final String? errorMessage;
+  /// Successful unbinds stay hidden while the upstream list catches up.
+  final Set<String> removedDeviceIds;
   const DeviceListState(
       {this.devices = const [],
       this.products = const [],
       this.isLoading = false,
+      this.removedDeviceIds = const {},
       this.errorMessage});
 
   DeviceListState copyWith(
           {List<DeviceModel>? devices,
           List<DeviceProductModel>? products,
           bool? isLoading,
+          Set<String>? removedDeviceIds,
           String? errorMessage}) =>
       DeviceListState(
         devices: devices ?? this.devices,
         products: products ?? this.products,
         isLoading: isLoading ?? this.isLoading,
+        removedDeviceIds: removedDeviceIds ?? this.removedDeviceIds,
         errorMessage: errorMessage,
       );
 
@@ -306,14 +312,20 @@ class DeviceListState {
 
 class DeviceListNotifier extends StateNotifier<DeviceListState> {
   final DeviceRepository _repo;
+  final Map<String, String> _removedDevices = {};
+  int _generation = 0;
   DeviceListNotifier(this._repo) : super(const DeviceListState());
 
   Future<void> load() async {
+    final generation = ++_generation;
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
       final products = await _repo.fetchProducts();
+      if (!mounted || generation != _generation) return;
       final list = await _repo.fetchDevices();
+      if (!mounted || generation != _generation) return;
       final typedDevices = list
+          .where((device) => !_removedDevices.containsKey(device.mac.toUpperCase()))
           .map((device) => _attachProduct(device, products))
           .toList(growable: false);
       state = state.copyWith(
@@ -322,8 +334,9 @@ class DeviceListNotifier extends StateNotifier<DeviceListState> {
         isLoading: false,
       );
       // 再用实时接口校正在线态 + 回填成员设备缺失的 productKey
-      await _enrich(typedDevices, products);
+      await _enrich(typedDevices, products, generation);
     } catch (e) {
+      if (!mounted || generation != _generation) return;
       state = state.copyWith(isLoading: false, errorMessage: ErrorPresenter.message(e, fallback: '设备列表加载失败，请稍后重试'));
     }
   }
@@ -334,6 +347,7 @@ class DeviceListNotifier extends StateNotifier<DeviceListState> {
   Future<void> _enrich(
     List<DeviceModel> base,
     List<DeviceProductModel> products,
+    int generation,
   ) async {
     final enriched = await Future.wait(base.map((d) async {
       if (d.mac.isEmpty) return d;
@@ -343,6 +357,7 @@ class DeviceListNotifier extends StateNotifier<DeviceListState> {
         final online = await _repo.fetchOnlineState(d.mac);
         result = result.copyWith(connect: online);
       } catch (_) {/* 保留列表原值 */}
+      if (!mounted || generation != _generation) return result;
       // 回填 productKey（成员设备列表不含此字段）
       if (result.productKey.isEmpty) {
         try {
@@ -357,7 +372,7 @@ class DeviceListNotifier extends StateNotifier<DeviceListState> {
       }
       return result;
     }));
-    if (!mounted) return;
+    if (!mounted || generation != _generation) return;
     state = state.copyWith(devices: enriched);
   }
 
@@ -374,7 +389,7 @@ class DeviceListNotifier extends StateNotifier<DeviceListState> {
       }
     }
     if (matched == null) {
-      debugPrint(
+      AppLog.debug(
         '[ProductList] 设备 ${device.mac} 未匹配产品 '
         'productKey=${device.productKey}',
       );
@@ -386,9 +401,23 @@ class DeviceListNotifier extends StateNotifier<DeviceListState> {
     );
   }
 
-  void removeDevice(String mac) {
+  void removeDevice(String mac, {String? deviceId}) {
+    final key = mac.toUpperCase();
+    final matching = state.devices.where((d) => d.mac.toUpperCase() == key);
+    _removedDevices[key] = deviceId ?? (matching.isNotEmpty ? matching.first.deviceId : '');
+    _generation++;
     state = state.copyWith(
-      devices: state.devices.where((d) => d.mac != mac).toList(),
+      devices: state.devices.where((d) => d.mac.toUpperCase() != key).toList(),
+      isLoading: false,
+      removedDeviceIds: Set.unmodifiable(_removedDevices.values.where((id) => id.isNotEmpty)),
+    );
+  }
+
+  /// An explicit successful bind may make a previously removed device visible.
+  void allowDevice(String mac) {
+    _removedDevices.remove(mac.toUpperCase());
+    state = state.copyWith(
+      removedDeviceIds: Set.unmodifiable(_removedDevices.values.where((id) => id.isNotEmpty)),
     );
   }
 
@@ -426,5 +455,6 @@ class DeviceListNotifier extends StateNotifier<DeviceListState> {
 
 final deviceListProvider =
     StateNotifierProvider<DeviceListNotifier, DeviceListState>((ref) {
+  ref.watch(accountSessionProvider);
   return DeviceListNotifier(ref.read(deviceRepositoryProvider));
 });

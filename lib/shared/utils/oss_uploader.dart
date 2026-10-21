@@ -12,8 +12,9 @@
 ///   devices-media  - 机器人摄影媒体库
 library;
 
+import 'package:petpogo_app/core/logging/app_log.dart';
+import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/api_endpoints.dart';
@@ -45,7 +46,8 @@ class OssSignResult {
 // ── OSS 上传工具类 ─────────────────────────────────────────
 class OssUploader {
   final ApiClient _client;
-  OssUploader(this._client);
+  final Dio? _uploadClient;
+  OssUploader(this._client, {Dio? uploadClient}) : _uploadClient = uploadClient;
 
   /// 获取 OSS 预签名上传地址
   ///
@@ -54,10 +56,11 @@ class OssUploader {
   Future<OssSignResult> getSign({
     required String folder,
     required String mimeType,
+    String? fileType,
   }) async {
     final res = await _client.post<Map<String, dynamic>>(
       ApiEndpoints.ossUploadSign,
-      data: {'folder': folder, 'mimeType': mimeType},
+      data: {'folder': folder, 'mimeType': mimeType, if (fileType != null) 'fileType': fileType},
     );
     return OssSignResult.fromJson(res);
   }
@@ -71,30 +74,44 @@ class OssUploader {
     required String uploadUrl,
     required List<int> bytes,
     void Function(double progress)? onProgress,
-  }) async {
-    final dio = Dio();
-    debugPrint('[OSS] 开始上传 ${bytes.length} bytes → $uploadUrl');
+  }) => _upload(uploadUrl, Stream.value(bytes), bytes.length, onProgress);
+
+  Future<void> uploadFile({
+    required String uploadUrl,
+    required File file,
+    void Function(double progress)? onProgress,
+  }) async => _upload(uploadUrl, file.openRead(), await file.length(), onProgress);
+
+  Future<void> _upload(String uploadUrl, Stream<List<int>> data, int length,
+      void Function(double progress)? onProgress) async {
+    final uri = Uri.tryParse(uploadUrl);
+    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty || uri.userInfo.isNotEmpty) {
+      throw ArgumentError('上传地址必须使用 HTTPS');
+    }
+    final dio = _uploadClient ?? Dio(BaseOptions(
+      connectTimeout: const Duration(seconds: 15)));
+    // The current presigned contract excludes Content-Type from the signature.
+    dio.interceptors.removeImplyContentTypeInterceptor();
     try {
-      final resp = await dio.put(
-        uploadUrl,
-        data: bytes,
-        options: Options(
-          headers: const <String, dynamic>{},
-          sendTimeout:    const Duration(minutes: 5),
-          receiveTimeout: const Duration(minutes: 5),
-          validateStatus: (s) => s != null && s < 400,
-        ),
-        onSendProgress: (sent, total) {
-          if (total > 0) onProgress?.call(sent / total);
-        },
-      );
-      debugPrint('[OSS] 上传成功 status=${resp.statusCode}');
-    } on DioException catch (e) {
-      debugPrint('[OSS] 上传失败 status=${e.response?.statusCode}');
-      debugPrint('[OSS] 错误体: ${e.response?.data}');
+      await dio.put(uploadUrl, data: data, options: Options(
+        headers: {Headers.contentLengthHeader: length},
+        followRedirects: false,
+        sendTimeout: const Duration(minutes: 5),
+        receiveTimeout: const Duration(minutes: 5),
+        validateStatus: (status) => status != null && status >= 200 && status < 300,
+      ), onSendProgress: (sent, total) {
+        if (total > 0) onProgress?.call(sent / total);
+      });
+    } on DioException catch (error) {
+      AppLog.event('media.upload.failed', level: 'warning', fields: {
+        'status': error.response?.statusCode, 'errorType': error.type.name,
+      });
       rethrow;
+    } finally {
+      if (_uploadClient == null) dio.close();
     }
   }
+
 }
 
 final ossUploaderProvider = Provider<OssUploader>((ref) {

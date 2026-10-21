@@ -14,9 +14,9 @@
 ///    result.when(success: (list) => ..., failure: (err) => ...);
 /// ════════════════════════════════════════════════════════════
 
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tencent_cloud_chat_sdk/tencent_im_sdk_plugin.dart';
 import 'package:tencent_cloud_chat_sdk/models/v2_tim_conversation.dart';
@@ -49,7 +49,7 @@ class ImRepository {
     required String userId,
     required String userSig,
   }) => guardResult(() async {
-    debugPrint('[IM] 登录 userId=$userId');
+    AppLog.debug('[IM] 登录 userId=$userId');
     final res = await TencentImSDKPlugin.v2TIMManager.login(
       userID: userId,
       userSig: userSig,
@@ -57,13 +57,13 @@ class ImRepository {
     if (res.code != 0) {
       throw ApiException(message: res.desc ?? 'IM 登录失败', statusCode: res.code);
     }
-    debugPrint('[IM] ✅ 登录成功 userId=$userId');
+    AppLog.debug('[IM] ✅ 登录成功 userId=$userId');
   });
 
   // ── IM 登出 ──────────────────────────────────────────────
   Future<Result<void>> logout() => guardResult(() async {
     await TencentImSDKPlugin.v2TIMManager.logout();
-    debugPrint('[IM] 已登出');
+    AppLog.debug('[IM] 已登出');
   });
 
   // ── 会话列表 ─────────────────────────────────────────────
@@ -115,7 +115,7 @@ class ImRepository {
         .getMessageManager()
         .createTextMessage(text: text);
     if (createRes.code != 0 || createRes.data == null) {
-      debugPrint('[IM] createTextMessage 失败 code=${createRes.code} desc=${createRes.desc}');
+      AppLog.debug('[IM] createTextMessage 失败 code=${createRes.code} desc=${createRes.desc}');
       throw ApiException(message: createRes.desc ?? '创建消息失败', statusCode: createRes.code);
     }
     final msgId = createRes.data!.id!;
@@ -133,7 +133,7 @@ class ImRepository {
           cloudCustomData: '',
           localCustomData: '',
         );
-    debugPrint('[IM] sendMessage code=${res.code} desc=${res.desc}');
+    AppLog.debug('[IM] sendMessage code=${res.code} desc=${res.desc}');
     if (res.code != 0) {
       throw ApiException(message: '发送失败 (${res.code}): ${res.desc}', statusCode: res.code);
     }
@@ -149,7 +149,7 @@ class ImRepository {
         .getMessageManager()
         .createImageMessage(imagePath: imagePath);
     if (createRes.code != 0 || createRes.data == null) {
-      debugPrint('[IM] createImageMessage 失败 code=${createRes.code} desc=${createRes.desc}');
+      AppLog.debug('[IM] createImageMessage 失败 code=${createRes.code} desc=${createRes.desc}');
       throw ApiException(message: createRes.desc ?? '创建图片消息失败', statusCode: createRes.code);
     }
     final msgId = createRes.data!.id!;
@@ -167,7 +167,7 @@ class ImRepository {
           cloudCustomData: '',
           localCustomData: '',
         );
-    debugPrint('[IM] sendImage code=${res.code} desc=${res.desc}');
+    AppLog.debug('[IM] sendImage code=${res.code} desc=${res.desc}');
     if (res.code != 0) {
       throw ApiException(message: '图片发送失败 (${res.code}): ${res.desc}', statusCode: res.code);
     }
@@ -226,9 +226,9 @@ class ImRepository {
             cloudCustomData: '',
             localCustomData: '',
           );
-      debugPrint('[ImRepo] sendCustomMessage to=$toUserId type=${data["type"]}');
+      AppLog.debug('[ImRepo] sendCustomMessage to=$toUserId type=${data["type"]}');
     } catch (e) {
-      debugPrint('[ImRepo] sendCustomMessage error: $e');
+      AppLog.debug('[ImRepo] sendCustomMessage error: $e');
     }
   }
 
@@ -253,7 +253,7 @@ class ImRepository {
     required String toUserId,
     String addWording = '',
   }) => guardResult(() async {
-    debugPrint('[ImRepo] 📤 发送好友申请 → toUserId=$toUserId wording=$addWording');
+    AppLog.debug('[ImRepo] 📤 发送好友申请 → toUserId=$toUserId wording=$addWording');
     final res = await TencentImSDKPlugin.v2TIMManager
         .getFriendshipManager()
         .addFriend(
@@ -263,7 +263,7 @@ class ImRepository {
           remark: '',
           friendGroup: '',
         );
-    debugPrint('[ImRepo] addFriend result code=${res.code} desc=${res.desc}');
+    AppLog.debug('[ImRepo] addFriend result code=${res.code} desc=${res.desc}');
     if (res.code != 0 && res.code != 30001) {
       throw ApiException(message: res.desc ?? '添加好友失败');
     }
@@ -276,18 +276,18 @@ class ImRepository {
             .getFriendshipManager()
             .getFriendApplicationList();
         if (res.code != 0) {
-          debugPrint('[ImRepo] getFriendApplicationList error: code=${res.code} ${res.desc}');
+          AppLog.debug('[ImRepo] getFriendApplicationList error: code=${res.code} ${res.desc}');
           throw ApiException(message: res.desc ?? '获取申请列表失败');
         }
         final all = res.data?.friendApplicationList?.map((e) => e!).toList() ?? [];
         // 打印全部 raw 数据，排查过滤问题
-        debugPrint('[ImRepo] getFriendApplicationList unreadCount=${res.data?.unreadCount} total=${all.length}');
+        AppLog.debug('[ImRepo] getFriendApplicationList unreadCount=${res.data?.unreadCount} total=${all.length}');
         for (final a in all) {
-          debugPrint('[ImRepo]   → uid=${a.userID} type=${a.type} nick=${a.nickname} wording=${a.addWording}');
+          AppLog.debug('[ImRepo]   → uid=${a.userID} type=${a.type} nick=${a.nickname} wording=${a.addWording}');
         }
         // type: 1 = COME_IN（别人申请加我），2 = SEND_OUT（我发出的）
         final incoming = all.where((a) => a.type == 1).toList();
-        debugPrint('[ImRepo] 过滤后 COME_IN=${incoming.length} 条');
+        AppLog.debug('[ImRepo] 过滤后 COME_IN=${incoming.length} 条');
         return incoming;
       });
 
@@ -344,7 +344,7 @@ class ImRepository {
                 groupID: '',
               );
         } catch (e) {
-          debugPrint('[IM] 发送好友接受通知失败: $e');
+          AppLog.debug('[IM] 发送好友接受通知失败: $e');
           // 不影响主流程
         }
       });
@@ -391,9 +391,9 @@ class ImRepository {
           allowType: AllowType.V2TIM_FRIEND_NEED_CONFIRM,
         ),
       );
-      debugPrint('[IM] 已同步 IM 资料 nickname=$nickname，好友模式=需验证');
+      AppLog.debug('[IM] 已同步 IM 资料 nickname=$nickname，好友模式=需验证');
     } catch (e) {
-      debugPrint('[IM] 同步 IM 资料失败: $e');
+      AppLog.debug('[IM] 同步 IM 资料失败: $e');
     }
   }
 
@@ -462,7 +462,7 @@ class ImRepository {
           .map((e) => e!.friendInfo!)
           .toList();
     } catch (e) {
-      debugPrint('[IM] getFriendsInfo error: $e');
+      AppLog.debug('[IM] getFriendsInfo error: $e');
       return [];
     }
   }

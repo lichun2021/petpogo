@@ -2,6 +2,7 @@
 /// 录音最长 10 秒，长按录制，松手结束
 library;
 
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:petpogo_app/shared/widgets/modal_header.dart';
 
 import 'dart:async';
@@ -1620,7 +1621,7 @@ class _GreetingDetailSheetState extends ConsumerState<_GreetingDetailSheet> {
       );
 
       _mkPlayer!.stream.error.listen((err) {
-        debugPrint('[Video] media_kit error: $err');
+        AppLog.debug('[Video] media_kit error: $err');
         if (mounted) setState(() => _videoError = true);
       });
       _mkPlayer!.open(Media(widget.item.responseUrl));
@@ -2052,7 +2053,7 @@ class _GreetingDetailPageState extends State<_GreetingDetailPage>
       );
 
       _mkPlayer!.stream.error.listen((err) {
-        debugPrint('[Video] media_kit error: $err');
+        AppLog.debug('[Video] media_kit error: $err');
         if (mounted) setState(() => _videoError = true);
       });
       _mkPlayer!.open(Media(widget.item.responseUrl));

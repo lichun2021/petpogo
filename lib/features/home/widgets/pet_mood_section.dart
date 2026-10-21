@@ -52,6 +52,9 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
     if (!isLoggedIn) return const SizedBox.shrink();
 
     final pets = petState.pets;
+    final textScaler = MediaQuery.textScalerOf(context);
+    final petRowHeight = 80 + textScaler.scale(13) * 1.25 +
+        textScaler.scale(12) * 1.2;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,14 +63,15 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('我的宠物',
+            Expanded(child: Text('我的宠物',
                 style: TextStyle(
                     fontFamily: AppFonts.primary,
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                     color: AppColors.onSurface,
-                    height: 1.15)),
-            GestureDetector(
+                    height: 1.15))),
+            const SizedBox(width: 12),
+            Flexible(child: GestureDetector(
               onTap: () async {
                 await PetPickerSheet.show(
                   context,
@@ -88,7 +92,7 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: AppColors.primary)),
-            ),
+            )),
           ],
         ),
         SizedBox(height: 12),
@@ -99,10 +103,21 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
             height: 110,
             child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
           )
+        else if (petState.errorMessage != null && pets.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(children: [
+              Expanded(child: Text('宠物信息暂未同步，请重试',
+                style: Theme.of(context).textTheme.bodyMedium)),
+              TextButton(onPressed: () => ref
+                  .read(petCirclePetControllerProvider.notifier).load(),
+                child: const Text('重新同步')),
+            ]),
+          )
         // ── 横滑圆形头像（与萌宠圈一致）+ 末尾添加卡 ────
         else
           SizedBox(
-            height: 110, // 增加高度以容纳状态文字
+            height: petRowHeight,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -183,7 +198,7 @@ class _PetAvatarTab extends StatelessWidget {
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: online
-                          ? AppColors.statusOnline
+                          ? AppColors.statusOnlineStrong
                           : device.mac.isEmpty
                               ? Colors.transparent
                               : AppColors.onSurfaceVariant.withValues(alpha: 0.3),
@@ -222,7 +237,7 @@ class _PetAvatarTab extends StatelessWidget {
               style: TextStyle(
                 fontFamily: AppFonts.primary,
                 fontSize: 13,
-                height: 1.1,
+                height: 1.25,
                 color: AppColors.onSurface,
                 fontWeight: FontWeight.w600,
               ),
@@ -235,10 +250,10 @@ class _PetAvatarTab extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontFamily: AppFonts.primary,
-                fontSize: 10,
-                height: 1.1,
+                fontSize: 12,
+                height: 1.2,
                 color: online
-                    ? AppColors.statusOnline
+                    ? AppColors.statusOnlineStrong
                     : AppColors.onSurfaceVariant.withValues(alpha: 0.7),
                 fontWeight: FontWeight.w600,
               ),

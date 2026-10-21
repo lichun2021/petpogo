@@ -1,3 +1,4 @@
+import 'package:petpogo_app/core/providers/account_session_provider.dart';
 /// 宠物列表状态及档案操作。
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -79,6 +80,7 @@ class PetController extends StateNotifier<PetState> {
 
     final result = await _repo.fetchPets();
 
+    if (!mounted) return;
     result.when(
       success: (pets) {
         // 加载成功：更新列表，关闭加载状态
@@ -104,7 +106,7 @@ class PetController extends StateNotifier<PetState> {
     final result = await _peerRepo.createPet(
       petName: petName, breed: breed, age: age, sex: sex, avatar: avatar,
     );
-    if (result.isSuccess) await loadPets();
+    if (mounted && result.isSuccess) await loadPets();
     return result;
   }
 
@@ -116,6 +118,7 @@ class PetController extends StateNotifier<PetState> {
   /// 成功后直接用传入的 [pet]（调用方已持有的最新数据）替换本地列表项。
   Future<Result<void>> updatePet(PetModel pet) async {
     final result = await _repo.updatePet(pet);
+    if (!mounted) return result;
 
     result.when(
       success: (_) {
@@ -140,6 +143,13 @@ class PetController extends StateNotifier<PetState> {
   /// 防止页面重建时重复弹出相同错误。
   void clearError() {
     state = state.copyWith(errorMessage: null);
+  }
+
+  void removeForDevice(String deviceId) {
+    if (deviceId.isEmpty) return;
+    state = state.copyWith(
+      pets: state.pets.where((pet) => pet.linkedDeviceId != deviceId).toList(),
+    );
   }
 
   /// 按 ID 获取单个宠物（纯本地查找，不发请求）
@@ -167,6 +177,7 @@ class PetController extends StateNotifier<PetState> {
 ///   ref.read(petControllerProvider.notifier).loadPets();
 final petControllerProvider =
     StateNotifierProvider<PetController, PetState>((ref) {
+  ref.watch(accountSessionProvider);
   return PetController(ref.watch(petRepositoryProvider),
       peerRepo: ref.watch(petPeerRepositoryProvider));
 });

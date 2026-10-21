@@ -12,6 +12,7 @@ class AppColors {
 
   // ─── 当前方案 ───────────────────────────────────────────
   static PetColorScheme _scheme = warmPinkScheme;
+  static final Map<PetColorScheme, Color> _tertiaryCache = {};
 
   static PetColorScheme get current => _scheme;
 
@@ -109,7 +110,27 @@ class AppColors {
   // Text
   static Color get textPrimary   => _scheme.textPrimary;
   static Color get textSecondary => _scheme.textSecondary;
-  static Color get textTertiary  => _scheme.textTertiary;
+  static Color get textTertiary => _readableTertiary;
+  static Color get _readableTertiary {
+    final cached = _tertiaryCache[_scheme];
+    if (cached != null) return cached;
+    final base = _scheme.textTertiary;
+    for (var step = 0; step <= 20; step++) {
+      final candidate = Color.lerp(base, _scheme.textPrimary, step / 20)!;
+      if ([_scheme.surfacePage, _scheme.surfaceCard, _scheme.surfaceSunken]
+          .every((background) => _contrast(candidate, background) >= 4.5)) {
+        return _tertiaryCache[_scheme] = candidate;
+      }
+    }
+    return _scheme.textPrimary;
+  }
+
+  static double _contrast(Color a, Color b) {
+    final first = a.computeLuminance();
+    final second = b.computeLuminance();
+    return first > second ? (first + .05) / (second + .05)
+        : (second + .05) / (first + .05);
+  }
   static Color get textOnBrand   => _scheme.textOnBrand;
 
   // Surface

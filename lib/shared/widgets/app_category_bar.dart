@@ -8,11 +8,15 @@ class AppCategoryBar extends StatelessWidget {
   final List<String> labels;
   final int selected;
   final ValueChanged<int> onSelected;
+
+  /// 缩小可见胶囊，仍保留完整点击区域。
+  final bool compact;
   const AppCategoryBar(
       {super.key,
       required this.labels,
       required this.selected,
-      required this.onSelected});
+      required this.onSelected,
+      this.compact = false});
 
   @override
   Widget build(BuildContext context) => Align(
@@ -28,37 +32,62 @@ class AppCategoryBar extends StatelessWidget {
                 selected: selected == index,
                 button: true,
                 child: Material(
-                  color: selected == index
-                      ? AppColors.brandPrimarySoft
-                      : AppColors.surfaceCard,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: AppRadius.pillRadius,
-                    side: BorderSide(
-                      color: selected == index
-                          ? AppColors.brandPrimary.withValues(alpha: 0.35)
-                          : AppColors.borderSubtle,
-                    ),
-                  ),
+                  color: Colors.transparent,
+                  borderRadius: AppRadius.pillRadius,
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
                     onTap: () => onSelected(index),
                     borderRadius: AppRadius.pillRadius,
-                    child: Container(
-                      constraints:
-                          const BoxConstraints(minHeight: AppSize.touchMin),
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.x16, vertical: AppSpacing.x8),
-                      child: Text(labels[index],
-                          style: TextStyle(
-                              fontFamily: AppFonts.primary,
-                              fontSize: 13,
-                              fontWeight: selected == index
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                              color: selected == index
-                                  ? AppColors.brandPrimaryStrong
-                                  : AppColors.textSecondary)),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                          minWidth: AppSize.touchMin,
+                          minHeight: AppSize.touchMin),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                            vertical: compact ? AppSpacing.x8 : 0),
+                        child: Ink(
+                          decoration: ShapeDecoration(
+                            color: selected == index
+                                ? AppColors.brandPrimarySoft
+                                : compact
+                                    ? AppColors.surfaceSunken
+                                    : AppColors.surfaceCard,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: AppRadius.pillRadius,
+                              side: compact
+                                  ? BorderSide.none
+                                  : BorderSide(
+                                      color: selected == index
+                                          ? AppColors.brandPrimary
+                                              .withValues(alpha: 0.35)
+                                          : AppColors.borderSubtle,
+                                    ),
+                            ),
+                          ),
+                          child: Container(
+                            constraints: BoxConstraints(
+                                minHeight: compact
+                                    ? AppSpacing.x32
+                                    : AppSize.touchMin),
+                            alignment: Alignment.center,
+                            padding: EdgeInsets.symmetric(
+                                horizontal:
+                                    compact ? AppSpacing.x12 : AppSpacing.x16,
+                                vertical:
+                                    compact ? AppSpacing.x4 : AppSpacing.x8),
+                            child: Text(labels[index],
+                                style: TextStyle(
+                                    fontFamily: AppFonts.primary,
+                                    fontSize: 13,
+                                    fontWeight: selected == index
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: selected == index
+                                        ? AppColors.brandPrimaryStrong
+                                        : AppColors.textSecondary)),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),

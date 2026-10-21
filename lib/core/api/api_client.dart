@@ -17,12 +17,14 @@
 
 library;
 
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'request_signature.dart';
 
 import 'package:dio/dio.dart';
+import 'package:uuid/uuid.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_config.dart';
@@ -39,6 +41,8 @@ class ApiClient {
   Future<String?> Function()? onRefreshToken;
   Future<String?>? _refreshInFlight;
   int _sessionEpoch = 0;
+  /// A workflow can stop between steps when logout or account switching occurs.
+  int get sessionEpoch => _sessionEpoch;
   String? get token => (_dio.options.headers['Authorization'] as String?)
       ?.replaceFirst('Bearer ', '');
 
@@ -80,13 +84,14 @@ class ApiClient {
       // 1. Auth 拦截器：在每个请求头里自动插入 Token
       _AuthInterceptor(this, _dio.transformer),
 
+      // Correlate and time each attempt before session/error handling consumes it.
+      _RequestLogInterceptor(),
+
       // 2. 错误拦截器：把 DioException → ApiException
       //    _SessionInterceptor 先处理续期，确认失效后才通知 AuthController
       _SessionInterceptor(this),
       _ErrorInterceptor(),
 
-      // 3. 日志拦截器：仅 Debug 模式开启，完整打印 进/出 参数
-      if (AppConfig.isDebug) _DevLogInterceptor(),
     ]);
   }
 
@@ -330,6 +335,14 @@ class _AuthInterceptor extends Interceptor {
   @override
   void onRequest(
       RequestOptions options, RequestInterceptorHandler handler) async {
+    final trusted = Uri.parse(AppConfig.apiBaseUrl);
+    if (!options.uri.hasAuthority || options.uri.userInfo.isNotEmpty ||
+        options.uri.scheme != 'https' ||
+        options.uri.origin != trusted.origin) {
+      handler.reject(DioException(requestOptions: options,
+          error: const ApiException(message: '不允许访问此服务地址')));
+      return;
+    }
     options.extra.putIfAbsent('sessionEpoch', () => client._sessionEpoch);
     final path = Uri.parse(options.path).path;
     final isAi = path.startsWith('${ApiEndpoints.aiProxyPrefix}/');
@@ -423,105 +436,52 @@ class _AuthInterceptor extends Interceptor {
   }
 }
 
-// ── 开发日志拦截器 ────────────────────────────────────────
-/// 完整打印每个请求的 进/出 参数，方便开发调试
-/// 使用 debugPrint 确保日志能被 ./log.sh 捕获
+/// Structured request metadata, with per-request timing and correlation IDs.
+class _RequestLogInterceptor extends Interceptor {
+  static const _uuid = Uuid();
 
-/// debugPrint 默认截断 800 字符，用此函数分段打印长内容保证完整显示
-void _logLong(String msg, {int chunkSize = 500}) {
-  if (msg.length <= chunkSize) {
-    debugPrint(msg);
-    return;
-  }
-  var offset = 0;
-  var first = true;
-  while (offset < msg.length) {
-    final chunk =
-        msg.substring(offset, (offset + chunkSize).clamp(0, msg.length));
-    if (first) {
-      debugPrint(chunk);
-      first = false;
-    } else {
-      debugPrint('│  $chunk');
-    }
-    offset += chunkSize;
-  }
-}
-
-bool _isProxyRequest(RequestOptions options) =>
-    options.uri.path.startsWith('${ApiEndpoints.peerProxyPrefix}/') ||
-    options.uri.path.startsWith('${ApiEndpoints.aiProxyPrefix}/') ||
-    options.uri.path.startsWith('/sdkapi/auth/');
-
-class _DevLogInterceptor extends Interceptor {
-  // 记录请求开始时间，用于计算耗时
-  final _startTimes = <String, DateTime>{};
+  Map<String, Object?> _fields(RequestOptions request) => {
+    'requestId': request.extra['requestId'],
+    'method': request.method,
+    'path': request.uri.path,
+    'attempt': request.extra['logAttempt'],
+  };
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    final key = '${options.method}:${options.path}';
-    _startTimes[key] = DateTime.now();
-
-    debugPrint('\n┌─── [API 请求] ─────────────────────────────');
-    debugPrint(
-        '│ ${options.method} ${_isProxyRequest(options) ? options.uri.path : options.uri}');
-    // 请求头（过滤掉 Authorization 的具体 token 值，只显示是否有）
-    final headers = Map<String, dynamic>.from(options.headers);
-    headers.updateAll((key, value) => {
-          'authorization',
-          'x-api-key',
-          'x-signature',
-          'x-nonce'
-        }.contains(key.toLowerCase())
-            ? '***'
-            : value);
-    debugPrint('│ Headers: $headers');
-    if (!_isProxyRequest(options) && options.queryParameters.isNotEmpty) {
-      debugPrint('│ Query: ${options.queryParameters}');
-    }
-    if (options.data != null) {
-      _logLong(
-          '│ Body: ${_isProxyRequest(options) ? '<proxy payload omitted>' : options.data is Uint8List ? '<${(options.data as Uint8List).length} bytes>' : options.data}');
-    }
-    debugPrint('└─────────────────────────────────────────────');
+    final requestId = options.extra.putIfAbsent('requestId', () => _uuid.v4());
+    options.headers['X-Request-ID'] = requestId;
+    options.extra['logAttempt'] = (options.extra['logAttempt'] as int? ?? 0) + 1;
+    options.extra['requestWatch'] = Stopwatch()..start();
+    AppLog.event('http.request', fields: _fields(options));
     handler.next(options);
+  }
+
+  int _elapsed(RequestOptions request) {
+    final watch = request.extra.remove('requestWatch') as Stopwatch?;
+    watch?.stop();
+    return watch?.elapsedMilliseconds ?? 0;
   }
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
-    final key =
-        '${response.requestOptions.method}:${response.requestOptions.path}';
-    final ms = DateTime.now()
-        .difference(_startTimes.remove(key) ?? DateTime.now())
-        .inMilliseconds;
-
-    debugPrint('\n┌─── [API 响应] ─────────────────────────────');
-    debugPrint(
-        '│ ${response.statusCode} ${response.requestOptions.uri}  (${ms}ms)');
-    if (response.requestOptions.responseType == ResponseType.stream) {
-      debugPrint('│ Body: <streaming>');
-    } else {
-      _logLong(
-          '│ Body: ${_isProxyRequest(response.requestOptions) ? '<proxy payload omitted>' : response.data}');
-    }
-    debugPrint('└─────────────────────────────────────────────');
+    AppLog.event('http.response', fields: {
+      ..._fields(response.requestOptions),
+      'status': response.statusCode,
+      'durationMs': _elapsed(response.requestOptions),
+    });
     handler.next(response);
   }
 
   @override
-  void onError(DioException err, ErrorInterceptorHandler handler) {
-    final key = '${err.requestOptions.method}:${err.requestOptions.path}';
-    _startTimes.remove(key);
-
-    debugPrint('\n┌─── [API 错误] ─────────────────────────────');
-    debugPrint('│ ${err.requestOptions.method} ${err.requestOptions.uri}');
-    debugPrint('│ Type: ${err.type}');
-    debugPrint('│ Status: ${err.response?.statusCode}');
-    _logLong(
-        '│ Body: ${_isProxyRequest(err.requestOptions) ? '<proxy payload omitted>' : err.response?.data}');
-    if (!_isProxyRequest(err.requestOptions)) _logLong('│ Msg: ${err.message}');
-    debugPrint('└─────────────────────────────────────────────');
-    handler.next(err);
+  void onError(DioException error, ErrorInterceptorHandler handler) {
+    AppLog.event('http.error', level: 'warning', fields: {
+      ..._fields(error.requestOptions),
+      'status': error.response?.statusCode,
+      'durationMs': _elapsed(error.requestOptions),
+      'errorType': error.type.name,
+    });
+    handler.next(error);
   }
 }
 

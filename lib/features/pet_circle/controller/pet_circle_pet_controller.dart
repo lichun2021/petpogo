@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart';
+import 'package:petpogo_app/core/logging/app_log.dart';
+import 'package:petpogo_app/core/providers/account_session_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../device/data/models/device_model.dart';
@@ -78,12 +79,14 @@ class PetCirclePetState {
 
 class PetCirclePetController extends StateNotifier<PetCirclePetState> {
   final Ref _ref;
+  int _generation = 0;
+  final Set<String> _removedDeviceIds = {};
 
   PetCirclePetController(this._ref) : super(const PetCirclePetState());
 
   Future<void> loadIfNeeded() async {
     if ((state.hasLoaded && state.pets.isNotEmpty) || state.isLoading) {
-      debugPrint(
+      AppLog.debug(
           '[萌宠圈][宠物] 跳过加载 hasLoaded=${state.hasLoaded} isLoading=${state.isLoading} count=${state.pets.length}');
       return;
     }
@@ -91,7 +94,8 @@ class PetCirclePetController extends StateNotifier<PetCirclePetState> {
   }
 
   Future<void> load() async {
-    debugPrint('[萌宠圈][宠物] 开始加载宠物列表');
+    final generation = ++_generation;
+    AppLog.debug('[萌宠圈][宠物] 开始加载宠物列表');
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
       final petRepo = _ref.read(petPeerRepositoryProvider);
@@ -99,25 +103,21 @@ class PetCirclePetController extends StateNotifier<PetCirclePetState> {
 
       // 并行拉取：我的宠物 + 共享给我的宠物
       // 两个接口理论上不会返回同一只宠物（一个是我创建的，一个是别人共享给我的）
-      debugPrint('[萌宠圈][宠物] 并行调用 /pet/info/list + /pet/share/withme');
+      AppLog.debug('[萌宠圈][宠物] 并行调用 /pet/info/list + /pet/share/withme');
       final results = await Future.wait([
-        petRepo.fetchPetList().catchError((e) {
-          debugPrint('[萌宠圈][宠物] /pet/info/list 失败: $e');
-          return const <PetInfoModel>[];
-        }),
-        shareRepo.fetchSharedPets(pageNo: 1, pageSize: 20).catchError((e) {
-          debugPrint('[萌宠圈][宠物] /pet/share/withme 失败: $e');
-          return const <PetInfoModel>[];
-        }),
+        petRepo.fetchPetList(),
+        shareRepo.fetchSharedPets(pageNo: 1, pageSize: 20),
       ]);
+      if (!mounted || generation != _generation) return;
       final myPets = results[0];
       final sharedPets = results[1];
-      debugPrint(
+      AppLog.debug(
           '[萌宠圈][宠物] 我的=${myPets.length} 共享=${sharedPets.length}');
 
       // 获取设备列表用于关联显示
       final deviceState = await _ensureDevices();
-      debugPrint(
+      if (!mounted || generation != _generation) return;
+      AppLog.debug(
           '[萌宠圈][宠物] 设备列表 count=${deviceState.devices.length}');
 
       // 构建 deviceId -> DeviceModel 映射
@@ -134,6 +134,7 @@ class PetCirclePetController extends StateNotifier<PetCirclePetState> {
 
       // 1. 先放我的宠物
       for (final pet in myPets) {
+        if (_removedDeviceIds.contains(pet.deviceId)) continue;
         if (pet.petId.isEmpty || pet.petName.isEmpty) continue;
         if (!seen.add(pet.petId)) continue; // 去重
         final device = _resolveDevice(pet, deviceMap);
@@ -144,6 +145,7 @@ class PetCirclePetController extends StateNotifier<PetCirclePetState> {
       }
       // 2. 再放共享宠物
       for (final pet in sharedPets) {
+        if (_removedDeviceIds.contains(pet.deviceId)) continue;
         if (pet.petId.isEmpty || pet.petName.isEmpty) continue;
         if (!seen.add(pet.petId)) continue; // 去重（理论上不会命中）
         final device = _resolveDevice(pet, deviceMap);
@@ -159,10 +161,11 @@ class PetCirclePetController extends StateNotifier<PetCirclePetState> {
         hasLoaded: true,
         errorMessage: null,
       );
-      debugPrint(
+      AppLog.debug(
           '[萌宠圈][宠物] 加载完成 count=${state.pets.length} ids=${state.pets.map((e) => e.id).join(',')}');
     } catch (e) {
-      debugPrint('[萌宠圈][宠物] 加载失败: $e');
+      if (!mounted || generation != _generation) return;
+      AppLog.debug('[萌宠圈][宠物] 加载失败: $e');
       state = state.copyWith(
         isLoading: false,
         hasLoaded: true,
@@ -171,9 +174,35 @@ class PetCirclePetController extends StateNotifier<PetCirclePetState> {
     }
   }
 
+  void removeForDevice(String deviceId) {
+    if (deviceId.isEmpty) return;
+    _removedDeviceIds.add(deviceId);
+    _generation++;
+    state = state.copyWith(
+      pets: state.pets.where((item) => item.device.deviceId != deviceId &&
+          item.pet.deviceId != deviceId).toList(),
+      isLoading: false,
+      hasLoaded: true,
+    );
+  }
+
+  void allowDevice(String deviceId) {
+    _removedDeviceIds.remove(deviceId);
+    state = state.copyWith(hasLoaded: false);
+  }
+
+  void syncRemovedDevices(Set<String> ids) {
+    for (final id in _removedDeviceIds.difference(ids).toList()) {
+      allowDevice(id);
+    }
+    for (final id in ids.difference(_removedDeviceIds).toList()) {
+      removeForDevice(id);
+    }
+  }
+
   /// 强制刷新（下拉刷新用）：清除缓存标志重新拉取
   Future<void> refresh() async {
-    debugPrint('[萌宠圈][宠物] 强制刷新');
+    AppLog.debug('[萌宠圈][宠物] 强制刷新');
     state = state.copyWith(hasLoaded: false);
     await load();
   }
@@ -185,7 +214,7 @@ class PetCirclePetController extends StateNotifier<PetCirclePetState> {
       final device = deviceMap[pet.deviceId];
       if (device != null) return device;
       // 有 deviceId 但设备列表里没有，创建虚拟设备
-      debugPrint(
+      AppLog.debug(
           '[萌宠圈][宠物] 警告: 宠物 ${pet.petName} 的设备ID ${pet.deviceId} 在设备列表中未找到');
       return DeviceModel(
         deviceId: pet.deviceId,
@@ -207,26 +236,28 @@ class PetCirclePetController extends StateNotifier<PetCirclePetState> {
 
   Future<DeviceListState> _ensureDevices() async {
     var deviceState = _ref.read(deviceListProvider);
-    debugPrint(
+    AppLog.debug(
         '[萌宠圈][设备] 当前缓存 count=${deviceState.devices.length} loading=${deviceState.isLoading}');
     if (deviceState.devices.isEmpty && !deviceState.isLoading) {
-      debugPrint('[萌宠圈][设备] 缓存为空，开始请求设备列表');
+      AppLog.debug('[萌宠圈][设备] 缓存为空，开始请求设备列表');
       await _ref.read(deviceListProvider.notifier).load();
+      if (!mounted) return const DeviceListState();
       deviceState = _ref.read(deviceListProvider);
-      debugPrint(
+      AppLog.debug(
           '[萌宠圈][设备] 设备列表请求完成 count=${deviceState.devices.length} error=${deviceState.errorMessage ?? '-'}');
       return deviceState;
     }
 
     if (deviceState.isLoading) {
-      debugPrint('[萌宠圈][设备] 设备列表正在加载，等待完成');
+      AppLog.debug('[萌宠圈][设备] 设备列表正在加载，等待完成');
       final deadline = DateTime.now().add(const Duration(seconds: 8));
-      while (_ref.read(deviceListProvider).isLoading &&
+      while (mounted && _ref.read(deviceListProvider).isLoading &&
           DateTime.now().isBefore(deadline)) {
         await Future.delayed(const Duration(milliseconds: 200));
       }
+      if (!mounted) return const DeviceListState();
       deviceState = _ref.read(deviceListProvider);
-      debugPrint(
+      AppLog.debug(
           '[萌宠圈][设备] 等待结束 count=${deviceState.devices.length} loading=${deviceState.isLoading} error=${deviceState.errorMessage ?? '-'}');
     }
 
@@ -236,5 +267,10 @@ class PetCirclePetController extends StateNotifier<PetCirclePetState> {
 
 final petCirclePetControllerProvider =
     StateNotifierProvider<PetCirclePetController, PetCirclePetState>((ref) {
-  return PetCirclePetController(ref);
+  ref.watch(accountSessionProvider);
+  final controller = PetCirclePetController(ref);
+  controller.syncRemovedDevices(ref.read(deviceListProvider).removedDeviceIds);
+  ref.listen(deviceListProvider.select((state) => state.removedDeviceIds),
+      (_, ids) => controller.syncRemovedDevices(ids));
+  return controller;
 });

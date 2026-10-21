@@ -5,5 +5,6 @@ class CommunityCategoryBar extends AppCategoryBar {
       {super.key,
       required super.labels,
       required super.selected,
-      required super.onSelected});
+      required super.onSelected})
+      : super(compact: true);
 }

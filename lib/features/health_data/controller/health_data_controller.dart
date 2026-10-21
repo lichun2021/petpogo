@@ -1,3 +1,4 @@
+import 'package:petpogo_app/core/providers/account_session_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:petpogo_app/features/health_data/data/models/health_data_models.dart';
 import 'package:petpogo_app/features/health_data/data/repository/health_data_repository.dart';
@@ -222,6 +223,7 @@ class HealthDataController extends StateNotifier<HealthDataState> {
 final healthDataControllerProvider =
     StateNotifierProvider.family<HealthDataController, HealthDataState, String>(
   (ref, petId) {
+  ref.watch(accountSessionProvider);
     return HealthDataController(
       petId,
       ref.read(healthDataRepositoryProvider),

@@ -1,3 +1,4 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'dart:io' show Platform;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -26,7 +27,7 @@ Future<String> _reverseGeocode(double lat, double lng) async {
       return parts.take(4).join(' ');
     }
   } catch (e) {
-    debugPrint('[Location] geocode error: $e');
+    AppLog.debug('[Location] geocode error: $e');
   }
   return '';
 }
@@ -90,8 +91,8 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
       LatLng? gcj;
       if (pos.hasLocation) {
         gcj = CoordTransform.wgs84ToGcj02(pos.lat, pos.lng);
-        debugPrint('[Location] WGS84: ${pos.lat},${pos.lng}');
-        debugPrint('[Location] GCJ02: ${gcj.latitude},${gcj.longitude}');
+        AppLog.debug('[Location] WGS84: ${pos.lat},${pos.lng}');
+        AppLog.debug('[Location] GCJ02: ${gcj.latitude},${gcj.longitude}');
       }
 
       if (mounted) {

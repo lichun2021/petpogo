@@ -1,3 +1,5 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
+import 'package:petpogo_app/core/providers/account_session_provider.dart';
 /// ════════════════════════════════════════════════════════════
 ///  AI 分析 Controller
 ///
@@ -8,7 +10,6 @@
 /// ════════════════════════════════════════════════════════════
 
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_exception.dart';
 import '../../auth/controller/auth_controller.dart';
@@ -94,6 +95,7 @@ class AiAnalyzeController extends StateNotifier<AiAnalyzeState> {
         account: account,
         petId: petId,
         onProgress: (stage, p) {
+          if (!mounted) return;
           if (stage == 'upload') {
             state = state.copyWith(phase: AiPhase.uploading, uploadProgress: p);
           } else if (stage == 'analyzing') {
@@ -102,6 +104,7 @@ class AiAnalyzeController extends StateNotifier<AiAnalyzeState> {
           }
         },
       );
+      if (!mounted) return;
       _syncQuota(result.quota);
 
       if (!result.success) {
@@ -115,12 +118,13 @@ class AiAnalyzeController extends StateNotifier<AiAnalyzeState> {
       }
       state = AiAnalyzeState(
           phase: AiPhase.result, result: result, uploadProgress: 1.0);
-      debugPrint(
+      AppLog.debug(
           '[AiCtrl] 语音分析完成: ${result.primaryEmotion.labelZh} (剩余: ${result.quota.remaining})');
     } catch (e) {
+      if (!mounted) return;
       state =
           AiAnalyzeState(phase: AiPhase.error, errorMessage: _parseError(e));
-      debugPrint('[AiCtrl] 语音分析失败: $e');
+      AppLog.debug('[AiCtrl] 语音分析失败: $e');
     }
   }
 
@@ -142,6 +146,7 @@ class AiAnalyzeController extends StateNotifier<AiAnalyzeState> {
         account: account,
         petId: petId,
         onProgress: (stage, p) {
+          if (!mounted) return;
           if (stage == 'upload') {
             state = state.copyWith(phase: AiPhase.uploading, uploadProgress: p);
           } else if (stage == 'analyzing') {
@@ -150,6 +155,7 @@ class AiAnalyzeController extends StateNotifier<AiAnalyzeState> {
           }
         },
       );
+      if (!mounted) return;
       _syncQuota(result.quota);
 
       if (!result.success) {
@@ -163,12 +169,13 @@ class AiAnalyzeController extends StateNotifier<AiAnalyzeState> {
       }
       state = AiAnalyzeState(
           phase: AiPhase.result, result: result, uploadProgress: 1.0);
-      debugPrint(
+      AppLog.debug(
           '[AiCtrl] 图像分析完成: ${result.primaryEmotion.labelZh} (剩余: ${result.quota.remaining})');
     } catch (e) {
+      if (!mounted) return;
       state =
           AiAnalyzeState(phase: AiPhase.error, errorMessage: _parseError(e));
-      debugPrint('[AiCtrl] 图像分析失败: $e');
+      AppLog.debug('[AiCtrl] 图像分析失败: $e');
     }
   }
 
@@ -189,11 +196,13 @@ class AiAnalyzeController extends StateNotifier<AiAnalyzeState> {
 // ── Providers ─────────────────────────────────────────────
 final aiVoiceControllerProvider =
     StateNotifierProvider<AiAnalyzeController, AiAnalyzeState>((ref) {
+  ref.watch(accountSessionProvider);
   return AiAnalyzeController(ref.watch(aiRepositoryProvider), ref);
 });
 
 final aiImageControllerProvider =
     StateNotifierProvider<AiAnalyzeController, AiAnalyzeState>((ref) {
+  ref.watch(accountSessionProvider);
   return AiAnalyzeController(ref.watch(aiRepositoryProvider), ref);
 });
 
@@ -223,7 +232,7 @@ final aiPointsProvider = FutureProvider.autoDispose<Map<String, int?>>((ref) asy
       'consult': match('consultation_question'),
     };
   } catch (e) {
-    debugPrint('[AiPoints] 拉取积分规则失败: $e');
-    return {'voice': null, 'image': null, 'consult': null};
+    AppLog.debug('[AiPoints] 拉取积分规则失败: $e');
+    rethrow;
   }
 });

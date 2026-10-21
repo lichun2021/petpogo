@@ -1,17 +1,40 @@
 #!/bin/bash
 # ════════════════════════════════════════════════
 #  宠联芯 实时日志查看器
-#  用法：./log.sh [--full]
-#    --full  显示所有 tag（默认只显示 flutter）
+#  用法：./log.sh [--full] [--clear] [--request ID] [--level warning]
+#    --module 名称  按模块筛选；--since '10-21 10:00:00.000' 从指定时间读取
 # ════════════════════════════════════════════════
 
 ADB=~/Library/Android/sdk/platform-tools/adb
 PKG="com.junxin.petpogo_and"
 FULL_MODE=false
+CLEAR_HISTORY=false
+REQUEST_FILTER=""
+LEVEL_FILTER=""
+MODULE_FILTER=""
+SINCE_FILTER=""
 
-if [[ "$1" == "--full" ]]; then
-  FULL_MODE=true
-fi
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --full) FULL_MODE=true; shift ;;
+    --clear) CLEAR_HISTORY=true; shift ;;
+    --request|--level|--module|--since)
+      if [[ $# -lt 2 || -z "$2" ]]; then
+        echo "❌ $1 需要一个参数"; exit 1
+      fi
+      case "$1" in
+        --request) REQUEST_FILTER="$2" ;;
+        --level) LEVEL_FILTER="$2" ;;
+        --module) MODULE_FILTER="$2" ;;
+        --since) SINCE_FILTER="$2" ;;
+      esac
+      shift 2 ;;
+    --help|-h)
+      echo "用法：./log.sh [--full] [--clear] [--request ID] [--level warning|error|info] [--module 名称] [--since 时间]"
+      exit 0 ;;
+    *) echo "❌ 未知参数：$1"; exit 1 ;;
+  esac
+done
 
 # 先找真机（非 emulator 开头的在线设备）
 DEVICE=$($ADB devices | grep -v "^List" | grep "device$" | grep -v "emulator" | head -1 | awk '{print $1}')
@@ -53,11 +76,16 @@ echo ""
 # 加大 logcat 环形缓冲区至 16MB，减少高频日志被挤掉
 $ADB -s $DEVICE logcat -G 16M 2>/dev/null || true
 
-# 清空旧日志
-$ADB -s $DEVICE logcat -c
+# Preserve history by default. Only explicitly clear it when requested.
+if $CLEAR_HISTORY; then
+  $ADB -s $DEVICE logcat -c
+fi
 
 colorize() {
   while IFS= read -r line; do
+    [[ -n "$REQUEST_FILTER" && "$line" != *"$REQUEST_FILTER"* ]] && continue
+    [[ -n "$LEVEL_FILTER" && "$line" != *"\"level\":\"$LEVEL_FILTER\""* ]] && continue
+    [[ -n "$MODULE_FILTER" && "$line" != *"$MODULE_FILTER"* ]] && continue
     if echo "$line" | grep -qE "✅|成功|loggedIn|\[API 响应\]"; then
       echo -e "\033[32m$line\033[0m"
     elif echo "$line" | grep -qE "✗|失败|[Ee]rror|[Ee]xception|\[API 错误\]"; then
@@ -74,10 +102,14 @@ colorize() {
   done
 }
 
+LOG_ARGS=(--pid="$PID")
+if [[ -n "$SINCE_FILTER" ]]; then
+  LOG_ARGS+=(-T "$SINCE_FILTER")
+fi
 if $FULL_MODE; then
   # 完整模式：App PID 的所有 tag
-  $ADB -s $DEVICE logcat --pid=$PID 2>&1 | colorize
+  "$ADB" -s "$DEVICE" logcat "${LOG_ARGS[@]}" 2>&1 | colorize
 else
   # 默认模式：只看 flutter tag（直接 logcat tag 过滤）
-  $ADB -s $DEVICE logcat --pid=$PID flutter:V "*:S" 2>&1 | colorize
+  "$ADB" -s "$DEVICE" logcat "${LOG_ARGS[@]}" flutter:V "*:S" 2>&1 | colorize
 fi

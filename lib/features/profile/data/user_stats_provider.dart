@@ -1,3 +1,4 @@
+import 'package:petpogo_app/core/providers/account_session_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/result.dart';
@@ -45,6 +46,7 @@ class UserStatsNotifier extends StateNotifier<UserStatsState> {
       );
       return UserStats.fromJson(data);
     });
+    if (!mounted) return;
     result.when(
       success: (s) => state = state.copyWith(stats: s, isLoading: false),
       failure: (e) => state = state.copyWith(isLoading: false, errorMessage: e.userMessage),
@@ -54,5 +56,6 @@ class UserStatsNotifier extends StateNotifier<UserStatsState> {
 
 final userStatsProvider =
     StateNotifierProvider<UserStatsNotifier, UserStatsState>((ref) {
+  ref.watch(accountSessionProvider);
   return UserStatsNotifier(ref.read(apiClientProvider));
 });

@@ -65,4 +65,7 @@ android/key.properties
 !/test/sdkapi_proxy_client_test.dart
 !/test/collar_ui_test.dart
 !/test/collar_setup_page_test.dart
+!/test/review_regressions_test.dart
+!/test/device_unbind_refresh_test.dart
+!/test/account_session_cleanup_test.dart
 /tools

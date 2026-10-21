@@ -1,10 +1,10 @@
 /// Peer protocol adapter over the signed SDKAPI gateway.
 library;
 
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'api_client.dart';
 import 'api_endpoints.dart';
@@ -71,7 +71,7 @@ class PeerApiClient {
     final json = _decodeResponseMap(res, path);
     final pr = PeerResponse<T>.fromJson(json, fromInfo);
     if (!pr.isSuccess) {
-      debugPrint('[PeerApi] POST $path 业务错误 code=${pr.code}: ${pr.tip}');
+      AppLog.debug('[PeerApi] POST $path 业务错误 code=${pr.code}: ${pr.tip}');
       throw Exception('[iPet] ${pr.tip}');
     }
     return pr;
@@ -91,7 +91,7 @@ class PeerApiClient {
     final json = _decodeResponseMap(res, path);
     final pr = PeerResponse<T>.fromJson(json, fromInfo);
     if (!pr.isSuccess) {
-      debugPrint('[PeerApi] GET $path 业务错误 code=${pr.code}: ${pr.tip}');
+      AppLog.debug('[PeerApi] GET $path 业务错误 code=${pr.code}: ${pr.tip}');
       throw Exception('[iPet] ${pr.tip}');
     }
     return pr;

@@ -1,3 +1,4 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../shared/widgets/pet_toast.dart';
@@ -71,7 +72,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
     final myUserId = authState.user?.id;
 
     if (myUserId == null) {
-      debugPrint('[FriendFeed] myUserId 为空，跳过加载');
+      AppLog.debug('[FriendFeed] myUserId 为空，跳过加载');
       return;
     }
 
@@ -81,17 +82,17 @@ class _CommunityPageState extends ConsumerState<CommunityPage>
       success: (friends) {
         final ids =
             friends.map((f) => f.userID).where((id) => id.isNotEmpty).toList();
-        debugPrint('[FriendFeed] IM 好友列表: ${ids.length} 个');
+        AppLog.debug('[FriendFeed] IM 好友列表: ${ids.length} 个');
         return ids;
       },
       failure: (e) {
-        debugPrint('[FriendFeed] 拉取好友列表失败: $e');
+        AppLog.debug('[FriendFeed] 拉取好友列表失败: $e');
         return <String>[];
       },
     );
 
     // 不追加自己，好友流只显示好友的帖子
-    debugPrint('[FriendFeed] 最终 friendIds（纯好友）: ${friendIds.length} 个');
+    AppLog.debug('[FriendFeed] 最终 friendIds（纯好友）: ${friendIds.length} 个');
 
     // 触发好友流加载，传当前分类
     final tag = _selectedCategory == 0

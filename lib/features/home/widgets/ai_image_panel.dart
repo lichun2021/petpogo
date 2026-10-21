@@ -1,5 +1,6 @@
 import 'package:petpogo_app/shared/widgets/modal_header.dart';
 import 'dart:io';
+import 'ai_points_hint.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -37,7 +38,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
       maxHeight: 1280,
       imageQuality: 85,
     );
-    if (xFile == null) return;
+    if (xFile == null || !mounted) return;
     setState(() => _previewFile = File(xFile.path));
   }
 
@@ -125,7 +126,6 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(aiImageControllerProvider);
-    final imagePoints = ref.watch(aiPointsProvider).valueOrNull?['image'];
 
     // 分析完成后弹 SnackBar
     ref.listen(aiImageControllerProvider, (prev, next) {
@@ -152,6 +152,29 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
         }
       }
     });
+    if (state.phase == AiPhase.idle && _previewFile == null) {
+      return Material(
+        color: AppColors.surfaceCard,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: _showPickSheet,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(padding: const EdgeInsets.all(16),
+            child: Row(children: [
+              Icon(Icons.add_photo_alternate_outlined,
+                  color: AppColors.brandPrimary, size: 24),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('看懂宠物的情绪', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  const AiPointsHint(kind: 'image'),
+                ])),
+              Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
+            ])),
+        ),
+      );
+    }
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
       decoration: BoxDecoration(
@@ -198,10 +221,7 @@ class _AiImagePanelState extends ConsumerState<AiImagePanel> {
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary)),
                     const SizedBox(height: 4),
-                    Text(
-                        imagePoints == null ? '积分消耗加载中' : '$imagePoints 积分 / 次',
-                        style: TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary)),
+                    const AiPointsHint(kind: 'image'),
                   ]),
             ),
             if (state.phase == AiPhase.result ||

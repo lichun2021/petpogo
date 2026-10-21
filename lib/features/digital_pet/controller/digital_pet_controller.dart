@@ -5,8 +5,9 @@
 /// 互动/硬件动作轮询会就地更新养成属性和当前播放的动画 clip。
 library;
 
+import 'package:petpogo_app/core/logging/app_log.dart';
+import 'package:petpogo_app/core/providers/account_session_provider.dart';
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -133,11 +134,13 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
 
   Future<void> _init() async {
     final pets = await _loadPets();
+    if (!mounted) return;
     if (pets.isEmpty) {
       state = state.copyWith(status: DigitalPetStatus.ready, pets: pets);
       return;
     }
     final savedId = await _readLastSelectedPetId();
+    if (!mounted) return;
     final initial =
         pets.any((p) => p.petId == savedId) ? savedId : pets.first.petId;
     state = state.copyWith(pets: pets, selectedPetId: initial);
@@ -148,7 +151,7 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
     try {
       return await _peerRepo.fetchPetList();
     } catch (e) {
-      debugPrint('[数字宠] ❌ 获取宠物列表失败: $e');
+      AppLog.debug('[数字宠] ❌ 获取宠物列表失败: $e');
       return const [];
     }
   }
@@ -185,6 +188,7 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
       lastClipCode: null,
     );
     await _saveLastSelectedPetId(petId);
+    if (!mounted) return;
     await _loadStatusForSelected();
   }
 
@@ -197,6 +201,7 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
     state = state.copyWith(status: DigitalPetStatus.loading, clearError: true);
 
     final result = await _digitalRepo.fetchStatus(pet.petId);
+    if (!mounted) return;
     result.when(
       success: (status) {
         state = state.copyWith(
@@ -223,6 +228,7 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
     final current = state.petStatus;
     if (pet == null || current == null) return;
     final result = await _digitalRepo.interact(pet.petId, interactionCode);
+    if (!mounted) return;
     result.when(
       success: (r) {
         state = state.copyWith(
@@ -235,7 +241,7 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
         );
       },
       failure: (err) {
-        debugPrint('[数字宠] ❌ 互动失败: $err');
+        AppLog.debug('[数字宠] ❌ 互动失败: $err');
         // 按 spec：养成属性和动画都保持不变，只需要页面展示错误提示，
         // 这里不写 state.error（避免整页切到错误态，只是这一次互动失败）。
       },
@@ -255,6 +261,7 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
   Future<void> _fetchResources() async {
     state = state.copyWith(resourcesLoading: true, clearResourcesError: true);
     final result = await _digitalRepo.fetchResources();
+    if (!mounted) return;
     if (!mounted) return;
     result.when(
       success: (res) => state = state.copyWith(
@@ -278,11 +285,12 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
       currentName: current.name,
       backgroundId: bg.id,
     );
+    if (!mounted || state.selectedPetId != pet.petId) return false;
     if (result.isSuccess) {
       state = state.copyWith(petStatus: current.copyWith(background: bg));
       return true;
     }
-    debugPrint('[数字宠] ❌ 设置背景失败: ${result.error}');
+    AppLog.debug('[数字宠] ❌ 设置背景失败: ${result.error}');
     return false;
   }
 
@@ -295,11 +303,12 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
       currentName: current.name,
       modelId: model.id,
     );
+    if (!mounted || state.selectedPetId != pet.petId) return false;
     if (result.isSuccess) {
       state = state.copyWith(petStatus: current.copyWith(model: model));
       return true;
     }
-    debugPrint('[数字宠] ❌ 设置形象失败: ${result.error}');
+    AppLog.debug('[数字宠] ❌ 设置形象失败: ${result.error}');
     return false;
   }
 
@@ -320,6 +329,7 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
     final pet = state.selectedPet;
     if (pet == null) return;
     final result = await _digitalRepo.fetchAction(pet.petId);
+    if (!mounted) return;
     result.when(
       success: (action) {
         // 无活跃动作（硬件没有新上报/已过期）时回落到待机动画；
@@ -330,7 +340,7 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
           state = state.copyWith(lastClipCode: nextClip);
         }
       },
-      failure: (err) => debugPrint('[数字宠] ❌ 硬件动作轮询失败: $err'),
+      failure: (err) => AppLog.debug('[数字宠] ❌ 硬件动作轮询失败: $err'),
     );
   }
 
@@ -357,6 +367,7 @@ class DigitalPetController extends StateNotifier<DigitalPetState> {
 
 final digitalPetControllerProvider =
     StateNotifierProvider<DigitalPetController, DigitalPetState>((ref) {
+  ref.watch(accountSessionProvider);
   return DigitalPetController(
     ref.read(petPeerRepositoryProvider),
     ref.read(digitalPetRepositoryProvider),

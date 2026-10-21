@@ -2,6 +2,7 @@
 /// 步骤：填写 WiFi 账号密码 → 生成二维码 → 机器人扫码自动配网 → 等待绑定成功
 library;
 
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -140,7 +141,7 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
         _ssidCtrl.text = ssid;
       }
     } catch (e) {
-      debugPrint('[WiFi] 获取失败: $e');
+      AppLog.debug('[WiFi] 获取失败: $e');
     } finally {
       if (mounted) setState(() => _loadingWifi = false);
     }
@@ -191,7 +192,7 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
         'p': pwd,
         't': credential.token,
       });
-      debugPrint(
+      AppLog.debug(
         '[机器人配网] 临时凭证获取成功 '
         'expireIn=${credential.expireIn}s qrLength=${data.length}',
       );
@@ -213,7 +214,7 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
         () => unawaited(_showTimeout()),
       );
     } catch (error) {
-      debugPrint('[机器人配网] 获取临时凭证失败: $error');
+      AppLog.debug('[机器人配网] 获取临时凭证失败: $error');
       if (!mounted) return;
       final message = ErrorPresenter.message(error, fallback: '配网二维码生成失败');
       setState(() => _qrError = message);
@@ -322,6 +323,7 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
         found = true;
         _provisionTimeoutTimer?.cancel();
         _pollTimer?.cancel();
+        ref.read(deviceListProvider.notifier).allowDevice(newMac);
         await ref.read(deviceListProvider.notifier).load();
         _checkAccount();
         if (mounted) {
@@ -337,7 +339,7 @@ class _RobotWifiSetupPageState extends ConsumerState<RobotWifiSetupPage>
           ref.read(authControllerProvider).user?.id != _accountUserId) {
         _stopForAccountChange();
       }
-      debugPrint('[机器人配网] 检测设备失败: $error');
+      AppLog.debug('[机器人配网] 检测设备失败: $error');
     } finally {
       _checkingDevices = false;
     }

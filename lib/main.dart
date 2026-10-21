@@ -1,4 +1,6 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -49,22 +51,22 @@ void main() async {
   final flags = await AppFlags.load();
   final showRawError = resolveInitialShowRawError(prefs, flags);
 
-  debugPrint(
+  AppLog.debug(
       '[启动] 恢复字体: $savedFont  配色: $savedThemeKey  录像质量: $savedVideoQuality');
 
   // 初始化腾讯 IM SDK
   await TencentImSDKPlugin.v2TIMManager.initSDK(
     sdkAppID: AppConfig.timSdkAppId,
-    loglevel: LogLevelEnum.V2TIM_LOG_WARN,
+    loglevel: kDebugMode ? LogLevelEnum.V2TIM_LOG_WARN : LogLevelEnum.V2TIM_LOG_ERROR,
     listener: V2TimSDKListener(
-      onConnecting: () => debugPrint('[TIM] 连接中...'),
-      onConnectSuccess: () => debugPrint('[TIM] ✅ 连接成功'),
-      onConnectFailed: (c, e) => debugPrint('[TIM] ❌ 连接失败: $c $e'),
-      onKickedOffline: () => debugPrint('[TIM] ⚠️ 账号在其他设备登录，被踢下线'),
-      onUserSigExpired: () => debugPrint('[TIM] ⚠️ UserSig 已过期，需重新登录'),
+      onConnecting: () => AppLog.debug('[TIM] 连接中...'),
+      onConnectSuccess: () => AppLog.debug('[TIM] ✅ 连接成功'),
+      onConnectFailed: (c, e) => AppLog.debug('[TIM] ❌ 连接失败: $c $e'),
+      onKickedOffline: () => AppLog.debug('[TIM] ⚠️ 账号在其他设备登录，被踢下线'),
+      onUserSigExpired: () => AppLog.debug('[TIM] ⚠️ UserSig 已过期，需重新登录'),
     ),
   );
-  debugPrint('[TIM] SDK 初始化完成 (SDKAppID: ${AppConfig.timSdkAppId})');
+  AppLog.debug('[TIM] SDK 初始化完成 (SDKAppID: ${AppConfig.timSdkAppId})');
 
   // ── 初始化微信分享 SDK ─────────────────────────────────────
   await initWechatShare();
@@ -99,7 +101,7 @@ void main() async {
     authControllerProvider,
     (previous, next) {
       if (previous?.status != next.status) {
-        debugPrint(
+        AppLog.debug(
             '[Router] Auth 状态变化: ${previous?.status} → ${next.status}，刷新路由守卫');
         appRouter.refresh();
         if (!next.isRestoring) DeepLinkService.consumePendingRoute();

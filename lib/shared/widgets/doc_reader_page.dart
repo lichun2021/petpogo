@@ -13,6 +13,7 @@
 ///    DocReaderPage(title: '帮助中心', src: 'https://example.com/help')
 /// ════════════════════════════════════════════════════════════
 
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
@@ -73,7 +74,7 @@ class _DocReaderPageState extends State<DocReaderPage> {
           onPageStarted: (_) => setState(() => _webLoading = true),
           onPageFinished: (_) => setState(() => _webLoading = false),
           onWebResourceError: (err) {
-            debugPrint('[DocReader] WebView error: ${err.description}');
+            AppLog.debug('[DocReader] WebView error: ${err.description}');
           },
         ),
       )

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/providers/account_session_provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/router/app_routes.dart';
 import '../../shared/theme/app_colors.dart';
@@ -7,7 +8,10 @@ import '../../app.dart' show AppL10nX;
 import '../../shared/widgets/glass_bottom_nav.dart';
 
 /// 全局控制底部导航栏显隐（全屏视频时隐藏）
-final hideBottomNavProvider = StateProvider<bool>((ref) => false);
+final hideBottomNavProvider = StateProvider<bool>((ref) {
+  ref.watch(accountSessionProvider);
+  return false;
+});
 
 /// 底部 Tab 导航的外壳 Widget
 ///

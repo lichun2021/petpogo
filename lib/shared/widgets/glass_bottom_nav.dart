@@ -21,6 +21,22 @@ class GlassBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var labelHeight = 0.0;
+    for (final item in items) {
+      final painter = TextPainter(
+        text: TextSpan(text: item.label, style: TextStyle(
+          fontFamily: AppFonts.primary, fontSize: 11,
+          fontWeight: FontWeight.w700, height: 1.25)),
+        textScaler: MediaQuery.textScalerOf(context),
+        textDirection: Directionality.of(context), maxLines: 1,
+      )..layout();
+      if (painter.height > labelHeight) labelHeight = painter.height;
+      painter.dispose();
+    }
+    final contentHeight = AppIconSize.tabBar + AppSpacing.x4 + labelHeight +
+        AppSpacing.x8 + AppSpacing.x16;
+    final height = contentHeight > AppSize.tabBarHeight
+        ? contentHeight : AppSize.tabBarHeight;
     return ClipRect(
       child: Container(
         decoration: BoxDecoration(
@@ -39,7 +55,7 @@ class GlassBottomNav extends StatelessWidget {
         child: SafeArea(
           top: false,
           child: SizedBox(
-            height: AppSize.tabBarHeight,
+            height: height,
             child: Padding(
               padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.x8, vertical: AppSpacing.x8),
@@ -110,6 +126,7 @@ class NavButton extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: AppFonts.primary,
                       fontSize: 11,
+                      height: 1.25,
                       fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                       color: color,
                     ),

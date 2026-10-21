@@ -9,7 +9,7 @@ import '../../shared/widgets/pet_toast.dart';
 import '../../app.dart' show AppL10nX;
 import '../auth/controller/auth_controller.dart';
 import '../auth/data/models/auth_model.dart';
-import '../community/data/post_repository.dart';
+import '../../shared/utils/oss_uploader.dart';
 import '../device/device_list_page.dart';
 import '../pet/controller/pet_controller.dart';
 import '../pet/pet_list_page.dart';
@@ -53,13 +53,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
     setState(() => _uploadingAvatar = true);
     try {
-      final repo = ref.read(postRepositoryProvider);
-      final sign = await repo.getOssSign(fileType: 'image', folder: 'avatars');
-      await repo.uploadToOss(
-          uploadUrl: sign.uploadUrl, file: file, contentType: 'image/jpeg');
+      final repo = ref.read(ossUploaderProvider);
+      final sign = await repo.getSign(fileType: 'image', folder: 'avatars', mimeType: 'image/jpeg');
+      await repo.uploadFile(uploadUrl: sign.uploadUrl, file: file);
       final ok = await ref
           .read(authControllerProvider.notifier)
-          .updateAvatar(sign.cdnUrl ?? '');
+          .updateAvatar(sign.cdnUrl);
       if (!context.mounted) return;
       PetToast.show(context, ok ? '头像更新成功 🎉' : '头像更新失败，请重试');
     } catch (e) {

@@ -1,3 +1,4 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -23,7 +24,7 @@ Future<String> _amapRegeocode(LatLng pos) async {
       return parts.join(' ');
     }
   } catch (e) {
-    debugPrint('[Geocode] Nominatim error: $e');
+    AppLog.debug('[Geocode] Nominatim error: $e');
   }
   return '${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)}';
 }
@@ -75,8 +76,8 @@ class _FenceMapPickerPageState extends State<FenceMapPickerPage> {
       if (!mounted) return;
       // WGS-84 → GCJ-02（火星坐标），解决高德地图偏移
       final gcj = CoordTransform.wgs84ToGcj02(pos.latitude, pos.longitude);
-      debugPrint('[Fence] GPS WGS84: ${pos.latitude},${pos.longitude}');
-      debugPrint('[Fence] Map GCJ02: ${gcj.latitude},${gcj.longitude}');
+      AppLog.debug('[Fence] GPS WGS84: ${pos.latitude},${pos.longitude}');
+      AppLog.debug('[Fence] Map GCJ02: ${gcj.latitude},${gcj.longitude}');
 
       setState(() { _center = gcj; _locating = false; });
       _mapController.move(gcj, 16);

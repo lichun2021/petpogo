@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'ai_points_hint.dart';
 import '../controller/hold_recording_session.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -59,7 +60,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 900),
-    )..repeat(reverse: true);
+    );
   }
 
   @override
@@ -85,7 +86,10 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
       _pulseCtrl.repeat(reverse: true);
       _recordTimer?.cancel();
       _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted && _isRecording) setState(() => _recordSecs++);
+        if (mounted && _isRecording) {
+          setState(() => _recordSecs++);
+          if (_recordSecs >= 60) unawaited(_finishRecording(submit: true));
+        }
       });
     } catch (_) {
       _showSnack('无法开始录音，请重试');
@@ -145,7 +149,6 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(aiVoiceControllerProvider);
-    final voicePoints = ref.watch(aiPointsProvider).valueOrNull?['voice'];
 
     // 分析完成后弹 SnackBar 提示
     ref.listen(aiVoiceControllerProvider, (prev, next) {
@@ -209,10 +212,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary)),
                     const SizedBox(height: 4),
-                    Text(
-                        voicePoints == null ? '积分消耗加载中' : '$voicePoints 积分 / 次',
-                        style: TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary)),
+                    const AiPointsHint(kind: 'voice'),
                   ]),
             ),
             if (state.result != null || state.phase == AiPhase.notPet) ...[
@@ -231,7 +231,7 @@ class _AiTranslatePanelState extends ConsumerState<AiTranslatePanel>
 
           // 内容区（固定最小高度，防止切换阶段时外框跳动）
           ConstrainedBox(
-            constraints: BoxConstraints(minHeight: 190),
+            constraints: BoxConstraints(minHeight: 160),
             child: Center(
               child: AnimatedSwitcher(
                 duration: Duration(milliseconds: 300),
@@ -313,7 +313,15 @@ class _IdleView extends StatelessWidget {
           ),
         ),
         SizedBox(height: 20),
-        GestureDetector(
+        Semantics(
+          button: true,
+          excludeSemantics: true,
+          label: isRecording ? '完成宠物录音' : '开始宠物录音',
+          hint: '双击开始录音，再次双击完成。最长录音一分钟。',
+          onTap: () async {
+            if (isRecording) { await onPressUp(); } else { await onPressDown(); }
+          },
+          child: GestureDetector(
           onLongPressStart: (_) => onPressDown(),
           onLongPressEnd: (_) => onPressUp(),
           onLongPressCancel: () => onCancel(),
@@ -350,7 +358,7 @@ class _IdleView extends StatelessWidget {
               );
             },
           ),
-        ),
+        )),
         SizedBox(height: 12),
         if (isRecording)
           Text(

@@ -15,6 +15,7 @@
 //    3. 使用 _slide() / _fade() / _fadeScale() 指定动画类型
 // ════════════════════════════════════════════════════════════
 
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'app_routes.dart';
@@ -111,7 +112,7 @@ final appRouter = GoRouter(
     if (isOnSplash) return null;
 
     // ③ 未登录 且 不在登录页 → 强制跳到登录页
-    if (auth.isGuest && !isOnLogin && !isOnShare) return AppRoutes.login;
+    if (!auth.isLoggedIn && !isOnLogin && !isOnShare) return AppRoutes.login;
 
     // ④ 已登录且在登录页：优先返回经过白名单校验的分享页
     if (auth.isLoggedIn && isOnLogin) {
@@ -430,17 +431,17 @@ CustomTransitionPage _fadeScalePage(GoRouterState state, Widget page) =>
 class _NavLogger extends NavigatorObserver {
   @override
   void didPush(Route route, Route? previousRoute) {
-    debugPrint('[路由] push → ${route.settings.name ?? route.runtimeType}');
+    AppLog.debug('[路由] push → ${route.settings.name ?? route.runtimeType}');
   }
 
   @override
   void didPop(Route route, Route? previousRoute) {
-    debugPrint('[路由] pop  ← (返回到 ${previousRoute?.settings.name ?? "?"})');
+    AppLog.debug('[路由] pop  ← (返回到 ${previousRoute?.settings.name ?? "?"})');
   }
 
   @override
   void didReplace({Route? newRoute, Route? oldRoute}) {
-    debugPrint(
+    AppLog.debug(
         '[路由] replace: ${oldRoute?.settings.name} → ${newRoute?.settings.name}');
   }
 }

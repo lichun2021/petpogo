@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart';
+import 'package:petpogo_app/core/logging/app_log.dart';
+import 'package:petpogo_app/core/providers/account_session_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/models/pet_circle_post.dart';
@@ -58,10 +59,10 @@ class PetCircleController extends StateNotifier<PetCircleState> {
   Future<void> selectPet(String petId) async {
     if (petId.isEmpty) return;
     if (state.selectedPetId == petId && state.posts.isNotEmpty) {
-      debugPrint('[萌宠圈][动态] 跳过选中 petId=$petId posts=${state.posts.length}');
+      AppLog.debug('[萌宠圈][动态] 跳过选中 petId=$petId posts=${state.posts.length}');
       return;
     }
-    debugPrint('[萌宠圈][动态] 选择宠物 petId=$petId');
+    AppLog.debug('[萌宠圈][动态] 选择宠物 petId=$petId');
     state = PetCircleState(selectedPetId: petId, isLoading: true);
     await _loadFirst(petId, refreshing: false);
   }
@@ -69,7 +70,7 @@ class PetCircleController extends StateNotifier<PetCircleState> {
   Future<void> refresh() async {
     final petId = state.selectedPetId;
     if (petId.isEmpty || state.isRefreshing) return;
-    debugPrint('[萌宠圈][动态] 下拉刷新 petId=$petId');
+    AppLog.debug('[萌宠圈][动态] 下拉刷新 petId=$petId');
     state = state.copyWith(isRefreshing: true, errorMessage: null);
     await _loadFirst(petId, refreshing: true);
   }
@@ -85,7 +86,7 @@ class PetCircleController extends StateNotifier<PetCircleState> {
 
     final generation = _generation;
     final nextPage = state.page + 1;
-    debugPrint(
+    AppLog.debug(
         '[萌宠圈][动态] 加载更多 petId=${state.selectedPetId} page=$nextPage pageSize=$_pageSize');
     state = state.copyWith(isLoadingMore: true, errorMessage: null);
     final result = await _repo.fetchFeed(
@@ -104,11 +105,11 @@ class PetCircleController extends StateNotifier<PetCircleState> {
           isLoadingMore: false,
           errorMessage: null,
         );
-        debugPrint(
+        AppLog.debug(
             '[萌宠圈][动态] 加载更多成功 page=$nextPage add=${data.list.length} totalPosts=${state.posts.length} hasMore=${state.hasMore}');
       },
       failure: (error) {
-        debugPrint('[萌宠圈][动态] 加载更多失败: ${error.userMessage}');
+        AppLog.debug('[萌宠圈][动态] 加载更多失败: ${error.userMessage}');
         state = state.copyWith(
           isLoadingMore: false,
           errorMessage: error.userMessage,
@@ -118,7 +119,7 @@ class PetCircleController extends StateNotifier<PetCircleState> {
   }
 
   Future<bool> deletePost(String id) async {
-    debugPrint('[萌宠圈][动态] 删除动态 id=$id');
+    AppLog.debug('[萌宠圈][动态] 删除动态 id=$id');
     final result = await _repo.deletePost(id);
     return result.when(
       success: (_) {
@@ -126,11 +127,11 @@ class PetCircleController extends StateNotifier<PetCircleState> {
           posts: state.posts.where((post) => post.id != id).toList(),
           errorMessage: null,
         );
-        debugPrint('[萌宠圈][动态] 删除成功 id=$id remain=${state.posts.length}');
+        AppLog.debug('[萌宠圈][动态] 删除成功 id=$id remain=${state.posts.length}');
         return true;
       },
       failure: (error) {
-        debugPrint('[萌宠圈][动态] 删除失败 id=$id error=${error.userMessage}');
+        AppLog.debug('[萌宠圈][动态] 删除失败 id=$id error=${error.userMessage}');
         state = state.copyWith(errorMessage: error.userMessage);
         return false;
       },
@@ -139,7 +140,7 @@ class PetCircleController extends StateNotifier<PetCircleState> {
 
   Future<void> _loadFirst(String petId, {required bool refreshing}) async {
     final generation = ++_generation;
-    debugPrint(
+    AppLog.debug(
         '[萌宠圈][动态] 请求首页 petId=$petId page=1 pageSize=$_pageSize refreshing=$refreshing');
     final result = await _repo.fetchFeed(
       petId: petId,
@@ -160,11 +161,11 @@ class PetCircleController extends StateNotifier<PetCircleState> {
           isLoadingMore: false,
           errorMessage: null,
         );
-        debugPrint(
+        AppLog.debug(
             '[萌宠圈][动态] 首页成功 petId=$petId count=${data.list.length} total=${data.total} hasMore=${state.hasMore}');
       },
       failure: (error) {
-        debugPrint('[萌宠圈][动态] 首页失败 petId=$petId error=${error.userMessage}');
+        AppLog.debug('[萌宠圈][动态] 首页失败 petId=$petId error=${error.userMessage}');
         state = state.copyWith(
           selectedPetId: petId,
           isLoading: false,
@@ -179,5 +180,6 @@ class PetCircleController extends StateNotifier<PetCircleState> {
 
 final petCircleControllerProvider =
     StateNotifierProvider<PetCircleController, PetCircleState>((ref) {
+  ref.watch(accountSessionProvider);
   return PetCircleController(ref.watch(petCircleRepositoryProvider));
 });

@@ -1,6 +1,5 @@
+import 'package:petpogo_app/shared/utils/oss_uploader.dart' as media;
 import 'dart:io';
-import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/api_client.dart';
 import 'models/post_model.dart';
@@ -155,33 +154,8 @@ class PostRepository {
     required String contentType,
     void Function(double progress)? onProgress,
   }) async {
-    final dio = Dio();
-    final bytes = await file.readAsBytes();
-    debugPrint('[OSS] 开始上传 ${bytes.length} bytes → $uploadUrl');
-    try {
-      final resp = await dio.put(
-        uploadUrl,
-        data: bytes,
-        options: Options(
-          // ⚠️ 不发 Content-Type，避免与预签名中的签名字符串不匹配
-          headers: const <String, dynamic>{},
-          sendTimeout: const Duration(minutes: 5),
-          receiveTimeout: const Duration(minutes: 5),
-          validateStatus: (status) => status != null && status < 400,
-        ),
-        onSendProgress: (sent, total) {
-          if (total > 0 && onProgress != null) {
-            onProgress(sent / total);
-          }
-        },
-      );
-      debugPrint('[OSS] 上传成功 status=${resp.statusCode}');
-    } on DioException catch (e) {
-      // 打印 OSS 返回的 XML 错误体，方便排查
-      debugPrint('[OSS] 上传失败 status=${e.response?.statusCode}');
-      debugPrint('[OSS] 错误响应体: ${e.response?.data}');
-      rethrow;
-    }
+    await media.OssUploader(_client).uploadFile(
+      uploadUrl: uploadUrl, file: file, onProgress: onProgress);
   }
 }
 

@@ -1,3 +1,4 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../../../../core/api/api_exception.dart';
@@ -19,7 +20,7 @@ class CollarSetupLog extends ChangeNotifier {
         '${DateTime.now().toIso8601String()} +${_clock.elapsedMilliseconds}ms $message';
     entries.add(line);
     if (entries.length > 150) entries.removeAt(0);
-    debugPrint('[CollarSetup] $line');
+    AppLog.debug('[CollarSetup] $line');
     notifyListeners();
   }
 }

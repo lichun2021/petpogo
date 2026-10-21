@@ -1,6 +1,7 @@
 /// 数字宠首页。
 library;
 
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -50,13 +51,13 @@ class _DigitalPetPageState extends ConsumerState<DigitalPetPage> {
     final controller = ref.read(digitalPetControllerProvider.notifier);
     switch (event) {
       case 'petLoadStage':
-        debugPrint('[数字宠] 模型阶段: ${data['stage']}');
+        AppLog.debug('[数字宠] 模型阶段: ${data['stage']}');
         break;
       case 'petReady':
         controller.onSceneReady();
         break;
       case 'petError':
-        debugPrint('[数字宠] 模型加载失败，阶段: ${data['stage'] ?? 'scene'}');
+        AppLog.debug('[数字宠] 模型加载失败，阶段: ${data['stage'] ?? 'scene'}');
         controller.onSceneError(data['message'] ?? 'unknown error');
         break;
     }

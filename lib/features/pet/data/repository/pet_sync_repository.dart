@@ -1,7 +1,7 @@
 /// 宠物档案更新同步；创建和删除在后台 Peer 中转内完成。
 library;
 
-import 'package:flutter/foundation.dart';
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/pet_model.dart';
 import '../models/pet_peer_models.dart';
@@ -40,9 +40,9 @@ class PetSyncRepository {
   Future<void> syncUpdate(PetInfoModel pet) async {
     final result = await _petRepo.updatePet(_toPetModel(pet));
     result.when(
-      success: (_) => debugPrint('[宠物同步] ✅ 更新成功 petId=${pet.petId}'),
+      success: (_) => AppLog.debug('[宠物同步] ✅ 更新成功 petId=${pet.petId}'),
       failure: (err) =>
-          debugPrint('[宠物同步] ❌ 更新失败 petId=${pet.petId}: $err'),
+          AppLog.debug('[宠物同步] ❌ 更新失败 petId=${pet.petId}: $err'),
     );
   }
 

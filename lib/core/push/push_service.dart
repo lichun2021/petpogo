@@ -7,8 +7,8 @@
 ///   ✅ 处理通知点击 → 路由跳转
 ///   ❌ 不持有 BuildContext（通过 appRouter 导航）
 
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:jpush_flutter/jpush_flutter.dart';
 import 'package:jpush_flutter/jpush_interface.dart';
 import '../../core/config/app_config.dart';
@@ -21,6 +21,17 @@ class PushService {
   /// 通过 JPush.newJPush() 获取平台实例（3.x API）
   static final _jpush = JPush.newJPush();
   static String? _registrationId;
+  static Future<void> _aliasQueue = Future.value();
+
+  static Future<void> _queueAlias(Future<void> Function() operation) {
+    final next = _aliasQueue.then((_) => operation());
+    _aliasQueue = next.catchError((Object error) {
+      AppLog.event('push.alias.failed', level: 'warning', fields: {
+        'errorType': error.runtimeType.toString(),
+      });
+    });
+    return next;
+  }
 
   /// 冷启动时 push 通知携带的目标路由，认证恢复后由 AuthController 消费并跳转
   static String? pendingRoute;
@@ -34,20 +45,20 @@ class PushService {
       _jpush.addEventHandler(
         // 收到通知（App 在前台）
         onReceiveNotification: (Map<String, dynamic> message) async {
-          debugPrint('[JPush] 收到通知: $message');
+          AppLog.debug('[JPush] 收到通知: $message');
         },
         // 用户点击通知打开 App
         onOpenNotification: (Map<String, dynamic> message) async {
-          debugPrint('[JPush] 点击通知: $message');
+          AppLog.debug('[JPush] 点击通知: $message');
           _handleNotificationTap(message);
         },
         // 收到透传消息
         onReceiveMessage: (Map<String, dynamic> message) async {
-          debugPrint('[JPush] 收到透传消息: $message');
+          AppLog.debug('[JPush] 收到透传消息: $message');
         },
         // 极光连接状态变化
         onConnected: (Map<String, dynamic> message) async {
-          debugPrint('[JPush] 连接状态: $message');
+          AppLog.debug('[JPush] 连接状态: $message');
         },
       );
 
@@ -68,7 +79,7 @@ class PushService {
       _jpush.getRegistrationID().then((rid) {
         if (rid.isNotEmpty) {
           _registrationId = rid;
-          debugPrint('[JPush] ✅ RegistrationID: $rid');
+          AppLog.debug('[JPush] ✅ RegistrationID: $rid');
         }
       });
 
@@ -79,40 +90,50 @@ class PushService {
         try {
           final launchMsg = await _jpush.getLaunchAppNotification();
           if (launchMsg == null || launchMsg.isEmpty) return;
-          debugPrint('[JPush] 冷启动通知: $launchMsg');
+          AppLog.debug('[JPush] 冷启动通知: $launchMsg');
           // getLaunchAppNotification 返回 Map<dynamic,dynamic>，直接转换
           _handleNotificationTap(
             launchMsg.map((k, v) => MapEntry(k.toString(), v)),
           );
         } catch (e) {
-          debugPrint('[JPush] getLaunchAppNotification 异常: $e');
+          AppLog.debug('[JPush] getLaunchAppNotification 异常: $e');
         }
       });
 
-      debugPrint('[JPush] ✅ 初始化成功');
+      AppLog.debug('[JPush] ✅ 初始化成功');
     } catch (e) {
-      debugPrint('[JPush] ❌ 初始化失败: $e');
+      AppLog.debug('[JPush] ❌ 初始化失败: $e');
     }
   }
 
   // ── 登录后绑定 alias（用 userId）────────────────────────────
-  static Future<void> setAlias(String userId) async {
+  static Future<void> setAlias(String userId) =>
+      _queueAlias(() => _setAlias(userId));
+
+  static Future<void> _setAlias(String userId) async {
     if (userId.isEmpty) return;
     try {
       final result = await _jpush.setAlias(userId);
-      debugPrint('[JPush] ✅ alias 绑定: $userId → $result');
+      AppLog.debug('[JPush] ✅ alias 绑定: $userId → $result');
     } catch (e) {
-      debugPrint('[JPush] ⚠️ alias 绑定失败: $e');
+      AppLog.debug('[JPush] ⚠️ alias 绑定失败: $e');
     }
   }
 
   // ── 退出时清除 alias ─────────────────────────────────────────
-  static Future<void> clearAlias() async {
+  static Future<void> clearAlias() {
+    pendingRoute = null;
+    return _queueAlias(_clearAlias);
+  }
+
+  static Future<void> _clearAlias() async {
     try {
       final result = await _jpush.deleteAlias();
-      debugPrint('[JPush] ✅ alias 已清除: $result');
+      AppLog.debug('[JPush] ✅ alias 已清除: $result');
     } catch (e) {
-      debugPrint('[JPush] ⚠️ alias 清除失败: $e');
+      AppLog.event('push.alias.clear.failed', level: 'warning', fields: {
+        'errorType': e.runtimeType.toString(),
+      });
     }
   }
 
@@ -125,7 +146,7 @@ class PushService {
     // 防御：device_mac 不应含 JSON 特殊字符（{ } " :），若含则说明解析失败，回退空值
     final deviceMac = _isValidMac(deviceMacRaw) ? deviceMacRaw : '';
 
-    debugPrint('[JPush] 通知跳转 type=$type device_mac=$deviceMac extras=$extras');
+    AppLog.debug('[JPush] 通知跳转 type=$type device_mac=$deviceMac extras=$extras');
 
     // 计算目标路由
     final String targetRoute;
@@ -158,7 +179,7 @@ class PushService {
 
     // 先存储到 pendingRoute，认证恢复后由 AuthController 消费
     pendingRoute = targetRoute;
-    debugPrint('[JPush] pendingRoute 已存储: $targetRoute');
+    AppLog.debug('[JPush] pendingRoute 已存储: $targetRoute');
 
     // 延迟尝试立即跳转（App 已在运行的情况）
     Future.delayed(const Duration(milliseconds: 800), () {
@@ -166,7 +187,7 @@ class PushService {
         _navigateTo(targetRoute);
         pendingRoute = null; // 跳转成功，清除待命
       } catch (e) {
-        debugPrint('[JPush] ⚠️ 路由跳转失败: $e，等待认证恢复后重试');
+        AppLog.debug('[JPush] ⚠️ 路由跳转失败: $e，等待认证恢复后重试');
       }
     });
   }

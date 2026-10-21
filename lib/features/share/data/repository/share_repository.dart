@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/api/api_client.dart';
@@ -33,13 +33,13 @@ class ShareRepository {
         },
       );
       final result = ShareCreateResult.fromJson(res);
-      debugPrint('[分享] 创建成功 code=${result.code} url=${result.shareUrl}');
+      AppLog.debug('[分享] 创建成功 code=${result.code} url=${result.shareUrl}');
       return result;
     });
   }
 
   Future<Result<ShareResolveResult>> resolveShare(String code) {
-    debugPrint('[分享] 解析请求 code=$code');
+    AppLog.debug('[分享] 解析请求 code=$code');
     return guardResult(() async {
       final res = await _client.get<Map<String, dynamic>>(
         ApiEndpoints.shareResolve,

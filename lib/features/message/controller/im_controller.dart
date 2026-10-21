@@ -1,7 +1,8 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
+import 'package:petpogo_app/core/providers/account_session_provider.dart';
 /// IM 登录、会话和通知状态。
 
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../shared/widgets/pet_toast.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -112,6 +113,9 @@ class ImState {
 class ImController extends StateNotifier<ImState> {
   final ImRepository _repo;
   final Ref _ref;
+  V2TimSDKListener? _sdkListener;
+  Future<void>? _loginInFlight;
+  int _loginGeneration = 0;
 
   /// 会话列表变化监听器
   V2TimConversationListener? _conversationListener;
@@ -126,12 +130,27 @@ class ImController extends StateNotifier<ImState> {
 
   // ── IM 登录 ──────────────────────────────────────────────
   /// 使用登录接口下发的 UserSig 登录 IM。
-  Future<void> loginIm({required String userId, required String userSig}) async {
+  Future<void> loginIm({required String userId, required String userSig}) {
+    final generation = ++_loginGeneration;
+    final previous = _loginInFlight ?? Future<void>.value();
+    late final Future<void> pending;
+    pending = previous.then((_) async {
+      if (!mounted || generation != _loginGeneration) return;
+      await _loginIm(userId, userSig, generation);
+    }).whenComplete(() {
+      if (identical(_loginInFlight, pending)) _loginInFlight = null;
+    });
+    return _loginInFlight = pending;
+  }
+
+  Future<void> _loginIm(String userId, String userSig, int generation) async {
     if (userSig.trim().isEmpty) {
       state = state.copyWith(isLoggedIn: false, errorMessage: '聊天凭证缺失，请重新登录');
       return;
     }
     final result = await _repo.login(userId: userId, userSig: userSig);
+    if (!mounted || generation != _loginGeneration) return;
+    if (!mounted) return;
     result.when(
       success: (_) {
         state = state.copyWith(isLoggedIn: true);
@@ -139,10 +158,10 @@ class ImController extends StateNotifier<ImState> {
         // ✅ 登录后同步昵称&头像到 IM，好友列表 userProfile.nickName 才有值
         final user = _ref.read(authControllerProvider).user;
         // ══ 关键日志：多设备对比用 ══
-        debugPrint('┌─────────────────────────────────────────');
-        debugPrint('│ 🐾 当前账号 userId=$userId');
-        debugPrint('│    昵称=${user?.name ?? "未知"} account=${user?.account ?? ""}');
-        debugPrint('└─────────────────────────────────────────');
+        AppLog.debug('┌─────────────────────────────────────────');
+        AppLog.debug('│ 🐾 当前账号 userId=$userId');
+        AppLog.debug('│    昵称=${user?.name ?? "未知"} account=${user?.account ?? ""}');
+        AppLog.debug('└─────────────────────────────────────────');
         if (user != null && user.name.isNotEmpty) {
           _repo.updateSelfProfile(
             nickname: user.name,
@@ -155,33 +174,39 @@ class ImController extends StateNotifier<ImState> {
         // iOS SDK 数据同步有延迟，延迟 3s 再补拉一次
         Future.delayed(Duration(seconds: 3), () {
           if (mounted) {
-            debugPrint('[ImCtrl] ⏰ 延迟补拉好友申请（iOS SDK 同步保障）');
+            AppLog.debug('[ImCtrl] ⏰ 延迟补拉好友申请（iOS SDK 同步保障）');
             loadFriendApplications();
           }
         });
       },
       failure: (err) {
-        debugPrint('[ImCtrl] IM 登录失败: ${err.message}');
+        AppLog.debug('[ImCtrl] IM 登录失败: ${err.message}');
         state = state.copyWith(errorMessage: err.userMessage);
       },
     );
 
     // 注册 UserSig 过期回调（SDK 级联）
-    TencentImSDKPlugin.v2TIMManager.addIMSDKListener(V2TimSDKListener(
+    if (_sdkListener != null) {
+      TencentImSDKPlugin.v2TIMManager.removeIMSDKListener(_sdkListener!);
+    }
+    _sdkListener = V2TimSDKListener(
       onUserSigExpired: () async {
-        debugPrint('[ImCtrl] IM UserSig 已过期，开始静默刷新...');
+        if (!mounted) return;
+        AppLog.debug('[ImCtrl] IM UserSig 已过期，开始静默刷新...');
         final newSig = await _ref
             .read(authControllerProvider.notifier)
             .refreshImUserSig();
+        if (!mounted) return;
         if (newSig != null && newSig.isNotEmpty) {
-          debugPrint('[ImCtrl] UserSig 已刷新，重新登录 IM...');
+          AppLog.debug('[ImCtrl] UserSig 已刷新，重新登录 IM...');
           await loginIm(userId: userId, userSig: newSig);
         } else {
-          debugPrint('[ImCtrl] ⚠️ UserSig 刷新失败，需要用户重新登录');
+          AppLog.debug('[ImCtrl] ⚠️ UserSig 刷新失败，需要用户重新登录');
         }
       },
       onKickedOffline: () async {
-        debugPrint('[ImCtrl] ⚠️ 账号在其他设备登录，已下线');
+        if (!mounted) return;
+        AppLog.debug('[ImCtrl] ⚠️ 账号在其他设备登录，已下线');
         state = state.copyWith(
           isLoggedIn: false,
           errorMessage: '账号在其他设备登录',
@@ -254,15 +279,18 @@ class ImController extends StateNotifier<ImState> {
             ),
           );
         }
-        await _ref.read(authControllerProvider.notifier).logout();
+        if (mounted) await _ref.read(authControllerProvider.notifier).logout();
       },
-    ));
+    );
+    TencentImSDKPlugin.v2TIMManager.addIMSDKListener(_sdkListener!);
   }
 
   // ── 会话列表 ─────────────────────────────────────────────
   Future<void> loadConversations() async {
+    if (!mounted) return;
     state = state.copyWith(isLoading: true);
     final result = await _repo.fetchConversations();
+    if (!mounted) return;
     result.when(
       success: (list) {
         // 过滤掉因 friend_rejected / friend_accepted 自定义消息产生的系统会话
@@ -280,7 +308,9 @@ class ImController extends StateNotifier<ImState> {
             TencentImSDKPlugin.v2TIMManager
                 .getConversationManager()
                 .deleteConversation(conversationID: conv.conversationID!)
-                .catchError((_, __) => null);
+                .then<void>((_) {}, onError: (Object error, StackTrace stack) {
+                  AppLog.debug('[IM] 会话清理失败: ${error.runtimeType}');
+                });
           }
         }
       },
@@ -293,15 +323,17 @@ class ImController extends StateNotifier<ImState> {
 
   // ── 好友申请 ─────────────────────────────────────────────
   Future<void> loadFriendApplications() async {
-    debugPrint('[ImCtrl] 📥 拉取好友申请列表...');
+    if (!mounted) return;
+    AppLog.debug('[ImCtrl] 📥 拉取好友申请列表...');
     final result = await _repo.fetchFriendApplications();
+    if (!mounted) return;
     result.when(
       success: (list) {
-        debugPrint('[ImCtrl] 好友申请: 共 ${list.length} 条');
+        AppLog.debug('[ImCtrl] 好友申请: 共 ${list.length} 条');
         state = state.copyWith(friendApplications: list);
       },
       failure: (err) {
-        debugPrint('[ImCtrl] 好友申请加载失败: ${err.message}');
+        AppLog.debug('[ImCtrl] 好友申请加载失败: ${err.message}');
         state = state.copyWith(errorMessage: err.userMessage);
       },
     );
@@ -310,6 +342,7 @@ class ImController extends StateNotifier<ImState> {
   /// 同意好友申请
   Future<void> acceptFriend(String fromUserId) async {
     final result = await _repo.acceptFriend(fromUserId);
+    if (!mounted) return;
     result.when(
       success: (_) async {
         final updated = state.friendApplications
@@ -338,6 +371,7 @@ class ImController extends StateNotifier<ImState> {
   /// 拒绝好友申请，并通过自定义消息通知对方（SDK 不会自动推送拒绝结果）
   Future<void> refuseFriend(String fromUserId) async {
     final result = await _repo.refuseFriend(fromUserId);
+    if (!mounted) return;
     result.when(
       success: (_) async {
         final updated = state.friendApplications
@@ -351,15 +385,15 @@ class ImController extends StateNotifier<ImState> {
           toUserId: fromUserId,
           data: {'type': 'friend_rejected', 'fromName': myName},
         );
-        debugPrint('[ImCtrl] 已发拒绝通知给 $fromUserId');
+        AppLog.debug('[ImCtrl] 已发拒绝通知给 $fromUserId');
         // 拒绝方删除就己侧与对方的 c2c 会话（避免空白会话条目）
         try {
           await TencentImSDKPlugin.v2TIMManager
               .getConversationManager()
               .deleteConversation(conversationID: 'c2c_$fromUserId');
-          debugPrint('[ImCtrl] 已删除拒绝方的 c2c 会话');
+          AppLog.debug('[ImCtrl] 已删除拒绝方的 c2c 会话');
         } catch (e) {
-          debugPrint('[ImCtrl] 删除会话失败: $e');
+          AppLog.debug('[ImCtrl] 删除会话失败: $e');
         }
         loadConversations(); // 刷新会话列表
       },
@@ -402,6 +436,7 @@ class ImController extends StateNotifier<ImState> {
   // ── 标记已读 ─────────────────────────────────────────────
   Future<void> markRead(String userId) async {
     await _repo.markConversationRead(userId);
+    if (!mounted) return;
     // 本地把对应会话的 unreadCount 置 0（避免等待 SDK 回调刷新 UI）
     // V2TimConversation 没有 copyWith，通过 fromJson 克隆并替换字段
     final updated = state.conversations.map((c) {
@@ -428,12 +463,14 @@ class ImController extends StateNotifier<ImState> {
       final raw = lastMsg.customElem?.data ?? '';
       if (raw.contains('friend_rejected') || raw.contains('friend_accepted')) {
         final uid = convId.replaceFirst('c2c_', '');
-        debugPrint('[ImCtrl] 自动清理系统消息会话: $convId');
+        AppLog.debug('[ImCtrl] 自动清理系统消息会话: $convId');
         TencentImSDKPlugin.v2TIMManager
             .getConversationManager()
             .deleteConversation(conversationID: convId)
-            .catchError((_, __) => null)
-            .then((_) => loadConversations());
+            .then<void>((_) { if (mounted) loadConversations(); },
+                onError: (Object error, StackTrace stack) {
+                  AppLog.debug('[IM] 会话清理失败: ${error.runtimeType}');
+                });
         // 同时从本地 state 里移除，立即刷新 UI
         final filtered = state.conversations
             .where((c) => c.userID != uid)
@@ -466,7 +503,7 @@ class ImController extends StateNotifier<ImState> {
         loadConversations();
       },
       onTotalUnreadMessageCountChanged: (count) {
-        debugPrint('[ImCtrl] 总未读数变更: $count');
+        AppLog.debug('[ImCtrl] 总未读数变更: $count');
       },
     );
     _repo.addConversationListener(_conversationListener!);
@@ -475,7 +512,7 @@ class ImController extends StateNotifier<ImState> {
     _friendListener = V2TimFriendshipListener(
       onFriendApplicationListAdded: (applications) {
         if (!mounted) return;
-        debugPrint('[ImCtrl] onFriendApplicationListAdded: '
+        AppLog.debug('[ImCtrl] onFriendApplicationListAdded: '
             '总共 ${applications.length} 条 → ${ applications.map((a) => "uid=${a?.userID} type=${a?.type}").join(", ")}');
         // 只处理别人发给我的申请（type == 1 COME_IN）
         final incoming = applications
@@ -521,10 +558,10 @@ class ImController extends StateNotifier<ImState> {
             } catch (_) {}
 
             if (accepted) {
-              debugPrint('[ImCtrl] 好友申请被同意 (SDK删除回调): $peerName');
+              AppLog.debug('[ImCtrl] 好友申请被同意 (SDK删除回调): $peerName');
             } else {
               // 拒绝通知已由 friend_rejected 自定义消息处理，这里不再弹 Toast
-              debugPrint('[ImCtrl] 好友申请被拒绝 (SDK删除回调): $peerName');
+              AppLog.debug('[ImCtrl] 好友申请被拒绝 (SDK删除回调): $peerName');
             }
           }
         }
@@ -539,18 +576,18 @@ class ImController extends StateNotifier<ImState> {
         // 过滤自己发出的消息（SDK 在 onlineUserOnly=false 时会同步给发送方）
         final myImId = _ref.read(authControllerProvider).user?.imUserId ?? '';
         if (msg.sender == myImId) {
-          debugPrint('[ImCtrl] onRecvNewMessage 跳过自发消息 sender=${msg.sender}');
+          AppLog.debug('[ImCtrl] onRecvNewMessage 跳过自发消息 sender=${msg.sender}');
           return;
         }
         // 只处理自定义消息（后端系统通知）
         final customData = msg.customElem?.data;
-        debugPrint('[ImCtrl] onRecvNewMessage elemType=${msg.elemType} '
+        AppLog.debug('[ImCtrl] onRecvNewMessage elemType=${msg.elemType} '
             'sender=${msg.sender} customData=$customData');
         if (customData == null || customData.isEmpty) return;
         try {
           final json = jsonDecode(customData) as Map<String, dynamic>;
           final type = json['type'] as String? ?? '';
-          debugPrint('[ImCtrl] custom msg type=$type fromName=${json["fromName"]}');
+          AppLog.debug('[ImCtrl] custom msg type=$type fromName=${json["fromName"]}');
           if (type != 'post_like' && type != 'post_comment'
               && type != 'friend_rejected' && type != 'friend_accepted') return;
 
@@ -569,7 +606,7 @@ class ImController extends StateNotifier<ImState> {
             );
             final notices = [notice, ...state.systemNotices].take(50).toList();
             state = state.copyWith(systemNotices: notices);
-            debugPrint('[ImCtrl] 好友申请被拒绝通知: $fromName');
+            AppLog.debug('[ImCtrl] 好友申请被拒绝通知: $fromName');
             final ctx = globalNavigatorKey.currentContext;
             if (ctx != null && ctx.mounted) {
               PetToast.error(ctx, '$fromName 拒绝了你的好友申请');
@@ -650,9 +687,9 @@ class ImController extends StateNotifier<ImState> {
           // 最新通知插到最前，最多保留 50 条
           final updated = [notice, ...state.systemNotices].take(50).toList();
           state = state.copyWith(systemNotices: updated);
-          debugPrint('[ImCtrl] 系统通知: $content');
+          AppLog.debug('[ImCtrl] 系统通知: $content');
         } catch (e) {
-          debugPrint('[ImCtrl] 解析系统消息失败: $e');
+          AppLog.debug('[ImCtrl] 解析系统消息失败: $e');
         }
       },
     );
@@ -661,12 +698,19 @@ class ImController extends StateNotifier<ImState> {
 
   // ── 登出 ─────────────────────────────────────────────────
   Future<void> logoutIm() async {
+    _loginGeneration++;
     _cleanupListeners();
+    if (mounted) state = ImState();
+    // An already-started native login must finish before the native logout.
+    await _loginInFlight;
     await _repo.logout();
-    state = ImState();
   }
 
   void _cleanupListeners() {
+    if (_sdkListener != null) {
+      TencentImSDKPlugin.v2TIMManager.removeIMSDKListener(_sdkListener!);
+      _sdkListener = null;
+    }
     if (_conversationListener != null) {
       _repo.removeConversationListener(_conversationListener!);
       _conversationListener = null;
@@ -691,5 +735,6 @@ class ImController extends StateNotifier<ImState> {
 // ── Provider ─────────────────────────────────────────────
 final imControllerProvider =
     StateNotifierProvider<ImController, ImState>((ref) {
+  ref.watch(accountSessionProvider);
   return ImController(ref.watch(imRepositoryProvider), ref);
 });

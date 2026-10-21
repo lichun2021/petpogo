@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'controller/device_actions.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/theme/app_colors.dart';
@@ -96,7 +97,8 @@ class DeviceListPage extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
         itemCount: state.devices.length,
         separatorBuilder: (_, __) => SizedBox(height: 14),
-        itemBuilder: (_, i) => _DeviceCard(device: state.devices[i]),
+        itemBuilder: (_, i) => _DeviceCard(
+          key: ValueKey(state.devices[i].mac), device: state.devices[i]),
       ),
     );
   }
@@ -169,7 +171,7 @@ class DeviceListPage extends ConsumerWidget {
 // ── 设备卡片（带宠物信息） ─────────────────────────────────
 class _DeviceCard extends ConsumerStatefulWidget {
   final DeviceModel device;
-  const _DeviceCard({required this.device});
+  const _DeviceCard({super.key, required this.device});
 
   @override
   ConsumerState<_DeviceCard> createState() => _DeviceCardState();
@@ -178,6 +180,7 @@ class _DeviceCard extends ConsumerStatefulWidget {
 class _DeviceCardState extends ConsumerState<_DeviceCard> {
   PetInfoModel? _pet;
   bool _petLoading = true;
+  bool _unbinding = false;
 
   @override
   void initState() {
@@ -415,9 +418,9 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
                             ),
                             _ActionPill(
                               icon: Icons.link_off_rounded,
-                              label: '解绑设备',
+                              label: _unbinding ? '解绑中…' : '解绑设备',
                               color: AppColors.statusAlert,
-                              onTap: () => _confirmUnbind(context, ref),
+                              onTap: _unbinding ? null : () => _confirmUnbind(context, ref),
                             ),
                           ]))),
             ),
@@ -429,6 +432,7 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
 
   /// 解绑确认弹窗（白底风格，与宠物删除弹窗一致）
   Future<void> _confirmUnbind(BuildContext context, WidgetRef ref) async {
+    if (_unbinding) return;
     final device = widget.device;
     HapticFeedback.selectionClick();
     final confirmed = await showDialog<bool>(
@@ -466,74 +470,25 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
       ),
     );
     if (confirmed != true || !context.mounted) return;
+    setState(() => _unbinding = true);
+    // Keep the page context: the card is disposed as soon as removal succeeds.
+    final pageContext = Navigator.of(context).context;
     try {
-      // 1. 先解绑宠物（如果有）
-      try {
-        await ref
-            .read(petPeerRepositoryProvider)
-            .deletePet(deviceId: device.deviceId);
-      } catch (e) {
-        // 如果宠物不存在或已解绑，忽略错误继续解绑设备
-        debugPrint('[设备解绑] 宠物解绑跳过: $e');
-      }
-      // 2. 再解绑设备
-      await ref.read(deviceRepositoryProvider).unbindDevice(device.mac);
-      if (context.mounted) {
+      final removed = await ref.read(deviceActionsProvider).unbind(device);
+      if (!removed) return;
+      if (pageContext.mounted) {
         HapticFeedback.mediumImpact();
-        // 刷新列表（重新从后端拉取）
-        await ref.read(deviceListProvider.notifier).load();
-        // 弹"解绑成功"确认
-        if (!context.mounted) return;
-        await showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (dctx) => AlertDialog(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.check_circle_outline_rounded,
-                    color: AppColors.statusOnline, size: 48),
-                const SizedBox(height: 12),
-                Text('设备已解绑',
-                    style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.onSurface)),
-                const SizedBox(height: 4),
-                Text('「${device.displayName}」已成功解绑',
-                    style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontSize: 13,
-                        color: AppColors.onSurfaceVariant)),
-              ],
-            ),
-            actionsAlignment: MainAxisAlignment.center,
-            actions: [
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () => Navigator.pop(dctx),
-                  style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12))),
-                  child: Text('知道了',
-                      style: TextStyle(
-                          fontFamily: AppFonts.primary,
-                          fontWeight: FontWeight.w700)),
-                ),
-              ),
-            ],
-          ),
-        );
+        PetToast.success(pageContext, '「${device.displayName}」已解绑');
       }
     } catch (e) {
-      if (context.mounted) {
-        PetToast.error(context, '解绑失败，请重试');
+      if (pageContext.mounted) {
+        PetToast.error(pageContext, e, fallback: '解绑失败，请重试');
       }
+    } finally {
+      if (mounted) setState(() => _unbinding = false);
     }
   }
+
 
   Widget _buildPetRow(BuildContext context) {
     final pet = _pet!;
@@ -645,7 +600,7 @@ class _ActionPill extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   const _ActionPill({
     required this.icon,
     required this.label,

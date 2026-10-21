@@ -9,9 +9,9 @@
 
 library;
 
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'dart:async';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/consultation_models.dart';
 import '../data/repository/consultation_repository.dart';
@@ -126,12 +126,12 @@ class ConsultationController extends StateNotifier<ConsultationState> {
     if (state.session != null) return;
     state = state.copyWith(isInitializing: true, clearError: true);
 
-    debugPrint('[宠小伊] initSession petId=$petId');
+    AppLog.debug('[宠小伊] initSession petId=$petId');
     final result = await _repo.createSession(petId: petId);
 
     result.when(
       success: (sess) {
-        debugPrint(
+        AppLog.debug(
             '[宠小伊] initSession OK sessionId=${sess.sessionId} petName=${sess.petInfo.name}');
         state = state.copyWith(
           session: sess,
@@ -146,7 +146,7 @@ class ConsultationController extends StateNotifier<ConsultationState> {
         );
       },
       failure: (e) {
-        debugPrint('[宠小伊] initSession FAIL: $e');
+        AppLog.debug('[宠小伊] initSession FAIL: $e');
         state = state.copyWith(
           isInitializing: false,
           errorMessage: '连接宠小伊失败，请检查网络后重试',
@@ -194,7 +194,7 @@ class ConsultationController extends StateNotifier<ConsultationState> {
     _streamCancel = cancel;
     var completed = false;
     try {
-      debugPrint('[宠小伊] _sendStream sessionId=$sessionId');
+      AppLog.debug('[宠小伊] _sendStream sessionId=$sessionId');
       await for (final ev in _repo.sendMessageStream(
         sessionId: sessionId,
         text: text,
@@ -213,17 +213,17 @@ class ConsultationController extends StateNotifier<ConsultationState> {
             String finalText;
             if (bufText.isEmpty && full.isNotEmpty) {
               finalText = full;
-              debugPrint('[宠小伊] done: buf为空，使用服务端full_text len=${full.length}');
+              AppLog.debug('[宠小伊] done: buf为空，使用服务端full_text len=${full.length}');
             } else {
               finalText = bufText;
               if (full.isNotEmpty && full.length > bufText.length + 50) {
-                debugPrint(
+                AppLog.debug(
                     '[宠小伊] done: full(${full.length}) > buf(${bufText.length})，可能有delta丢包');
               }
             }
             _updateLastAssistant(finalText, streaming: false);
           case StreamUnknown(event: final e):
-            debugPrint('[宠小伊] 未知SSE事件 $e');
+            AppLog.debug('[宠小伊] 未知SSE事件 $e');
         }
         if (completed) break;
       }
@@ -280,16 +280,16 @@ class ConsultationController extends StateNotifier<ConsultationState> {
     if (state.report != null) return;
 
     state = state.copyWith(isGeneratingReport: true, clearError: true);
-    debugPrint('[宠小伊] generateReport sessionId=${sess.sessionId}');
+    AppLog.debug('[宠小伊] generateReport sessionId=${sess.sessionId}');
 
     final result = await _repo.generateReport(sessionId: sess.sessionId);
     result.when(
       success: (report) {
-        debugPrint('[宠小伊] generateReport OK disease=${report.primaryDisease}');
+        AppLog.debug('[宠小伊] generateReport OK disease=${report.primaryDisease}');
         state = state.copyWith(isGeneratingReport: false, report: report);
       },
       failure: (e) {
-        debugPrint('[宠小伊] generateReport FAIL: $e');
+        AppLog.debug('[宠小伊] generateReport FAIL: $e');
         state = state.copyWith(
           isGeneratingReport: false,
           errorMessage: '生成报告失败，请重试',
@@ -307,7 +307,7 @@ class ConsultationController extends StateNotifier<ConsultationState> {
   Future<void> loadHistory() async {
     if (state.isLoadingHistory) return;
     state = state.copyWith(isLoadingHistory: true);
-    debugPrint('[宠小伊] loadHistory petId=$_petId');
+    AppLog.debug('[宠小伊] loadHistory petId=$_petId');
 
     final result = await _repo.getSessionsByPet(petId: _petId);
     result.when(
@@ -315,7 +315,7 @@ class ConsultationController extends StateNotifier<ConsultationState> {
         // 仅过滤 title==null 的空会话（用户未发送任何消息）
         final filtered =
             list.where((s) => s.title != null && s.title!.isNotEmpty).toList();
-        debugPrint(
+        AppLog.debug(
             '[宠小伊] loadHistory OK 原始=${list.length} 过滤后=${filtered.length}');
         state = state.copyWith(
           historyList: filtered,
@@ -323,7 +323,7 @@ class ConsultationController extends StateNotifier<ConsultationState> {
         );
       },
       failure: (e) {
-        debugPrint('[宠小伊] loadHistory FAIL: $e');
+        AppLog.debug('[宠小伊] loadHistory FAIL: $e');
         state = state.copyWith(isLoadingHistory: false);
       },
     );
@@ -343,7 +343,7 @@ class ConsultationController extends StateNotifier<ConsultationState> {
       _markLastAssistantFailed();
       state = state.copyWith(isReplying: false);
     }
-    debugPrint('[宠小伊] restoreHistorySession sessionId=$sessionId');
+    AppLog.debug('[宠小伊] restoreHistorySession sessionId=$sessionId');
 
     final result = await _repo.getSessionMessages(sessionId: sessionId);
     result.when(
@@ -375,7 +375,7 @@ class ConsultationController extends StateNotifier<ConsultationState> {
               state.messages.any((m) => m.role == ChatRole.user);
           if (!hasUserMsgs) {
             unawaited(_repo.deleteSession(sessionId: currentSession.sessionId));
-            debugPrint(
+            AppLog.debug(
                 '[宠小伊] restoreHistorySession — 删除空 Session A ${currentSession.sessionId}');
           }
         }
@@ -398,11 +398,11 @@ class ConsultationController extends StateNotifier<ConsultationState> {
           clearHistoryViewTitle: true,
           savedLiveMessages: const [],
         );
-        debugPrint(
+        AppLog.debug(
             '[宠小伊] restoreHistorySession OK turns=${history.turns.length} newSessionId=$sessionId');
       },
       failure: (e) {
-        debugPrint('[宠小伊] restoreHistorySession FAIL: $e');
+        AppLog.debug('[宠小伊] restoreHistorySession FAIL: $e');
         state = state.copyWith(errorMessage: '恢复历史记录失败，请重试');
       },
     );
@@ -421,7 +421,7 @@ class ConsultationController extends StateNotifier<ConsultationState> {
 
   /// 删除某条历史会话（仅在历史列表中操作）
   Future<void> deleteHistorySession(String sessionId) async {
-    debugPrint('[宠小伊] deleteHistorySession sessionId=$sessionId');
+    AppLog.debug('[宠小伊] deleteHistorySession sessionId=$sessionId');
     final result = await _repo.deleteSession(sessionId: sessionId);
     result.when(
       success: (_) {
@@ -434,10 +434,10 @@ class ConsultationController extends StateNotifier<ConsultationState> {
         if (state.isViewingHistory && state.historyViewTitle != null) {
           exitHistoryView();
         }
-        debugPrint('[宠小伊] deleteHistorySession OK');
+        AppLog.debug('[宠小伊] deleteHistorySession OK');
       },
       failure: (e) {
-        debugPrint('[宠小伊] deleteHistorySession FAIL: $e');
+        AppLog.debug('[宠小伊] deleteHistorySession FAIL: $e');
         state = state.copyWith(errorMessage: '删除失败，请重试');
       },
     );
@@ -472,11 +472,11 @@ class ConsultationController extends StateNotifier<ConsultationState> {
     final hasUserMessages = state.messages.any((m) => m.role == ChatRole.user);
     if (!hasUserMessages) {
       // 未发过消息 → 自动删除空 session（不保留在历史中）
-      debugPrint('[宠小伊] cleanup() — 无对话，删除空 session ${sess.sessionId}');
+      AppLog.debug('[宠小伊] cleanup() — 无对话，删除空 session ${sess.sessionId}');
       unawaited(_repo.deleteSession(sessionId: sess.sessionId));
     } else {
       // 有对话记录 → 保留在数据库（用户可从历史查看）
-      debugPrint(
+      AppLog.debug(
           '[宠小伊] cleanup() — 保留 session，用户消息数=${state.messages.where((m) => m.role == ChatRole.user).length}');
     }
   }

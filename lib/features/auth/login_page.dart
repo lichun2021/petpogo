@@ -1,3 +1,4 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:petpogo_app/shared/widgets/modal_header.dart';
 /// ════════════════════════════════════════════════════════════
 ///  登录页面
@@ -201,7 +202,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     ref.listen<AuthState>(authControllerProvider, (_, next) {
       if (next.status == AuthStatus.loggedIn) {
-        debugPrint('[LoginPage] 登录成功，等待路由守卫跳转');
+        AppLog.debug('[LoginPage] 登录成功，等待路由守卫跳转');
       } else if (next.status == AuthStatus.error && next.errorMessage != null) {
         PetToast.error(context, next.errorMessage!);
         if (!_isSmsLogin && next.errorMessage!.contains('请使用短信登录')) {

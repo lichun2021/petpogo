@@ -1,6 +1,7 @@
 /// 自动抓拍页 — 配置面板 + 媒体库（点击展开详情）
 library;
 
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:petpogo_app/shared/widgets/modal_header.dart';
 
 import 'dart:async';
@@ -1253,7 +1254,7 @@ class _CaptureDetailSheetState extends ConsumerState<_CaptureDetailSheet> {
 
       // 监听播放器错误
       _mkPlayer!.stream.error.listen((err) {
-        debugPrint('[Video] media_kit 播放失败: $err');
+        AppLog.debug('[Video] media_kit 播放失败: $err');
         if (mounted) setState(() => _videoError = true);
       });
       // 开始播放（不需要手动调用 initialize）

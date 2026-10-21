@@ -1,5 +1,5 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/post_model.dart';
 import '../data/post_repository.dart';
@@ -138,7 +138,7 @@ class PublishController extends StateNotifier<PublishState> {
       );
 
       final postId = res['id'] as String? ?? '';
-      debugPrint('[Publish] 发布成功 postId=$postId');
+      AppLog.debug('[Publish] 发布成功 postId=$postId');
       state = state.copyWith(step: PublishStep.done, resultPostId: postId);
 
       // 构造本地帖子模型（供 Feed 顶部插入）
@@ -157,7 +157,7 @@ class PublishController extends StateNotifier<PublishState> {
         nickname:     '我',
       );
     } catch (e) {
-      debugPrint('[Publish] 失败: $e');
+      AppLog.debug('[Publish] 失败: $e');
       state = state.copyWith(step: PublishStep.error, errorMessage: ErrorPresenter.message(e, fallback: '发布失败，请稍后重试'));
       return null;
     }

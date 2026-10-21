@@ -1,3 +1,4 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -131,7 +132,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           try {
             await engine.enableLocalAudio(false);
           } catch (_) {}
-          debugPrint('[Agora] dispose: 本地麦克风已关闭');
+          AppLog.debug('[Agora] dispose: 本地麦克风已关闭');
         }
         // 2. 静音远端 + 关视频
         try {
@@ -148,16 +149,16 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         // 4. ✅ 关键：离开频道，断开 RTC 连接
         try {
           await engine.leaveChannel();
-          debugPrint('[Agora] dispose: leaveChannel ✅');
+          AppLog.debug('[Agora] dispose: leaveChannel ✅');
         } catch (e) {
-          debugPrint('[Agora] dispose: leaveChannel 失败: $e');
+          AppLog.debug('[Agora] dispose: leaveChannel 失败: $e');
         }
         // 5. 释放引擎
         try {
           await engine.release();
-          debugPrint('[Agora] dispose: release ✅');
+          AppLog.debug('[Agora] dispose: release ✅');
         } catch (e) {
-          debugPrint('[Agora] dispose: release 失败: $e');
+          AppLog.debug('[Agora] dispose: release 失败: $e');
         }
       }();
     }
@@ -197,9 +198,9 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         return;
       }
       _motorStreamId = streamId;
-      debugPrint('[Agora] 马达 Data Stream 创建成功 id=$streamId');
+      AppLog.debug('[Agora] 马达 Data Stream 创建成功 id=$streamId');
     } catch (e) {
-      debugPrint('[Agora] 马达 Data Stream 创建失败: $e');
+      AppLog.debug('[Agora] 马达 Data Stream 创建失败: $e');
     } finally {
       if (generation == _motorStreamGeneration) {
         _creatingMotorStream = false;
@@ -222,9 +223,9 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         data: bytes,
         length: bytes.length,
       );
-      debugPrint('[Agora] 离开频道前已发送马达停止');
+      AppLog.debug('[Agora] 离开频道前已发送马达停止');
     } catch (e) {
-      debugPrint('[Agora] 离开频道前发送马达停止失败: $e');
+      AppLog.debug('[Agora] 离开频道前发送马达停止失败: $e');
     }
   }
 
@@ -240,7 +241,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       // 1. 请求权限
       final statuses =
           await [Permission.microphone, Permission.camera].request();
-      debugPrint(
+      AppLog.debug(
           '[🔊音频] 权限状态: mic=${statuses[Permission.microphone]} cam=${statuses[Permission.camera]}');
 
       // 2. 获取 Token（下发 ESP32 参数）
@@ -250,17 +251,17 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           .read(deviceRepositoryProvider)
           .getAgoraToken(mac: widget.mac, customerId: userId);
       _agoraInfo = info;
-      debugPrint(
+      AppLog.debug(
           '[Agora] Token 获取成功 channel=${info.channelName} uid=${info.userId}');
 
       // 3. 创建引擎
       _engine = createAgoraRtcEngine();
-      debugPrint('[Agora] 开始 initialize, appId=${info.appId}');
+      AppLog.debug('[Agora] 开始 initialize, appId=${info.appId}');
       await _engine!.initialize(RtcEngineContext(
         appId: info.appId,
         channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
       ));
-      debugPrint('[Agora] initialize 成功');
+      AppLog.debug('[Agora] initialize 成功');
 
       // 4. ⭐ 关键: 设置 JPEG 解码（仅 Android 有效）+ 低延迟优化
       if (Platform.isAndroid) {
@@ -268,24 +269,24 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           await _engine!.setParameters('{"engine.video.codec_type": "20"}');
           await _engine!.setParameters('{"rtc.video.playout_delay_min": 0}');
           await _engine!.setParameters('{"rtc.video.playout_delay_max": 300}');
-          debugPrint('[Agora] setParameters JPEG 成功');
+          AppLog.debug('[Agora] setParameters JPEG 成功');
         } catch (e) {
-          debugPrint('[Agora] setParameters JPEG 失败（可忽略）: $e');
+          AppLog.debug('[Agora] setParameters JPEG 失败（可忽略）: $e');
         }
       }
 
       // 5. 启用音视频 + IoT 音频模式
-      debugPrint('[🔊音频] enableVideo...');
+      AppLog.debug('[🔊音频] enableVideo...');
       await _engine!.enableVideo();
-      debugPrint('[🔊音频] enableAudio...');
+      AppLog.debug('[🔊音频] enableAudio...');
       await _engine!.enableAudio();
-      debugPrint('[🔊音频] setAudioProfile: Default + Chatroom...');
+      AppLog.debug('[🔊音频] setAudioProfile: Default + Chatroom...');
       await _engine!.setAudioProfile(
         profile: AudioProfileType.audioProfileDefault,
         scenario: AudioScenarioType.audioScenarioChatroom,
       );
-      debugPrint('[🔊音频] setAudioProfile 完成');
-      debugPrint('[🔊音频] enableLocalVideo(false)...');
+      AppLog.debug('[🔊音频] setAudioProfile 完成');
+      AppLog.debug('[🔊音频] enableLocalVideo(false)...');
       await _engine!.enableLocalVideo(false); // APP 不发送本地摄像头
 
       // 开启音量提示（每秒回调一次，用于调试音频是否有数据流入）
@@ -294,10 +295,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         smooth: 3,
         reportVad: false,
       );
-      debugPrint('[🔊音频] enableAudioVolumeIndication 已开启（1s 间隔）');
+      AppLog.debug('[🔊音频] enableAudioVolumeIndication 已开启（1s 间隔）');
 
       // 6. 注册事件
-      debugPrint('[Agora] registerEventHandler...');
+      AppLog.debug('[Agora] registerEventHandler...');
       _engine!.registerEventHandler(RtcEngineEventHandler(
         onJoinChannelSuccess: (_, __) {
           if (mounted) {
@@ -309,19 +310,19 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           _createMotorStream();
           // 加入频道后再开启扬声器（防止提前调用报 -3）
           _engine?.setEnableSpeakerphone(true);
-          debugPrint('[🔊音频] 加入频道成功 → setEnableSpeakerphone(true)');
+          AppLog.debug('[🔊音频] 加入频道成功 → setEnableSpeakerphone(true)');
         },
         onLeaveChannel: (_, __) {
           // 所有主动 leave 路径都会在调用前完成停止和 stream 清理。
           // 这里不改写状态，避免旧频道延迟回调覆盖快速重连后的新会话。
-          debugPrint('[Agora] onLeaveChannel');
+          AppLog.debug('[Agora] onLeaveChannel');
         },
         onUserJoined: (_, uid, __) {
           if (mounted) setState(() => _remoteUid = uid);
-          debugPrint('[🔊音频] 远端用户加入 uid=$uid（ESP32）');
+          AppLog.debug('[🔊音频] 远端用户加入 uid=$uid（ESP32）');
           // 加入后确认没有静音远端
           _engine?.muteRemoteAudioStream(uid: uid, mute: false);
-          debugPrint(
+          AppLog.debug(
               '[🔊音频] muteRemoteAudioStream(uid=$uid, mute=false) ← 确保不静音');
         },
         onUserOffline: (_, uid, __) {
@@ -330,7 +331,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
               _remoteUid = null;
               _hasVideoStream = false;
             });
-          debugPrint('[🔊音频] 远端用户离线 uid=$uid');
+          AppLog.debug('[🔊音频] 远端用户离线 uid=$uid');
         },
         onRtcStats: (_, stats) {
           if (!mounted) return;
@@ -344,17 +345,17 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           final rxAudio = stats.rxAudioKBitRate ?? 0;
           final txAudio = stats.txAudioKBitRate ?? 0;
           if (rxAudio > 0 || txAudio > 0) {
-            debugPrint(
+            AppLog.debug(
                 '[🔊音频] Stats → rxAudio=${rxAudio}kbps txAudio=${txAudio}kbps '
                 'rxVideo=${stats.rxVideoKBitRate ?? 0}kbps');
           } else {
-            debugPrint('[🔊音频] ⚠️ Stats → rxAudio=0 txAudio=0（未收到音频数据！）');
+            AppLog.debug('[🔊音频] ⚠️ Stats → rxAudio=0 txAudio=0（未收到音频数据！）');
           }
         },
 
         // ── 远端音频状态变化（关键诊断事件）──
         onRemoteAudioStateChanged: (_, uid, state, reason, __) {
-          debugPrint('[🔊音频] 远端音频状态变化 uid=$uid '
+          AppLog.debug('[🔊音频] 远端音频状态变化 uid=$uid '
               'state=$state reason=$reason');
           // state: 0=stopped 1=starting 2=decoding 3=frozen 4=failed
           // reason: 0=internal 1=localMuted 2=localUnmuted 3=remoteMuted
@@ -377,18 +378,18 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 6: 'noPacketReceived'
               }[reason.value] ??
               'unknown';
-          debugPrint('[🔊音频] → state=$stateStr  reason=$reasonStr');
+          AppLog.debug('[🔊音频] → state=$stateStr  reason=$reasonStr');
         },
         // ── 音量回调（有声音时 volume > 0）──
         onAudioVolumeIndication: (_, speakers, __, totalVolume) {
           if (!mounted) return; // 页面已销毁，不处理
           for (final s in speakers) {
             if ((s.volume ?? 0) > 0) {
-              debugPrint('[🔊音频] 音量回调 uid=${s.uid} volume=${s.volume}');
+              AppLog.debug('[🔊音频] 音量回调 uid=${s.uid} volume=${s.volume}');
             }
           }
           if (totalVolume == 0 && speakers.isNotEmpty) {
-            debugPrint('[🔊音频] ⚠️ totalVolume=0，所有音频静音或无数据');
+            AppLog.debug('[🔊音频] ⚠️ totalVolume=0，所有音频静音或无数据');
           }
         },
         // ── 音频路由变化（扬声器/听筒/耳机）──
@@ -404,20 +405,20 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 4: 'usb_audio'
               }[routing] ??
               'unknown($routing)';
-          debugPrint('[🔊音频] 音频路由变化 → $routeStr');
+          AppLog.debug('[🔊音频] 音频路由变化 → $routeStr');
         },
         onError: (err, msg) {
-          debugPrint('[Agora] 错误 $err: $msg');
+          AppLog.debug('[Agora] 错误 $err: $msg');
           if (mounted) setState(() => _agoraError = 'Agora错误 $err');
         },
         onTokenPrivilegeWillExpire: (_, __) {
           _startAgora();
         },
         onConnectionStateChanged: (_, state, reason) {
-          debugPrint('[Agora] 连接状态: $state reason=$reason');
+          AppLog.debug('[Agora] 连接状态: $state reason=$reason');
         },
         onRemoteVideoStateChanged: (_, uid, state, reason, __) {
-          debugPrint('[Agora] 远端视频状态 uid=$uid state=$state reason=$reason');
+          AppLog.debug('[Agora] 远端视频状态 uid=$uid state=$state reason=$reason');
           final frozen = state == RemoteVideoState.remoteVideoStateFrozen;
           if (mounted && frozen != _videoFrozen) {
             setState(() => _videoFrozen = frozen);
@@ -426,17 +427,17 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       ));
 
       // 7. 加入频道（先防御性 leave，避免引擎残留状态导致 -17 ERR_JOIN_CHANNEL_REJECTED）
-      debugPrint('[🔊音频] setClientRole → Broadcaster');
+      AppLog.debug('[🔊音频] setClientRole → Broadcaster');
       await _engine!.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
       await _engine!.enableLocalAudio(true);
       await _engine!.muteLocalAudioStream(true); // 默认静音本地麦克风
-      debugPrint(
+      AppLog.debug(
           '[🔊音频] enableLocalAudio=true muteLocalAudioStream=true（对讲默认关）');
       try {
         _resetMotorStream();
         await _engine!.leaveChannel();
       } catch (_) {} // 防御：确保不在频道中
-      debugPrint('[Agora] joinChannel...');
+      AppLog.debug('[Agora] joinChannel...');
       await _engine!.joinChannel(
         token: info.token,
         channelId: info.channelName,
@@ -448,9 +449,9 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           publishMicrophoneTrack: true,
         ),
       );
-      debugPrint('[Agora] joinChannel 调用完成（等待 onJoinChannelSuccess）');
+      AppLog.debug('[Agora] joinChannel 调用完成（等待 onJoinChannelSuccess）');
     } catch (e, st) {
-      debugPrint('[Agora] 初始化失败: $e\n$st');
+      AppLog.debug('[Agora] 初始化失败: $e\n$st');
       if (mounted)
         setState(() {
           _agoraLoading = false;
@@ -481,9 +482,9 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           _remoteUid = null;
           _hasVideoStream = false;
         });
-      debugPrint('[Agora] pause: 已离开频道（引擎保留）');
+      AppLog.debug('[Agora] pause: 已离开频道（引擎保留）');
     } catch (e) {
-      debugPrint('[Agora] pause 异常（可忽略）: $e');
+      AppLog.debug('[Agora] pause 异常（可忽略）: $e');
     }
   }
 
@@ -500,7 +501,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       _agoraError = null;
     });
     try {
-      debugPrint('[Agora] 重新加入频道 channel=${_agoraInfo!.channelName}');
+      AppLog.debug('[Agora] 重新加入频道 channel=${_agoraInfo!.channelName}');
       await _engine!.joinChannel(
         token: _agoraInfo!.token,
         channelId: _agoraInfo!.channelName,
@@ -512,9 +513,9 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           publishMicrophoneTrack: true,
         ),
       );
-      debugPrint('[Agora] 重连 joinChannel 调用完成');
+      AppLog.debug('[Agora] 重连 joinChannel 调用完成');
     } catch (e) {
-      debugPrint('[Agora] 重连失败: $e');
+      AppLog.debug('[Agora] 重连失败: $e');
       if (mounted)
         setState(() {
           _agoraLoading = false;
@@ -535,7 +536,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       return byteData?.buffer.asUint8List();
     } catch (e) {
-      debugPrint('[摄影] 截帧失败: $e');
+      AppLog.debug('[摄影] 截帧失败: $e');
       return null;
     }
   }
@@ -566,7 +567,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       // 5. 后台上传 OSS（不阻塞 UI）
       _uploadMedia(localPath: path, bytes: bytes, type: 1, duration: null);
     } catch (e) {
-      debugPrint('[摄影] 拍照失败: $e');
+      AppLog.debug('[摄影] 拍照失败: $e');
       if (mounted) PetToast.error(context, '拍照失败');
     } finally {
       if (mounted) setState(() => _takingPhoto = false);
@@ -602,7 +603,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       result.when(
         success: (info) {
           _serverAccount = account;
-          debugPrint('[录制] 服务端录制已开始 id=${info.recordingId}');
+          AppLog.debug('[录制] 服务端录制已开始 id=${info.recordingId}');
           // 启动计时（UI 展示用，到 300s 自动提示）
           _recordTimer = Timer.periodic(const Duration(seconds: 1), (t) {
             if (!mounted) {
@@ -629,7 +630,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         },
       );
     } catch (e) {
-      debugPrint('[录制] 开始异常: $e');
+      AppLog.debug('[录制] 开始异常: $e');
       if (mounted) {
         setState(() {
           _recording = false;
@@ -667,7 +668,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       if (!mounted) return;
       result.when(
         success: (info) {
-          debugPrint('[录制] 合成完成 video=${info.videoUrl}');
+          AppLog.debug('[录制] 合成完成 video=${info.videoUrl}');
           PetToast.success(context, '🎬 录制完成 (${secs}s)，视频已上传');
           // 刷新媒体列表（视频已在 OSS，通知后端入库）
           _saveServerVideoRecord(
@@ -675,11 +676,11 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         },
         failure: (err) {
           PetToast.error(context, '合成失败：${err.userMessage}');
-          debugPrint('[录制] 停止失败: ${err.message}');
+          AppLog.debug('[录制] 停止失败: ${err.message}');
         },
       );
     } catch (e) {
-      debugPrint('[录制] 停止异常: $e');
+      AppLog.debug('[录制] 停止异常: $e');
       if (mounted) PetToast.error(context, '停止录制失败，请检查网络');
     } finally {
       if (mounted) setState(() => _serverStopping = false);
@@ -703,7 +704,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           );
       _loadRecentMedia(); // 刷新媒体库预览
     } catch (e) {
-      debugPrint('[录制] 入库失败: $e');
+      AppLog.debug('[录制] 入库失败: $e');
     }
   }
 
@@ -738,7 +739,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       _loadRecentMedia();
       if (mounted) PetToast.success(context, '☁️ 上传成功');
     } catch (e) {
-      debugPrint('[OSS] 上传失败: $e');
+      AppLog.debug('[OSS] 上传失败: $e');
       if (mounted) PetToast.error(context, '上传失败，文件已保存本地相册');
     } finally {
       if (mounted) setState(() => _uploadingMedia = false);
@@ -783,7 +784,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         : d == 2
             ? '反转↓'
             : '停止■';
-    debugPrint('[遥控] 左轮(motor_0): ${dirStr(m0Dir)} speed=$scaledM0 | '
+    AppLog.debug('[遥控] 左轮(motor_0): ${dirStr(m0Dir)} speed=$scaledM0 | '
         '右轮(motor_1): ${dirStr(m1Dir)} speed=$scaledM1 | base=$base%');
 
     final payload = buildMotorControlPayload(
@@ -797,12 +798,12 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       final engine = _engine;
       final streamId = _motorStreamId;
       if (engine == null || streamId == null) {
-        debugPrint('[Agora] 马达指令未发送：Data Stream 尚未就绪');
+        AppLog.debug('[Agora] 马达指令未发送：Data Stream 尚未就绪');
         return;
       }
       final bytes = Uint8List.fromList(utf8.encode(jsonEncode(payload)));
       if (bytes.length > 512) {
-        debugPrint('[Agora] 马达指令超过 512 字节，已丢弃');
+        AppLog.debug('[Agora] 马达指令超过 512 字节，已丢弃');
         return;
       }
       engine
@@ -812,7 +813,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         length: bytes.length,
       )
           .catchError((Object e) {
-        debugPrint('[Agora] 马达指令发送失败: $e');
+        AppLog.debug('[Agora] 马达指令发送失败: $e');
       });
       return;
     }
@@ -1869,7 +1870,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           _agoraJoined = false;
           _remoteUid = null;
         });
-      debugPrint('[Agora] 进入媒体库，已离开频道');
+      AppLog.debug('[Agora] 进入媒体库，已离开频道');
     }
 
     if (!mounted) return;
@@ -1884,7 +1885,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
 
     // 媒体库返回后重新加入频道
     if (mounted) {
-      debugPrint('[Agora] 媒体库返回，重新加入频道...');
+      AppLog.debug('[Agora] 媒体库返回，重新加入频道...');
       _loadRecentMedia();
       _rejoinChannel(); // 只 join，不重建引擎
     }

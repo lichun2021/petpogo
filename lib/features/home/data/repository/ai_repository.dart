@@ -12,12 +12,14 @@
 
 library;
 
+import 'package:petpogo_app/shared/utils/oss_uploader.dart' as media;
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
+import '../../../../core/api/api_exception.dart';
 import '../models/ai_result_model.dart';
 
 FormData buildAiAnalyzeFormData({
@@ -39,6 +41,13 @@ class AiRepository {
   final ApiClient _client;
   AiRepository(this._client);
 
+  void _requireSession(int epoch) {
+    if (_client.sessionEpoch != epoch) {
+      throw const ApiException(message: '登录状态已改变，请重新操作',
+          type: ApiErrorType.unauthorized);
+    }
+  }
+
   // ── 步骤1：获取 OSS 预签名上传地址 ────────────────────────────────
   /// [mimeType] : 'audio/wav' | 'image/jpeg' | 'image/png' 等
   /// [folder]   : 'ai-voice' | 'ai-image'（在 OSS 中的目录）
@@ -59,30 +68,8 @@ class AiRepository {
     required File file,
     void Function(double progress)? onProgress,
   }) async {
-    final dio = Dio();
-    final bytes = await file.readAsBytes();
-    debugPrint('[AI-OSS] 上传 ${bytes.length} bytes → $uploadUrl');
-    try {
-      await dio.put(
-        uploadUrl,
-        data: bytes,
-        options: Options(
-          // 不发 Content-Type，避免与预签名签名字符串不匹配 → 403
-          headers: const <String, dynamic>{},
-          sendTimeout: const Duration(minutes: 5),
-          receiveTimeout: const Duration(minutes: 5),
-          validateStatus: (s) => s != null && s < 400,
-        ),
-        onSendProgress: (sent, total) {
-          if (total > 0) onProgress?.call(sent / total);
-        },
-      );
-      debugPrint('[AI-OSS] 上传成功');
-    } on DioException catch (e) {
-      debugPrint(
-          '[AI-OSS] 上传失败 ${e.response?.statusCode}: ${e.response?.data}');
-      rethrow;
-    }
+    await media.OssUploader(_client).uploadFile(
+      uploadUrl: uploadUrl, file: file, onProgress: onProgress);
   }
 
   // ── 步骤3a：语音分析（SDKAPI 中转）─────────────────
@@ -93,7 +80,7 @@ class AiRepository {
     required String account,
     String? petId,
   }) async {
-    debugPrint('[AI] 语音分析 → $audioUrl');
+    AppLog.debug('[AI] 语音分析 → $audioUrl');
     final res = await _client.post<Map<String, dynamic>>(
       ApiEndpoints.aiVoiceAnalyze,
       data: buildAiAnalyzeFormData(
@@ -113,7 +100,7 @@ class AiRepository {
     required String account,
     String? petId,
   }) async {
-    debugPrint('[AI] 图像分析 → $imageUrl');
+    AppLog.debug('[AI] 图像分析 → $imageUrl');
     final res = await _client.post<Map<String, dynamic>>(
       ApiEndpoints.aiImageAnalyze,
       data: buildAiAnalyzeFormData(
@@ -133,12 +120,14 @@ class AiRepository {
     String? petId,
     void Function(String stage, double progress)? onProgress,
   }) async {
+    final epoch = _client.sessionEpoch;
     // 1. 获取上传凭证
     onProgress?.call('upload', 0);
     final token = await getUploadToken(
       mimeType: 'audio/wav', // 录音格式为 WAV
       folder: 'ai-voice',
     );
+    _requireSession(epoch);
 
     // 2. 上传到 OSS
     await uploadToOss(
@@ -147,6 +136,7 @@ class AiRepository {
       onProgress: (p) => onProgress?.call('upload', p * 0.8),
     );
     onProgress?.call('analyzing', 0.8);
+    _requireSession(epoch);
 
     // 3. 调后端分析（配额由后端控制）
     final result = await analyzeVoice(
@@ -165,6 +155,7 @@ class AiRepository {
     String? petId,
     void Function(String stage, double progress)? onProgress,
   }) async {
+    final epoch = _client.sessionEpoch;
     // 1. 获取上传凭证
     onProgress?.call('upload', 0);
     final ext = file.path.split('.').last.toLowerCase();
@@ -180,6 +171,7 @@ class AiRepository {
       mimeType: mimeType,
       folder: 'ai-image',
     );
+    _requireSession(epoch);
 
     // 2. 上传到 OSS
     await uploadToOss(
@@ -188,6 +180,7 @@ class AiRepository {
       onProgress: (p) => onProgress?.call('upload', p * 0.8),
     );
     onProgress?.call('analyzing', 0.8);
+    _requireSession(epoch);
 
     // 3. 调后端分析
     final result = await analyzeImage(

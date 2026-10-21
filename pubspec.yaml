@@ -8,7 +8,7 @@ environment:
 
 fluwx:
   app_id: 'wx02094a124e425dfe'
-  debug_logging: true
+  debug_logging: false
   ios:
     universal_link: https://www.jxpetai.com/
     no_pay: true

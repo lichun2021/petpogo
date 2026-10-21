@@ -111,6 +111,7 @@ class _ScanQrPageState extends ConsumerState<ScanQrPage>
     setState(() => _state = _ScanState.binding);
     try {
       await ref.read(deviceRepositoryProvider).bindDevice(mac: _scannedMac!);
+      ref.read(deviceListProvider.notifier).allowDevice(_scannedMac!);
       // 刷新首页设备列表
       await ref.read(deviceListProvider.notifier).load();
       // 兜底：后端列表可能不返回 productKey，强制回填当前扫码页已知的产品类型，

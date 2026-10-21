@@ -1,5 +1,5 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../../core/api/api_client.dart';
@@ -82,12 +82,15 @@ class AuthRepository {
 
   Future<Result<UserInfo>> _doLogin(
       String path, Map<String, dynamic> data) async {
+    final generation = ++_sessionGeneration;
     try {
       final res = await _client.post<Map<String, dynamic>>(path, data: data);
+      if (generation != _sessionGeneration) {
+        return const Failure(ApiException(message: '登录已取消，请重试'));
+      }
       final loginResp = LoginResponse.fromJson(res);
       final user = UserInfo.fromLoginResponse(loginResp);
 
-      _sessionGeneration++;
       _client.setToken(user.token, newSession: true);
       await _writeSession(() async {
         await _persist(user);
@@ -103,7 +106,7 @@ class AuthRepository {
         }
       });
 
-      debugPrint('[AuthRepo] ✅ 登录成功: ${user.name} (id=${user.id})');
+      AppLog.debug('[AuthRepo] ✅ 登录成功: ${user.name} (id=${user.id})');
       return Success(user);
     } on DioException catch (e) {
       var ex = e.error is ApiException
@@ -122,10 +125,10 @@ class AuthRepository {
           );
         }
       }
-      debugPrint('[AuthRepo] ✗ 登录失败: ${ex.message}');
+      AppLog.debug('[AuthRepo] ✗ 登录失败: ${ex.message}');
       return Failure(ex);
     } catch (e) {
-      debugPrint('[AuthRepo] ✗ 意外错误: $e');
+      AppLog.debug('[AuthRepo] ✗ 意外错误: $e');
       return Failure(ApiException(message: '登录异常，请重试'));
     }
   }
@@ -134,21 +137,28 @@ class AuthRepository {
   /// 调用 GET /sdkapi/im/sign 获取新的 UserSig
   /// 成功后更新本地存储，返回新的 UserSig 字符串
   Future<Result<String>> refreshImUserSig() async {
+    final generation = _sessionGeneration;
     try {
       final res = await _client.get<Map<String, dynamic>>('/sdkapi/im/sign');
+      if (generation != _sessionGeneration) {
+        return const Failure(ApiException(message: '登录状态已改变'));
+      }
       final newSig = (res['userSig'] as String?) ?? '';
       if (newSig.isEmpty) {
         return Failure(ApiException(message: '获取 UserSig 失败'));
       }
       // 更新本地存储
-      await _storage.write(key: _kImUserSig, value: newSig);
-      debugPrint('[AuthRepo] ✅ IM UserSig 已刷新');
+      await _writeForSession(generation, {_kImUserSig: newSig});
+      if (generation != _sessionGeneration) {
+        return const Failure(ApiException(message: '登录状态已改变'));
+      }
+      AppLog.debug('[AuthRepo] ✅ IM UserSig 已刷新');
       return Success(newSig);
     } on DioException catch (e) {
       final ex = e.error is ApiException
           ? e.error as ApiException
           : ApiException(message: e.message ?? '网络错误');
-      debugPrint('[AuthRepo] ✗ 刷新 UserSig 失败: ${ex.message}');
+      AppLog.debug('[AuthRepo] ✗ 刷新 UserSig 失败: ${ex.message}');
       return Failure(ex);
     } catch (e) {
       return Failure(ApiException(message: '刷新 UserSig 失败'));
@@ -173,16 +183,16 @@ class AuthRepository {
           'newPassword': newPassword,
         },
       );
-      debugPrint('[AuthRepo] ✅ 密码已更新');
+      AppLog.debug('[AuthRepo] ✅ 密码已更新');
       return const Success(true);
     } on DioException catch (e) {
       final ex = e.error is ApiException
           ? e.error as ApiException
           : ApiException(message: e.message ?? '网络错误');
-      debugPrint('[AuthRepo] ✗ 修改密码失败: ${ex.message}');
+      AppLog.debug('[AuthRepo] ✗ 修改密码失败: ${ex.message}');
       return Failure(ex);
     } catch (e) {
-      debugPrint('[AuthRepo] ✗ 修改密码意外错误: $e');
+      AppLog.debug('[AuthRepo] ✗ 修改密码意外错误: $e');
       return Failure(ApiException(message: '修改密码失败，请重试'));
     }
   }
@@ -195,9 +205,10 @@ class AuthRepository {
   ///   - 访问凭证到期由 ApiClient 自动续期，刷新凭证失效才退出
   ///   - UserSig 过期由 IM SDK 回调 → refreshImUserSig()
   Future<UserInfo?> restoreSession() async {
+    final generation = _sessionGeneration;
     final token = await _storage.read(key: _kToken);
     if (token == null || token.isEmpty) {
-      debugPrint('[AuthRepo] 无已保存会话，进入游客模式');
+      AppLog.debug('[AuthRepo] 无已保存会话，进入游客模式');
       return null;
     }
 
@@ -216,8 +227,9 @@ class AuthRepository {
       'peerGatewayUrl': await _storage.read(key: _kPeerGatewayUrl),
     });
 
+    if (generation != _sessionGeneration) return null;
     _client.setToken(user.token);
-    debugPrint('[AuthRepo] ✅ 会话恢复: ${user.name} (id=${user.id})');
+    AppLog.debug('[AuthRepo] ✅ 会话恢复: ${user.name} (id=${user.id})');
     return user;
   }
 
@@ -272,18 +284,22 @@ class AuthRepository {
     _sessionGeneration++;
     _client.clearToken();
     await _writeSession(() => _storage.deleteAll());
-    debugPrint('[AuthRepo] 已退出登录，Token 已清除');
+    AppLog.debug('[AuthRepo] 已退出登录，Token 已清除');
   }
 
   // ── 获取最新用户资料（改昵称后刷新）──────────────────────
   Future<UserInfo?> fetchProfile() async {
+    final generation = _sessionGeneration;
     try {
       final res =
           await _client.get<Map<String, dynamic>>('/sdkapi/user/profile');
+      if (generation != _sessionGeneration) return null;
       final current = await restoreSession();
-      if (current == null) return null;
+      if (current == null || generation != _sessionGeneration) return null;
       // 用新工厂方法，同时同步 VIP 状态
       final updated = UserInfo.fromProfileJson(current, res);
+      await _writeSession(() async {
+      if (generation != _sessionGeneration) return;
       await _storage.write(key: _kName, value: updated.name);
       for (final field in ['gender', 'birthday', 'email']) {
         await _storage.write(
@@ -293,6 +309,8 @@ class AuthRepository {
       await _storage.write(key: _kIsVip, value: updated.isVip ? '1' : '0');
       await _storage.write(
           key: _kVipExpireAt, value: updated.vipExpireAt ?? '');
+      });
+      if (generation != _sessionGeneration) return null;
       return updated;
     } catch (_) {
       return null;
@@ -304,45 +322,56 @@ class AuthRepository {
       required int gender,
       required String birthday,
       String? email}) async {
+    final generation = _sessionGeneration;
     await _client.put<Map<String, dynamic>>('/sdkapi/user/profile', data: {
       'nickname': nickname,
       'gender': gender,
       'birthday': birthday.isEmpty ? null : birthday,
       if (email != null) 'email': email.isEmpty ? null : email,
     });
-    await _storage.write(key: _kName, value: nickname);
-    await _storage.write(key: 'auth_gender', value: '$gender');
-    await _storage.write(key: 'auth_birthday', value: birthday);
-    if (email != null) await _storage.write(key: 'auth_email', value: email);
+    await _writeForSession(generation, {
+      _kName: nickname, 'auth_gender': '$gender', 'auth_birthday': birthday,
+      if (email != null) 'auth_email': email,
+    });
   }
 
   // ── 更新昵称 ───────────────────────────────────────────────
   Future<void> updateNickname(String nickname) async {
+    final generation = _sessionGeneration;
     await _client.put<Map<String, dynamic>>(
       '/sdkapi/user/profile',
       data: {'nickname': nickname},
     );
-    await _storage.write(key: _kName, value: nickname);
-    debugPrint('[AuthRepo] ✅ 昵称已更新: $nickname');
+    await _writeForSession(generation, {_kName: nickname});
+    AppLog.debug('[AuthRepo] ✅ 昵称已更新: $nickname');
   }
 
   // ── 更新头像 ─────────────────────────────────────────────
   Future<bool> updateAvatar(String avatarUrl) async {
+    final generation = _sessionGeneration;
     try {
       await _client.put<Map<String, dynamic>>(
         '/sdkapi/user/profile',
         data: {'avatar': avatarUrl},
       );
-      await _storage.write(key: _kAvatar, value: avatarUrl);
-      debugPrint('[AuthRepo] ✅ 头像已更新: $avatarUrl');
+      await _writeForSession(generation, {_kAvatar: avatarUrl});
+      if (generation != _sessionGeneration) return false;
+      AppLog.debug('[AuthRepo] ✅ 头像已更新: $avatarUrl');
       return true;
     } catch (e) {
-      debugPrint('[AuthRepo] ✗ 更新头像失败: $e');
+      AppLog.debug('[AuthRepo] ✗ 更新头像失败: $e');
       return false;
     }
   }
 
   // ── 私有：持久化 ──────────────────────────────────────────────────────────
+  Future<void> _writeForSession(int generation, Map<String, String?> values) =>
+      _writeSession(() async {
+        if (generation != _sessionGeneration) return;
+        await Future.wait(values.entries.map((entry) =>
+            _storage.write(key: entry.key, value: entry.value)));
+      });
+
   Future<void> _persist(UserInfo user) async {
     final q = user.aiQuota;
     await Future.wait([
@@ -364,7 +393,7 @@ class AuthRepository {
       if (user.peerGatewayUrl.isNotEmpty)
         _storage.write(key: _kPeerGatewayUrl, value: user.peerGatewayUrl),
     ]);
-    debugPrint(
+    AppLog.debug(
         '[AuthRepo] 会话已持久化 (VIP=${user.isVip}, AI剩余=${q.remaining}, peer=${user.peerGatewayUrl})');
   }
 

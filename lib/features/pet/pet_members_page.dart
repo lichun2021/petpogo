@@ -1,3 +1,4 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -608,7 +609,7 @@ class _SharePetSheet extends StatelessWidget {
               label: '微信分享',
               filled: true,
               onTap: () async {
-                debugPrint('[宠物分享] 微信分享 URL=$shareUrl');
+                AppLog.debug('[宠物分享] 微信分享 URL=$shareUrl');
                 final opened = await shareWechatWebPage(
                   url: shareUrl,
                   title: '邀请你共同管理宠物「$petName」',

@@ -297,6 +297,7 @@ class _PetCircleHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scaledHeight = 76 + MediaQuery.textScalerOf(context).scale(13) * 1.3;
     return Container(
       // 同色系比内容区略深一档，自然区分「宠物选择条 / 内容」两层，不显割裂
       color: AppColors.surfaceContainerLow,
@@ -305,7 +306,7 @@ class _PetCircleHeader extends StatelessWidget {
         bottom: 8,
       ),
       child: SizedBox(
-        height: 92,
+        height: scaledHeight > 92 ? scaledHeight : 92,
         child: pets.isEmpty
             ? Center(
                 child: Row(
@@ -495,7 +496,8 @@ class _PetCirclePostTile extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary)),
           const SizedBox(height: AppSpacing.x4),
-          Text(_relativeTime(post.sourceTime ?? post.createdAt),
+          Text('AI 日常记录 · ${_relativeTime(post.sourceTime ?? post.createdAt)}',
+              maxLines: 1, overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
         ])),
         _MoreButton(onTap: onMore),

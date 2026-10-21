@@ -16,6 +16,8 @@ import '../device/device_list_page.dart';
 import '../device/robot_device_page.dart';
 import '../profile/data/account_overview_provider.dart';
 import 'widgets/ai_image_panel.dart';
+import 'widgets/ai_points_hint.dart';
+import '../../shared/theme/app_tokens.dart';
 import 'widgets/ai_translate_panel.dart';
 import 'widgets/pet_mood_section.dart';
 import 'widgets/pet_picker_sheet.dart';
@@ -42,9 +44,10 @@ class _HomePageState extends ConsumerState<HomePage> {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   const _HomeHero(),
-                  const _MaybePetMoodSection(),
+                  const SizedBox(height: AppSpacing.contentGap),
                   const _HomeCheckInCard(),
-                  const SizedBox(height: 24),
+                  const _MaybePetMoodSection(),
+                  const SizedBox(height: 4),
                   const _SectionHeader(title: '懂它，也照顾它'),
                   const SizedBox(height: 12),
                   const AiTranslatePanel(),
@@ -154,7 +157,7 @@ class _HomeHero extends ConsumerWidget {
             : '$onlineCount';
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      padding: const EdgeInsets.all(AppSpacing.x16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -213,7 +216,7 @@ class _HomeHero extends ConsumerWidget {
               ),
             ),
           ]),
-          SizedBox(height: 14),
+          SizedBox(height: 8),
           // 第二行：在线设备(→我的设备页) | 积分(→积分明细页)
           Row(children: [
             Expanded(
@@ -281,38 +284,17 @@ class _HeroMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.74),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(children: [
-          Icon(icon, size: 16, color: color),
-          SizedBox(width: 6),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.onSurface)),
-                Text(label,
-                    maxLines: 1,
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.onSurfaceVariant)),
-              ],
-            ),
-          ),
-        ]),
-      );
+    constraints: const BoxConstraints(minHeight: AppSize.touchMin),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.x8),
+    child: Row(children: [
+      Icon(icon, size: AppIconSize.card, color: color),
+      const SizedBox(width: AppSpacing.x8),
+      Expanded(child: Text('$label $value', maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: AppColors.textSecondary, fontWeight: FontWeight.w500))),
+    ]),
+  );
 }
 
 // ── AI 健康顾问卡片（整卡可点 → 问诊页）──────────────────
@@ -357,6 +339,8 @@ class _AiConsultCard extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                           color: AppColors.onSurface)),
                   SizedBox(height: 3),
+                  const AiPointsHint(kind: 'consult'),
+                  const SizedBox(height: 3),
                   Text('问问宠小伊，基于宠物档案给建议',
                       style: TextStyle(
                           fontFamily: AppFonts.primary,
@@ -469,9 +453,9 @@ class _MaybePetMoodSectionState extends ConsumerState<_MaybePetMoodSection> {
     // PetMoodSection 内部处理加载/空状态，外层不再判断，避免反复切换导致抖动
     return Column(
       children: [
-        SizedBox(height: 22),
+        SizedBox(height: 16),
         PetMoodSection(),
-        SizedBox(height: 24),
+        SizedBox(height: 16),
       ],
     );
   }

@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/api/api_client.dart';
@@ -17,7 +17,7 @@ class PetCircleRepository {
     int pageSize = 20,
   }) {
     return guardResult(() async {
-      debugPrint(
+      AppLog.debug(
           '[萌宠圈][API] GET ${ApiEndpoints.petCircleFeed} petId=$petId page=$page pageSize=$pageSize');
       final data = await _client.get<Map<String, dynamic>>(
         ApiEndpoints.petCircleFeed,
@@ -28,7 +28,7 @@ class PetCircleRepository {
         },
       );
       final pageData = PetCircleFeedPage.fromJson(data);
-      debugPrint(
+      AppLog.debug(
           '[萌宠圈][API] GET feed OK total=${pageData.total} page=${pageData.page} pageSize=${pageData.pageSize} count=${pageData.list.length}');
       return pageData;
     });
@@ -36,9 +36,9 @@ class PetCircleRepository {
 
   Future<Result<void>> deletePost(String id) {
     return guardResult(() async {
-      debugPrint('[萌宠圈][API] DELETE ${ApiEndpoints.petCirclePostDelete(id)}');
+      AppLog.debug('[萌宠圈][API] DELETE ${ApiEndpoints.petCirclePostDelete(id)}');
       await _client.delete(ApiEndpoints.petCirclePostDelete(id));
-      debugPrint('[萌宠圈][API] DELETE post OK id=$id');
+      AppLog.debug('[萌宠圈][API] DELETE post OK id=$id');
     });
   }
 }

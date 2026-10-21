@@ -90,7 +90,17 @@ flutter build apk --debug && \
 
 # 看完整应用日志
 ~/Library/Android/sdk/platform-tools/adb logcat --pid=$(~/Library/Android/sdk/platform-tools/adb shell pidof -s com.junxin.petpogo_and)
+
+# 保留历史，按请求、级别或模块查询（可组合）
+./log.sh --request <request-id>
+./log.sh --level warning
+./log.sh --module http.error --since '10-21 10:00:00.000'
+# 显式清空历史
+./log.sh --clear
 ```
+
+请求日志包含请求 ID、状态码和耗时，不记录请求/响应正文、认证凭证或预签名 URL。
+发布版本关闭普通调试输出，仅保留经过字段白名单过滤的告警和错误事件。
 
 ---
 

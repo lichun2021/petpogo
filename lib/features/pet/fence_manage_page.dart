@@ -1,3 +1,4 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:petpogo_app/shared/widgets/modal_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -212,7 +213,7 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
                     .deleteFence(fence.fenceId);
                 if (mounted) await _loadFences();
               } catch (e) {
-                debugPrint('[Fence] 删除失败: $e');
+                AppLog.debug('[Fence] 删除失败: $e');
               }
             },
             style: FilledButton.styleFrom(

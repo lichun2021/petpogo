@@ -1,6 +1,6 @@
 /// 宠物档案查询与更新。
 
-import 'package:flutter/foundation.dart';
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
@@ -23,16 +23,16 @@ class PetRepository {
   ///   - Failure → ApiException（网络错误、401等）
   Future<Result<List<PetModel>>> fetchPets() => guardResult(() async {
     const path = ApiEndpoints.petList;
-    debugPrint('[🐾宠物] fetchPets → GET $path');
+    AppLog.debug('[🐾宠物] fetchPets → GET $path');
     dynamic rawData;
     try {
       rawData = await _client.get<dynamic>(path);
     } catch (e) {
-      debugPrint('[🐾宠物] ❌ 请求失败: $e');
+      AppLog.debug('[🐾宠物] ❌ 请求失败: $e');
       rethrow;
     }
-    debugPrint('[🐾宠物] 原始响应类型: ${rawData.runtimeType}');
-    debugPrint('[🐾宠物] 原始响应内容: $rawData');
+    AppLog.debug('[🐾宠物] 原始响应类型: ${rawData.runtimeType}');
+    AppLog.debug('[🐾宠物] 原始响应内容: $rawData');
 
     List<dynamic> list;
     if (rawData is List) {
@@ -40,19 +40,19 @@ class PetRepository {
     } else if (rawData is Map) {
       // 服务端返回 {code, info: [...]} 包装格式
       final info = rawData['info'] ?? rawData['data'] ?? rawData['list'];
-      debugPrint('[🐾宠物] 检测到 Map 格式，info=$info');
+      AppLog.debug('[🐾宠物] 检测到 Map 格式，info=$info');
       if (info is List) {
         list = info;
       } else {
-        debugPrint('[🐾宠物] ❌ info 字段不是 List: ${info?.runtimeType}');
+        AppLog.debug('[🐾宠物] ❌ info 字段不是 List: ${info?.runtimeType}');
         list = [];
       }
     } else {
-      debugPrint('[🐾宠物] ❌ 未知响应格式: ${rawData.runtimeType}');
+      AppLog.debug('[🐾宠物] ❌ 未知响应格式: ${rawData.runtimeType}');
       list = [];
     }
 
-    debugPrint('[🐾宠物] 解析到 ${list.length} 只宠物');
+    AppLog.debug('[🐾宠物] 解析到 ${list.length} 只宠物');
     return list
         .map((e) => PetModel.fromJson(e as Map<String, dynamic>))
         .toList();

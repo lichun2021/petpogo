@@ -14,6 +14,7 @@
 ///    - guest      → 守卫跳到 /login
 /// ════════════════════════════════════════════════════════════
 
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/controller/auth_controller.dart';
@@ -78,7 +79,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
     Future.delayed(_minShowDuration, () {
       if (!mounted) return;
       _minTimeReached = true;
-      debugPrint('[SplashPage] ✅ 最短时间到达，_authResolved=$_authResolved');
+      AppLog.debug('[SplashPage] ✅ 最短时间到达，_authResolved=$_authResolved');
       if (_authResolved) _navigate();
     });
 
@@ -106,10 +107,10 @@ class _SplashPageState extends ConsumerState<SplashPage>
   Widget build(BuildContext context) {
     // 监听认证状态变化：等最短时间到再跳转
     ref.listen<AuthState>(authControllerProvider, (prev, next) {
-      debugPrint('[SplashPage] Auth 状态: ${prev?.status} → ${next.status}');
+      AppLog.debug('[SplashPage] Auth 状态: ${prev?.status} → ${next.status}');
       if (!next.isRestoring && !_authResolved) {
         _authResolved = true;
-        debugPrint('[SplashPage] Auth 已确定，_minTimeReached=$_minTimeReached');
+        AppLog.debug('[SplashPage] Auth 已确定，_minTimeReached=$_minTimeReached');
         if (_minTimeReached) _navigate();
         // 否则等 _minShowDuration 到了再跳
       }
@@ -129,7 +130,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
                   'assets/images/logo.png',
                   fit: BoxFit.contain,
                   errorBuilder: (ctx, err, stack) {
-                    debugPrint('[SplashPage] ❌ Logo 加载失败: $err');
+                    AppLog.debug('[SplashPage] ❌ Logo 加载失败: $err');
                     return Center(
                       child: Icon(Icons.pets, color: AppColors.brandPrimary, size: 120),
                     );

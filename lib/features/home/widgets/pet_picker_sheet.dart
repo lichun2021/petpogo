@@ -5,6 +5,7 @@
 ///   2. 对每台设备并发调 PeerApi.fetchPetInfo 拿绑定宠物
 ///   3. 显示宠物卡片列表，用户选中后通过 onPicked 回调返回 petId
 
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -91,7 +92,7 @@ class PetPickerSheet extends ConsumerStatefulWidget {
           results.add(_PetWithDevice(pet: pet, device: d));
         }
       } catch (e) {
-        debugPrint('[PetPickerSheet] 设备 ${d.displayName} 未绑定宠物: $e');
+        AppLog.debug('[PetPickerSheet] 设备 ${d.displayName} 未绑定宠物: $e');
       }
     }));
 
@@ -142,7 +143,7 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
       }
 
       final devices = deviceState.devices;
-      debugPrint('[宠小伊] PetPickerSheet 找到设备数=${devices.length}');
+      AppLog.debug('[宠小伊] PetPickerSheet 找到设备数=${devices.length}');
 
       final petRepo = ref.read(petPeerRepositoryProvider);
       final results = <_PetWithDevice>[];
@@ -150,17 +151,17 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
       await Future.wait(devices.map((d) async {
         try {
           final pet = await petRepo.fetchPetInfo(deviceId: d.deviceId);
-          debugPrint(
+          AppLog.debug(
               '[宠小伊] 设备 ${d.displayName} → 宠物=${pet.petName} id=${pet.petId}');
           if (pet.petName.isNotEmpty) {
             results.add(_PetWithDevice(pet: pet, device: d));
           }
         } catch (e) {
-          debugPrint('[宠小伊] 设备 ${d.displayName} 未绑定宠物: $e');
+          AppLog.debug('[宠小伊] 设备 ${d.displayName} 未绑定宠物: $e');
         }
       }));
 
-      debugPrint('[宠小伊] PetPickerSheet 加载宠物数=${results.length}');
+      AppLog.debug('[宠小伊] PetPickerSheet 加载宠物数=${results.length}');
 
       if (mounted) {
         setState(() {
@@ -169,7 +170,7 @@ class _PetPickerSheetState extends ConsumerState<PetPickerSheet> {
         });
       }
     } catch (e) {
-      debugPrint('[宠小伊] PetPickerSheet 加载失败: $e');
+      AppLog.debug('[宠小伊] PetPickerSheet 加载失败: $e');
       if (mounted) {
         setState(() {
           _loading = false;

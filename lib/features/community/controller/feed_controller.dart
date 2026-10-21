@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart';
+import 'package:petpogo_app/core/logging/app_log.dart';
+import 'package:petpogo_app/core/providers/account_session_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/post_model.dart';
 import '../data/post_repository.dart';
@@ -66,10 +67,10 @@ class FeedController extends StateNotifier<FeedState> {
         page: 1,
         hasMore: posts.length >= _pageSize,
       );
-      debugPrint('[Feed] 加载 ${posts.length} 条');
+      AppLog.debug('[Feed] 加载 ${posts.length} 条');
     } catch (e) {
       if (!mounted || generation != _generation) return;
-      debugPrint('[Feed] 加载失败: $e');
+      AppLog.debug('[Feed] 加载失败: $e');
       state = state.copyWith(
           isLoading: false,
           error: ErrorPresenter.message(e, fallback: '动态加载失败，请稍后重试'));
@@ -152,6 +153,7 @@ class FeedController extends StateNotifier<FeedState> {
 
 final feedControllerProvider =
     StateNotifierProvider<FeedController, FeedState>((ref) {
+  ref.watch(accountSessionProvider);
   return FeedController(ref.watch(postRepositoryProvider));
 });
 
@@ -201,10 +203,10 @@ class FriendFeedController extends StateNotifier<FeedState> {
         page: 1,
         hasMore: posts.length >= _pageSize,
       );
-      debugPrint('[FriendFeed] 加载 ${posts.length} 条（好友 ${_friendIds.length}）');
+      AppLog.debug('[FriendFeed] 加载 ${posts.length} 条（好友 ${_friendIds.length}）');
     } catch (e) {
       if (!mounted || generation != _generation) return;
-      debugPrint('[FriendFeed] 加载失败: $e');
+      AppLog.debug('[FriendFeed] 加载失败: $e');
       state = state.copyWith(
           isLoading: false,
           error: ErrorPresenter.message(e, fallback: '动态加载失败，请稍后重试'));
@@ -289,5 +291,6 @@ class FriendFeedController extends StateNotifier<FeedState> {
 
 final friendFeedControllerProvider =
     StateNotifierProvider<FriendFeedController, FeedState>((ref) {
+  ref.watch(accountSessionProvider);
   return FriendFeedController(ref.watch(postRepositoryProvider));
 });

@@ -1,3 +1,4 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
 import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -92,7 +93,7 @@ class _MusicPlayerPageState extends ConsumerState<MusicPlayerPage>
         _rotateCtrl.repeat();
       }
     } catch (e) {
-      debugPrint('[Player] setUrl error: $e');
+      AppLog.debug('[Player] setUrl error: $e');
     }
   }
 

@@ -1,3 +1,4 @@
+import 'package:petpogo_app/core/logging/app_log.dart';
 import '../data/country_repository.dart';
 
 /// ════════════════════════════════════════════════════════════
@@ -16,8 +17,8 @@ import '../data/country_repository.dart';
 ///    退出 → guest
 /// ════════════════════════════════════════════════════════════
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/account_session_provider.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/result.dart';
 import '../../../core/push/push_service.dart';
@@ -80,6 +81,8 @@ class AuthState {
 class AuthController extends StateNotifier<AuthState> {
   final AuthRepository _repo;
   final Ref _ref;
+  Future<void>? _endingSession;
+  int _generation = 0;
 
   AuthController(this._repo, this._ref) : super(const AuthState.restoring()) {
     // App 启动时自动恢复会话
@@ -88,18 +91,22 @@ class AuthController extends StateNotifier<AuthState> {
 
   // ── 启动时恢复会话 ─────────────────────────────────────
   Future<void> _restoreSession() async {
+    final generation = _generation;
     try {
-      debugPrint('[AuthCtrl] [状态] restoring → 检查本地会话...');
+      AppLog.debug('[AuthCtrl] [状态] restoring → 检查本地会话...');
       final user = await _repo.restoreSession();
+      if (!mounted || generation != _generation) return;
       if (user != null) {
         // ── 主动验证 token 是否仍有效 ──
-        debugPrint('[AuthCtrl] 验证 token 有效性...');
+        AppLog.debug('[AuthCtrl] 验证 token 有效性...');
         bool valid;
         try {
           valid = await _repo.verifyToken();
+          if (!mounted || generation != _generation) return;
         } catch (error) {
+          if (!mounted || generation != _generation) return;
           // 网络故障不清除已保存会话；后续请求仍由服务端校验及续期。
-          debugPrint('[AuthCtrl] 暂无法验证会话: $error');
+          AppLog.debug('[AuthCtrl] 暂无法验证会话: $error');
           state = AuthState(
               status: AuthStatus.loggedIn,
               user: user.copyWith(
@@ -109,7 +116,7 @@ class AuthController extends StateNotifier<AuthState> {
         }
         if (!valid) {
           // token 已过期 → 清除会话 → 引导重新登录
-          debugPrint('[AuthCtrl] [状态] token 失效 → guest（需重新登录）');
+          AppLog.debug('[AuthCtrl] [状态] token 失效 → guest（需重新登录）');
           await _repo.logout();
           state = const AuthState(
             status: AuthStatus.guest,
@@ -117,7 +124,7 @@ class AuthController extends StateNotifier<AuthState> {
           );
           return;
         }
-        debugPrint('[AuthCtrl] [状态] restoring → loggedIn (${user.name})');
+        AppLog.debug('[AuthCtrl] [状态] restoring → loggedIn (${user.name})');
         state = AuthState(
             status: AuthStatus.loggedIn,
             user: user.copyWith(
@@ -125,12 +132,12 @@ class AuthController extends StateNotifier<AuthState> {
         _loadUserData();
         _consumePendingPushRoute(); // ← 认证恢复后跳转 push 待定路由
       } else {
-        debugPrint('[AuthCtrl] [状态] restoring → guest (无本地会话)');
+        AppLog.debug('[AuthCtrl] [状态] restoring → guest (无本地会话)');
         state = const AuthState.guest();
       }
     } catch (error) {
       if (!mounted) return;
-      debugPrint('[AuthCtrl] 会话验证失败: $error');
+      AppLog.debug('[AuthCtrl] 会话验证失败: $error');
       state = const AuthState(
         status: AuthStatus.guest,
         errorMessage: '登录状态验证失败，请检查网络后重新登录',
@@ -155,9 +162,9 @@ class AuthController extends StateNotifier<AuthState> {
             appRouter.push(pending);
           });
         }
-        debugPrint('[AuthCtrl] push 待定路由已跳转: $pending');
+        AppLog.debug('[AuthCtrl] push 待定路由已跳转: $pending');
       } catch (e) {
-        debugPrint('[AuthCtrl] push 待定路由跳转失败: $e');
+        AppLog.debug('[AuthCtrl] push 待定路由跳转失败: $e');
       }
     });
   }
@@ -167,21 +174,25 @@ class AuthController extends StateNotifier<AuthState> {
     required String code,
     String nationNum = '86',
   }) async {
-    debugPrint(
+    await _endingSession;
+    if (!mounted) return;
+    final generation = ++_generation;
+    AppLog.debug(
         '[AuthCtrl] [状态] → loading (phone=$phone, nationNum=$nationNum, type=sms)');
     state = state.copyWith(status: AuthStatus.loading);
 
     final result = await _repo.loginWithSms(
         phone: phone, code: code, nationNum: nationNum);
+    if (!mounted || generation != _generation) return;
 
     result.when(
       success: (user) {
-        debugPrint('[AuthCtrl] [状态] loading → loggedIn (${user.name})');
+        AppLog.debug('[AuthCtrl] [状态] loading → loggedIn (${user.name})');
         state = AuthState(status: AuthStatus.loggedIn, user: user);
         _loadUserData();
       },
       failure: (err) {
-        debugPrint('[AuthCtrl] [状态] loading → error (${err.message})');
+        AppLog.debug('[AuthCtrl] [状态] loading → error (${err.message})');
         state = AuthState(
           status: AuthStatus.error,
           errorMessage: err.userMessage,
@@ -195,21 +206,25 @@ class AuthController extends StateNotifier<AuthState> {
     required String password,
     String nationNum = '86',
   }) async {
-    debugPrint(
+    await _endingSession;
+    if (!mounted) return;
+    final generation = ++_generation;
+    AppLog.debug(
         '[AuthCtrl] [状态] → loading (phone=$phone, nationNum=$nationNum, type=pwd)');
     state = state.copyWith(status: AuthStatus.loading);
 
     final result = await _repo.loginWithPwd(
         phone: phone, password: password, nationNum: nationNum);
+    if (!mounted || generation != _generation) return;
 
     result.when(
       success: (user) {
-        debugPrint('[AuthCtrl] [状态] loading → loggedIn (${user.name})');
+        AppLog.debug('[AuthCtrl] [状态] loading → loggedIn (${user.name})');
         state = AuthState(status: AuthStatus.loggedIn, user: user);
         _loadUserData();
       },
       failure: (err) {
-        debugPrint('[AuthCtrl] [状态] loading → error (${err.message})');
+        AppLog.debug('[AuthCtrl] [状态] loading → error (${err.message})');
         state = AuthState(
           status: AuthStatus.error,
           errorMessage: err.userMessage,
@@ -273,12 +288,7 @@ class AuthController extends StateNotifier<AuthState> {
   /// 不弹对话框，直接清除本地状态 → guest
   /// UI 层监听 isGuest 后自动提示重新登录
   Future<void> forceLogout() async {
-    debugPrint('[AuthCtrl] 刷新凭证失效，结束会话');
-    await _repo.logout();
-    state = const AuthState(
-      status: AuthStatus.guest,
-      errorMessage: '登录凭证已失效，请重新登录',
-    );
+    await _endSession(expired: true);
   }
 
   // ── IM UserSig 过期刷新（无需重新登录）──────────────────
@@ -289,7 +299,7 @@ class AuthController extends StateNotifier<AuthState> {
     return result.when(
       success: (sig) => sig,
       failure: (err) {
-        debugPrint('[AuthCtrl] ⚠️ 刷新 UserSig 失败: ${err.message}');
+        AppLog.debug('[AuthCtrl] ⚠️ 刷新 UserSig 失败: ${err.message}');
         return null;
       },
     );
@@ -316,19 +326,34 @@ class AuthController extends StateNotifier<AuthState> {
 
   // ── 退出登录 ───────────────────────────────────────────
   Future<void> logout() async {
-    debugPrint('[AuthCtrl] [状态] loggedIn → guest (退出登录)');
-    // 清除极光推送 alias
-    await PushService.clearAlias();
-    await _repo.logout();
-    state = const AuthState.guest();
+    await _endSession();
+  }
+
+  Future<void> _endSession({bool expired = false}) {
+    return _endingSession ??= _clearSession(expired: expired).whenComplete(() {
+      _endingSession = null;
+    });
+  }
+
+  Future<void> _clearSession({required bool expired}) async {
+    _generation++;
+    final im = _ref.read(imControllerProvider.notifier);
+    // Hide account content and revoke request credentials synchronously.
+    final storageCleanup = _repo.logout();
+    state = AuthState(status: AuthStatus.guest,
+        errorMessage: expired ? '登录凭证已失效，请重新登录' : null);
+    final imCleanup = im.logoutIm();
+    _ref.read(accountSessionProvider.notifier).state++;
+    await Future.wait([storageCleanup, imCleanup, PushService.clearAlias()]);
   }
 
   // ── 刷新用户资料（改昵称后调用）────────────────────────
   Future<void> refreshUser() async {
+    final generation = _generation;
     final updated = await _repo.fetchProfile();
-    if (updated != null) {
+    if (mounted && generation == _generation && updated != null) {
       state = state.copyWith(user: updated);
-      debugPrint('[AuthCtrl] 用户资料已刷新: ${updated.name}');
+      AppLog.debug('[AuthCtrl] 用户资料已刷新: ${updated.name}');
     }
   }
 
@@ -337,9 +362,10 @@ class AuthController extends StateNotifier<AuthState> {
       required int gender,
       required String birthday,
       String? email}) async {
+    final generation = _generation;
     await _repo.updateProfile(
         nickname: nickname, gender: gender, birthday: birthday, email: email);
-    if (state.user != null) {
+    if (mounted && generation == _generation && state.user != null) {
       state = state.copyWith(
           user: state.user!.copyWith(
               name: nickname,
@@ -351,23 +377,26 @@ class AuthController extends StateNotifier<AuthState> {
 
   // ── 更新昵称 ─────────────────────────────────────────────
   Future<void> updateNickname(String nickname) async {
+    final generation = _generation;
     final normalized = nickname.trim();
     if (normalized.isEmpty) {
       throw ArgumentError.value(nickname, 'nickname', 'must not be empty');
     }
     await _repo.updateNickname(normalized);
-    if (state.user != null) {
+    if (mounted && generation == _generation && state.user != null) {
       state = state.copyWith(user: state.user!.copyWith(name: normalized));
-      debugPrint('[AuthCtrl] 昵称 state 已更新: $normalized');
+      AppLog.debug('[AuthCtrl] 昵称 state 已更新: $normalized');
     }
   }
 
   // ── 更新头像（上传 OSS 后调用）────────────────────────
   Future<bool> updateAvatar(String avatarUrl) async {
+    final generation = _generation;
     final ok = await _repo.updateAvatar(avatarUrl);
+    if (!mounted || generation != _generation) return false;
     if (ok && state.user != null) {
       state = state.copyWith(user: state.user!.copyWith(avatar: avatarUrl));
-      debugPrint('[AuthCtrl] 头像 state 已更新: $avatarUrl');
+      AppLog.debug('[AuthCtrl] 头像 state 已更新: $avatarUrl');
     }
     return ok;
   }
@@ -378,7 +407,7 @@ class AuthController extends StateNotifier<AuthState> {
     final updated = state.user!.copyWith(aiQuota: quota);
     state = state.copyWith(user: updated);
     _repo.saveAiQuota(quota); // 持久化到 SecureStorage
-    debugPrint(
+    AppLog.debug(
         '[AuthCtrl] AI 配额已更新: used=${quota.used} remaining=${quota.remaining}');
   }
 
@@ -396,22 +425,22 @@ class AuthController extends StateNotifier<AuthState> {
             userId: imUserId,
             userSig: imUserSig,
           );
-      debugPrint('[AuthCtrl] 触发 IM 登录 (userId=$imUserId)');
+      AppLog.debug('[AuthCtrl] 触发 IM 登录 (userId=$imUserId)');
     } else {
-      debugPrint('[AuthCtrl] ⚠️ imUserSig 为空，跳过 IM 登录');
+      AppLog.debug('[AuthCtrl] ⚠️ imUserSig 为空，跳过 IM 登录');
     }
 
     // ② 绑定极光推送 alias（用 account 手机号作为别名，服务端按用户推送）
     PushService.setAlias(user.account + '@qq.com');
 
-    debugPrint('[AuthCtrl] 极光推送 alias 绑定: ${user.account}');
+    AppLog.debug('[AuthCtrl] 极光推送 alias 绑定: ${user.account}');
 
     // ③ 并行拉取：宠物列表 / 设备列表 / 用户统计
     _ref.read(petControllerProvider.notifier).loadPets();
     _ref.read(deviceListProvider.notifier).load();
     _ref.read(userStatsProvider.notifier).loadMyStats();
 
-    debugPrint('[AuthCtrl] 并行加载: 宠物 / 设备 / 用户统计');
+    AppLog.debug('[AuthCtrl] 并行加载: 宠物 / 设备 / 用户统计');
   }
 }
 
