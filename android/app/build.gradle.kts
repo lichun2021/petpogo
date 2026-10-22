@@ -17,6 +17,12 @@ if (keyPropertiesFile.exists()) {
     keyProperties.load(FileInputStream(keyPropertiesFile))
 }
 
+// ── 打 AAB 时关闭 ABI 分包 ────────────────────────────────
+// splits.abi 会让 release 产出多份资源文件，AGP 的 PerModuleBundleTask 要求只有一份，
+// 同时启用时 bundleRelease 会报 "Sequence contains more than one matching element"。
+// AAB 由 Google Play 按设备拆分，不需要这里的 ABI 分包；APK 任务不受影响。
+val isBundleBuild = gradle.startParameter.taskNames.any { it.contains("bundle", ignoreCase = true) }
+
 android {
     namespace = "com.junxin.petpogo_and"
     compileSdk = flutter.compileSdkVersion
@@ -110,7 +116,7 @@ android {
     // ── APK 分包配置（按 CPU 架构生成多个小 APK）────────────────────────────────────
     splits {
         abi {
-            isEnable = true
+            isEnable = !isBundleBuild
             reset()
             include("arm64-v8a", "armeabi-v7a")
             isUniversalApk = true  // 同时生成一个包含所有架构的通用 APK（测试用）

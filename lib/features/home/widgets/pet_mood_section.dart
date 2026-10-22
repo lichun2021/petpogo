@@ -8,7 +8,9 @@ import '../../../shared/widgets/pet_avatar.dart';
 import '../../../shared/widgets/pet_toast.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../device/data/models/device_model.dart';
+import '../../device/data/repository/device_repository.dart';
 import '../../device/device_detail_page.dart';
+import '../../device/device_list_page.dart';
 import '../../device/robot_device_page.dart';
 import '../../pet_circle/controller/pet_circle_pet_controller.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
@@ -19,7 +21,7 @@ import 'pet_picker_sheet.dart';
 ///   - 我的宠物（PeerApi /pet/info/list）
 ///   - 共享给我的宠物（业务后端 /pet/share/withme）
 /// - 头像横滑 + 纯文字状态（在线/离线，围栏/低电等 PeerApi 接口就绪后接入）
-/// - 末尾"添加"卡片 → 绑定设备页
+/// - 尚无宠物但已有设备时，添加入口先去设备列表完善宠物档案
 /// - 点击宠物卡 → 该宠物设备详情页（优先项圈）
 class PetMoodSection extends ConsumerStatefulWidget {
   const PetMoodSection({super.key});
@@ -30,6 +32,35 @@ class PetMoodSection extends ConsumerStatefulWidget {
 
 class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
   bool _loadTriggered = false;
+  bool _openingAdd = false;
+
+  Future<void> _addPet() async {
+    if (_openingAdd) return;
+    _openingAdd = true;
+    try {
+      if (ref.read(petCirclePetControllerProvider).pets.isEmpty) {
+        var devices = ref.read(deviceListProvider);
+        if (devices.devices.isEmpty) {
+          await ref.read(deviceListProvider.notifier).load();
+          if (!mounted) return;
+          devices = ref.read(deviceListProvider);
+        }
+        if (devices.devices.isNotEmpty) {
+          if (!mounted) return;
+          await Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const DeviceListPage()));
+          return;
+        }
+        if (devices.errorMessage != null) {
+          if (mounted) PetToast.show(context, devices.errorMessage!);
+          return;
+        }
+      }
+      if (mounted) await context.push(AppRoutes.bindDevice);
+    } finally {
+      _openingAdd = false;
+    }
+  }
 
   @override
   void dispose() {
@@ -53,8 +84,8 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
 
     final pets = petState.pets;
     final textScaler = MediaQuery.textScalerOf(context);
-    final petRowHeight = 80 + textScaler.scale(13) * 1.25 +
-        textScaler.scale(12) * 1.2;
+    final petRowHeight =
+        80 + textScaler.scale(13) * 1.25 + textScaler.scale(12) * 1.2;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,15 +94,17 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(child: Text('我的宠物',
-                style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.onSurface,
-                    height: 1.15))),
+            Expanded(
+                child: Text('我的宠物',
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.onSurface,
+                        height: 1.15))),
             const SizedBox(width: 12),
-            Flexible(child: GestureDetector(
+            Flexible(
+                child: GestureDetector(
               onTap: () async {
                 await PetPickerSheet.show(
                   context,
@@ -109,11 +142,13 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Row(children: [
-              Expanded(child: Text('宠物信息暂未同步，请重试',
-                style: Theme.of(context).textTheme.bodyMedium)),
-              TextButton(onPressed: () => ref
-                  .read(petCirclePetControllerProvider.notifier).load(),
-                child: const Text('重新同步')),
+              Expanded(
+                  child: Text('宠物信息暂未同步，请重试',
+                      style: Theme.of(context).textTheme.bodyMedium)),
+              TextButton(
+                  onPressed: () =>
+                      ref.read(petCirclePetControllerProvider.notifier).load(),
+                  child: const Text('重新同步')),
             ]),
           )
         // ── 横滑圆形头像（与萌宠圈一致）+ 末尾添加卡 ────
@@ -127,7 +162,7 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
               separatorBuilder: (_, __) => const SizedBox(width: 16),
               itemBuilder: (_, i) {
                 if (i == pets.length) {
-                  return _AddPetAvatar(onTap: () => context.push(AppRoutes.bindDevice));
+                  return _AddPetAvatar(onTap: _addPet);
                 }
                 final p = pets[i];
                 return _PetAvatarTab(
@@ -203,7 +238,8 @@ class _PetAvatarTab extends StatelessWidget {
                           ? AppColors.statusOnlineStrong
                           : device.mac.isEmpty
                               ? Colors.transparent
-                              : AppColors.onSurfaceVariant.withValues(alpha: 0.3),
+                              : AppColors.onSurfaceVariant
+                                  .withValues(alpha: 0.3),
                       width: 2.5,
                     ),
                   ),
@@ -215,11 +251,13 @@ class _PetAvatarTab extends StatelessWidget {
                     top: -2,
                     right: -4,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 1),
                       decoration: BoxDecoration(
                         color: AppColors.secondary,
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: AppColors.surface, width: 1.2),
+                        border:
+                            Border.all(color: AppColors.surface, width: 1.2),
                       ),
                       child: const Text('共享',
                           style: TextStyle(
@@ -288,7 +326,8 @@ class _AddPetAvatar extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.3), width: 2.5),
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    width: 2.5),
               ),
               child: Container(
                 width: 54,
@@ -297,7 +336,8 @@ class _AddPetAvatar extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: AppColors.primary.withValues(alpha: 0.08),
                 ),
-                child: Icon(Icons.add_rounded, size: 26, color: AppColors.primary),
+                child:
+                    Icon(Icons.add_rounded, size: 26, color: AppColors.primary),
               ),
             ),
             const SizedBox(height: 4),

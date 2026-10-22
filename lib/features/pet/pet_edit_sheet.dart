@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_fonts.dart';
-import '../community/data/post_repository.dart';
+import '../../shared/utils/oss_uploader.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
 import '../../shared/utils/error_presenter.dart';
@@ -96,19 +96,23 @@ class _PetEditSheetState extends ConsumerState<PetEditSheet> {
     if (picked == null || !mounted) return;
 
     // 直接上传，UI 层用 ClipOval 圆形显示
-    setState(() => _uploadingAvatar = true);
+    setState(() {
+      _uploadingAvatar = true;
+      _error = null;
+    });
     try {
-      final repo = ref.read(postRepositoryProvider);
-      final sign =
-          await repo.getOssSign(fileType: 'image', folder: 'pet_avatars');
-      await repo.uploadToOss(
+      final repo = ref.read(ossUploaderProvider);
+      final sign = await repo.getSign(
+          mimeType: 'image/jpeg', fileType: 'image', folder: 'pet_avatars');
+      await repo.uploadFile(
         uploadUrl: sign.uploadUrl,
         file: File(picked.path),
-        contentType: 'image/jpeg',
       );
-      if (mounted) setState(() => _avatarUrl = sign.cdnUrl ?? '');
+      if (mounted) setState(() => _avatarUrl = sign.cdnUrl);
     } catch (e) {
-      if (mounted) setState(() => _error = '头像上传失败：$e');
+      if (mounted)
+        setState(
+            () => _error = ErrorPresenter.message(e, fallback: '头像上传失败，请重试'));
     } finally {
       if (mounted) setState(() => _uploadingAvatar = false);
     }
@@ -248,7 +252,6 @@ class _PetEditSheetState extends ConsumerState<PetEditSheet> {
           Text(_error!, style: TextStyle(color: AppColors.error, fontSize: 13)),
         ],
         const SizedBox(height: 20),
-
       ]),
     ));
   }

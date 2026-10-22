@@ -8,7 +8,7 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/app_centered_modal.dart';
 import '../../shared/widgets/pet_avatar.dart';
 import '../../shared/widgets/pet_toast.dart';
-import '../community/data/post_repository.dart';
+import '../../shared/utils/oss_uploader.dart';
 import 'breed_picker_page.dart';
 import 'data/repository/pet_peer_repository.dart';
 import 'data/repository/pet_sync_repository.dart';
@@ -91,11 +91,10 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
     setState(() => _avatarUploading = true);
     try {
       final file = File(picked.path);
-      final repo = ref.read(postRepositoryProvider);
-      final sign =
-          await repo.getOssSign(fileType: 'image', folder: 'pet_avatars');
-      await repo.uploadToOss(
-          uploadUrl: sign.uploadUrl, file: file, contentType: 'image/jpeg');
+      final repo = ref.read(ossUploaderProvider);
+      final sign = await repo.getSign(
+          mimeType: 'image/jpeg', fileType: 'image', folder: 'pet_avatars');
+      await repo.uploadFile(uploadUrl: sign.uploadUrl, file: file);
       if (mounted)
         setState(() {
           _avatarFile = file;
@@ -106,7 +105,7 @@ class _BindPetSheetState extends ConsumerState<BindPetSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _avatarUploading = false);
-        PetToast.error(context, '头像上传失败：$e');
+        PetToast.error(context, e, fallback: '头像上传失败，请重试');
       }
     }
   }

@@ -153,7 +153,7 @@ class _FenceManagePageState extends ConsumerState<FenceManagePage> {
               fontWeight: FontWeight.w600,
               color: AppColors.onSurfaceVariant)),
       SizedBox(height: 8),
-      Text('添加围栏后，宠物越界会收到提醒',
+      Text('添加围栏后，可在这里查看和管理范围',
           style: TextStyle(
               fontFamily: AppFonts.primary,
               fontSize: 13,
@@ -278,14 +278,14 @@ class _FenceCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                    color: AppColors.statusOnlineSoft,
+                    color: AppColors.surfaceContainer,
                     borderRadius: BorderRadius.circular(20)),
-                child: Text('活跃',
+                child: Text('状态待确认',
                     style: TextStyle(
                         fontFamily: AppFonts.primary,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.statusOnlineStrong)),
+                        color: AppColors.onSurfaceVariant)),
               ),
             ])),
         Container(

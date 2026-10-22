@@ -54,7 +54,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     setState(() => _uploadingAvatar = true);
     try {
       final repo = ref.read(ossUploaderProvider);
-      final sign = await repo.getSign(fileType: 'image', folder: 'avatars', mimeType: 'image/jpeg');
+      final sign = await repo.getSign(
+          fileType: 'image', folder: 'avatars', mimeType: 'image/jpeg');
       await repo.uploadFile(uploadUrl: sign.uploadUrl, file: file);
       final ok = await ref
           .read(authControllerProvider.notifier)
@@ -63,7 +64,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       PetToast.show(context, ok ? '头像更新成功 🎉' : '头像更新失败，请重试');
     } catch (e) {
       if (!context.mounted) return;
-      PetToast.error(context, '上传失败，请重试');
+      PetToast.error(context, e, fallback: '头像上传失败，请重试');
     } finally {
       if (mounted) setState(() => _uploadingAvatar = false);
     }

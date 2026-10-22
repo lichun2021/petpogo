@@ -13,7 +13,6 @@
 library;
 
 import 'package:petpogo_app/shared/utils/oss_uploader.dart' as media;
-import 'package:petpogo_app/core/logging/app_log.dart';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,12 +38,14 @@ FormData buildAiAnalyzeFormData({
 
 class AiRepository {
   final ApiClient _client;
-  AiRepository(this._client);
+  final media.OssUploader _uploader;
+  AiRepository(this._client, {media.OssUploader? uploader})
+      : _uploader = uploader ?? media.OssUploader(_client);
 
   void _requireSession(int epoch) {
     if (_client.sessionEpoch != epoch) {
-      throw const ApiException(message: '登录状态已改变，请重新操作',
-          type: ApiErrorType.unauthorized);
+      throw const ApiException(
+          message: '登录状态已改变，请重新操作', type: ApiErrorType.unauthorized);
     }
   }
 
@@ -55,11 +56,8 @@ class AiRepository {
     required String mimeType,
     required String folder,
   }) async {
-    final res = await _client.post<Map<String, dynamic>>(
-      ApiEndpoints.ossUploadSign,
-      data: {'mimeType': mimeType, 'folder': folder},
-    );
-    return OssUploadToken.fromJson(res);
+    final sign = await _uploader.getSign(mimeType: mimeType, folder: folder);
+    return OssUploadToken(uploadUrl: sign.uploadUrl, publicUrl: sign.cdnUrl);
   }
 
   // ── 步骤2：直传 OSS（PUT，不经业务后端流量）─────────────
@@ -68,8 +66,8 @@ class AiRepository {
     required File file,
     void Function(double progress)? onProgress,
   }) async {
-    await media.OssUploader(_client).uploadFile(
-      uploadUrl: uploadUrl, file: file, onProgress: onProgress);
+    await _uploader.uploadFile(
+        uploadUrl: uploadUrl, file: file, onProgress: onProgress);
   }
 
   // ── 步骤3a：语音分析（SDKAPI 中转）─────────────────
@@ -80,7 +78,6 @@ class AiRepository {
     required String account,
     String? petId,
   }) async {
-    AppLog.debug('[AI] 语音分析 → $audioUrl');
     final res = await _client.post<Map<String, dynamic>>(
       ApiEndpoints.aiVoiceAnalyze,
       data: buildAiAnalyzeFormData(
@@ -100,7 +97,6 @@ class AiRepository {
     required String account,
     String? petId,
   }) async {
-    AppLog.debug('[AI] 图像分析 → $imageUrl');
     final res = await _client.post<Map<String, dynamic>>(
       ApiEndpoints.aiImageAnalyze,
       data: buildAiAnalyzeFormData(
@@ -206,10 +202,10 @@ class OssUploadToken {
   /// 后端 /sdkapi/upload/sign 返回字段：
   ///   uploadUrl → OSS PUT 预签名地址
   ///   cdnUrl    → 公开访问 CDN 地址（= publicUrl）
-  factory OssUploadToken.fromJson(Map<String, dynamic> json) => OssUploadToken(
-        uploadUrl: (json['uploadUrl'] as String?) ?? '',
-        publicUrl: (json['cdnUrl'] as String?) ?? '', // 后端返回字段是 cdnUrl
-      );
+  factory OssUploadToken.fromJson(Map<String, dynamic> json) {
+    final sign = media.OssSignResult.fromJson(json);
+    return OssUploadToken(uploadUrl: sign.uploadUrl, publicUrl: sign.cdnUrl);
+  }
 }
 
 // ── Provider ─────────────────────────────────────────────

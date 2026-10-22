@@ -1,5 +1,6 @@
 import 'package:petpogo_app/core/logging/app_log.dart';
 import 'package:petpogo_app/core/providers/account_session_provider.dart';
+
 /// ════════════════════════════════════════════════════════════
 ///  AI 分析 Controller
 ///
@@ -10,6 +11,7 @@ import 'package:petpogo_app/core/providers/account_session_provider.dart';
 /// ════════════════════════════════════════════════════════════
 
 import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_exception.dart';
 import '../../auth/controller/auth_controller.dart';
@@ -17,6 +19,7 @@ import '../../auth/data/models/auth_model.dart';
 import '../../profile/data/points_repository.dart';
 import '../data/models/ai_result_model.dart';
 import '../data/repository/ai_repository.dart';
+import '../../../shared/utils/error_presenter.dart';
 
 // ── 状态枚举 ───────────────────────────────────────────────
 enum AiPhase {
@@ -122,9 +125,12 @@ class AiAnalyzeController extends StateNotifier<AiAnalyzeState> {
           '[AiCtrl] 语音分析完成: ${result.primaryEmotion.labelZh} (剩余: ${result.quota.remaining})');
     } catch (e) {
       if (!mounted) return;
-      state =
-          AiAnalyzeState(phase: AiPhase.error, errorMessage: _parseError(e));
-      AppLog.debug('[AiCtrl] 语音分析失败: $e');
+      final message = _parseError(e);
+      AppLog.event('ai.analysis.failed', level: 'warning', fields: {
+        'category': state.phase.name,
+        'errorType': e is DioException ? e.type.name : e.runtimeType.toString(),
+      });
+      state = AiAnalyzeState(phase: AiPhase.error, errorMessage: message);
     }
   }
 
@@ -173,23 +179,26 @@ class AiAnalyzeController extends StateNotifier<AiAnalyzeState> {
           '[AiCtrl] 图像分析完成: ${result.primaryEmotion.labelZh} (剩余: ${result.quota.remaining})');
     } catch (e) {
       if (!mounted) return;
-      state =
-          AiAnalyzeState(phase: AiPhase.error, errorMessage: _parseError(e));
-      AppLog.debug('[AiCtrl] 图像分析失败: $e');
+      final message = _parseError(e);
+      AppLog.event('ai.analysis.failed', level: 'warning', fields: {
+        'category': state.phase.name,
+        'errorType': e is DioException ? e.type.name : e.runtimeType.toString(),
+      });
+      state = AiAnalyzeState(phase: AiPhase.error, errorMessage: message);
     }
   }
 
   void reset() => state = const AiAnalyzeState();
 
   String _parseError(Object e) {
-    if (e is ApiException) {
-      if (e.statusCode == 429) return '今日 AI 次数已用完，升级 VIP 享无限次数';
-      if (e.statusCode == 502) return 'AI 服务暂时不可用，请稍后重试';
-      if (e.type == ApiErrorType.network) return '网络连接失败，请检查网络';
-      if (e.type == ApiErrorType.timeout) return '请求超时，请稍后重试';
-      if (e.message.isNotEmpty) return e.message;
+    final cause = e is DioException && e.error is ApiException ? e.error! : e;
+    if (cause is ApiException && state.phase == AiPhase.analyzing) {
+      if (cause.statusCode == 429) return '请求过于频繁或 AI 额度不足，请稍后再试';
+      if (cause.statusCode == 502) return 'AI 服务暂时不可用，请稍后重试';
     }
-    return '分析失败，请重试';
+    return ErrorPresenter.message(cause,
+        fallback:
+            state.phase == AiPhase.uploading ? '文件上传失败，请重试' : 'AI 分析失败，请稍后重试');
   }
 }
 
@@ -210,7 +219,8 @@ final aiImageControllerProvider =
 // 从 GET /sdkapi/points/rules 拉规则，按 consume_type 精确匹配
 // 后端 consume_type 值：voice_analyze / image_analyze / consultation_question
 // 返回 {voice: X, image: Y, consult: Z}（未匹配到则 null）
-final aiPointsProvider = FutureProvider.autoDispose<Map<String, int?>>((ref) async {
+final aiPointsProvider =
+    FutureProvider.autoDispose<Map<String, int?>>((ref) async {
   final repo = ref.watch(pointsRepositoryProvider);
   try {
     final rules = await repo.fetchRules();
@@ -226,9 +236,10 @@ final aiPointsProvider = FutureProvider.autoDispose<Map<String, int?>>((ref) asy
       }
       return null;
     }
+
     return {
-      'voice':  match('voice_analyze'),
-      'image':  match('image_analyze'),
+      'voice': match('voice_analyze'),
+      'image': match('image_analyze'),
       'consult': match('consultation_question'),
     };
   } catch (e) {

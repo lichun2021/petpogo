@@ -7,31 +7,31 @@ class FenceModel {
   final String radius;
   final String address;
   final String street;
-  final int    createTime;
+  final int createTime;
 
   const FenceModel({
-    this.fenceId    = '',
-    this.fenceName  = '',
-    this.longitude  = '',
-    this.latitude   = '',
-    this.radius     = '',
-    this.address    = '',
-    this.street     = '',
+    this.fenceId = '',
+    this.fenceName = '',
+    this.longitude = '',
+    this.latitude = '',
+    this.radius = '',
+    this.address = '',
+    this.street = '',
     this.createTime = 0,
   });
 
   String get displayRadius => '${radius}m';
 
   factory FenceModel.fromJson(Map<String, dynamic> json) => FenceModel(
-    fenceId:    json['fenceId']?.toString()  ?? '',
-    fenceName:  (json['fenceName']  as String?) ?? '',
-    longitude:  (json['longitude']  as String?) ?? '',
-    latitude:   (json['latitude']   as String?) ?? '',
-    radius:     (json['radius']     as String?) ?? '',
-    address:    (json['address']    as String?) ?? '',
-    street:     (json['street']     as String?) ?? '',
-    createTime: (json['createTime'] as int?)    ?? 0,
-  );
+        fenceId: json['fenceId']?.toString() ?? '',
+        fenceName: (json['fenceName'] as String?) ?? '',
+        longitude: (json['longitude'] as String?) ?? '',
+        latitude: (json['latitude'] as String?) ?? '',
+        radius: (json['radius'] as String?) ?? '',
+        address: (json['address'] as String?) ?? '',
+        street: (json['street'] as String?) ?? '',
+        createTime: (json['createTime'] as int?) ?? 0,
+      );
 }
 
 /// 宠物位置模型 — 对应 iPet POST /pet/position
@@ -39,18 +39,28 @@ class PetPositionModel {
   final String latitude;
   final String longitude;
   final String address;
-  final int    time;
-  final int    reportTime;
+  final int time;
+  final int reportTime;
 
   const PetPositionModel({
-    this.latitude   = '',
-    this.longitude  = '',
-    this.address    = '',
-    this.time       = 0,
+    this.latitude = '',
+    this.longitude = '',
+    this.address = '',
+    this.time = 0,
     this.reportTime = 0,
   });
 
-  bool get hasLocation => latitude.isNotEmpty && longitude.isNotEmpty;
+  bool get hasLocation {
+    final latitudeValue = double.tryParse(latitude);
+    final longitudeValue = double.tryParse(longitude);
+    return latitudeValue != null &&
+        longitudeValue != null &&
+        latitudeValue.isFinite &&
+        longitudeValue.isFinite &&
+        latitudeValue.abs() <= 90 &&
+        longitudeValue.abs() <= 180 &&
+        !(latitudeValue == 0 && longitudeValue == 0);
+  }
 
   double get lat => double.tryParse(latitude) ?? 0;
   double get lng => double.tryParse(longitude) ?? 0;
@@ -59,19 +69,20 @@ class PetPositionModel {
     if (reportTime == 0) return '未知';
     final dt = DateTime.fromMillisecondsSinceEpoch(reportTime);
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1)  return '刚刚';
+    if (diff.inMinutes < 1) return '刚刚';
     if (diff.inMinutes < 60) return '${diff.inMinutes} 分钟前';
-    if (diff.inHours   < 24) return '${diff.inHours} 小时前';
+    if (diff.inHours < 24) return '${diff.inHours} 小时前';
     return '${diff.inDays} 天前';
   }
 
-  factory PetPositionModel.fromJson(Map<String, dynamic> json) => PetPositionModel(
-    latitude:   (json['latitude']   as String?) ?? '',
-    longitude:  (json['longitude']  as String?) ?? '',
-    address:    (json['address']    as String?) ?? '',
-    time:       (json['time']       as int?)    ?? 0,
-    reportTime: (json['reportTime'] as int?)    ?? 0,
-  );
+  factory PetPositionModel.fromJson(Map<String, dynamic> json) =>
+      PetPositionModel(
+        latitude: json['latitude']?.toString() ?? '',
+        longitude: json['longitude']?.toString() ?? '',
+        address: (json['address'] as String?) ?? '',
+        time: (json['time'] as int?) ?? 0,
+        reportTime: (json['reportTime'] as int?) ?? 0,
+      );
 }
 
 /// 宠物信息模型 — 对应 iPet POST /pet/info/get
@@ -79,89 +90,96 @@ class PetInfoModel {
   final String petId;
   final String petName;
   final String breed;
-  final int    age;
+  final int age;
   final String weight;
-  final String sex;      // GG/MM/GG_sterilization/MM_sterilization
+  final String sex; // GG/MM/GG_sterilization/MM_sterilization
   final String deviceId;
-  final int    createTime;
+  final int createTime;
   final String avatar;
 
   const PetInfoModel({
-    this.petId      = '',
-    this.petName    = '',
-    this.breed      = '',
-    this.age        = 0,
-    this.weight     = '',
-    this.sex        = '',
-    this.deviceId   = '',
+    this.petId = '',
+    this.petName = '',
+    this.breed = '',
+    this.age = 0,
+    this.weight = '',
+    this.sex = '',
+    this.deviceId = '',
     this.createTime = 0,
-    this.avatar     = '',
+    this.avatar = '',
   });
 
   String get sexDisplay {
     switch (sex) {
-      case 'GG':               return '公';
-      case 'MM':               return '母';
-      case 'GG_sterilization': return '公(绝育)';
-      case 'MM_sterilization': return '母(绝育)';
-      default:                 return sex;
+      case 'GG':
+        return '公';
+      case 'MM':
+        return '母';
+      case 'GG_sterilization':
+        return '公(绝育)';
+      case 'MM_sterilization':
+        return '母(绝育)';
+      default:
+        return sex;
     }
   }
 
   factory PetInfoModel.fromJson(Map<String, dynamic> json) => PetInfoModel(
-    petId:      json['petId']?.toString()    ?? '',
-    petName:    (json['petName']    as String?) ?? '',
-    breed:      (json['breed']      as String?) ?? '',
-    age:        (json['age']        as int?)    ?? 0,
-    weight:     (json['weight']     as String?) ?? '',
-    sex:        (json['sex']        as String?) ?? '',
-    deviceId:   json['deviceId']?.toString()  ?? '',
-    createTime: (json['createTime'] as int?)   ?? 0,
-    avatar:     (json['avatar']     as String?) ?? '',
-  );
+        petId: json['petId']?.toString() ?? '',
+        petName: (json['petName'] as String?) ?? '',
+        breed: (json['breed'] as String?) ?? '',
+        age: (json['age'] as int?) ?? 0,
+        weight: (json['weight'] as String?) ?? '',
+        sex: (json['sex'] as String?) ?? '',
+        deviceId: json['deviceId']?.toString() ?? '',
+        createTime: (json['createTime'] as int?) ?? 0,
+        avatar: (json['avatar'] as String?) ?? '',
+      );
 
   PetInfoModel copyWith({
     String? petId,
     String? petName,
     String? breed,
-    int?    age,
+    int? age,
     String? weight,
     String? sex,
     String? deviceId,
-    int?    createTime,
+    int? createTime,
     String? avatar,
-  }) => PetInfoModel(
-    petId:      petId      ?? this.petId,
-    petName:    petName    ?? this.petName,
-    breed:      breed      ?? this.breed,
-    age:        age        ?? this.age,
-    weight:     weight     ?? this.weight,
-    sex:        sex        ?? this.sex,
-    deviceId:   deviceId   ?? this.deviceId,
-    createTime: createTime ?? this.createTime,
-    avatar:     avatar     ?? this.avatar,
-  );
+  }) =>
+      PetInfoModel(
+        petId: petId ?? this.petId,
+        petName: petName ?? this.petName,
+        breed: breed ?? this.breed,
+        age: age ?? this.age,
+        weight: weight ?? this.weight,
+        sex: sex ?? this.sex,
+        deviceId: deviceId ?? this.deviceId,
+        createTime: createTime ?? this.createTime,
+        avatar: avatar ?? this.avatar,
+      );
 }
 
 /// 围栏状态模型 — 对应 PeerApi "宠物此刻是否在围栏内"
 /// ★ 接口待 PeerApi 实现（task 12.1），字段结构为预期，以 PeerApi 实际返回为准
 class PetFenceStatus {
-  final bool inFence;       // true=围栏内 false=越界
-  final bool known;         // false=未知（接口未就绪/无围栏/无定位）
+  final bool inFence; // true=围栏内 false=越界
+  final bool known; // false=未知（接口未就绪/无围栏/无定位）
 
   const PetFenceStatus({this.inFence = false, this.known = false});
 
-  factory PetFenceStatus.fromJson(Map<String, dynamic> json) => PetFenceStatus(
-    inFence: json['in_fence'] == true || json['inFence'] == true,
-    known:   true,
-  );
+  factory PetFenceStatus.fromJson(Map<String, dynamic> json) {
+    final value = json['in_fence'] ?? json['inFence'];
+    return value is bool
+        ? PetFenceStatus(inFence: value, known: true)
+        : const PetFenceStatus();
+  }
 }
 
-/// 设备电量模型 — 对应 PeerApi "设备当前电量"
-/// ★ 接口待 PeerApi 实现（task 12.2），字段结构为预期，以 PeerApi 实际返回为准
+/// 设备电量模型 — 对应 GET /device/property/query 的 info.battery。
 class PetBattery {
-  final int  battery;       // 电量百分比 0-100，-1=未知
-  final bool known;         // false=未知（接口未就绪）
+  final int battery; // 电量百分比 0-100，-1=未知
+  final bool known; // false=未上报或返回值无效
 
   const PetBattery({this.battery = -1, this.known = false});
 
@@ -170,9 +188,13 @@ class PetBattery {
 
   factory PetBattery.fromJson(Map<String, dynamic> json) {
     final b = json['battery'] ?? json['power'] ?? json['batteryPercent'];
+    final value = b is num ? b : num.tryParse(b?.toString().trim() ?? '');
+    if (value == null || !value.isFinite || value < 0 || value > 100) {
+      return const PetBattery();
+    }
     return PetBattery(
-      battery: b is int ? b : (b is num ? b.toInt() : int.tryParse('$b') ?? -1),
-      known:   true,
+      battery: value.toInt(),
+      known: true,
     );
   }
 }

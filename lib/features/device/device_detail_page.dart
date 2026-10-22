@@ -61,6 +61,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         repo.fetchOnlineState(widget.mac).catchError((_) => false),
       ]);
       if (mounted) {
+        ref.invalidate(deviceBatteryProvider(widget.mac));
         setState(() {
           _detail = results[0] as DeviceDetailModel;
           _petInfo = results[1] as PetInfoModel;
@@ -237,6 +238,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   }
 
   Widget _buildStatusHero() {
+    final battery = ref.watch(deviceBatteryProvider(widget.mac)).valueOrNull;
     final online = _isOnline;
     final deviceName = _detail?.displayName ?? widget.name;
     return GestureDetector(
@@ -328,7 +330,10 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
                       size: 12, color: Colors.white70),
                   const SizedBox(width: 4),
                   Flexible(
-                      child: Text('电量 -',
+                      child: Text(
+                          battery?.known == true
+                              ? '电量 ${battery!.battery}%'
+                              : '电量 -',
                           style: TextStyle(
                               fontFamily: AppFonts.primary,
                               fontSize: 11,

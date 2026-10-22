@@ -59,6 +59,18 @@ abstract final class ErrorPresenter {
       return ErrorCopy(message: error.userMessage, raw: raw);
     }
 
+    if (error is DioException) {
+      final message = switch (error.type) {
+        DioExceptionType.connectionTimeout ||
+        DioExceptionType.sendTimeout ||
+        DioExceptionType.receiveTimeout =>
+          '请求超时，请稍后重试',
+        DioExceptionType.connectionError => networkMessage,
+        _ => generic,
+      };
+      return ErrorCopy(message: message, raw: raw);
+    }
+
     final iPetTip = _extractIPetTip(raw);
     if (iPetTip != null) {
       for (final entry in iPetTipTable.entries) {

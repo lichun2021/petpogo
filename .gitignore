@@ -69,4 +69,9 @@ android/key.properties
 !/test/device_unbind_refresh_test.dart
 !/test/account_session_cleanup_test.dart
 !/test/current_wifi_name_test.dart
+!/test/pet_navigation_test.dart
+!/test/device_battery_test.dart
+!/test/media_upload_flow_test.dart
+!/test/pet_location_refresh_test.dart
+!/test/pet_entry_avatar_test.dart
 /tools

@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../shared/theme/app_colors.dart';
+import '../../shared/theme/app_tokens.dart';
 import '../../shared/utils/coord_transform.dart';
 import '../../shared/utils/map_services.dart';
 import '../../shared/widgets/pet_avatar.dart';
@@ -15,6 +16,7 @@ import '../../shared/widgets/pet_toast.dart';
 import '../../shared/widgets/app_error_view.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
+import 'widgets/pet_navigation_sheet.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 逆地理编码（Nominatim，WGS84 坐标）───────────────────────
@@ -61,6 +63,9 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
 
   bool _isRefreshing = false;
   Object? _error;
+  bool _choosingNavigation = false;
+  int _loadGeneration = 0;
+  bool _mapReady = false;
 
   late final MapController _mapCtrl;
 
@@ -77,7 +82,10 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
     super.dispose();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool userInitiated = false}) async {
+    if (_isRefreshing) return;
+    final generation = ++_loadGeneration;
+    final previous = _position;
     setState(() {
       _isRefreshing = true;
       _error = null;
@@ -85,33 +93,48 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
     try {
       final repo = ref.read(petPeerRepositoryProvider);
       final pos = await repo.fetchPosition(mac: widget.deviceMac);
+      if (!mounted || generation != _loadGeneration) return;
+      // 旧缓存响应不能把页面上较新的设备报告覆盖掉。
+      final retained = previous != null &&
+          previous.reportTime > 0 &&
+          pos.reportTime > 0 &&
+          pos.reportTime < previous.reportTime;
+      final displayed = retained ? previous : pos;
 
       // API 返回的 latitude/longitude 是 WGS84，
       // 高德地图瓦片使用 GCJ02（火星坐标），必须转换否则偏移 ~500m
       LatLng? gcj;
-      if (pos.hasLocation) {
-        gcj = CoordTransform.wgs84ToGcj02(pos.lat, pos.lng);
-        AppLog.debug('[Location] WGS84: ${pos.lat},${pos.lng}');
-        AppLog.debug('[Location] GCJ02: ${gcj.latitude},${gcj.longitude}');
+      if (displayed.hasLocation) {
+        gcj = CoordTransform.wgs84ToGcj02(displayed.lat, displayed.lng);
       }
 
       if (mounted) {
         setState(() {
-          _position = pos;
+          _position = displayed;
           _gcjLatLng = gcj;
           _isRefreshing = false;
-          _address = pos.address; // 若 API 本身带了地址直接用
-          if (pos.address.isEmpty) {
-            _geocoding = true;
-          }
+          _address = displayed.address;
+          _geocoding = displayed.hasLocation && displayed.address.isEmpty;
         });
-        if (gcj != null) {
+        if (gcj != null && _mapReady) {
           _mapCtrl.move(gcj, 16);
         }
+        if (userInitiated) {
+          final message = !pos.hasLocation
+              ? '设备暂未上报有效位置'
+              : pos.reportTime <= 0
+                  ? '位置已查询，上报时间未知'
+                  : previous != null &&
+                          previous.reportTime > 0 &&
+                          pos.reportTime <= previous.reportTime
+                      ? '设备尚未上报新位置'
+                      : '已获取设备上报位置';
+          PetToast.show(context, message);
+        }
         // API 没带地址 → 用 Nominatim 逆地理编码（WGS84 查询）
-        if (pos.hasLocation && pos.address.isEmpty) {
-          _reverseGeocode(pos.lat, pos.lng).then((addr) {
-            if (mounted) {
+        if (displayed.hasLocation && displayed.address.isEmpty) {
+          _reverseGeocode(displayed.lat, displayed.lng).then((addr) {
+            if (mounted && generation == _loadGeneration) {
               setState(() {
                 _address = addr;
                 _geocoding = false;
@@ -121,7 +144,7 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
         }
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && generation == _loadGeneration) {
         setState(() {
           _isRefreshing = false;
           _error = e;
@@ -129,8 +152,6 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
       }
     }
   }
-
-  bool get _inFence => _position?.hasLocation ?? false;
 
   String get _updateTime {
     if (_position == null || _position!.reportTime == 0) return '--:--';
@@ -153,6 +174,10 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
             options: MapOptions(
               initialCenter: _gcjLatLng ?? LatLng(39.9042, 116.4074),
               initialZoom: hasLoc ? 16 : 12,
+              onMapReady: () {
+                _mapReady = true;
+                if (_gcjLatLng != null) _mapCtrl.move(_gcjLatLng!, 16);
+              },
               minZoom: 4,
               maxZoom: 18,
               interactionOptions: InteractionOptions(
@@ -168,18 +193,7 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
                 maxZoom: 18,
               ),
 
-              // 围栏半径圆（GCJ02 坐标）
-              if (hasLoc)
-                CircleLayer(circles: [
-                  CircleMarker(
-                    point: _gcjLatLng!,
-                    radius: 80,
-                    useRadiusInMeter: true,
-                    color: AppColors.statusOnline.withValues(alpha: 0.15),
-                    borderColor: AppColors.statusOnline.withValues(alpha: 0.5),
-                    borderStrokeWidth: 1.5,
-                  ),
-                ]),
+              // 当前接口没有生效围栏标识，不能用宠物位置生成虚构围栏。
 
               // 宠物 pin（GCJ02 坐标）
               if (hasLoc)
@@ -196,8 +210,8 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: Colors.white,
-                          border:
-                              Border.all(color: AppColors.statusOnline, width: 3),
+                          border: Border.all(
+                              color: AppColors.statusOnline, width: 3),
                           boxShadow: [
                             BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.2),
@@ -259,48 +273,48 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
                   child: IconButton(
                     icon: Icon(Icons.refresh_rounded),
                     color: AppColors.onSurface,
-                    onPressed: _load,
+                    onPressed: () => _load(userInitiated: true),
                   ),
                 ),
             ]),
           ),
         ),
 
-        // ── 3. 右侧工具按鈕 ──────────────────────────────
-        Positioned(
-          right: 16,
-          bottom: safeBottom + 224,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            _MapBtn(
-              icon: Icons.my_location_rounded,
-              color: AppColors.primary,
-              onTap: () {
-                HapticFeedback.lightImpact();
-                if (_gcjLatLng != null) {
-                  _mapCtrl.move(_gcjLatLng!, 16);
-                }
-              },
-            ),
-          ]),
-        ),
-
-        // ── 4. 底部宠物信息卡片 ──────────────────────────────
+        // 工具按钮随信息卡片高度移动，避免大字体时互相遮挡。
         Positioned(
           left: 0,
           right: 0,
           bottom: 0,
-          child: _BottomCard(
-            petName: widget.petName,
-            petAvatar: widget.petAvatar,
-            position: _position,
-            address: _address,
-            geocoding: _geocoding,
-            inFence: _inFence,
-            error: _error,
-            updateTime: _updateTime,
-            safeBottom: safeBottom,
-            onNavigate: _startNavigation,
-          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Padding(
+              padding: const EdgeInsets.only(right: 16, bottom: 12),
+              child: Align(
+                  alignment: Alignment.centerRight,
+                  child: _MapBtn(
+                    icon: Icons.my_location_rounded,
+                    color: AppColors.primary,
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      _load(userInitiated: true);
+                    },
+                  )),
+            ),
+            ConstrainedBox(
+                constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(context).height * .65),
+                child: SingleChildScrollView(
+                    child: _BottomCard(
+                  petName: widget.petName,
+                  petAvatar: widget.petAvatar,
+                  position: _position,
+                  address: _address,
+                  geocoding: _geocoding,
+                  error: _error,
+                  updateTime: _updateTime,
+                  safeBottom: safeBottom,
+                  onNavigate: hasLoc ? _startNavigation : null,
+                ))),
+          ]),
         ),
       ]),
     );
@@ -308,6 +322,7 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
 
   // ── 寻宠导航：弹出导航 App 选择面板，点击后唤起对应软件 ──
   Future<void> _startNavigation() async {
+    if (_choosingNavigation) return;
     final gcj = _gcjLatLng;
     final pos = _position;
     if (gcj == null || pos == null || !pos.hasLocation) {
@@ -316,69 +331,36 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
     }
     HapticFeedback.lightImpact();
 
-    final latGcj = gcj.latitude.toStringAsFixed(6);
-    final lonGcj = gcj.longitude.toStringAsFixed(6);
-    final latWgs = pos.lat.toStringAsFixed(6);
-    final lonWgs = pos.lng.toStringAsFixed(6);
-
-    // 候选导航 App：腾讯/高德/百度用 GCJ02，Apple 原生地图用 WGS84
-    final candidates = <_NavOption>[
-      _NavOption(
-        name: '腾讯地图',
-        color: AppColors.tencentMap,
-        icon: Icons.directions_rounded,
-        uri: Uri.parse(
-            'qqmap://map/routeplan?type=drive&to=宠物位置&tocoord=$latGcj,$lonGcj&referer=petpogo'),
-      ),
-      _NavOption(
-        name: '高德地图',
-        color: AppColors.amap,
-        icon: Icons.navigation_rounded,
-        uri: Platform.isIOS
-            ? Uri.parse(
-                'iosamap://navi?sourceApplication=petpogo&lat=$latGcj&lon=$lonGcj&dev=0&style=2')
-            : Uri.parse(
-                'androidamap://navi?sourceApplication=petpogo&lat=$latGcj&lon=$lonGcj&dev=0&style=2'),
-      ),
-      _NavOption(
-        name: '百度地图',
-        color: AppColors.baiduMap,
-        icon: Icons.map_rounded,
-        uri: Uri.parse(
-            'baidumap://map/direction?destination=$latGcj,$lonGcj&coord_type=gcj02&mode=driving&src=petpogo'),
-      ),
-      if (Platform.isIOS)
-        _NavOption(
-          name: '原生地图',
-          color: AppColors.appleMaps,
-          icon: Icons.apple,
-          uri: Uri.parse('maps://?daddr=$latWgs,$lonWgs'),
+    final isIOS = Platform.isIOS;
+    final gpsPosition = LatLng(pos.lat, pos.lng);
+    final destinationName = '${widget.petName}的位置';
+    _choosingNavigation = true;
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        showDragHandle: true,
+        backgroundColor: AppColors.surfaceCard,
+        constraints:
+            BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .88),
+        shape: const RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.vertical(top: Radius.circular(AppRadius.card))),
+        builder: (_) => PetNavigationSheet(
+          isIOS: isIOS,
+          destinationName: destinationName,
+          onNavigate: (app) => launchUrl(
+              app.navigationUri(
+                  isIOS: isIOS,
+                  gcjPosition: gcj,
+                  gpsPosition: gpsPosition,
+                  destinationName: destinationName),
+              mode: LaunchMode.externalApplication),
         ),
-    ];
-
-    // 只保留设备上已安装的导航 App
-    final available = <_NavOption>[];
-    for (final o in candidates) {
-      if (await canLaunchUrl(o.uri)) available.add(o);
-    }
-
-    if (!mounted) return;
-    if (available.isEmpty) {
-      PetToast.show(context, '未找到地图 App');
-      return;
-    }
-
-    final selected = await showModalBottomSheet<_NavOption>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _NavAppSheet(options: available),
-    );
-
-    if (selected == null || !mounted) return;
-    final ok =
-        await launchUrl(selected.uri, mode: LaunchMode.externalApplication);
-    if (!ok && mounted) {
-      PetToast.show(context, '打开 ${selected.name} 失败');
+      );
+    } finally {
+      _choosingNavigation = false;
     }
   }
 }
@@ -389,7 +371,6 @@ class _BottomCard extends StatelessWidget {
   final String address; // 逆地理编码结果（可能为空）
   final bool geocoding; // 正在解析地址中
   final PetPositionModel? position;
-  final bool inFence;
   final Object? error;
   final double safeBottom;
   final VoidCallback? onNavigate; // 寻宠导航回调
@@ -400,7 +381,6 @@ class _BottomCard extends StatelessWidget {
     required this.position,
     required this.address,
     required this.geocoding,
-    required this.inFence,
     required this.error,
     required this.updateTime,
     required this.safeBottom,
@@ -440,7 +420,8 @@ class _BottomCard extends StatelessWidget {
                 decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: AppColors.surfaceSunken,
-                    border: Border.all(color: AppColors.statusOnline, width: 2.5)),
+                    border:
+                        Border.all(color: AppColors.statusOnline, width: 2.5)),
                 clipBehavior: Clip.antiAlias,
                 child: PetAvatar(imageUrl: petAvatar, size: 52),
               ),
@@ -458,37 +439,34 @@ class _BottomCard extends StatelessWidget {
                     SizedBox(height: 3),
                     Row(children: [
                       Icon(Icons.shield_rounded,
-                          size: 14, color: AppColors.statusOnline),
+                          size: 14, color: AppColors.statusNeutral),
                       SizedBox(width: 4),
-                      Text(
-                        !hasLoc ? '定位中...' : (inFence ? '安全守护中' : '已离开围栏'),
+                      Expanded(
+                          child: Text(
+                        hasLoc ? '围栏状态待确认' : '暂无设备位置',
                         style: TextStyle(
                             fontFamily: AppFonts.primary,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: (!hasLoc || inFence)
-                                ? AppColors.statusOnline
-                                : AppColors.error),
-                      ),
+                            color: AppColors.onSurfaceVariant),
+                      )),
                     ]),
                   ])),
               SizedBox(width: 8),
               _NavTextBtn(onTap: onNavigate),
             ]),
             SizedBox(height: 14),
-            Row(children: [
+            Wrap(spacing: 8, runSpacing: 8, children: [
               _StatBadge(
                 icon: Icons.radio_button_checked_rounded,
-                label: inFence ? '范围内' : '范围外',
-                color: inFence ? AppColors.statusOnline : AppColors.statusNeutral,
+                label: '围栏状态未知',
+                color: AppColors.statusNeutral,
               ),
-              SizedBox(width: 8),
               _StatBadge(
                 icon: Icons.gps_fixed_rounded,
-                label: hasLoc ? 'GPS' : 'GPS 无信号',
-                color: hasLoc ? AppColors.statusOnline : AppColors.statusNeutral,
+                label: hasLoc ? '设备定位' : '暂无定位',
+                color: AppColors.statusNeutral,
               ),
-              SizedBox(width: 8),
               _StatBadge(
                 icon: Icons.access_time_rounded,
                 label: updateTime,
@@ -676,112 +654,6 @@ class _NavTextBtn extends StatelessWidget {
                       color: color)),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── 导航 App 选项 ──────────────────────────────────────
-class _NavOption {
-  final String name;
-  final Color color;
-  final IconData icon;
-  final Uri uri;
-  const _NavOption({
-    required this.name,
-    required this.color,
-    required this.icon,
-    required this.uri,
-  });
-}
-
-// ── 导航方式选择面板 ───────────────────────────────────
-class _NavAppSheet extends StatelessWidget {
-  final List<_NavOption> options;
-  const _NavAppSheet({required this.options});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: SafeArea(
-        top: false,
-        minimum: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('导航到宠物位置',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontFamily: AppFonts.primary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary)),
-            const SizedBox(height: 16),
-            ...options.map((o) => _NavOptionTile(option: o)),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.onSurfaceVariant,
-                backgroundColor: AppColors.surfaceSunken,
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-              ),
-              child: Text('取消',
-                  style: TextStyle(
-                      fontFamily: AppFonts.primary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── 单个导航 App 选项 ─────────────────────────────────
-class _NavOptionTile extends StatelessWidget {
-  final _NavOption option;
-  const _NavOptionTile({required this.option});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => Navigator.pop(context, option),
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          child: Row(children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: option.color.withValues(alpha: 0.14),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(option.icon, color: option.color, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-                child: Text(option.name,
-                    style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary))),
-            Icon(Icons.chevron_right_rounded,
-                size: 20, color: AppColors.textTertiary),
-          ]),
         ),
       ),
     );
