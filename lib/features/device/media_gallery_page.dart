@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:video_player/video_player.dart';
+import 'recorded_video_player_page.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_fonts.dart';
 import '../../shared/widgets/pet_toast.dart';
@@ -276,8 +276,9 @@ class _MediaGalleryPageState extends ConsumerState<MediaGalleryPage> {
 
   void _openViewer(MediaItem item) {
     if (item.isVideo) {
-      Navigator.push(context, MaterialPageRoute(
-        builder: (_) => _VideoPlayerPage(url: item.url),
+      // 回放覆盖整个应用外壳，底部 Tab 随页面一起被覆盖，返回后自动恢复。
+      Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(
+        builder: (_) => RecordedVideoPlayerPage(source: item.url, mediaId: item.id, deviceMac: widget.deviceId),
       ));
     } else {
       Navigator.push(context, MaterialPageRoute(
@@ -390,72 +391,6 @@ class _PhotoViewPage extends StatelessWidget {
           child: CachedNetworkImage(imageUrl: url, fit: BoxFit.contain),
         ),
       ),
-    );
-  }
-}
-
-// ── 视频全屏播放 ─────────────────────────────────────────
-class _VideoPlayerPage extends StatefulWidget {
-  final String url;
-  const _VideoPlayerPage({required this.url});
-
-  @override
-  State<_VideoPlayerPage> createState() => _VideoPlayerPageState();
-}
-
-class _VideoPlayerPageState extends State<_VideoPlayerPage> {
-  late VideoPlayerController _ctrl;
-  bool _initialized = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url))
-      ..initialize().then((_) {
-        if (mounted) {
-          setState(() => _initialized = true);
-          _ctrl.play();
-        }
-      });
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        iconTheme: IconThemeData(color: Colors.white),
-      ),
-      body: Center(
-        child: _initialized
-            ? GestureDetector(
-                onTap: () {
-                  _ctrl.value.isPlaying ? _ctrl.pause() : _ctrl.play();
-                  setState(() {});
-                },
-                child: AspectRatio(
-                  aspectRatio: _ctrl.value.aspectRatio,
-                  child: VideoPlayer(_ctrl),
-                ),
-              )
-            : CircularProgressIndicator(color: Colors.white),
-      ),
-      bottomNavigationBar: _initialized
-          ? VideoProgressIndicator(_ctrl,
-              allowScrubbing: true,
-              colors: VideoProgressColors(
-                playedColor: AppColors.primary,
-                bufferedColor: Colors.white30,
-                backgroundColor: Colors.white10,
-              ))
-          : null,
     );
   }
 }

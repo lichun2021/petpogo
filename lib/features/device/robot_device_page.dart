@@ -23,6 +23,7 @@ import '../../core/providers/account_session_provider.dart';
 import 'stream/device_stream_session.dart';
 import 'stream/http_motor_controller.dart';
 import 'stream/jpeg_stream_view.dart';
+import 'stream/recording_diagnostics.dart';
 import '../bind_device/device_wifi_setup_entry.dart';
 
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
@@ -79,7 +80,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     WidgetsBinding.instance.addObserver(this);
     _stream = ref.read(deviceStreamFactoryProvider)(widget.mac);
     _stream.addListener(_onStreamChanged);
-    _batteryRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _batteryRefreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (mounted &&
           !_sessionRevoked &&
           !_backgroundPaused &&
@@ -118,7 +119,9 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   void _onStreamChanged() {
     if (!mounted) return;
     setState(() {});
-    if (_recording && !_stream.connected) unawaited(_stopRecording());
+    if (_recording && !_stream.connected) {
+      unawaited(_stopRecording(reason: 'websocket_disconnected'));
+    }
   }
 
   @override
@@ -143,7 +146,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   }
 
   Future<void> _pauseStream() async {
-    if (_recording) unawaited(_stopRecording());
+    if (_recording) unawaited(_stopRecording(reason: 'page_pause_or_leave'));
     await Future.wait([_motors.stop(), _stream.stop()]);
   }
 
@@ -207,21 +210,58 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         _startingRecording ||
         _savingRecording ||
         frame == null ||
-        !_stream.connected) return;
+        !_stream.connected) {
+      _stream.diagnostics
+          .log('record.start.ignored', '录像入口', '当前状态未开始录像', fields: {
+        'reason': _recording
+            ? 'already_recording'
+            : _startingRecording || _savingRecording
+                ? 'busy'
+                : frame == null
+                    ? 'no_video_frame'
+                    : 'websocket_not_connected',
+      });
+      return;
+    }
+    final log = _stream.recorder.createTrace();
+    var stage = '相册权限';
+    final watch = Stopwatch()..start();
+    log?.log('start.begin', '录像入口', '开始录像流程，先检查相册访问权限',
+        fields: {'maxDurationMs': 30000, 'bytes': frame.length});
     setState(() => _startingRecording = true);
     try {
-      if (!await Gal.hasAccess(toAlbum: true))
+      var allowed = await Gal.hasAccess(toAlbum: true);
+      log?.log('album.permission.result', stage, '相册权限检查完成',
+          fields: {'permissionGranted': allowed, 'permissionRequested': false});
+      if (!allowed) {
+        log?.log('album.permission.request', stage, '请求系统相册权限');
         await Gal.requestAccess(toAlbum: true);
-      if (!mounted || !_stream.connected) return;
-      await _stream.recorder.start(frame);
+        allowed = await Gal.hasAccess(toAlbum: true);
+        log?.log('album.permission.result', stage, '相册授权请求完成',
+            level: allowed ? 'info' : 'warning',
+            fields: {
+              'permissionGranted': allowed,
+              'permissionRequested': true
+            });
+      }
+      if (!mounted || !_stream.connected) {
+        log?.log('start.cancelled', stage, '授权结束时页面或媒体连接已失效，取消开始录像', fields: {
+          'reason': mounted ? 'websocket_not_connected' : 'page_closed'
+        });
+        return;
+      }
+      stage = '本地录像启动';
+      await _stream.recorder.start(frame, trace: log);
       if (!mounted) {
-        await _stream.recorder.cancel();
+        await _stream.recorder.cancel(reason: 'page_closed_during_start');
         return;
       }
       setState(() {
         _recording = true;
         _recordSeconds = 0;
       });
+      log?.log('start.ok', '录像素材接收', '页面已进入录像状态，最长录制 30 秒',
+          fields: {'durationMs': watch.elapsedMilliseconds});
       _recordTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (!mounted) {
           timer.cancel();
@@ -230,10 +270,12 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         setState(() => _recordSeconds++);
         if (_recordSeconds >= _maxRecordSec) {
           timer.cancel();
-          unawaited(_stopRecording());
+          unawaited(_stopRecording(reason: 'max_duration'));
         }
       });
-    } catch (error) {
+    } catch (error, stack) {
+      log?.failure('start.failed', stage, '页面录像启动流程失败', error,
+          stackTrace: stack);
       if (mounted)
         PetToast.error(
             context, ErrorPresenter.message(error, fallback: '录像启动失败'));
@@ -242,22 +284,42 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     }
   }
 
-  Future<void> _stopRecording() async {
+  Future<void> _stopRecording({String reason = 'user_stop'}) async {
     if (!_recording || _savingRecording) return;
     _recordTimer?.cancel();
     final seconds = _recordSeconds;
+    final log = _stream.recorder.trace;
+    var stage = '本地录像导出';
+    final watch = Stopwatch()..start();
+    log?.log('save.begin', stage, '开始结束录像并保存到相册', fields: {'reason': reason});
     setState(() {
       _recording = false;
       _savingRecording = true;
     });
     try {
-      final path = await _stream.recorder.finish();
+      final path = await _stream.recorder.finish(reason: reason);
+      stage = '保存系统相册';
+      watch.reset();
+      log?.log('album.save.begin', stage, 'MP4 已生成，调用系统相册保存',
+          fields: {'localFilePreserved': true});
       await Gal.putVideo(path, album: '宠联芯');
+      log?.log('album.save.ok', stage, '系统相册保存成功，下一步上传到媒体库', fields: {
+        'durationMs': watch.elapsedMilliseconds,
+        'localFilePreserved': true
+      });
       if (mounted) {
         PetToast.success(context, '录像已保存到相册');
-        unawaited(_uploadMedia(localPath: path, type: 2, duration: seconds));
+        unawaited(_uploadMedia(
+            localPath: path, type: 2, duration: seconds, recording: log));
+      } else {
+        log?.log('upload.skipped', '录像上传', '页面已关闭，不发起上传；MP4 已存入相册',
+            fields: {'reason': 'page_closed', 'localFilePreserved': true});
       }
-    } catch (error) {
+    } catch (error, stack) {
+      log?.failure(
+          'save.failed', stage, '录像保存流程失败；查看阶段及此前的 encode 日志确认本地状态', error,
+          fields: {'localFilePreserved': stage == '保存系统相册' ? true : null},
+          stackTrace: stack);
       if (mounted)
         PetToast.error(
             context, ErrorPresenter.message(error, fallback: '录像保存失败，已保留本地素材'));
@@ -277,23 +339,94 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     List<int>? bytes,
     required int type, // 1图片 2视频
     required int? duration,
+    RecordingDiagnostics? recording,
   }) async {
-    if (!mounted || _uploadingMedia) return; // 防并发
+    if (!mounted || _uploadingMedia) {
+      recording?.log('upload.skipped', '录像上传', '本次未发起上传，文件已存入本地相册', fields: {
+        'reason': mounted ? 'upload_busy' : 'page_closed',
+        'localFilePreserved': true
+      });
+      return;
+    }
     final accountEpoch = ref.read(accountSessionProvider);
     final mediaRepo = ref.read(mediaRepositoryProvider);
     final uploader = ref.read(ossUploaderProvider);
     setState(() => _uploadingMedia = true);
+    var stage = 'OSS 上传凭证';
+    final watch = Stopwatch()..start();
+    Timer? uploadHealth;
+    var uploadPercent = 0, progressBucket = -1;
     try {
+      recording?.log('upload.sign.begin', stage, '请求录像上传凭证；不记录签名地址和对象 Key',
+          fields: {'mediaType': type});
       final sign = await uploader.getSign(
         folder: 'devices-media',
         mimeType: type == 1 ? 'image/jpeg' : 'video/mp4',
       );
-      if (!mounted || ref.read(accountSessionProvider) != accountEpoch) return;
+      recording?.log('upload.sign.ok', stage, '上传凭证已获取',
+          fields: {'durationMs': watch.elapsedMilliseconds});
+      if (!mounted || ref.read(accountSessionProvider) != accountEpoch) {
+        recording
+            ?.log('upload.cancelled', stage, '页面关闭或帐号切换，停止本次上传流程', fields: {
+          'reason': mounted ? 'account_changed' : 'page_closed',
+          'localFilePreserved': true
+        });
+        return;
+      }
       final file = File(localPath);
-      await uploader.uploadFile(uploadUrl: sign.uploadUrl, file: file);
       final fileSize = await file.length();
-      if (!mounted || ref.read(accountSessionProvider) != accountEpoch) return;
+      stage = 'OSS 文件上传';
+      watch.reset();
+      recording?.log('upload.file.begin', stage, '开始上传本地 MP4',
+          fields: {'totalBytes': fileSize});
+      if (recording != null) {
+        uploadHealth = Timer.periodic(const Duration(seconds: 5), (_) {
+          recording.log('upload.file.waiting', stage, 'OSS 上传尚未完成，记录当前发送进度',
+              fields: {
+                'durationMs': watch.elapsedMilliseconds,
+                'uploadPercent': uploadPercent,
+                'totalBytes': fileSize
+              });
+        });
+      }
+      await uploader.uploadFile(
+          uploadUrl: sign.uploadUrl,
+          file: file,
+          onProgress: recording == null
+              ? null
+              : (progress) {
+                  uploadPercent = (progress * 100).floor().clamp(0, 100);
+                  final bucket = uploadPercent ~/ 25;
+                  if (bucket != progressBucket) {
+                    progressBucket = bucket;
+                    recording.log('upload.file.progress', stage,
+                        '录像上传进度；100% 表示已发送，仍需等待 OSS 成功响应',
+                        fields: {
+                          'uploadPercent': uploadPercent,
+                          'uploadedBytes':
+                              (progress * fileSize).floor().clamp(0, fileSize),
+                          'totalBytes': fileSize
+                        });
+                  }
+                });
+      uploadHealth?.cancel();
+      recording?.log('upload.file.ok', stage, 'OSS 已返回成功响应，下一步登记媒体库', fields: {
+        'durationMs': watch.elapsedMilliseconds,
+        'totalBytes': fileSize
+      });
+      if (!mounted || ref.read(accountSessionProvider) != accountEpoch) {
+        recording?.log('upload.cancelled', stage, '上传后页面关闭或帐号切换，未登记本次媒体库记录',
+            fields: {
+              'reason': mounted ? 'account_changed' : 'page_closed',
+              'localFilePreserved': true
+            });
+        return;
+      }
       // 通知后端入库
+      stage = '媒体库登记';
+      watch.reset();
+      recording?.log('library.save.begin', stage, '请求后端写入录像媒体记录',
+          fields: {'mediaType': type, 'totalBytes': fileSize});
       await mediaRepo.saveRecord(
         type: type,
         url: sign.cdnUrl,
@@ -302,13 +435,20 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         duration: duration,
         deviceId: widget.mac, // 设备 MAC 地址
       );
+      recording?.log('library.save.ok', stage, '后端媒体记录已写入',
+          fields: {'durationMs': watch.elapsedMilliseconds});
+      recording?.log('upload.complete', '录像流程完成', 'MP4 已保存相册、上传 OSS 并登记媒体库',
+          fields: {'localFilePreserved': true});
       // 刷新预览
       if (mounted) _loadRecentMedia();
       if (mounted) PetToast.success(context, '☁️ 上传成功');
-    } catch (e) {
+    } catch (e, stack) {
+      recording?.failure('upload.failed', stage, '录像上传或媒体库登记失败，本地相册文件保留', e,
+          fields: {'localFilePreserved': true}, stackTrace: stack);
       AppLog.debug('[OSS] 上传失败: $e');
       if (mounted) PetToast.error(context, '上传失败，文件已保存本地相册');
     } finally {
+      uploadHealth?.cancel();
       if (mounted) setState(() => _uploadingMedia = false);
     }
   }
@@ -372,7 +512,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         canPop: !_recording && !_savingRecording,
         onPopInvokedWithResult: (didPop, _) async {
           if (didPop || _savingRecording) return;
-          await _stopRecording();
+          await _stopRecording(reason: 'page_back');
           if (context.mounted) Navigator.pop(context);
         },
         child: Scaffold(

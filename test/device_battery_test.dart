@@ -235,6 +235,40 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final robot in [false, true]) {
+    testWidgets(
+        '${robot ? "robot" : "collar"} battery refreshes every 10 seconds while visible',
+        (tester) async {
+      final adapter = _Adapter();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      if (robot) {
+        await mountRobot(tester, adapter);
+      } else {
+        await mount(tester, adapter);
+        await tester.pumpAndSettle();
+      }
+      int requests() => adapter.requests
+          .where((r) => r.uri.path.endsWith('/device/property/query'))
+          .length;
+      final initial = requests();
+      adapter.response = {
+        'code': 0,
+        'info': {'battery': '41'}
+      };
+      await tester.pump(const Duration(seconds: 9));
+      expect(requests(), initial);
+      await tester.pump(const Duration(seconds: 1));
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(requests(), initial + 1);
+      expect(find.text('电量 41%'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 20));
+      expect(requests(), initial + 1);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('robot details show unknown battery when the query fails',
       (tester) async {
     final adapter = _Adapter()

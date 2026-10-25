@@ -77,3 +77,4 @@ android/key.properties
 /tools
 
 !/test/device_stream_test.dart
+!/test/recorded_video_player_test.dart

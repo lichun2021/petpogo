@@ -58,3 +58,59 @@ flutter run -t integration_test/device_media_smoke.dart -d <模拟器或测试�
 音频另外标出原生播放初始化、首包 PCM 交付、播放错误，以及麦克风权限、采集、首包对讲发送和停止。交付原生播放通道或 WebSocket 仅表示客户端已交付，不表示机器人扬声器已经播出。断线日志包含关闭码、原因和重连延迟；退出、后台切换、视图挂载 / 卸载均可追踪。
 
 日志只记录链路元数据，不记录 JPEG / PCM 内容、文本消息正文、请求头、密码或 URL 中的凭证。高频帧只计数；失败按前几次及指数间隔采样，避免日志本身影响播放。
+
+## 对讲流程日志
+
+运行 `./log.sh --talk`，然后在手机点击开启对讲；`./log.sh --talk --dump` 可读取历史快照。该筛选同时保留媒体 WS、重连、音频播放和页面退出事件，便于判断对讲与连接中断的先后关系。完整音视频日志继续使用 `--video`。
+
+一次观看内每次开启对讲递增 `talkAttempt`，与 `streamId`、`attempt` 一起定位本次操作。日志顺序如下：
+
+| 事件（省略 `device.stream.` 前缀） | 含义 |
+| --- | --- |
+| `talk.start.begin` / `talk.toggle.ignored` | 用户切换对讲，或因连接、忙碌状态未执行 |
+| `talk.permission.check` / `request` / `result` | 当前权限、是否发起系统授权及授权结果 |
+| `talk.audio_session.begin` / `ok` | iOS 录音与播放会话配置 |
+| `talk.capture.start.request` / `ok` / `failed` | 请求创建原生录音流，记录 PCM 参数、音源、回声消除及耗时 |
+| `talk.recorder.state` | 原生录音插件的 record / pause / stop 状态 |
+| `talk.capture.first_batch` | 收到第一批麦克风 PCM，记录字节数和等待时间 |
+| `talk.packet.first_ready` | 拼好第一包 640 字节、20ms PCM |
+| `talk.first_packet.sent` | 首包交付 WebSocket，记录 type=3、9 字节头部加 640 字节 PCM 的总长度及时间戳 |
+| `talk.health` | 每 5 秒汇总采集批数、字节数、生成包数、排队 / 丢弃 / 发送包数及最近进展间隔 |
+| `talk.capture.failed` / `talk.send.failed` | 区分麦克风流异常和 WebSocket 发送异常；记录错误并清理录音，保留观看会话 |
+| `talk.stop.begin` / `talk.cleanup.begin` / `ok` / `failed` | 停止和资源释放过程，以及清空前的队列和发送统计 |
+
+`health.diagnosis` 可区分 `microphone_no_data`（已启动但无 PCM）、`microphone_capture_stalled`（采集中断超过 3 秒）、`pcm_not_enough_for_packet`（数据不足一包）、`microphone_pcm_all_zero`（累计样本全部为零）、`waiting_for_websocket_send` 和 `talk_sending`。`pcmPeak` 与 `nonZeroSamples` 是累计信号统计，不包含音频内容；全零不能单独证明硬件损坏或权限异常。客户端发送成功只能确认交付本机 WebSocket，设备接收和扬声器播放仍需硬件端确认。
+
+原生错误记录 `errorCode`、`errorMessage`、脱敏并限长的字符串 `errorDetails` 和前几层 `errorStack`。不输出音频样本或完整异常对象。发送异常会被捕获并记录，不再只成为未处理的定时器异常。
+
+## 录像流程日志
+
+使用 `./log.sh --record` 实时查看，`--dump` 读取历史后退出，`--recording <recordingId>` 筛选某一段录像。此模式也保留相关的媒体连接、后台切换和音频播放事件。每段录像固定 `recordingId` 及开始时的 `streamId` / `attempt`；重连或下一段录像不会覆盖正在上传的上一段录像的日志上下文。录像事件的 `elapsedMs` 从点击开始录像时计时，各步骤另有 `durationMs`。
+
+| 事件（省略 `device.stream.record.`） | 诊断环节 |
+| --- | --- |
+| `start.begin` / `start.ignored` | 开始入口，或因无视频、未连接、正在处理而未执行 |
+| `album.permission.result` / `request` | 相册访问权限与系统授权结果 |
+| `local.start.begin` / `ok` | 创建 JPEG / PCM 临时素材目录；仅记录目录末级名称 `sourceFolder` |
+| `video.first_written` / `audio.first_buffered` | 首帧已写盘；第一包设备声音已加入缓冲，刷盘稍后进行 |
+| `health` / `video.dropped` | 每 5 秒记录收到和写入的帧数、音频包数与字节、待写帧、丢帧、补齐静音样本数及最近画面间隔 |
+| `stop.begin` / `sources.flushed` | 停止原因和 JPEG / PCM 刷盘结果；区分手动、30 秒上限、断线、退后台与返回页面 |
+| `manifest.ready` | 编码所需素材清单已生成 |
+| `encode.begin` / `encode.waiting` / `encode.ok` | 调用原生编码，每 5 秒报告等待耗时，返回后检查 MP4 非空并记录文件大小；等待日志不表示原生编码百分比或具体内部进度 |
+| `sources.cleanup.begin` / `ok` | 编码成功后清理 JPEG、PCM、清单并保留 MP4 |
+| `album.save.begin` / `ok` | 系统相册保存结果，与生成本地 MP4 分开记录 |
+| `upload.sign.begin` / `ok` | 申请 OSS 上传凭证，不记录地址、签名及对象 Key |
+| `upload.file.begin` / `progress` / `waiting` / `ok` | 文件字节数、约 25% 间隔的发送进度和等待时长；100% 仅表示已发送，`ok` 表示 OSS 已返回成功 |
+| `library.save.begin` / `ok` / `upload.complete` | 后端登记媒体记录，完成相册、OSS 和媒体库全流程 |
+| `start.failed` / `finish.failed` / `save.failed` / `upload.failed` | 中文失败阶段、错误码、脱敏错误及调用栈，并按已知状态记录本地 MP4 / 源素材是否保留 |
+| `cancel.begin` / `ok` / `failed` | 未导出录像的取消与临时素材清理 |
+
+只有 `encode.ok` 能确认本地 MP4 已生成且非空，`album.save.ok` 确认存入系统相册，`library.save.ok` 确认后端媒体记录写入。编码或输出校验失败会保留源素材；上传未发起或失败也会记录原因。日志不包含 JPEG、PCM、完整本地路径或上传凭证。
+
+## 录像回放
+
+设备图库的 Android 录像回放使用已有 media_kit 的软件解码，避免部分设备的 MediaCodec 解码器在缓冲区分配或启动时失败；其他平台保留系统播放器。播放器统一捕获打开失败、运行中错误与释放错误，并提供重试；退出页面或重试会先释放旧播放器。
+
+打开录像时覆盖整个应用页面，隐藏全局底部导航；返回图库后自动恢复。
+
+`./log.sh --record` 包含 `record.playback.open.begin`、`open.ok`、`first_frame`、`health`、`failed` 和 `dispose.*` 事件。日志用 `playbackId`、`mediaId` 与尝试次数定位一次回放，记录后端、是否软件解码、首帧输出、时长、位置及缓冲状态；不记录完整地址或签名。`open.ok` 仅表示打开请求完成，Android 的 `first_frame` 表示视频输出已收到首帧。打不开时 30 秒超时会结束等待并进入重试界面。

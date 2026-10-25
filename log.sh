@@ -2,7 +2,8 @@
 # ════════════════════════════════════════════════
 #  宠联芯 实时日志查看器
 #  用法：./log.sh [--full] [--clear] [--request ID] [--level warning]
-#    --video 只看视频链路；--stream ID 只看某次观看；--dump 读取历史后退出
+#    --video 只看音视频链路；--talk 对讲；--record 录像
+#    --stream ID 只看某次观看；--dump 读取历史后退出
 #    --module 名称  按模块筛选；--since '10-21 10:00:00.000' 从指定时间读取
 # ════════════════════════════════════════════════
 
@@ -15,29 +16,37 @@ STREAM_FILTER=""
 REQUEST_FILTER=""
 LEVEL_FILTER=""
 MODULE_FILTER=""
+TALK_MODE=false
+RECORD_MODE=false
+RECORDING_FILTER=""
 SINCE_FILTER=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --full) FULL_MODE=true; shift ;;
     --clear) CLEAR_HISTORY=true; shift ;;
-    --video) MODULE_FILTER="device.stream."; shift ;;
+    --video) MODULE_FILTER="device.stream."; TALK_MODE=false; RECORD_MODE=false; shift ;;
+    --talk) MODULE_FILTER="device.stream."; TALK_MODE=true; RECORD_MODE=false; shift ;;
+    --record) MODULE_FILTER="device.stream."; RECORD_MODE=true; TALK_MODE=false; shift ;;
     --dump) DUMP_MODE=true; shift ;;
-    --request|--level|--module|--since|--stream)
+    --request|--level|--module|--since|--stream|--recording)
       if [[ $# -lt 2 || -z "$2" ]]; then
         echo "❌ $1 需要一个参数"; exit 1
       fi
       case "$1" in
         --request) REQUEST_FILTER="$2" ;;
         --stream) STREAM_FILTER="$2" ;;
+        --recording) RECORDING_FILTER="$2" ;;
         --level) LEVEL_FILTER="$2" ;;
         --module) MODULE_FILTER="$2" ;;
         --since) SINCE_FILTER="$2" ;;
       esac
       shift 2 ;;
     --help|-h)
-      echo "用法：./log.sh [--full] [--clear] [--request ID] [--level warning|error|info] [--module 名称] [--since 时间] [--video] [--stream ID] [--dump]"
+      echo "用法：./log.sh [--full] [--clear] [--request ID] [--level warning|error|info] [--module 名称] [--since 时间] [--video|--talk|--record] [--stream ID] [--recording ID] [--dump]"
       echo "视频实时日志：./log.sh --video；历史快照：./log.sh --video --dump"
+      echo "对讲实时日志：./log.sh --talk；包含权限、录音、PCM 分包、发送及关联断线"
+      echo "录像实时日志：./log.sh --record；--recording ID 筛选某一段录像"
       exit 0 ;;
     *) echo "❌ 未知参数：$1"; exit 1 ;;
   esac
@@ -91,9 +100,22 @@ fi
 colorize() {
   while IFS= read -r line; do
     [[ -n "$STREAM_FILTER" && "$line" != *"\"streamId\":\"$STREAM_FILTER\""* ]] && continue
+    [[ -n "$RECORDING_FILTER" && "$line" != *"\"recordingId\":\"$RECORDING_FILTER\""* ]] && continue
     [[ -n "$REQUEST_FILTER" && "$line" != *"$REQUEST_FILTER"* ]] && continue
     [[ -n "$LEVEL_FILTER" && "$line" != *"\"level\":\"$LEVEL_FILTER\""* ]] && continue
     [[ -n "$MODULE_FILTER" && "$line" != *"$MODULE_FILTER"* ]] && continue
+    if $TALK_MODE; then
+      case "$line" in
+        *device.stream.talk.*|*device.stream.ws.*|*device.stream.reconnect.*|*device.stream.session.*|*device.stream.page.lifecycle*|*device.stream.audio.*) ;;
+        *) continue ;;
+      esac
+    fi
+    if $RECORD_MODE; then
+      case "$line" in
+        *device.stream.record.*|*device.stream.ws.*|*device.stream.reconnect.*|*device.stream.session.*|*device.stream.page.lifecycle*|*device.stream.audio.*) ;;
+        *) continue ;;
+      esac
+    fi
     if [[ "$line" == *'"level":"warning"'* || "$line" == *'"level":"error"'* ]]; then
       echo -e "\033[31m$line\033[0m"
     elif echo "$line" | grep -qE "✅|成功|loggedIn|\[API 响应\]"; then

@@ -22,6 +22,7 @@ class StreamDiagnostics {
   final _watch = Stopwatch();
   final _stamps = Expando<StreamVideoStamp>();
   int attempt = 0;
+  int talkAttempt = 0;
   int messages = 0, binaryMessages = 0, textMessages = 0, receivedBytes = 0;
   int videoFrames = 0, audioFrames = 0, invalidFrames = 0;
   int decodedFrames = 0,
@@ -90,13 +91,18 @@ class StreamDiagnostics {
       'elapsedMs': elapsedMs ?? nowMs,
       'stage': stage,
       'message': message,
+      if (event.startsWith('talk.')) 'talkAttempt': talkAttempt,
     });
   }
 
   void failure(String event, String stage, String message, Object error,
-      {Map<String, Object?> fields = const {}}) {
-    log(event, stage, message,
-        level: 'warning', fields: {...fields, ...safeError(error)});
+      {Map<String, Object?> fields = const {}, StackTrace? stackTrace}) {
+    log(event, stage, message, level: 'warning', fields: {
+      ...fields,
+      ...safeError(error),
+      if (stackTrace != null)
+        'errorStack': stackTrace.toString().split('\n').take(5).join(' | '),
+    });
   }
 
   static Map<String, Object?> safeError(Object error) {
@@ -127,6 +133,8 @@ class StreamDiagnostics {
       if (error is PlatformException) ...{
         'errorCode': error.code,
         'errorMessage': text(error.message ?? ''),
+        if (error.details is String)
+          'errorDetails': text(error.details as String),
       },
       if (error is FormatException) 'errorMessage': text(error.message),
     };

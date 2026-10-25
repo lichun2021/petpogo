@@ -1,4 +1,5 @@
 import 'package:petpogo_app/shared/widgets/modal_header.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,11 +37,25 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   bool _loading = true;
   String? _error;
   bool? _online; // 实时在线态（按 mac 查，优先于 detail.onlineStatus）
+  Timer? _batteryRefreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadAll();
+    _batteryRefreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      final state = WidgetsBinding.instance.lifecycleState;
+      if (mounted && ModalRoute.of(context)?.isCurrent == true &&
+          (state == null || state == AppLifecycleState.resumed)) {
+        ref.invalidate(deviceBatteryProvider(widget.mac));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _batteryRefreshTimer?.cancel();
+    super.dispose();
   }
 
   /// 在线态：优先实时接口结果，回退 detail.onlineStatus

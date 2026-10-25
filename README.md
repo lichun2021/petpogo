@@ -98,6 +98,14 @@ flutter build apk --debug && \
 # 机器人视频：实时查看；或读取历史快照后退出
 ./log.sh --video
 ./log.sh --video --dump
+# 对讲流程（同时保留相关的断线、重连和音频播放事件）
+./log.sh --talk
+./log.sh --talk --dump
+# 录像流程：素材、编码、相册、上传及媒体库登记
+./log.sh --record
+./log.sh --record --dump
+# 只看某一段录像（编号来自日志里的 recordingId）
+./log.sh --record --recording <recordingId>
 # 按日志里的 streamId 筛选某次观看
 ./log.sh --video --stream <streamId>
 # 显式清空历史
@@ -108,6 +116,8 @@ flutter build apk --debug && \
 发布版本关闭普通调试输出，仅保留经过字段白名单过滤的告警和错误事件。
 
 视频日志覆盖启动 HTTP、WebSocket 握手、首包、协议校验、JPEG 解码和实际绘制，带观看编号、连接次数、阶段和耗时。每 5 秒输出链路计数与帧率；首帧等待 15 秒或画面中断时查询设备媒体连接状态。详细字段与诊断说明见[设备音视频接入](packages/petpogo_device_media/README.md)。
+
+机器人和项圈设备页在前台可见时每 10 秒刷新电量，离开页面后停止。Android 图库录像回放使用软件解码，并记录打开、首帧、播放状态、错误和释放过程；可用 `./log.sh --record` 查看。
 
 ---
 

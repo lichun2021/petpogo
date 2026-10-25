@@ -27,6 +27,8 @@ class DeviceStreamSession extends ChangeNotifier {
         recorder = recorder ?? LocalStreamRecorder(),
         diagnostics = diagnostics ?? StreamDiagnostics(mac),
         connect = connect ?? ((uri) => WebSocket.connect(uri.toString())) {
+    this.audio.diagnostics = this.diagnostics;
+    this.recorder.diagnostics = this.diagnostics;
     this.audio.onPlaybackEvent = (event, error) {
       if (_disposed) return;
       if (error == null) {
@@ -173,6 +175,8 @@ class DeviceStreamSession extends ChangeNotifier {
               fields: {
                 'closeCode': activeSocket.closeCode,
                 'closeReason': activeSocket.closeReason,
+                'talking': talking,
+                'talkPackets': _talkPackets,
               });
         }
         _lost(generation);
@@ -280,39 +284,88 @@ class DeviceStreamSession extends ChangeNotifier {
   }
 
   Future<void> toggleTalk() async {
-    if (!connected || talkBusy || _disposed) return;
+    if (!connected || talkBusy || _disposed) {
+      diagnostics.log('talk.toggle.ignored', '对讲入口', '当前状态无法切换对讲', fields: {
+        'reason': _disposed
+            ? 'disposed'
+            : talkBusy
+                ? 'busy'
+                : 'websocket_not_connected',
+        'talkBusy': talkBusy,
+        'talking': talking,
+      });
+      return;
+    }
     talkBusy = true;
     _notify();
     final generation = _generation;
     final watch = Stopwatch()..start();
+    final stopping = talking;
+    if (!talking) diagnostics.talkAttempt++;
     diagnostics.log(talking ? 'talk.stop.begin' : 'talk.start.begin', '手机麦克风',
         talking ? '停止对讲并清空待发语音' : '检查麦克风权限并启动 PCM 采集');
     try {
       if (talking) {
-        await audio.stopTalking();
+        await audio.stopTalking(reason: 'user_stop');
         talking = false;
         diagnostics.log('talk.stop.ok', '手机麦克风', '对讲采集已停止',
             fields: {'talkPackets': _talkPackets});
       } else {
         _talkPackets = 0;
         final granted = await audio.startTalking((pcm) {
-          if (_valid(generation) && connected) {
-            _socket?.add(buildTalkFrame(_clock.elapsedMilliseconds, pcm));
-            if (++_talkPackets == 1) {
-              diagnostics.log('talk.first_packet.sent', '对讲发送',
-                  '第一包 20ms PCM 已交给 WebSocket，不代表设备已播放',
-                  fields: {'bytes': pcm.length, 'talkPackets': _talkPackets});
-            }
+          final socket = _socket;
+          if (!_valid(generation) ||
+              !connected ||
+              socket == null ||
+              socket.readyState != WebSocket.open) {
+            diagnostics.log(
+                'talk.socket.unavailable', 'WebSocket 对讲发送', '发送前检查发现媒体连接不可用',
+                level: 'warning',
+                fields: {
+                  'socketState': socket?.readyState,
+                  'talkPackets': _talkPackets
+                });
+            throw StateError('对讲发送时 WebSocket 已不可用');
+          }
+          final timestamp = _clock.elapsedMilliseconds;
+          socket.add(buildTalkFrame(timestamp, pcm));
+          if (++_talkPackets == 1) {
+            diagnostics.log('talk.first_packet.sent', '对讲发送',
+                '第一包 20ms PCM 已交给 WebSocket，不代表设备已播放',
+                fields: {
+                  'bytes': pcm.length + streamHeaderBytes,
+                  'declaredBytes': pcm.length,
+                  'frameType': 3,
+                  'deviceTimestampMs': timestamp & 0xffffffff,
+                  'talkPackets': _talkPackets,
+                  'socketState': socket.readyState
+                });
           }
         }, (failure) {
+          if (!_valid(generation)) return;
           talking = false;
-          audioError = '麦克风已停止，请重新开启';
+          final sending =
+              failure is DeviceTalkFailure && failure.phase == 'send';
+          audioError = sending ? '对讲发送失败，请重新开启' : '麦克风已停止，请重新开启';
           diagnostics.failure(
-              'talk.capture.failed', '手机麦克风', audioError!, failure);
+              'talk.session.failed',
+              sending ? 'WebSocket 对讲发送' : '手机麦克风',
+              audioError!,
+              failure is DeviceTalkFailure ? failure.cause : failure,
+              fields: {
+                'talkPackets': _talkPackets,
+                'reason': sending ? 'send' : 'capture'
+              });
           _notify();
         });
         if (!_valid(generation)) {
           await audio.stopTalking();
+          return;
+        }
+        if (granted && !audio.capturing) {
+          diagnostics.log(
+              'talk.start.interrupted', 'PCM 采集', '启动期间采集或发送已中断，保留刚才的错误提示',
+              level: 'warning');
           return;
         }
         talking = granted;
@@ -324,8 +377,9 @@ class DeviceStreamSession extends ChangeNotifier {
       }
     } catch (failure) {
       talking = false;
-      audioError = '对讲启动失败，请重试';
-      diagnostics.failure('talk.start.failed', '手机麦克风', audioError!, failure);
+      audioError = stopping ? '对讲停止失败，请重试' : '对讲启动失败，请重试';
+      diagnostics.failure(stopping ? 'talk.stop.failed' : 'talk.start.failed',
+          '手机麦克风', audioError!, failure);
     } finally {
       talkBusy = false;
       _notify();
