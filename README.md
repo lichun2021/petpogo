@@ -95,12 +95,19 @@ flutter build apk --debug && \
 ./log.sh --request <request-id>
 ./log.sh --level warning
 ./log.sh --module http.error --since '10-21 10:00:00.000'
+# 机器人视频：实时查看；或读取历史快照后退出
+./log.sh --video
+./log.sh --video --dump
+# 按日志里的 streamId 筛选某次观看
+./log.sh --video --stream <streamId>
 # 显式清空历史
 ./log.sh --clear
 ```
 
 请求日志包含请求 ID、状态码和耗时，不记录请求/响应正文、认证凭证或预签名 URL。
 发布版本关闭普通调试输出，仅保留经过字段白名单过滤的告警和错误事件。
+
+视频日志覆盖启动 HTTP、WebSocket 握手、首包、协议校验、JPEG 解码和实际绘制，带观看编号、连接次数、阶段和耗时。每 5 秒输出链路计数与帧率；首帧等待 15 秒或画面中断时查询设备媒体连接状态。详细字段与诊断说明见[设备音视频接入](packages/petpogo_device_media/README.md)。
 
 ---
 
@@ -141,7 +148,7 @@ AI 能力统一通过独立 AI 网关调用（`AppConfig.aiConsultBaseUrl`）：
 | `AUTH_LOGIN_REFERENCE.md` | uCloudlink OAuth2 + `/uclgwapp/` 登录认证流程 | ✅ 现行参考 |
 | `HARDWARE_API_REFERENCE.md` | iPet 硬件 API 约定 | ✅ 现行参考 |
 | `PeerApi.md` | iPet 网关 `/uclgwapp/` 端点目录 | ✅ 现行（端点权威来源） |
-| `PeerApiMedia.md` | Agora RTC 通话接入 | ✅ 现行参考 |
+| [设备音视频接入](packages/petpogo_device_media/README.md) | WebSocket JPEG/PCM、对讲与本地录像 | ✅ 现行 |
 | `PeerApiSpeed.md` | 速度控制端点 | ✅ 参考 |
 | `PeerPet.md` | 宠物分享 App 端接入 | ✅ 参考 |
 | `AI_MODEL_API.md` | iPet-AI 服务接口与响应结构 | ⚠️ 地址已由 `ai.jxpetai.com` 取代，接口结构仍有效 |

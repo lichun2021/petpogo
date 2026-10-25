@@ -57,6 +57,18 @@
 		<string>baidumap</string>
 		<string>comgooglemaps</string>
 	</array>
+	<!-- 仅为当前硬件媒体 IP 放行明文连接，其他服务继续使用 ATS。 -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>49.234.39.11</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

@@ -1,0 +1,18 @@
+name: petpogo_device_media
+description: PetPogo device PCM playback and local MP4 export.
+version: 0.1.0
+publish_to: none
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+  flutter: '>=3.24.0'
+dependencies:
+  flutter:
+    sdk: flutter
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.junxin.device_media
+        pluginClass: DeviceMediaPlugin
+      ios:
+        pluginClass: DeviceMediaPlugin

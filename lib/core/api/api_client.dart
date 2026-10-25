@@ -362,9 +362,7 @@ class _AuthInterceptor extends Interceptor {
           ..remove('account');
       }
       if (options.responseType != ResponseType.stream) {
-        options.receiveTimeout = path.endsWith('/video/recording/stop')
-            ? const Duration(seconds: 310)
-            : const Duration(seconds: 130);
+        options.receiveTimeout = const Duration(seconds: 130);
       }
     } else if (path.startsWith('${ApiEndpoints.peerProxyPrefix}/')) {
       options.receiveTimeout = const Duration(seconds: 30);

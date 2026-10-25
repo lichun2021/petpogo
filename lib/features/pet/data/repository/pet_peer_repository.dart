@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/logging/app_log.dart';
 import '../../../../core/api/peer_api_client.dart';
 import '../../../../core/api/result.dart';
 import '../../../../core/providers/account_session_provider.dart';
@@ -195,8 +196,31 @@ class PetPeerRepository {
     final res = await _peer.get<PetBattery>(
       '/device/property/query',
       params: {'mac': mac},
-      fromInfo: (data) => PetBattery.fromJson(data as Map<String, dynamic>),
+      fromInfo: (data) {
+        final json = data as Map<String, dynamic>;
+        final result = PetBattery.fromJson(json);
+        String classify(String key) {
+          if (!json.containsKey(key) || json[key] == null) return 'missing';
+          final value = json[key].toString().trim();
+          if (value.isEmpty) return 'empty';
+          return num.tryParse(value) != null ? 'numeric' : 'invalid';
+        }
+
+        AppLog.event('device.battery.result', fields: {
+          'status': result.known ? result.battery : 'unknown',
+          'category':
+              'keys=${json.keys.where((key) => RegExp(r"^[a-zA-Z_][a-zA-Z0-9_]{0,35}$").hasMatch(key)).take(12).join(",")};' +
+                  ['battery', 'power', 'batteryPercent']
+                      .map((key) => '$key=${classify(key)}')
+                      .join(','),
+        });
+        return result;
+      },
     );
+    if (res.info == null) {
+      AppLog.event('device.battery.result',
+          fields: {'status': 'unknown', 'category': 'info_missing'});
+    }
     return res.info ?? const PetBattery();
   }
 }

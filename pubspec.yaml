@@ -62,7 +62,8 @@ dependencies:
   record: ^6.0.0
   path_provider: ^2.1.2        # 获取临时目录存储录音文件
   just_audio: ^0.10.5
-  agora_rtc_engine: ^6.3.2    # 机器人视频推流（通过原生配置使用 Lite 版本）
+  petpogo_device_media:
+    path: packages/petpogo_device_media
 
   # QR Scanner & Generator
   mobile_scanner: ^7.2.0

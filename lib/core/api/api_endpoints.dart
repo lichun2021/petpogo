@@ -150,13 +150,6 @@ abstract class ApiEndpoints {
   static const voiceAnalysisToggle =
       '$aiProxyPrefix/voice/stream/auto-analysis/settings/disable';
 
-  // ── 手动录制声网音视频流（router_video_recording.py）───
-  /// 开始录制设备音视频流  POST /video/recording/start
-  static const recordingStart = '$aiProxyPrefix/video/recording/start';
-
-  /// 结束录制并合成 MP4   POST /video/recording/stop
-  static const recordingStop = '$aiProxyPrefix/video/recording/stop';
-
   // ── 积分系统 ────────────────────────────────────────────
   /// 积分余额（周积分/永久积分/总计）  GET /sdkapi/points/balance
   static const pointsBalance = '/sdkapi/points/balance';

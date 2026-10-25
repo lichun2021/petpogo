@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <!-- 硬件当前返回此 WS 地址；WSS 接入后移除此单地址例外。 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain>49.234.39.11</domain>
+    </domain-config>
+</network-security-config>

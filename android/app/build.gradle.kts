@@ -136,11 +136,4 @@ dependencies {
     implementation("cn.jiguang.sdk.plugin:vivo:6.1.0")    // VIVO/iQOO
     implementation("cn.jiguang.sdk.plugin:huawei:6.1.0")  // 华为/鸿蒙（HMS Push）
     implementation("cn.jiguang.sdk.plugin:honor:6.1.0")   // 荣耀（独立生态）
-
-    // ── Agora RTC Lite 版本（体积更小，仅保留核心音视频功能）────────────────────────
-    // 排除完整 SDK，引入 Lite 版本
-    configurations.all {
-        exclude(group = "io.agora.rtc", module = "full-sdk")
-        exclude(group = "io.agora.rtc", module = "full-rtc-basic")
-    }
 }

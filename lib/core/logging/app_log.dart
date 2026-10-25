@@ -11,7 +11,6 @@ abstract final class AppLog {
 
   static void event(String event,
       {String level = 'info', Map<String, Object?> fields = const {}}) {
-    if (!kDebugMode && level != 'warning' && level != 'error') return;
     const allowed = {
       'requestId',
       'method',
@@ -22,22 +21,107 @@ abstract final class AppLog {
       'attempt',
       'category'
     };
+    _write(event, level, fields, allowed);
+  }
+
+  /// 视频链路的元数据白名单；不接受正文、帧内容、请求头或任意嵌套对象。
+  static void deviceStream(String event,
+      {String level = 'info', Map<String, Object?> fields = const {}}) {
+    const allowed = {
+      'streamId',
+      'deviceMac',
+      'attempt',
+      'stage',
+      'message',
+      'elapsedMs',
+      'durationMs',
+      'timeoutMs',
+      'platform',
+      'osVersion',
+      'buildMode',
+      'appVersion',
+      'reason',
+      'errorType',
+      'errorCode',
+      'errorMessage',
+      'method',
+      'path',
+      'status',
+      'businessCode',
+      'video',
+      'audio',
+      'shared',
+      'fps',
+      'quality',
+      'wsUrl',
+      'apiBaseUrl',
+      'connectTimeoutMs',
+      'receiveTimeoutMs',
+      'hasQuery',
+      'pingIntervalMs',
+      'bytes',
+      'frameType',
+      'declaredBytes',
+      'availableBytes',
+      'deviceTimestampMs',
+      'sequence',
+      'messages',
+      'binaryMessages',
+      'textMessages',
+      'receivedBytes',
+      'videoFrames',
+      'audioFrames',
+      'invalidFrames',
+      'decodeFailures',
+      'decodedFrames',
+      'paintedFrames',
+      'decodeDropped',
+      'width',
+      'height',
+      'view',
+      'paintWidth',
+      'paintHeight',
+      'lastMessageAgeMs',
+      'lastVideoAgeMs',
+      'lastPaintAgeMs',
+      'videoFps',
+      'decodedFps',
+      'paintedFps',
+      'diagnosis',
+      'deviceConnected',
+      'appViewerCount',
+      'statusAgeMs',
+      'closeCode',
+      'closeReason',
+      'reconnectDelayMs',
+      'playingAudioChunks',
+      'talkPackets',
+    };
+    _write('device.stream.$event', level, fields, allowed);
+  }
+
+  static void _write(String event, String level, Map<String, Object?> fields,
+      Set<String> allowed) {
+    if (!kDebugMode && level != 'warning' && level != 'error') return;
     debugPrint(jsonEncode({
       'time': DateTime.now().toUtc().toIso8601String(),
       'level': level,
       'event': event,
       for (final entry in fields.entries)
-        if (allowed.contains(entry.key))
+        if (allowed.contains(entry.key) &&
+            (entry.value == null ||
+                entry.value is String ||
+                entry.value is num ||
+                entry.value is bool))
           entry.key: entry.value is String
               ? redact(entry.value as String)
               : entry.value,
     }));
   }
 
-  @visibleForTesting
   static String redact(String message) {
-    var safe = message
-        .replaceAllMapped(RegExp(r'(?:https?|petpogo)://[^\s<>]+'), (match) {
+    var safe = message.replaceAllMapped(
+        RegExp(r'''(?:https?|wss?|petpogo)://[^\s<>"']+'''), (match) {
       final url = Uri.tryParse(match[0]!);
       if (url == null) return '<url>';
       return '${url.scheme}://${url.host}${url.hasPort ? ':${url.port}' : ''}${url.path}';

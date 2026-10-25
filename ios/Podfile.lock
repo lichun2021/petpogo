@@ -1,19 +1,14 @@
 PODS:
-  - agora_rtc_engine (6.5.4):
-    - AgoraIrisRTC_iOS (= 4.5.3-build.1)
-    - AgoraRtcEngine_Special_iOS (= 4.5.3.70)
-    - Flutter
-  - AgoraIrisRTC_iOS (4.5.3-build.1)
-  - AgoraRtcEngine_Special_iOS (4.5.3.70)
   - app_links (7.0.0):
     - Flutter
   - audio_session (0.0.1):
     - Flutter
-  - connectivity_plus (0.0.1):
-    - Flutter
   - emoji_picker_flutter (0.0.1):
     - Flutter
   - Flutter (1.0.0)
+  - flutter_blue_plus_darwin (0.0.2):
+    - Flutter
+    - FlutterMacOS
   - flutter_secure_storage_darwin (10.0.0):
     - Flutter
     - FlutterMacOS
@@ -30,12 +25,7 @@ PODS:
     - Flutter
     - FlutterMacOS
   - HydraAsync (2.0.6)
-  - image_cropper (0.0.4):
-    - Flutter
-    - TOCropViewController (~> 2.7.4)
   - image_picker_ios (0.0.1):
-    - Flutter
-  - iris_method_channel (0.0.1):
     - Flutter
   - JCore (5.4.0)
   - JPush (6.1.0):
@@ -57,9 +47,11 @@ PODS:
   - OpenWeChatSDKNoPay (2.0.5)
   - package_info_plus (0.4.5):
     - Flutter
-  - permission_handler_apple (9.3.0):
+  - permission_handler_apple (9.4.8):
     - Flutter
-  - record_ios (1.2.0):
+  - petpogo_device_media (0.1.0):
+    - Flutter
+  - record_ios (1.2.1):
     - Flutter
   - share_plus (0.0.1):
     - Flutter
@@ -72,9 +64,8 @@ PODS:
   - tencent_cloud_chat_sdk (8.0.0):
     - Flutter
     - HydraAsync
-    - TXIMSDK_Plus_iOS_XCFramework (~> 8.9.7540)
-  - TOCropViewController (2.7.4)
-  - TXIMSDK_Plus_iOS_XCFramework (8.9.7540)
+    - TXIMSDK_Plus_iOS_XCFramework (~> 8.9.7545)
+  - TXIMSDK_Plus_iOS_XCFramework (8.9.7545)
   - url_launcher_ios (0.0.1):
     - Flutter
   - video_player_avfoundation (0.0.1):
@@ -89,19 +80,16 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
-  - agora_rtc_engine (from `.symlinks/plugins/agora_rtc_engine/ios`)
   - app_links (from `.symlinks/plugins/app_links/ios`)
   - audio_session (from `.symlinks/plugins/audio_session/ios`)
-  - connectivity_plus (from `.symlinks/plugins/connectivity_plus/ios`)
   - emoji_picker_flutter (from `.symlinks/plugins/emoji_picker_flutter/ios`)
   - Flutter (from `Flutter`)
+  - flutter_blue_plus_darwin (from `.symlinks/plugins/flutter_blue_plus_darwin/darwin`)
   - flutter_secure_storage_darwin (from `.symlinks/plugins/flutter_secure_storage_darwin/darwin`)
   - fluwx (from `.symlinks/plugins/fluwx/ios`)
   - gal (from `.symlinks/plugins/gal/darwin`)
   - geolocator_apple (from `.symlinks/plugins/geolocator_apple/darwin`)
-  - image_cropper (from `.symlinks/plugins/image_cropper/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
-  - iris_method_channel (from `.symlinks/plugins/iris_method_channel/ios`)
   - jpush_flutter (from `.symlinks/plugins/jpush_flutter/ios`)
   - just_audio (from `.symlinks/plugins/just_audio/darwin`)
   - media_kit_video (from `.symlinks/plugins/media_kit_video/ios`)
@@ -109,6 +97,7 @@ DEPENDENCIES:
   - network_info_plus (from `.symlinks/plugins/network_info_plus/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
+  - petpogo_device_media (from `.symlinks/plugins/petpogo_device_media/ios`)
   - record_ios (from `.symlinks/plugins/record_ios/ios`)
   - share_plus (from `.symlinks/plugins/share_plus/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
@@ -122,28 +111,23 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
-    - AgoraIrisRTC_iOS
-    - AgoraRtcEngine_Special_iOS
     - HydraAsync
     - JCore
     - JPush
     - OpenWeChatSDKNoPay
-    - TOCropViewController
     - TXIMSDK_Plus_iOS_XCFramework
 
 EXTERNAL SOURCES:
-  agora_rtc_engine:
-    :path: ".symlinks/plugins/agora_rtc_engine/ios"
   app_links:
     :path: ".symlinks/plugins/app_links/ios"
   audio_session:
     :path: ".symlinks/plugins/audio_session/ios"
-  connectivity_plus:
-    :path: ".symlinks/plugins/connectivity_plus/ios"
   emoji_picker_flutter:
     :path: ".symlinks/plugins/emoji_picker_flutter/ios"
   Flutter:
     :path: Flutter
+  flutter_blue_plus_darwin:
+    :path: ".symlinks/plugins/flutter_blue_plus_darwin/darwin"
   flutter_secure_storage_darwin:
     :path: ".symlinks/plugins/flutter_secure_storage_darwin/darwin"
   fluwx:
@@ -152,12 +136,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/gal/darwin"
   geolocator_apple:
     :path: ".symlinks/plugins/geolocator_apple/darwin"
-  image_cropper:
-    :path: ".symlinks/plugins/image_cropper/ios"
   image_picker_ios:
     :path: ".symlinks/plugins/image_picker_ios/ios"
-  iris_method_channel:
-    :path: ".symlinks/plugins/iris_method_channel/ios"
   jpush_flutter:
     :path: ".symlinks/plugins/jpush_flutter/ios"
   just_audio:
@@ -172,6 +152,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/package_info_plus/ios"
   permission_handler_apple:
     :path: ".symlinks/plugins/permission_handler_apple/ios"
+  petpogo_device_media:
+    :path: ".symlinks/plugins/petpogo_device_media/ios"
   record_ios:
     :path: ".symlinks/plugins/record_ios/ios"
   share_plus:
@@ -194,22 +176,17 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/webview_flutter_wkwebview/darwin"
 
 SPEC CHECKSUMS:
-  agora_rtc_engine: c8ad6313ec7a1b2f28ab3328ff485df6d19a32de
-  AgoraIrisRTC_iOS: d6468160cad25d36c2b6cb5e9bd5b17ba4e58677
-  AgoraRtcEngine_Special_iOS: 48063561d21b07524358ee0a17abc6be762c58f7
   app_links: a754cbec3c255bd4bbb4d236ecc06f28cd9a7ce8
   audio_session: 9bb7f6c970f21241b19f5a3658097ae459681ba0
-  connectivity_plus: cb623214f4e1f6ef8fe7403d580fdad517d2f7dd
   emoji_picker_flutter: ece213fc274bdddefb77d502d33080dc54e616cc
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_blue_plus_darwin: 20a08bfeaa0f7804d524858d3d8744bcc1b6dbc3
   flutter_secure_storage_darwin: acdb3f316ed05a3e68f856e0353b133eec373a23
-  fluwx: fc07b03ebb407d68ae135a9f31967de03a5d11b2
+  fluwx: f6f63bd14e0459d2ca5f0e27ea549ddea6168ab1
   gal: baecd024ebfd13c441269ca7404792a7152fde89
   geolocator_apple: ab36aa0e8b7d7a2d7639b3b4e48308394e8cef5e
   HydraAsync: 8d589bd725b0224f899afafc9a396327405f8063
-  image_cropper: c4326ea50132b1e1564499e5d32a84f01fb03537
   image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
-  iris_method_channel: 7d661cf3259b3009ae423508470dbeb9374446ee
   JCore: 97f24c92979f9923ef5cfdbd626a29e9504215dd
   JPush: 891c497687be788b094bde368d51289355ee1112
   jpush_flutter: 477929cab3546c78fbca65aabe61ff39eafc0d77
@@ -219,14 +196,14 @@ SPEC CHECKSUMS:
   network_info_plus: cf61925ab5205dce05a4f0895989afdb6aade5fc
   OpenWeChatSDKNoPay: a391d2a7c0d4db1bdc870f885bd4cba99b64f243
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
-  permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
-  record_ios: 412daca2350b228e698fffcd08f1f94ceb1e3844
+  permission_handler_apple: 92d754bbaa7361d436db2d6c3c1c2a0fdcec462e
+  petpogo_device_media: 4425e25baf868cc7d557826e903c660e668e0cbf
+  record_ios: 980fd386a97a35987d0fce3dfda4b26a38c90f4c
   share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
-  tencent_cloud_chat_sdk: 1a59df6cd6b2dd75e161581d8582c9345c9094ef
-  TOCropViewController: 80b8985ad794298fb69d3341de183f33d1853654
-  TXIMSDK_Plus_iOS_XCFramework: 0dc0d5df48de5693b74d0fc42e267ed4e5c3a247
+  tencent_cloud_chat_sdk: cf58de938830c0e3cf4c34c70483173c34892a24
+  TXIMSDK_Plus_iOS_XCFramework: 35a3e6b6558ab83a83898e2d1f9ef2f461edef00
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
   video_player_avfoundation: 3453f792138786248960ca029747fcd9f318ef52
   volume_controller: 3657a1f65bedb98fa41ff7dc5793537919f31b12

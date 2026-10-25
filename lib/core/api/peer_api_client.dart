@@ -10,6 +10,14 @@ import 'api_client.dart';
 import 'api_endpoints.dart';
 
 // ── iPet 统一响应格式 ────────────────────────────────────
+class PeerApiException implements Exception {
+  final int code;
+  final String tip;
+  const PeerApiException(this.code, this.tip);
+  @override
+  String toString() => '[iPet] $tip';
+}
+
 class PeerResponse<T> {
   final int code;
   final String tip;
@@ -22,12 +30,13 @@ class PeerResponse<T> {
     Map<String, dynamic> json,
     T Function(dynamic)? fromInfo,
   ) {
+    final code = json['code'] is num
+        ? (json['code'] as num).toInt()
+        : int.tryParse(json['code']?.toString() ?? '') ?? -1;
     return PeerResponse<T>(
-      code: json['code'] is num
-          ? (json['code'] as num).toInt()
-          : int.tryParse(json['code']?.toString() ?? '') ?? -1,
+      code: code,
       tip: json['tip']?.toString() ?? '',
-      info: fromInfo != null && json['info'] != null
+      info: code == 0 && fromInfo != null && json['info'] != null
           ? fromInfo(json['info'])
           : null,
       list: json['list'] as List<dynamic>?,
@@ -72,7 +81,7 @@ class PeerApiClient {
     final pr = PeerResponse<T>.fromJson(json, fromInfo);
     if (!pr.isSuccess) {
       AppLog.debug('[PeerApi] POST $path 业务错误 code=${pr.code}: ${pr.tip}');
-      throw Exception('[iPet] ${pr.tip}');
+      throw PeerApiException(pr.code, pr.tip);
     }
     return pr;
   }
@@ -92,7 +101,7 @@ class PeerApiClient {
     final pr = PeerResponse<T>.fromJson(json, fromInfo);
     if (!pr.isSuccess) {
       AppLog.debug('[PeerApi] GET $path 业务错误 code=${pr.code}: ${pr.tip}');
-      throw Exception('[iPet] ${pr.tip}');
+      throw PeerApiException(pr.code, pr.tip);
     }
     return pr;
   }

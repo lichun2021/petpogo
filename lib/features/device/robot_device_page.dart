@@ -1,32 +1,32 @@
 import 'package:petpogo_app/core/logging/app_log.dart';
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:gal/gal.dart';
 import '../shell/main_shell.dart' show hideBottomNavProvider;
 import '../../shared/theme/app_colors.dart';
 import '../../shared/widgets/pet_toast.dart';
 import '../../shared/utils/oss_uploader.dart';
-import '../auth/controller/auth_controller.dart';
 import '../device/data/models/device_model.dart';
 import '../device/data/repository/device_repository.dart';
 import '../device/data/models/media_model.dart';
 import '../device/data/repository/media_repository.dart';
 import '../device/media_gallery_page.dart';
+import '../pet/data/repository/pet_peer_repository.dart';
 import 'device_detail_page.dart';
+import '../../core/providers/account_session_provider.dart';
+import 'stream/device_stream_session.dart';
+import 'stream/http_motor_controller.dart';
+import 'stream/jpeg_stream_view.dart';
 import '../bind_device/device_wifi_setup_entry.dart';
 
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 import 'robot_ai_home_page.dart';
-import '../consultation/data/repository/consultation_repository.dart';
 import '../../shared/utils/error_presenter.dart';
 
 // ── 机器人设备详情页 ─────────────────────────────────────
@@ -41,509 +41,135 @@ class RobotDevicePage extends ConsumerStatefulWidget {
 }
 
 class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
   int _activeTab = 0;
 
   double _moveSpeed = 50; // 10~100
   double _deviceVolume = 100; // 设备音量 0~100
 
-  // ── Agora 视频推流状态 ──────────────────────────────────
-  RtcEngine? _engine;
-  AgoraTokenInfo? _agoraInfo;
-  int? _remoteUid; // ESP32 的 uid（通常 10002）
-  bool _agoraLoading = false;
-  bool _agoraJoined = false;
-  bool _micOn = false;
-  String? _agoraError;
-  double _kbps = 0;
-  bool _videoFrozen = false; // 视频网络拥塑冻结状态
-  bool _hasVideoStream = false; // 是否真正收到视频流（rxVideoKBitRate > 0）
-  int? _motorStreamId;
-  bool _creatingMotorStream = false;
-  int _motorStreamGeneration = 0;
-  Timer? _statsTimer;
+  late final DeviceStreamSession _stream;
+  late final HttpMotorController _motors;
+  late final ProviderSubscription<int> _accountSubscription;
+  bool _sessionRevoked = false;
+  bool _backgroundPaused = false;
+  bool _fullscreenOpen = false;
+  bool _startingRecording = false;
+  bool get _streamConnected => _stream.connected;
+  bool get _streamLoading => _stream.loading;
+  bool get _micOn => _stream.talking;
+  String? get _streamError => _stream.error ?? _stream.audioError;
+  double get _kbps => _stream.kbps;
+  bool get _videoFrozen => _stream.frozen;
+  String get _connStatusText => _stream.status;
 
-  /// 连接状态文案：只有真正收到视频流才算「已连接」
-  String get _connStatusText {
-    if (_agoraLoading) return '连接中...';
-    if (!_agoraJoined) return '等待设备';
-    if (_remoteUid == null) return '等待设备上线';
-    if (!_hasVideoStream) return '等待视频流...';
-    return '已连接';
-  }
-
-  // ── 摄影：截图 / 录像 状态 ─────────────────────
-  final _cameraKey = GlobalKey(); // RepaintBoundary key 用于截图
-  bool _takingPhoto = false; // 截图进行中
-  bool _recording = false; // 录像进行中
-  bool _serverStopping = false; // 当前当前正在停止录制（合成中）
-  bool _uploadingMedia = false; // 上传 OSS 中
-  int _recordSeconds = 0; // 录像已进行秒数
-  static const _maxRecordSec = 30; // App 限制 30s，到时自动调 stopRecording
+  bool _takingPhoto = false;
+  bool _recording = false;
+  bool _savingRecording = false;
+  bool _uploadingMedia = false;
+  int _recordSeconds = 0;
+  static const _maxRecordSec = 30;
   Timer? _recordTimer;
-  String? _serverAccount; // 登录账号（录制时缓存）
-  List<MediaItem> _recentMedia = []; // 摄影标签预览
+  Timer? _batteryRefreshTimer;
+  List<MediaItem> _recentMedia = [];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        setState(() => _activeTab = _tabController.index);
+    WidgetsBinding.instance.addObserver(this);
+    _stream = ref.read(deviceStreamFactoryProvider)(widget.mac);
+    _stream.addListener(_onStreamChanged);
+    _batteryRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted &&
+          !_sessionRevoked &&
+          !_backgroundPaused &&
+          (_fullscreenOpen || ModalRoute.of(context)?.isCurrent == true)) {
+        ref.invalidate(deviceBatteryProvider(widget.mac));
       }
     });
-    // 页面打开后自动启动视频 + 加载媒体预览
+    final deviceRepo = ref.read(deviceRepositoryProvider);
+    _motors = HttpMotorController((ld, ls, rd, rs) async {
+      if (_sessionRevoked) return;
+      await deviceRepo.motorControl(
+          mac: widget.mac,
+          motor0Direction: ld,
+          motor0Speed: ls,
+          motor1Direction: rd,
+          motor1Speed: rs);
+    }, onError: (_) {
+      if (mounted) PetToast.warning(context, '遥控指令发送失败，请检查网络');
+    });
+    _accountSubscription = ref.listenManual(accountSessionProvider, (_, __) {
+      _sessionRevoked = true;
+      unawaited(_pauseStream());
+    });
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging)
+        setState(() => _activeTab = _tabController.index);
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _startAgora();
+      if (!mounted) return;
+      _startStream();
       _loadRecentMedia();
     });
   }
 
+  void _onStreamChanged() {
+    if (!mounted) return;
+    setState(() {});
+    if (_recording && !_stream.connected) unawaited(_stopRecording());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _stream.diagnostics.log('page.lifecycle', '页面生命周期', '系统生命周期状态改变', fields: {
+      'reason': state.name,
+      'view': _fullscreenOpen ? 'fullscreen' : 'inline',
+    });
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _backgroundPaused = true;
+      unawaited(_pauseStream());
+    } else if (state == AppLifecycleState.resumed && _backgroundPaused) {
+      _backgroundPaused = false;
+      if (_fullscreenOpen || ModalRoute.of(context)?.isCurrent == true)
+        unawaited(_startStream());
+    }
+  }
+
+  Future<void> _startStream() async {
+    if (!_sessionRevoked && mounted) await _stream.start();
+  }
+
+  Future<void> _pauseStream() async {
+    if (_recording) unawaited(_stopRecording());
+    await Future.wait([_motors.stop(), _stream.stop()]);
+  }
+
+  Future<void> _resumeStream() => _startStream();
+  Future<void> _toggleMic() => _stream.toggleTalk();
+
   @override
   void dispose() {
-    _tabController.dispose();
-    _statsTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _accountSubscription.close();
+    _stream.removeListener(_onStreamChanged);
     _recordTimer?.cancel();
-    // 如果页面关闭时录像还在进行，不调停止接口（合成中難以取消）
-    // 提示用户继续在后台处理
-
-    // 立即置 null，防止后续 setState 崩溃
-    final engine = _engine;
-    final micWasOn = _micOn;
-    final motorStreamId = _motorStreamId;
-    _engine = null;
-    _micOn = false;
-    _agoraJoined = false;
-    _resetMotorStream();
-    _remoteUid = null;
-    _hasVideoStream = false;
-
-    if (engine != null) {
-      // 每步独立 try/catch — 保证 leaveChannel 无论如何都会执行
-      () async {
-        await _sendMotorStopOverAgora(engine, motorStreamId);
-        // 1. 对讲开着时先关麦克风
-        if (micWasOn) {
-          try {
-            await engine.muteLocalAudioStream(true);
-          } catch (_) {}
-          try {
-            await engine.enableLocalAudio(false);
-          } catch (_) {}
-          AppLog.debug('[Agora] dispose: 本地麦克风已关闭');
-        }
-        // 2. 静音远端 + 关视频
-        try {
-          await engine.muteAllRemoteAudioStreams(true);
-        } catch (_) {}
-        try {
-          await engine.disableVideo();
-        } catch (_) {}
-        // 3. 停止音量回调
-        try {
-          await engine.enableAudioVolumeIndication(
-              interval: 0, smooth: 3, reportVad: false);
-        } catch (_) {}
-        // 4. ✅ 关键：离开频道，断开 RTC 连接
-        try {
-          await engine.leaveChannel();
-          AppLog.debug('[Agora] dispose: leaveChannel ✅');
-        } catch (e) {
-          AppLog.debug('[Agora] dispose: leaveChannel 失败: $e');
-        }
-        // 5. 释放引擎
-        try {
-          await engine.release();
-          AppLog.debug('[Agora] dispose: release ✅');
-        } catch (e) {
-          AppLog.debug('[Agora] dispose: release 失败: $e');
-        }
-      }();
-    }
-
+    _batteryRefreshTimer?.cancel();
+    _tabController.dispose();
+    unawaited(_motors.close());
+    unawaited(_stream.release().catchError((_) {}));
     super.dispose();
-  }
-
-  // ── Agora 工具方法 ──────────────────────────────────────
-
-  void _resetMotorStream() {
-    _motorStreamGeneration++;
-    _motorStreamId = null;
-    _creatingMotorStream = false;
-  }
-
-  Future<void> _createMotorStream() async {
-    final engine = _engine;
-    if (engine == null ||
-        !_agoraJoined ||
-        _motorStreamId != null ||
-        _creatingMotorStream) {
-      return;
-    }
-    final generation = _motorStreamGeneration;
-    _creatingMotorStream = true;
-    try {
-      final streamId = await engine.createDataStream(
-        const DataStreamConfig(syncWithAudio: false, ordered: true),
-      );
-      if (streamId < 0) {
-        throw StateError('createDataStream failed: $streamId');
-      }
-      if (!mounted ||
-          engine != _engine ||
-          !_agoraJoined ||
-          generation != _motorStreamGeneration) {
-        return;
-      }
-      _motorStreamId = streamId;
-      AppLog.debug('[Agora] 马达 Data Stream 创建成功 id=$streamId');
-    } catch (e) {
-      AppLog.debug('[Agora] 马达 Data Stream 创建失败: $e');
-    } finally {
-      if (generation == _motorStreamGeneration) {
-        _creatingMotorStream = false;
-      }
-    }
-  }
-
-  Future<void> _sendMotorStopOverAgora(RtcEngine? engine, int? streamId) async {
-    if (engine == null || streamId == null) return;
-    final payload = buildMotorControlPayload(
-      motor0Direction: 0,
-      motor0Speed: 0,
-      motor1Direction: 0,
-      motor1Speed: 0,
-    );
-    final bytes = Uint8List.fromList(utf8.encode(jsonEncode(payload)));
-    try {
-      await engine.sendStreamMessage(
-        streamId: streamId,
-        data: bytes,
-        length: bytes.length,
-      );
-      AppLog.debug('[Agora] 离开频道前已发送马达停止');
-    } catch (e) {
-      AppLog.debug('[Agora] 离开频道前发送马达停止失败: $e');
-    }
-  }
-
-  /// 初始化引擎 + 加入频道
-  Future<void> _startAgora() async {
-    if (_agoraLoading || _agoraJoined) return;
-    setState(() {
-      _agoraLoading = true;
-      _agoraError = null;
-      _hasVideoStream = false;
-    });
-    try {
-      // 1. 请求权限
-      final statuses =
-          await [Permission.microphone, Permission.camera].request();
-      AppLog.debug(
-          '[🔊音频] 权限状态: mic=${statuses[Permission.microphone]} cam=${statuses[Permission.camera]}');
-
-      // 2. 获取 Token（下发 ESP32 参数）
-      final auth = ref.read(authControllerProvider);
-      final userId = auth.user?.id ?? '0';
-      final info = await ref
-          .read(deviceRepositoryProvider)
-          .getAgoraToken(mac: widget.mac, customerId: userId);
-      _agoraInfo = info;
-      AppLog.debug(
-          '[Agora] Token 获取成功 channel=${info.channelName} uid=${info.userId}');
-
-      // 3. 创建引擎
-      _engine = createAgoraRtcEngine();
-      AppLog.debug('[Agora] 开始 initialize, appId=${info.appId}');
-      await _engine!.initialize(RtcEngineContext(
-        appId: info.appId,
-        channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
-      ));
-      AppLog.debug('[Agora] initialize 成功');
-
-      // 4. ⭐ 关键: 设置 JPEG 解码（仅 Android 有效）+ 低延迟优化
-      if (Platform.isAndroid) {
-        try {
-          await _engine!.setParameters('{"engine.video.codec_type": "20"}');
-          await _engine!.setParameters('{"rtc.video.playout_delay_min": 0}');
-          await _engine!.setParameters('{"rtc.video.playout_delay_max": 300}');
-          AppLog.debug('[Agora] setParameters JPEG 成功');
-        } catch (e) {
-          AppLog.debug('[Agora] setParameters JPEG 失败（可忽略）: $e');
-        }
-      }
-
-      // 5. 启用音视频 + IoT 音频模式
-      AppLog.debug('[🔊音频] enableVideo...');
-      await _engine!.enableVideo();
-      AppLog.debug('[🔊音频] enableAudio...');
-      await _engine!.enableAudio();
-      AppLog.debug('[🔊音频] setAudioProfile: Default + Chatroom...');
-      await _engine!.setAudioProfile(
-        profile: AudioProfileType.audioProfileDefault,
-        scenario: AudioScenarioType.audioScenarioChatroom,
-      );
-      AppLog.debug('[🔊音频] setAudioProfile 完成');
-      AppLog.debug('[🔊音频] enableLocalVideo(false)...');
-      await _engine!.enableLocalVideo(false); // APP 不发送本地摄像头
-
-      // 开启音量提示（每秒回调一次，用于调试音频是否有数据流入）
-      await _engine!.enableAudioVolumeIndication(
-        interval: 1000,
-        smooth: 3,
-        reportVad: false,
-      );
-      AppLog.debug('[🔊音频] enableAudioVolumeIndication 已开启（1s 间隔）');
-
-      // 6. 注册事件
-      AppLog.debug('[Agora] registerEventHandler...');
-      _engine!.registerEventHandler(RtcEngineEventHandler(
-        onJoinChannelSuccess: (_, __) {
-          if (mounted) {
-            setState(() {
-              _agoraJoined = true;
-              _agoraLoading = false;
-            });
-          }
-          _createMotorStream();
-          // 加入频道后再开启扬声器（防止提前调用报 -3）
-          _engine?.setEnableSpeakerphone(true);
-          AppLog.debug('[🔊音频] 加入频道成功 → setEnableSpeakerphone(true)');
-        },
-        onLeaveChannel: (_, __) {
-          // 所有主动 leave 路径都会在调用前完成停止和 stream 清理。
-          // 这里不改写状态，避免旧频道延迟回调覆盖快速重连后的新会话。
-          AppLog.debug('[Agora] onLeaveChannel');
-        },
-        onUserJoined: (_, uid, __) {
-          if (mounted) setState(() => _remoteUid = uid);
-          AppLog.debug('[🔊音频] 远端用户加入 uid=$uid（ESP32）');
-          // 加入后确认没有静音远端
-          _engine?.muteRemoteAudioStream(uid: uid, mute: false);
-          AppLog.debug(
-              '[🔊音频] muteRemoteAudioStream(uid=$uid, mute=false) ← 确保不静音');
-        },
-        onUserOffline: (_, uid, __) {
-          if (mounted)
-            setState(() {
-              _remoteUid = null;
-              _hasVideoStream = false;
-            });
-          AppLog.debug('[🔊音频] 远端用户离线 uid=$uid');
-        },
-        onRtcStats: (_, stats) {
-          if (!mounted) return;
-          final rxVideo = stats.rxVideoKBitRate?.toDouble() ?? 0;
-          // 真正收到视频码率才算「有视频流」（>0 即可，避免抖动误判）
-          final hasStream = rxVideo > 0;
-          setState(() {
-            _kbps = rxVideo;
-            if (hasStream != _hasVideoStream) _hasVideoStream = hasStream;
-          });
-          final rxAudio = stats.rxAudioKBitRate ?? 0;
-          final txAudio = stats.txAudioKBitRate ?? 0;
-          if (rxAudio > 0 || txAudio > 0) {
-            AppLog.debug(
-                '[🔊音频] Stats → rxAudio=${rxAudio}kbps txAudio=${txAudio}kbps '
-                'rxVideo=${stats.rxVideoKBitRate ?? 0}kbps');
-          } else {
-            AppLog.debug('[🔊音频] ⚠️ Stats → rxAudio=0 txAudio=0（未收到音频数据！）');
-          }
-        },
-
-        // ── 远端音频状态变化（关键诊断事件）──
-        onRemoteAudioStateChanged: (_, uid, state, reason, __) {
-          AppLog.debug('[🔊音频] 远端音频状态变化 uid=$uid '
-              'state=$state reason=$reason');
-          // state: 0=stopped 1=starting 2=decoding 3=frozen 4=failed
-          // reason: 0=internal 1=localMuted 2=localUnmuted 3=remoteMuted
-          //         4=remoteUnmuted 5=remoteOffline 6=noPacketReceived
-          final stateStr = {
-                0: 'stopped',
-                1: 'starting',
-                2: 'decoding ✅',
-                3: 'frozen❄️',
-                4: 'failed❌'
-              }[state.value] ??
-              'unknown';
-          final reasonStr = {
-                0: 'internal',
-                1: 'localMuted',
-                2: 'localUnmuted',
-                3: 'remoteMuted',
-                4: 'remoteUnmuted',
-                5: 'remoteOffline',
-                6: 'noPacketReceived'
-              }[reason.value] ??
-              'unknown';
-          AppLog.debug('[🔊音频] → state=$stateStr  reason=$reasonStr');
-        },
-        // ── 音量回调（有声音时 volume > 0）──
-        onAudioVolumeIndication: (_, speakers, __, totalVolume) {
-          if (!mounted) return; // 页面已销毁，不处理
-          for (final s in speakers) {
-            if ((s.volume ?? 0) > 0) {
-              AppLog.debug('[🔊音频] 音量回调 uid=${s.uid} volume=${s.volume}');
-            }
-          }
-          if (totalVolume == 0 && speakers.isNotEmpty) {
-            AppLog.debug('[🔊音频] ⚠️ totalVolume=0，所有音频静音或无数据');
-          }
-        },
-        // ── 音频路由变化（扬声器/听筒/耳机）──
-        onAudioRoutingChanged: (routing) {
-          if (!mounted) return;
-          // -1=default 0=headset 1=earpiece 2=speakerphone 3=bluetooth 4=usb
-          final routeStr = {
-                -1: 'default',
-                0: 'headset',
-                1: 'earpiece',
-                2: 'speakerphone ✅',
-                3: 'bluetooth',
-                4: 'usb_audio'
-              }[routing] ??
-              'unknown($routing)';
-          AppLog.debug('[🔊音频] 音频路由变化 → $routeStr');
-        },
-        onError: (err, msg) {
-          AppLog.debug('[Agora] 错误 $err: $msg');
-          if (mounted) setState(() => _agoraError = 'Agora错误 $err');
-        },
-        onTokenPrivilegeWillExpire: (_, __) {
-          _startAgora();
-        },
-        onConnectionStateChanged: (_, state, reason) {
-          AppLog.debug('[Agora] 连接状态: $state reason=$reason');
-        },
-        onRemoteVideoStateChanged: (_, uid, state, reason, __) {
-          AppLog.debug('[Agora] 远端视频状态 uid=$uid state=$state reason=$reason');
-          final frozen = state == RemoteVideoState.remoteVideoStateFrozen;
-          if (mounted && frozen != _videoFrozen) {
-            setState(() => _videoFrozen = frozen);
-          }
-        },
-      ));
-
-      // 7. 加入频道（先防御性 leave，避免引擎残留状态导致 -17 ERR_JOIN_CHANNEL_REJECTED）
-      AppLog.debug('[🔊音频] setClientRole → Broadcaster');
-      await _engine!.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
-      await _engine!.enableLocalAudio(true);
-      await _engine!.muteLocalAudioStream(true); // 默认静音本地麦克风
-      AppLog.debug(
-          '[🔊音频] enableLocalAudio=true muteLocalAudioStream=true（对讲默认关）');
-      try {
-        _resetMotorStream();
-        await _engine!.leaveChannel();
-      } catch (_) {} // 防御：确保不在频道中
-      AppLog.debug('[Agora] joinChannel...');
-      await _engine!.joinChannel(
-        token: info.token,
-        channelId: info.channelName,
-        uid: info.userId,
-        options: const ChannelMediaOptions(
-          autoSubscribeVideo: true,
-          autoSubscribeAudio: true,
-          publishCameraTrack: false,
-          publishMicrophoneTrack: true,
-        ),
-      );
-      AppLog.debug('[Agora] joinChannel 调用完成（等待 onJoinChannelSuccess）');
-    } catch (e, st) {
-      AppLog.debug('[Agora] 初始化失败: $e\n$st');
-      if (mounted)
-        setState(() {
-          _agoraLoading = false;
-          _agoraError = ErrorPresenter.message(e, fallback: '视频连接失败，请稍后重试');
-        });
-    }
-  }
-
-  /// 离开频道 + 释放引擎
-
-  /// 暂停推流（只离开频道，保留引擎实例和 Token——退出子页后可快速重连）
-  Future<void> _pauseAgora() async {
-    if (!_agoraJoined) return;
-    try {
-      if (_micOn) {
-        await _engine?.muteLocalAudioStream(true);
-        await _engine?.enableLocalAudio(false);
-        if (mounted) setState(() => _micOn = false);
-      }
-      await _engine?.muteAllRemoteAudioStreams(true);
-      await _engine?.disableVideo();
-      await _sendMotorStopOverAgora(_engine, _motorStreamId);
-      _resetMotorStream();
-      await _engine?.leaveChannel();
-      if (mounted)
-        setState(() {
-          _agoraJoined = false;
-          _remoteUid = null;
-          _hasVideoStream = false;
-        });
-      AppLog.debug('[Agora] pause: 已离开频道（引擎保留）');
-    } catch (e) {
-      AppLog.debug('[Agora] pause 异常（可忽略）: $e');
-    }
-  }
-
-  /// 仅重新加入频道（引擎已存在时用，如从媒体库返回）
-  Future<void> _rejoinChannel() async {
-    if (_agoraLoading || _agoraJoined) return;
-    if (_engine == null || _agoraInfo == null) {
-      // 引擎不存在时走完整初始化流程
-      await _startAgora();
-      return;
-    }
-    setState(() {
-      _agoraLoading = true;
-      _agoraError = null;
-    });
-    try {
-      AppLog.debug('[Agora] 重新加入频道 channel=${_agoraInfo!.channelName}');
-      await _engine!.joinChannel(
-        token: _agoraInfo!.token,
-        channelId: _agoraInfo!.channelName,
-        uid: _agoraInfo!.userId,
-        options: const ChannelMediaOptions(
-          autoSubscribeVideo: true,
-          autoSubscribeAudio: true,
-          publishCameraTrack: false,
-          publishMicrophoneTrack: true,
-        ),
-      );
-      AppLog.debug('[Agora] 重连 joinChannel 调用完成');
-    } catch (e) {
-      AppLog.debug('[Agora] 重连失败: $e');
-      if (mounted)
-        setState(() {
-          _agoraLoading = false;
-          _agoraError = ErrorPresenter.message(e, fallback: '视频连接失败，请稍后重试');
-        });
-    }
   }
 
   // ── 摄影：截图 ─────────────────────────────────────────
 
-  /// 从 RepaintBoundary 截取当前 Agora 视频帧并保存
-  Future<Uint8List?> _captureFrame() async {
-    try {
-      final boundary = _cameraKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
-      if (boundary == null) return null;
-      final image = await boundary.toImage(pixelRatio: 1.5);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      return byteData?.buffer.asUint8List();
-    } catch (e) {
-      AppLog.debug('[摄影] 截帧失败: $e');
-      return null;
-    }
-  }
+  Future<Uint8List?> _captureFrame() async => _stream.latestJpeg.value;
 
   /// 拍照：截帧 → 保存相册 → 上传 OSS → 入库
   Future<void> _takePhoto() async {
-    if (_takingPhoto || !_agoraJoined) return;
+    if (_takingPhoto || !_streamConnected) return;
     setState(() => _takingPhoto = true);
     try {
       // 1. 请求相册权限
@@ -574,137 +200,73 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     }
   }
 
-  // ── 摄影：录像（服务端录制）─────────────────────────────
-
-  /// 开始录像：调用服务端 POST /video/recording/start
+  // ── 摄影：手机本地录像 ─────────────────────────────────
   Future<void> _startRecording() async {
-    if (_recording || _serverStopping || !_agoraJoined) {
-      if (!_agoraJoined) PetToast.warning(context, '请先等待设备连接');
-      return;
-    }
-    HapticFeedback.mediumImpact();
-
-    // 读取当前登录账号
-    final account = ref.read(authControllerProvider).user?.account ?? '';
-    if (account.isEmpty) {
-      PetToast.error(context, '无法获取账号，请重新登录');
-      return;
-    }
-
-    setState(() {
-      _recording = true;
-      _recordSeconds = 0;
-    });
+    final frame = _stream.latestJpeg.value;
+    if (_recording ||
+        _startingRecording ||
+        _savingRecording ||
+        frame == null ||
+        !_stream.connected) return;
+    setState(() => _startingRecording = true);
     try {
-      final result = await ref
-          .read(consultationRepositoryProvider)
-          .startRecording(account: account, deviceNo: widget.mac);
-
-      result.when(
-        success: (info) {
-          _serverAccount = account;
-          AppLog.debug('[录制] 服务端录制已开始 id=${info.recordingId}');
-          // 启动计时（UI 展示用，到 300s 自动提示）
-          _recordTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-            if (!mounted) {
-              t.cancel();
-              return;
-            }
-            if (_recordSeconds >= _maxRecordSec) {
-              t.cancel();
-              // 服务端到最大时长会自动停止，UI 同步状态
-              _stopRecording();
-              return;
-            }
-            setState(() => _recordSeconds++);
-          });
-        },
-        failure: (err) {
-          if (mounted) {
-            setState(() {
-              _recording = false;
-              _recordSeconds = 0;
-            });
-            PetToast.error(context, '录制启动失败：${err.userMessage}');
-          }
-        },
-      );
-    } catch (e) {
-      AppLog.debug('[录制] 开始异常: $e');
-      if (mounted) {
-        setState(() {
-          _recording = false;
-          _recordSeconds = 0;
-        });
-        PetToast.error(context, '录制启动失败');
+      if (!await Gal.hasAccess(toAlbum: true))
+        await Gal.requestAccess(toAlbum: true);
+      if (!mounted || !_stream.connected) return;
+      await _stream.recorder.start(frame);
+      if (!mounted) {
+        await _stream.recorder.cancel();
+        return;
       }
+      setState(() {
+        _recording = true;
+        _recordSeconds = 0;
+      });
+      _recordTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        setState(() => _recordSeconds++);
+        if (_recordSeconds >= _maxRecordSec) {
+          timer.cancel();
+          unawaited(_stopRecording());
+        }
+      });
+    } catch (error) {
+      if (mounted)
+        PetToast.error(
+            context, ErrorPresenter.message(error, fallback: '录像启动失败'));
+    } finally {
+      if (mounted) setState(() => _startingRecording = false);
     }
   }
 
-  /// 停止录像：调用服务端 POST /video/recording/stop
-  /// ⚠️ 服务端合成 MP4 + 上传 OSS 可能耗时较长，期间显示「合成中」
   Future<void> _stopRecording() async {
-    if (_serverStopping) return;
+    if (!_recording || _savingRecording) return;
     _recordTimer?.cancel();
-
-    final account = _serverAccount ?? '';
-    final secs = _recordSeconds;
-    _serverAccount = null;
-
+    final seconds = _recordSeconds;
     setState(() {
       _recording = false;
-      _recordSeconds = 0;
-      _serverStopping = true; // 显示「合成中」状态
+      _savingRecording = true;
     });
-
-    HapticFeedback.mediumImpact();
-    if (mounted) PetToast.show(context, '⏳ 正在合成视频，请稍候...');
-
     try {
-      final result = await ref
-          .read(consultationRepositoryProvider)
-          .stopRecording(account: account, deviceNo: widget.mac);
-
-      if (!mounted) return;
-      result.when(
-        success: (info) {
-          AppLog.debug('[录制] 合成完成 video=${info.videoUrl}');
-          PetToast.success(context, '🎬 录制完成 (${secs}s)，视频已上传');
-          // 刷新媒体列表（视频已在 OSS，通知后端入库）
-          _saveServerVideoRecord(
-              videoUrl: info.videoUrl, coverUrl: info.coverUrl, duration: secs);
-        },
-        failure: (err) {
-          PetToast.error(context, '合成失败：${err.userMessage}');
-          AppLog.debug('[录制] 停止失败: ${err.message}');
-        },
-      );
-    } catch (e) {
-      AppLog.debug('[录制] 停止异常: $e');
-      if (mounted) PetToast.error(context, '停止录制失败，请检查网络');
+      final path = await _stream.recorder.finish();
+      await Gal.putVideo(path, album: '宠联芯');
+      if (mounted) {
+        PetToast.success(context, '录像已保存到相册');
+        unawaited(_uploadMedia(localPath: path, type: 2, duration: seconds));
+      }
+    } catch (error) {
+      if (mounted)
+        PetToast.error(
+            context, ErrorPresenter.message(error, fallback: '录像保存失败，已保留本地素材'));
     } finally {
-      if (mounted) setState(() => _serverStopping = false);
-    }
-  }
-
-  /// 把服务端返回的视频信息存入媒体库（复用 mediaRepository.saveRecord）
-  Future<void> _saveServerVideoRecord({
-    required String videoUrl,
-    required String coverUrl,
-    required int duration,
-  }) async {
-    try {
-      await ref.read(mediaRepositoryProvider).saveRecord(
-            type: 2, // 视频
-            url: videoUrl,
-            ossKey: '', // 服务端已完成 OSS 上传，key 留空
-            fileSize: 0,
-            duration: duration,
-            deviceId: widget.mac,
-          );
-      _loadRecentMedia(); // 刷新媒体库预览
-    } catch (e) {
-      AppLog.debug('[录制] 入库失败: $e');
+      if (mounted)
+        setState(() {
+          _savingRecording = false;
+          _recordSeconds = 0;
+        });
     }
   }
 
@@ -712,31 +274,36 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
 
   Future<void> _uploadMedia({
     required String localPath,
-    required List<int> bytes,
+    List<int>? bytes,
     required int type, // 1图片 2视频
     required int? duration,
   }) async {
-    if (_uploadingMedia) return; // 防并发
+    if (!mounted || _uploadingMedia) return; // 防并发
+    final accountEpoch = ref.read(accountSessionProvider);
+    final mediaRepo = ref.read(mediaRepositoryProvider);
+    final uploader = ref.read(ossUploaderProvider);
     setState(() => _uploadingMedia = true);
     try {
-      final uploader = ref.read(ossUploaderProvider);
       final sign = await uploader.getSign(
         folder: 'devices-media',
         mimeType: type == 1 ? 'image/jpeg' : 'video/mp4',
       );
-      await uploader.uploadBytes(uploadUrl: sign.uploadUrl, bytes: bytes);
-      final fileSize = bytes.length;
+      if (!mounted || ref.read(accountSessionProvider) != accountEpoch) return;
+      final file = File(localPath);
+      await uploader.uploadFile(uploadUrl: sign.uploadUrl, file: file);
+      final fileSize = await file.length();
+      if (!mounted || ref.read(accountSessionProvider) != accountEpoch) return;
       // 通知后端入库
-      await ref.read(mediaRepositoryProvider).saveRecord(
-            type: type,
-            url: sign.cdnUrl,
-            ossKey: sign.key,
-            fileSize: fileSize,
-            duration: duration,
-            deviceId: widget.mac, // 设备 MAC 地址
-          );
+      await mediaRepo.saveRecord(
+        type: type,
+        url: sign.cdnUrl,
+        ossKey: sign.key,
+        fileSize: fileSize,
+        duration: duration,
+        deviceId: widget.mac, // 设备 MAC 地址
+      );
       // 刷新预览
-      _loadRecentMedia();
+      if (mounted) _loadRecentMedia();
       if (mounted) PetToast.success(context, '☁️ 上传成功');
     } catch (e) {
       AppLog.debug('[OSS] 上传失败: $e');
@@ -758,73 +325,12 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     } catch (_) {}
   }
 
-  /// 对讲开关（Broadcaster 模式下直接 mute/unmute，无需切换角色）
-  Future<void> _toggleMic() async {
-    if (_engine == null) return;
-    final next = !_micOn;
-    if (next) {
-      await _engine!.enableLocalAudio(true);
-      await _engine!.muteLocalAudioStream(false);
-    } else {
-      await _engine!.muteLocalAudioStream(true);
-      await _engine!.enableLocalAudio(false);
-    }
-    setState(() => _micOn = next);
-  }
-
-  // ── 电机控制（通话中 Agora Data Stream，未通话 Shadow）─────
-  void _sendMotorControl(int m0Dir, int m0Speed, int m1Dir, int m1Speed) {
+  // ── 电机控制：所有场景统一使用原 HTTP 设备影子接口 ────────
+  void _sendMotorControl(
+      int leftDirection, int leftSpeed, int rightDirection, int rightSpeed) {
     final base = _moveSpeed.toInt();
-    final scaledM0 = (m0Speed * base ~/ 100).clamp(0, 100);
-    final scaledM1 = (m1Speed * base ~/ 100).clamp(0, 100);
-
-    // 可读日志（direction: 1=正转↑, 2=反转↓, 0=停止）
-    String dirStr(int d) => d == 1
-        ? '正转↑'
-        : d == 2
-            ? '反转↓'
-            : '停止■';
-    AppLog.debug('[遥控] 左轮(motor_0): ${dirStr(m0Dir)} speed=$scaledM0 | '
-        '右轮(motor_1): ${dirStr(m1Dir)} speed=$scaledM1 | base=$base%');
-
-    final payload = buildMotorControlPayload(
-      motor0Direction: m0Dir,
-      motor0Speed: scaledM0,
-      motor1Direction: m1Dir,
-      motor1Speed: scaledM1,
-    );
-
-    if (_agoraJoined) {
-      final engine = _engine;
-      final streamId = _motorStreamId;
-      if (engine == null || streamId == null) {
-        AppLog.debug('[Agora] 马达指令未发送：Data Stream 尚未就绪');
-        return;
-      }
-      final bytes = Uint8List.fromList(utf8.encode(jsonEncode(payload)));
-      if (bytes.length > 512) {
-        AppLog.debug('[Agora] 马达指令超过 512 字节，已丢弃');
-        return;
-      }
-      engine
-          .sendStreamMessage(
-        streamId: streamId,
-        data: bytes,
-        length: bytes.length,
-      )
-          .catchError((Object e) {
-        AppLog.debug('[Agora] 马达指令发送失败: $e');
-      });
-      return;
-    }
-
-    ref.read(deviceRepositoryProvider).motorControl(
-          mac: widget.mac,
-          motor0Direction: m0Dir,
-          motor0Speed: scaledM0,
-          motor1Direction: m1Dir,
-          motor1Speed: scaledM1,
-        );
+    _motors.update(leftDirection, (leftSpeed * base ~/ 100).clamp(0, 100),
+        rightDirection, (rightSpeed * base ~/ 100).clamp(0, 100));
   }
 
   // ── 设备切换 ──────────────────────────────────────────
@@ -862,30 +368,38 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
       return Scaffold(backgroundColor: Colors.black);
     }
     final screenH = MediaQuery.of(context).size.height;
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: Column(children: [
-        _buildTopBar(context),
-        _buildCameraView(screenH),
-        _buildTabBar(screenH),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            physics: NeverScrollableScrollPhysics(),
-            children: [
-              _buildRemoteControl(),
-              _buildPetPlay(),
-              _buildPhotography(),
-              _buildIntercom(),
-            ],
-          ),
-        ),
-      ]),
-    );
+    return PopScope(
+        canPop: !_recording && !_savingRecording,
+        onPopInvokedWithResult: (didPop, _) async {
+          if (didPop || _savingRecording) return;
+          await _stopRecording();
+          if (context.mounted) Navigator.pop(context);
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.surface,
+          body: Column(children: [
+            _buildTopBar(context),
+            _buildCameraView(screenH),
+            _buildTabBar(screenH),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                physics: NeverScrollableScrollPhysics(),
+                children: [
+                  _buildRemoteControl(),
+                  _buildPetPlay(),
+                  _buildPhotography(),
+                  _buildIntercom(),
+                ],
+              ),
+            ),
+          ]),
+        ));
   }
 
   // ── 顶部栏（红橙渐变，与 device_detail 风格一致）────────
   Widget _buildTopBar(BuildContext context) {
+    final battery = ref.watch(deviceBatteryProvider(widget.mac)).valueOrNull;
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -910,25 +424,48 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             Expanded(
               child: GestureDetector(
                 onTap: () => _showDeviceSwitcher(context),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Flexible(
-                    child: Text(
-                      widget.name,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                      style: TextStyle(
-                        fontFamily: AppFonts.primary,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.onPrimary,
-                        letterSpacing: -0.3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(mainAxisSize: MainAxisSize.min, children: [
+                      Flexible(
+                        child: Text(
+                          widget.name,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.onPrimary,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  SizedBox(width: 4),
-                  Icon(Icons.keyboard_arrow_down_rounded,
-                      color: AppColors.onPrimary, size: 22),
-                ]),
+                      SizedBox(width: 4),
+                      Icon(Icons.keyboard_arrow_down_rounded,
+                          color: AppColors.onPrimary, size: 22),
+                    ]),
+                    const SizedBox(height: 4),
+                    Row(children: [
+                      Icon(Icons.battery_std_rounded,
+                          size: 12, color: AppColors.onPrimary),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          battery?.known == true
+                              ? '电量 ${battery!.battery}%'
+                              : '电量 -',
+                          style: TextStyle(
+                            fontFamily: AppFonts.primary,
+                            fontSize: 11,
+                            color: AppColors.onPrimary,
+                          ),
+                        ),
+                      ),
+                    ]),
+                  ],
+                ),
               ),
             ),
             if (ref.watch(deviceListProvider).devices.any((device) =>
@@ -945,14 +482,14 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                         .firstWhere((device) =>
                             device.mac.toUpperCase() ==
                             widget.mac.toUpperCase());
-                    await _pauseAgora();
+                    await _pauseStream();
                     if (!mounted) return;
                     await openRobotWifiSetup(context,
                         productKey: device.productKey,
                         existingMac: widget.mac,
                         deviceName: widget.name);
                     if (mounted) {
-                      _rejoinChannel();
+                      _resumeStream();
                       ref.read(deviceListProvider.notifier).load();
                     }
                   }),
@@ -960,7 +497,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             _AiGlowButton(
               onTap: () async {
                 // 进入 AI 页前先暂停推流
-                await _pauseAgora();
+                await _pauseStream();
                 if (!mounted) return;
                 await Navigator.push(
                     context,
@@ -971,7 +508,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                       ),
                     ));
                 // 返回后重新连接
-                if (mounted) _rejoinChannel();
+                if (mounted) _resumeStream();
               },
             ),
           ]),
@@ -980,7 +517,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     );
   }
 
-  // ── 摄像头区域（Agora 视频流）────────────────────────────
+  // ── 摄像头区域（WebSocket JPEG）────────────────────────────
   Widget _buildCameraView(double screenH) {
     final cameraH = (screenH * 0.27).clamp(160.0, 220.0);
     return Container(
@@ -1001,150 +538,37 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: Stack(fit: StackFit.expand, children: [
-            // ── 视频内容区 ──────────────────────────────────
-            if (_agoraJoined &&
-                _remoteUid != null &&
-                _hasVideoStream &&
-                _agoraInfo != null &&
-                Platform.isAndroid)
-              // Android：显示 Agora JPEG 视频流（用 RepaintBoundary 支持截帧）
-              RepaintBoundary(
-                key: _cameraKey,
-                child: AgoraVideoView(
-                  controller: VideoViewController.remote(
-                    rtcEngine: _engine!,
-                    canvas: VideoCanvas(uid: _remoteUid!),
-                    connection:
-                        RtcConnection(channelId: _agoraInfo!.channelName),
-                  ),
-                ),
-              )
-            else if (_agoraJoined &&
-                _remoteUid != null &&
-                !_hasVideoStream &&
-                Platform.isAndroid)
-              // 设备已上线，但还没收到视频流（等待推流 / uid 冲突等）
-              Container(
-                color: AppColors.inverseSurface,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                        width: 30,
-                        height: 30,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: AppColors.primaryContainer)),
-                    SizedBox(height: 10),
-                    Text('等待视频流...',
-                        style: TextStyle(
-                            fontFamily: AppFonts.primary,
-                            fontSize: 12,
-                            color: AppColors.onPrimary.withOpacity(0.6))),
-                  ],
-                ),
-              )
-            else if (_agoraLoading)
-              // 连接中
-              Container(
-                color: AppColors.inverseSurface,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                        width: 36,
-                        height: 36,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: AppColors.primaryContainer)),
-                    SizedBox(height: 12),
-                    Text('连接设备摄像头...',
-                        style: TextStyle(
-                            fontFamily: AppFonts.primary,
-                            fontSize: 13,
-                            color: AppColors.onPrimary.withOpacity(0.6))),
-                  ],
-                ),
-              )
-            else if (_agoraError != null)
-              // 错误状态
-              Container(
-                color: AppColors.inverseSurface,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.error_outline_rounded,
-                        size: 40, color: AppColors.onPrimary.withOpacity(0.5)),
-                    SizedBox(height: 8),
-                    Text('视频连接失败',
-                        style: TextStyle(
-                            fontFamily: AppFonts.primary,
-                            fontSize: 13,
-                            color: AppColors.onPrimary.withOpacity(0.6))),
-                    SizedBox(height: 4),
-                    GestureDetector(
-                      onTap: _startAgora,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text('点击重试',
-                            style: TextStyle(
-                                fontFamily: AppFonts.primary,
-                                fontSize: 12,
-                                color: AppColors.primaryContainer)),
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else if (Platform.isIOS && _agoraJoined)
-              // iOS：仅音频提示
-              Container(
-                color: AppColors.inverseSurface,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.volume_up_rounded,
-                        size: 48, color: AppColors.onPrimary.withOpacity(0.5)),
-                    SizedBox(height: 8),
-                    Text('iOS 仅支持音频对讲',
-                        style: TextStyle(
-                            fontFamily: AppFonts.primary,
-                            fontSize: 13,
-                            color: AppColors.onPrimary.withOpacity(0.6))),
-                    Text('ESP32 H.264 升级后可支持 iOS 视频',
-                        style: TextStyle(
-                            fontFamily: AppFonts.primary,
-                            fontSize: 11,
-                            color: AppColors.onPrimary.withOpacity(0.4))),
-                  ],
-                ),
-              )
+            // ── JPEG 画面：Android 和 iOS 共用同一渲染路径 ──
+            if (_stream.hasVideo)
+              JpegStreamView(
+                  frames: _stream.latestJpeg,
+                  diagnostics: _stream.diagnostics,
+                  view: 'inline')
             else
-              // 占位图
-              Container(
-                color: AppColors.inverseSurface,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.videocam_rounded,
-                        size: 48, color: AppColors.onPrimary.withOpacity(0.35)),
-                    SizedBox(height: 8),
-                    Text('摄像头预览',
-                        style: TextStyle(
-                            fontFamily: AppFonts.primary,
-                            fontSize: 13,
-                            color: AppColors.onPrimary.withOpacity(0.45))),
-                  ],
-                ),
-              ),
+              Center(
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                if (_streamLoading || _streamConnected)
+                  const CircularProgressIndicator(strokeWidth: 2)
+                else
+                  const Icon(Icons.videocam_off_rounded,
+                      size: 40, color: Colors.white54),
+                const SizedBox(height: 12),
+                Text(_streamError ?? _connStatusText,
+                    style: const TextStyle(color: Colors.white70)),
+                if (!_streamLoading && !_streamConnected)
+                  TextButton(
+                      onPressed: _startStream, child: const Text('点击重试')),
+                if (_stream.waitingTooLong)
+                  TextButton(
+                      onPressed: () async {
+                        await _pauseStream();
+                        await _resumeStream();
+                      },
+                      child: const Text('重新连接')),
+              ])),
 
             // 视频冻结提示层（网络拥塑时）
-            if (_videoFrozen && _remoteUid != null)
+            if (_videoFrozen && _stream.hasVideo)
               Positioned(
                 bottom: 8,
                 left: 0,
@@ -1204,7 +628,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _remoteUid != null
+                  color: _stream.hasVideo
                       ? Colors.green.withOpacity(0.8)
                       : Colors.black54,
                   borderRadius: BorderRadius.circular(8),
@@ -1214,7 +638,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                     width: 6,
                     height: 6,
                     decoration: BoxDecoration(
-                      color: _remoteUid != null
+                      color: _stream.hasVideo
                           ? Colors.greenAccent
                           : Colors.white38,
                       shape: BoxShape.circle,
@@ -1238,24 +662,23 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
               right: 10,
               child: GestureDetector(
                 onTap: () {
-                  if (_engine == null || _agoraInfo == null) return;
+                  if (!_stream.hasVideo) return;
                   // 全屏前隐藏底部导航栏
                   ref.read(hideBottomNavProvider.notifier).state = true;
+                  _fullscreenOpen = true;
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => _FullscreenVideoPage(
-                        engine: _engine!,
-                        channelName: _agoraInfo!.channelName,
-                        remoteUid: _remoteUid,
+                        session: _stream,
                         onControl: _sendMotorControl,
-                        micOn: _micOn,
-                        onToggleMic: _toggleMic,
                       ),
                     ),
                   ).then((_) {
                     // 退出全屏后恢复底部导航栏
-                    ref.read(hideBottomNavProvider.notifier).state = false;
+                    _fullscreenOpen = false;
+                    if (mounted)
+                      ref.read(hideBottomNavProvider.notifier).state = false;
                   });
                 },
                 child: Container(
@@ -1522,13 +945,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 onChanged: (v) {
                   setLocal(() {});
                   setState(() => _deviceVolume = v);
-                  // 调节 Agora 远端播放音量
-                  if (_remoteUid != null) {
-                    _engine?.adjustUserPlaybackSignalVolume(
-                      uid: _remoteUid!,
-                      volume: v.toInt(),
-                    );
-                  }
+                  unawaited(_stream.setVolume(v / 100));
                 },
               ),
             ),
@@ -1687,9 +1104,12 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                 ? Icons.hourglass_top_rounded
                 : Icons.photo_camera_rounded,
             label: _takingPhoto ? '处理中...' : '拍照',
-            sublabel: _agoraJoined ? '截取当前画面' : '等待视频连接',
+            sublabel: _stream.hasVideo ? '截取当前画面' : '等待视频连接',
             color: AppColors.primary,
-            enabled: _agoraJoined && !_takingPhoto && !_recording,
+            enabled: _stream.hasVideo &&
+                !_takingPhoto &&
+                !_recording &&
+                !_savingRecording,
             recording: false,
             onTap: () {
               HapticFeedback.mediumImpact();
@@ -1703,7 +1123,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
             label: _recording ? '停止 $mm:$ss' : '录像',
             sublabel: _recording ? '点击提前停止' : '最长 30 秒',
             color: _recording ? Colors.redAccent : AppColors.primaryDim,
-            enabled: _agoraJoined && !_takingPhoto,
+            enabled: !_startingRecording &&
+                (_recording || _stream.hasVideo) &&
+                !_takingPhoto &&
+                !_savingRecording,
             recording: _recording,
             onTap: () {
               HapticFeedback.mediumImpact();
@@ -1860,19 +1283,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   }
 
   Future<void> _openGallery() async {
-    // 进入媒体库前先离开频道，避免后台持续刷 Agora 音视频回调
-    if (_agoraJoined) {
-      await _sendMotorStopOverAgora(_engine, _motorStreamId);
-      _resetMotorStream();
-      await _engine?.leaveChannel();
-      if (mounted)
-        setState(() {
-          _agoraJoined = false;
-          _remoteUid = null;
-        });
-      AppLog.debug('[Agora] 进入媒体库，已离开频道');
-    }
-
+    await _pauseStream();
     if (!mounted) return;
     await Navigator.push(
         context,
@@ -1883,11 +1294,10 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
           ),
         ));
 
-    // 媒体库返回后重新加入频道
+    // 媒体库返回后恢复观看
     if (mounted) {
-      AppLog.debug('[Agora] 媒体库返回，重新加入频道...');
       _loadRecentMedia();
-      _rejoinChannel(); // 只 join，不重建引擎
+      _resumeStream();
     }
   }
 
@@ -1954,9 +1364,9 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     );
   }
 
-  // ── 对讲标签（Agora 开麦克对讲）────────────────────────────
+  // ── 对讲标签（PCM 麦克风采集）────────────────────────────
   Widget _buildIntercom() {
-    final isReady = _agoraJoined;
+    final isReady = _streamConnected && !_stream.talkBusy;
     return LayoutBuilder(
       builder: (context, constraints) {
         final h = constraints.maxHeight;
@@ -2065,11 +1475,11 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
                     ),
                   ),
                   // 错误信息
-                  if (_agoraError != null) ...[
+                  if (_streamError != null) ...[
                     SizedBox(height: 16),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Text(_agoraError!,
+                      child: Text(_streamError!,
                           style: TextStyle(
                               fontFamily: AppFonts.primary,
                               fontSize: 11,
@@ -2470,20 +1880,12 @@ class _JoystickPadState extends State<_JoystickPad> {
 // ── 全屏视频页（横屏全屏 + 透明质感覆盖层）────────────────
 
 class _FullscreenVideoPage extends StatefulWidget {
-  final RtcEngine engine;
-  final String channelName;
-  final int? remoteUid;
+  final DeviceStreamSession session;
   final void Function(int, int, int, int) onControl;
-  final bool micOn;
-  final Future<void> Function() onToggleMic;
 
   const _FullscreenVideoPage({
-    required this.engine,
-    required this.channelName,
-    required this.remoteUid,
+    required this.session,
     required this.onControl,
-    required this.micOn,
-    required this.onToggleMic,
   });
 
   @override
@@ -2505,7 +1907,8 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
   @override
   void initState() {
     super.initState();
-    _micOn = widget.micOn;
+    _micOn = widget.session.talking;
+    widget.session.addListener(_updateSession);
     // 全屏时横屏
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
@@ -2514,8 +1917,13 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
+  void _updateSession() {
+    if (mounted) setState(() => _micOn = widget.session.talking);
+  }
+
   @override
   void dispose() {
+    widget.session.removeListener(_updateSession);
     // 退出全屏时恢复竖屏
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -2523,8 +1931,7 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
   }
 
   Future<void> _toggleMic() async {
-    await widget.onToggleMic();
-    setState(() => _micOn = !_micOn);
+    await widget.session.toggleTalk();
   }
 
   @override
@@ -2537,16 +1944,13 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
         fit: StackFit.expand,
         children: [
           // ── 视频 ───────────────────────────────────────
-          if (widget.remoteUid != null && Platform.isAndroid)
-            AgoraVideoView(
-              controller: VideoViewController.remote(
-                rtcEngine: widget.engine,
-                canvas: VideoCanvas(uid: widget.remoteUid!),
-                connection: RtcConnection(channelId: widget.channelName),
-              ),
-            )
+          if (widget.session.hasVideo)
+            JpegStreamView(
+                frames: widget.session.latestJpeg,
+                diagnostics: widget.session.diagnostics,
+                view: 'fullscreen')
           else
-            Center(
+            const Center(
                 child: Icon(Icons.videocam_off_rounded,
                     size: 64, color: Colors.white24)),
 
@@ -2569,7 +1973,7 @@ class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
                   active: _speakerOn,
                   onTap: () async {
                     setState(() => _speakerOn = !_speakerOn);
-                    await widget.engine.setEnableSpeakerphone(_speakerOn);
+                    await widget.session.setVolume(_speakerOn ? 1 : 0);
                   },
                 ),
                 SizedBox(width: 10),

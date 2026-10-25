@@ -9,14 +9,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "67.0.0"
-  agora_rtc_engine:
-    dependency: "direct main"
-    description:
-      name: agora_rtc_engine
-      sha256: d9a88129b8fdc36ec5246331f36486b198dd7eb41ee68bfb54b289be8d60c6df
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "6.5.4"
   analyzer:
     dependency: transitive
     description:
@@ -925,14 +917,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.0.5"
-  iris_method_channel:
-    dependency: transitive
-    description:
-      name: iris_method_channel
-      sha256: "114bbe541369add8dd0727858e7df5764f375e3fb88374ad487301733fddb57f"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "2.2.5"
   jni:
     dependency: transitive
     description:
@@ -1341,6 +1325,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "7.0.2"
+  petpogo_device_media:
+    dependency: "direct main"
+    description:
+      path: "packages/petpogo_device_media"
+      relative: true
+    source: path
+    version: "0.1.0"
   platform:
     dependency: transitive
     description:

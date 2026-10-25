@@ -2,6 +2,7 @@
 # ════════════════════════════════════════════════
 #  宠联芯 实时日志查看器
 #  用法：./log.sh [--full] [--clear] [--request ID] [--level warning]
+#    --video 只看视频链路；--stream ID 只看某次观看；--dump 读取历史后退出
 #    --module 名称  按模块筛选；--since '10-21 10:00:00.000' 从指定时间读取
 # ════════════════════════════════════════════════
 
@@ -9,6 +10,8 @@ ADB=~/Library/Android/sdk/platform-tools/adb
 PKG="com.junxin.petpogo_and"
 FULL_MODE=false
 CLEAR_HISTORY=false
+DUMP_MODE=false
+STREAM_FILTER=""
 REQUEST_FILTER=""
 LEVEL_FILTER=""
 MODULE_FILTER=""
@@ -18,19 +21,23 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --full) FULL_MODE=true; shift ;;
     --clear) CLEAR_HISTORY=true; shift ;;
-    --request|--level|--module|--since)
+    --video) MODULE_FILTER="device.stream."; shift ;;
+    --dump) DUMP_MODE=true; shift ;;
+    --request|--level|--module|--since|--stream)
       if [[ $# -lt 2 || -z "$2" ]]; then
         echo "❌ $1 需要一个参数"; exit 1
       fi
       case "$1" in
         --request) REQUEST_FILTER="$2" ;;
+        --stream) STREAM_FILTER="$2" ;;
         --level) LEVEL_FILTER="$2" ;;
         --module) MODULE_FILTER="$2" ;;
         --since) SINCE_FILTER="$2" ;;
       esac
       shift 2 ;;
     --help|-h)
-      echo "用法：./log.sh [--full] [--clear] [--request ID] [--level warning|error|info] [--module 名称] [--since 时间]"
+      echo "用法：./log.sh [--full] [--clear] [--request ID] [--level warning|error|info] [--module 名称] [--since 时间] [--video] [--stream ID] [--dump]"
+      echo "视频实时日志：./log.sh --video；历史快照：./log.sh --video --dump"
       exit 0 ;;
     *) echo "❌ 未知参数：$1"; exit 1 ;;
   esac
@@ -83,10 +90,13 @@ fi
 
 colorize() {
   while IFS= read -r line; do
+    [[ -n "$STREAM_FILTER" && "$line" != *"\"streamId\":\"$STREAM_FILTER\""* ]] && continue
     [[ -n "$REQUEST_FILTER" && "$line" != *"$REQUEST_FILTER"* ]] && continue
     [[ -n "$LEVEL_FILTER" && "$line" != *"\"level\":\"$LEVEL_FILTER\""* ]] && continue
     [[ -n "$MODULE_FILTER" && "$line" != *"$MODULE_FILTER"* ]] && continue
-    if echo "$line" | grep -qE "✅|成功|loggedIn|\[API 响应\]"; then
+    if [[ "$line" == *'"level":"warning"'* || "$line" == *'"level":"error"'* ]]; then
+      echo -e "\033[31m$line\033[0m"
+    elif echo "$line" | grep -qE "✅|成功|loggedIn|\[API 响应\]"; then
       echo -e "\033[32m$line\033[0m"
     elif echo "$line" | grep -qE "✗|失败|[Ee]rror|[Ee]xception|\[API 错误\]"; then
       echo -e "\033[31m$line\033[0m"
@@ -103,6 +113,9 @@ colorize() {
 }
 
 LOG_ARGS=(--pid="$PID")
+if $DUMP_MODE; then
+  LOG_ARGS+=(-d)
+fi
 if [[ -n "$SINCE_FILTER" ]]; then
   LOG_ARGS+=(-T "$SINCE_FILTER")
 fi

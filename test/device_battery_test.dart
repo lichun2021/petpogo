@@ -1,17 +1,21 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:petpogo_app/core/api/api_client.dart';
 import 'package:petpogo_app/core/api/peer_api_client.dart';
 import 'package:petpogo_app/core/providers/account_session_provider.dart';
 import 'package:petpogo_app/features/device/data/models/device_model.dart';
+import 'package:petpogo_app/features/device/data/models/media_model.dart';
 import 'package:petpogo_app/features/device/data/repository/device_repository.dart';
+import 'package:petpogo_app/features/device/data/repository/media_repository.dart';
 import 'package:petpogo_app/features/device/data/wifi_setup_capability.dart';
 import 'package:petpogo_app/features/device/device_detail_page.dart';
+import 'package:petpogo_app/features/device/robot_device_page.dart';
+import 'package:petpogo_app/features/device/stream/device_stream_api.dart';
 import 'package:petpogo_app/features/pet/data/models/pet_peer_models.dart';
 import 'package:petpogo_app/features/pet/data/repository/pet_peer_repository.dart';
 
@@ -61,6 +65,20 @@ class _Devices implements DeviceRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _Media implements MediaRepository {
+  @override
+  Future<MediaListResult> fetchList({
+    String? deviceId,
+    int? type,
+    int page = 1,
+    int pageSize = 20,
+  }) async =>
+      MediaListResult(total: 0, page: page, pageSize: pageSize, list: const []);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
   PetPeerRepository repo(_Adapter adapter) => PetPeerRepository(
       PeerApiClient(ApiClient(token: 'test-session', adapter: adapter)));
@@ -69,7 +87,8 @@ void main() {
       () async {
     final adapter = _Adapter();
     final battery = await repo(adapter).fetchBattery(mac: _mac);
-    final request = adapter.requests.single;
+    final request = adapter.requests.singleWhere(
+        (request) => request.uri.path.endsWith('/device/property/query'));
     expect(request.method, 'GET');
     expect(request.uri.path, '/sdkapi/peer/device/property/query');
     expect(request.uri.queryParameters, {'mac': _mac});
@@ -146,18 +165,85 @@ void main() {
     expect(adapter.requests, hasLength(2));
   });
 
-  Future<void> mount(WidgetTester tester, _Adapter adapter) async {
+  Future<void> mount(WidgetTester tester, _Adapter adapter,
+      {bool robot = false}) async {
     await tester.pumpWidget(ProviderScope(
       overrides: [
         deviceRepositoryProvider.overrideWithValue(_Devices()),
         deviceListProvider.overrideWith((_) => DeviceListNotifier(_Devices())),
         wifiCollarMacsProvider.overrideWith((_) async => <String>{}),
         petPeerRepositoryProvider.overrideWithValue(repo(adapter)),
+        mediaRepositoryProvider.overrideWithValue(_Media()),
+        deviceStreamApiProvider.overrideWithValue(
+            DeviceStreamApi(PeerApiClient(ApiClient(adapter: adapter)))),
       ],
-      child:
-          const MaterialApp(home: DeviceDetailPage(mac: _mac, name: '毛毛的项圈')),
+      child: MaterialApp(
+          home: robot
+              ? const RobotDevicePage(mac: _mac, name: '毛毛的机器人')
+              : const DeviceDetailPage(mac: _mac, name: '毛毛的项圈')),
     ));
   }
+
+  Future<void> mountRobot(WidgetTester tester, _Adapter adapter) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    const permissions =
+        MethodChannel('flutter.baseflow.com/permissions/methods');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    // 电量查询独立于摄像头：即使视频初始化失败，也能展示电量。
+    messenger.setMockMethodCallHandler(permissions, (_) async {
+      throw PlatformException(code: 'camera-unavailable');
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(permissions, null));
+    await mount(tester, adapter, robot: true);
+    // 机器人页包含持续动画，按帧推进而不等待全部动画结束。
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+
+  testWidgets('robot details use the same signed device battery endpoint',
+      (tester) async {
+    final adapter = _Adapter();
+    await mountRobot(tester, adapter);
+    expect(find.text('电量 57%'), findsOneWidget);
+    final request = adapter.requests.singleWhere(
+        (request) => request.uri.path.endsWith('/device/property/query'));
+    expect(request.method, 'GET');
+    expect(request.uri.path, '/sdkapi/peer/device/property/query');
+    expect(request.uri.queryParameters, {'mac': _mac});
+    expect(request.headers['Authorization'], 'Bearer test-session');
+    expect(request.headers['x-signature-version'], '2');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('robot controls remain visible while battery loads',
+      (tester) async {
+    final pending = Completer<void>();
+    final adapter = _Adapter()..pendingBattery = pending;
+    await mountRobot(tester, adapter);
+    expect(find.text('电量 -'), findsOneWidget);
+    expect(find.text('毛毛的机器人'), findsOneWidget);
+    expect(find.text('遥控'), findsOneWidget);
+    expect(find.text('摄影'), findsOneWidget);
+    pending.complete();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('电量 57%'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('robot details show unknown battery when the query fails',
+      (tester) async {
+    final adapter = _Adapter()
+      ..response = {'code': 4, 'info': null, 'tip': '设备暂不可用'};
+    await mountRobot(tester, adapter);
+    expect(find.text('电量 -'), findsOneWidget);
+    expect(find.text('毛毛的机器人'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('collar details show the real percentage from device properties',
       (tester) async {

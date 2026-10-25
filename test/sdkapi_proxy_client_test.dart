@@ -144,8 +144,7 @@ void main() {
     expect(await repo.fetchList(), hasLength(1));
     expect(adapter.requests.last.uri.path, '/sdkapi/peer/world/country/list');
   });
-  test('AI multipart keeps URL and pet ID; recording stop retains long budget',
-      () async {
+  test('AI multipart keeps URL and pet ID with the analysis timeout', () async {
     final adapter = RecordingAdapter();
     final client = ApiClient(adapter: adapter);
     await client.post(ApiEndpoints.aiVoiceAnalyze,
@@ -159,8 +158,7 @@ void main() {
     expect(adapter.bodies.last, contains('name="url"'));
     expect(adapter.bodies.last, contains('name="pet_id"'));
     expect(adapter.bodies.last, isNot(contains('name="account"')));
-    await client.post(ApiEndpoints.recordingStop, data: {'device_no': 'm'});
-    expect(adapter.requests.last.receiveTimeout, const Duration(seconds: 310));
+    expect(adapter.requests.last.receiveTimeout, const Duration(seconds: 130));
   });
   test('SSE stays streaming through the proxy and preserves split UTF-8 frames',
       () async {

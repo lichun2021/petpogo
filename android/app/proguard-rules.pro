@@ -23,9 +23,6 @@
 -keep class com.tencent.imsdk.** { *; }
 -keep class com.tencent.** { *; }
 
-# Agora RTC SDK
--keep class io.agora.**{*;}
-
 # 极光推送
 -dontoptimize
 -dontpreverify

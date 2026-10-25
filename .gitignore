@@ -75,3 +75,5 @@ android/key.properties
 !/test/pet_location_refresh_test.dart
 !/test/pet_entry_avatar_test.dart
 /tools
+
+!/test/device_stream_test.dart
