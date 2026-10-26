@@ -17,7 +17,6 @@ import '../device/data/repository/device_repository.dart';
 import '../device/data/models/media_model.dart';
 import '../device/data/repository/media_repository.dart';
 import '../device/media_gallery_page.dart';
-import '../pet/data/repository/pet_peer_repository.dart';
 import 'device_detail_page.dart';
 import '../../core/providers/account_session_provider.dart';
 import 'stream/device_stream_session.dart';
@@ -28,6 +27,9 @@ import '../bind_device/device_wifi_setup_entry.dart';
 
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 import 'robot_ai_home_page.dart';
+import 'widgets/hardware_device_header.dart';
+import 'widgets/device_battery_status.dart';
+import 'controller/device_entry_guard.dart';
 import '../../shared/utils/error_presenter.dart';
 
 // ── 机器人设备详情页 ─────────────────────────────────────
@@ -71,23 +73,16 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
   int _recordSeconds = 0;
   static const _maxRecordSec = 30;
   Timer? _recordTimer;
-  Timer? _batteryRefreshTimer;
   List<MediaItem> _recentMedia = [];
 
   @override
   void initState() {
     super.initState();
+
     WidgetsBinding.instance.addObserver(this);
     _stream = ref.read(deviceStreamFactoryProvider)(widget.mac);
     _stream.addListener(_onStreamChanged);
-    _batteryRefreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      if (mounted &&
-          !_sessionRevoked &&
-          !_backgroundPaused &&
-          (_fullscreenOpen || ModalRoute.of(context)?.isCurrent == true)) {
-        ref.invalidate(deviceBatteryProvider(widget.mac));
-      }
-    });
+
     final deviceRepo = ref.read(deviceRepositoryProvider);
     _motors = HttpMotorController((ld, ls, rd, rs) async {
       if (_sessionRevoked) return;
@@ -159,7 +154,6 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
     _accountSubscription.close();
     _stream.removeListener(_onStreamChanged);
     _recordTimer?.cancel();
-    _batteryRefreshTimer?.cancel();
     _tabController.dispose();
     unawaited(_motors.close());
     unawaited(_stream.release().catchError((_) {}));
@@ -484,6 +478,7 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         devices: devices,
         currentMac: widget.mac,
         onSelect: (device) {
+          if (!DeviceEntryGuard.allow(context, device)) return;
           Navigator.pop(context);
           if (device.mac == widget.mac) return;
           final isRobot = device.isRobot;
@@ -537,123 +532,49 @@ class _RobotDevicePageState extends ConsumerState<RobotDevicePage>
         ));
   }
 
-  // ── 顶部栏（红橙渐变，与 device_detail 风格一致）────────
+  // ── 机器人和项圈共用硬件顶部栏 ──────────────────────────
   Widget _buildTopBar(BuildContext context) {
-    final battery = ref.watch(deviceBatteryProvider(widget.mac)).valueOrNull;
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.primary, AppColors.primaryContainer],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(children: [
-            // 返回
-            GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Icon(Icons.arrow_back_ios_rounded,
-                  size: 20, color: AppColors.onPrimary),
-            ),
-            SizedBox(width: 8),
-            // 设备名 + 下拉（Expanded 确保小屏幕全部显示）
-            Expanded(
-              child: GestureDetector(
-                onTap: () => _showDeviceSwitcher(context),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      Flexible(
-                        child: Text(
-                          widget.name,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                          style: TextStyle(
-                            fontFamily: AppFonts.primary,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.onPrimary,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 4),
-                      Icon(Icons.keyboard_arrow_down_rounded,
-                          color: AppColors.onPrimary, size: 22),
-                    ]),
-                    const SizedBox(height: 4),
-                    Row(children: [
-                      Icon(Icons.battery_std_rounded,
-                          size: 12, color: AppColors.onPrimary),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          battery?.known == true
-                              ? '电量 ${battery!.battery}%'
-                              : '电量 -',
-                          style: TextStyle(
-                            fontFamily: AppFonts.primary,
-                            fontSize: 11,
-                            color: AppColors.onPrimary,
-                          ),
-                        ),
-                      ),
-                    ]),
-                  ],
-                ),
-              ),
-            ),
-            if (ref.watch(deviceListProvider).devices.any((device) =>
-                device.mac.toUpperCase() == widget.mac.toUpperCase() &&
-                device.isOwner &&
-                !device.isShared))
-              IconButton(
-                  icon: Icon(Icons.wifi_rounded, color: AppColors.onPrimary),
-                  tooltip: '更换 WiFi / 重新配网',
-                  onPressed: () async {
-                    final device = ref
-                        .read(deviceListProvider)
-                        .devices
-                        .firstWhere((device) =>
-                            device.mac.toUpperCase() ==
-                            widget.mac.toUpperCase());
-                    await _pauseStream();
-                    if (!mounted) return;
-                    await openRobotWifiSetup(context,
-                        productKey: device.productKey,
-                        existingMac: widget.mac,
-                        deviceName: widget.name);
-                    if (mounted) {
-                      _resumeStream();
-                      ref.read(deviceListProvider.notifier).load();
-                    }
-                  }),
-            // AI 荧光按钮
-            _AiGlowButton(
-              onTap: () async {
-                // 进入 AI 页前先暂停推流
-                await _pauseStream();
-                if (!mounted) return;
-                await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => RobotAiHomePage(
-                        mac: widget.mac,
-                        deviceName: widget.name,
-                      ),
-                    ));
-                // 返回后重新连接
-                if (mounted) _resumeStream();
-              },
-            ),
-          ]),
-        ),
-      ),
+    return HardwareDeviceHeader(
+      name: widget.name,
+      batteryIndicator: DeviceBatteryStatus(mac: widget.mac),
+      onBack: () => Navigator.pop(context),
+      onSwitchDevice: () => _showDeviceSwitcher(context),
+      actions: [
+        if (ref.watch(deviceListProvider).devices.any((device) =>
+            device.mac.toUpperCase() == widget.mac.toUpperCase() &&
+            device.isOwner &&
+            !device.isShared))
+          IconButton(
+            icon: const Icon(Icons.wifi_rounded),
+            tooltip: '更换 WiFi / 重新配网',
+            onPressed: () async {
+              final device = ref.read(deviceListProvider).devices.firstWhere(
+                  (device) =>
+                      device.mac.toUpperCase() == widget.mac.toUpperCase());
+              await _pauseStream();
+              if (!context.mounted) return;
+              await openRobotWifiSetup(context,
+                  productKey: device.productKey,
+                  existingMac: widget.mac,
+                  deviceName: widget.name);
+              if (mounted) {
+                _resumeStream();
+                ref.read(deviceListProvider.notifier).load();
+              }
+            },
+          ),
+        _AiGlowButton(onTap: () async {
+          await _pauseStream();
+          if (!context.mounted) return;
+          await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    RobotAiHomePage(mac: widget.mac, deviceName: widget.name),
+              ));
+          if (mounted) _resumeStream();
+        }),
+      ],
     );
   }
 
@@ -2285,56 +2206,61 @@ class _AiGlowButtonState extends State<_AiGlowButton>
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: widget.onTap,
-      child: AnimatedBuilder(
-        animation: _ctrl,
-        builder: (_, __) {
-          // shimmer 光从 -1.0 扫到 2.0（含进出过渡）
-          final sweep = _ctrl.value * 3.0 - 1.0;
-          return Container(
-            width: 40,
-            height: 26,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primary, AppColors.primaryContainer],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(7),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.45),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(7),
-              child: Stack(children: [
-                // 电流扫光层
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _ShimmerPainter(position: sweep),
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Center(
+              child: AnimatedBuilder(
+            animation: _ctrl,
+            builder: (_, __) {
+              // shimmer 光从 -1.0 扫到 2.0（含进出过渡）
+              final sweep = _ctrl.value * 3.0 - 1.0;
+              return Container(
+                width: 40,
+                height: 26,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.primary, AppColors.primaryContainer],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ),
-                // AI 文字
-                Center(
-                  child: Text(
-                    'AI',
-                    style: TextStyle(
-                      fontFamily: AppFonts.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.onPrimary,
-                      letterSpacing: 1,
+                  borderRadius: BorderRadius.circular(7),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.45),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-                  ),
+                  ],
                 ),
-              ]),
-            ),
-          );
-        },
-      ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(7),
+                  child: Stack(children: [
+                    // 电流扫光层
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _ShimmerPainter(position: sweep),
+                      ),
+                    ),
+                    // AI 文字
+                    Center(
+                      child: Text(
+                        'AI',
+                        style: TextStyle(
+                          fontFamily: AppFonts.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.onPrimary,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ),
+                  ]),
+                ),
+              );
+            },
+          ))),
     );
   }
 }

@@ -65,6 +65,28 @@ class PetPositionModel {
   double get lat => double.tryParse(latitude) ?? 0;
   double get lng => double.tryParse(longitude) ?? 0;
 
+  /// 接口的“未上报”等状态文字不能作为真实地址，也不能阻止坐标解析。
+  String get reportedAddress {
+    final value = address.trim();
+    const missing = {
+      '',
+      '-',
+      '--',
+      '未知',
+      '未知地址',
+      '暂无地址',
+      '未上报',
+      '地址未上报',
+      '未上报地址',
+      '地址没有上报',
+      '地址尚未上报',
+      '未获取地址',
+      'null',
+      'unknown',
+    };
+    return missing.contains(value.toLowerCase()) ? '' : value;
+  }
+
   String get updateDisplay {
     if (reportTime == 0) return '未知';
     final dt = DateTime.fromMillisecondsSinceEpoch(reportTime);
@@ -176,25 +198,34 @@ class PetFenceStatus {
   }
 }
 
-/// 设备电量模型 — 对应 GET /device/property/query 的 info.battery。
+/// 设备电量及充电状态 — 对应 GET /device/property/query 的 info。
 class PetBattery {
   final int battery; // 电量百分比 0-100，-1=未知
   final bool known; // false=未上报或返回值无效
+  final bool isCharging;
 
-  const PetBattery({this.battery = -1, this.known = false});
+  const PetBattery({
+    this.battery = -1,
+    this.known = false,
+    this.isCharging = false,
+  });
 
   /// 是否低电（低于 20%）
   bool get isLow => known && battery >= 0 && battery < 20;
 
   factory PetBattery.fromJson(Map<String, dynamic> json) {
+    final charge = json['charge'];
+    final isCharging = charge == true ||
+        (charge is String && charge.trim().toLowerCase() == 'true');
     final b = json['battery'] ?? json['power'] ?? json['batteryPercent'];
     final value = b is num ? b : num.tryParse(b?.toString().trim() ?? '');
     if (value == null || !value.isFinite || value < 0 || value > 100) {
-      return const PetBattery();
+      return PetBattery(isCharging: isCharging);
     }
     return PetBattery(
       battery: value.toInt(),
       known: true,
+      isCharging: isCharging,
     );
   }
 }

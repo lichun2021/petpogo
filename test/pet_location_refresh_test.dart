@@ -10,6 +10,7 @@ import 'package:petpogo_app/features/pet/data/models/pet_peer_models.dart';
 import 'package:petpogo_app/features/pet/data/repository/pet_peer_repository.dart';
 import 'package:petpogo_app/features/pet/fence_manage_page.dart';
 import 'package:petpogo_app/features/pet/pet_location_page.dart';
+import 'package:petpogo_app/features/pet/services/pet_location_services.dart';
 import 'package:petpogo_app/shared/utils/coord_transform.dart';
 
 // Use a local tile image: these tests exercise the map and controls without
@@ -85,10 +86,12 @@ class _Positions implements PetPeerRepository {
     reportTime: 1792627200000,
   );
   Completer<PetPositionModel>? pending;
+  Object? error;
   @override
   Future<PetPositionModel> fetchPosition(
       {String? mac, String? deviceId}) async {
     queries++;
+    if (error != null) throw error!;
     return pending?.future ?? Future.value(position);
   }
 
@@ -107,13 +110,20 @@ class _Positions implements PetPeerRepository {
 }
 
 Future<void> _mount(WidgetTester tester, _Positions repo,
-    {Widget? child, double scale = 1}) async {
+    {Widget? child,
+    double scale = 1,
+    DateTime Function()? clock,
+    PetAddressLookup? addressLookup}) async {
   final previous = HttpOverrides.current;
   HttpOverrides.global = _ImageOverrides();
   addTearDown(() => HttpOverrides.global = previous);
   await tester.pumpWidget(ProviderScope(
       overrides: [
         petPeerRepositoryProvider.overrideWithValue(repo),
+        petLocationClockProvider
+            .overrideWithValue(clock ?? () => DateTime(2026, 10, 23, 9, 30)),
+        petAddressLookupProvider
+            .overrideWithValue(addressLookup ?? (lat, lng) async => ''),
       ],
       child: MaterialApp(
         builder: (context, child) => MediaQuery(
@@ -195,19 +205,191 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('unchanged report time remains visible and says no new report',
+  testWidgets(
+      'refresh time advances even when coordinates and report time are unchanged',
       (tester) async {
     final repo = _Positions();
-    await _mount(tester, repo);
-    final time = DateTime.fromMillisecondsSinceEpoch(repo.position.reportTime);
-    final label =
-        '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+    var now = DateTime(2026, 10, 23, 9, 30);
+    await _mount(tester, repo, clock: () => now);
+    final originalReport =
+        tester.widget<Text>(find.textContaining('设备上报 ')).data;
+    expect(find.text('刷新 09:30:00'), findsOneWidget);
+    now = now.add(const Duration(seconds: 7));
     await tester.tap(find.byIcon(Icons.refresh_rounded));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(repo.queries, 2);
     expect(find.text('设备尚未上报新位置'), findsOneWidget);
-    expect(find.text(label), findsOneWidget);
+    expect(find.text('刷新 09:30:07'), findsOneWidget);
+    expect(find.text(originalReport!), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+      'failed refresh shows the attempt time and keeps the last report time',
+      (tester) async {
+    final repo = _Positions();
+    var now = DateTime(2026, 10, 23, 9, 30);
+    await _mount(tester, repo, clock: () => now);
+    final originalReport =
+        tester.widget<Text>(find.textContaining('设备上报 ')).data;
+    now = now.add(const Duration(seconds: 12));
+    repo.error = StateError('test connection failed');
+    await tester.tap(find.byIcon(Icons.refresh_rounded));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('刷新失败 09:30:12'), findsOneWidget);
+    expect(find.text(originalReport!), findsOneWidget);
+    expect(find.byType(MarkerLayer), findsOneWidget);
+  });
+
+  test('unreported-address placeholders are missing data rather than addresses',
+      () {
+    for (final address in [
+      '',
+      ' ',
+      '地址未上报',
+      '未上报地址',
+      '地址没有上报',
+      '未知',
+      'null',
+      'UNKNOWN'
+    ]) {
+      expect(PetPositionModel(address: address).reportedAddress, isEmpty);
+    }
+    expect(
+        const PetPositionModel(address: ' 深圳市南山区 ').reportedAddress, '深圳市南山区');
+  });
+
+  testWidgets('valid device coordinates resolve an unreported address',
+      (tester) async {
+    final repo = _Positions()
+      ..position = const PetPositionModel(
+        latitude: '22.543',
+        longitude: '113.935',
+        address: '地址未上报',
+        reportTime: 1792627200000,
+      );
+    final coordinates = <(double, double)>[];
+    await _mount(tester, repo, addressLookup: (lat, lng) async {
+      coordinates.add((lat, lng));
+      return '深圳市南山区';
+    });
+    expect(coordinates, [(22.543, 113.935)]);
+    expect(find.textContaining('深圳市南山区', findRichText: true), findsOneWidget);
+    expect(find.textContaining('地址未上报', findRichText: true), findsNothing);
+    expect(find.byType(MarkerLayer), findsOneWidget);
+  });
+
+  testWidgets('same coordinates keep their resolved address across refreshes',
+      (tester) async {
+    final repo = _Positions()
+      ..position = const PetPositionModel(
+        latitude: '22.543',
+        longitude: '113.935',
+        address: '',
+        reportTime: 1792627200000,
+      );
+    var lookups = 0;
+    await _mount(tester, repo, addressLookup: (lat, lng) async {
+      lookups++;
+      return '深圳市南山区';
+    });
+    repo.position = const PetPositionModel(
+      latitude: '22.5430',
+      longitude: '113.9350',
+      address: '地址未上报',
+      reportTime: 1792627260000,
+    );
+    await tester.tap(find.byIcon(Icons.refresh_rounded));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.textContaining('深圳市南山区', findRichText: true), findsOneWidget);
+    expect(lookups, 1);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('an old address lookup cannot overwrite the new device position',
+      (tester) async {
+    final repo = _Positions()
+      ..position = const PetPositionModel(
+        latitude: '22.543',
+        longitude: '113.935',
+        reportTime: 1792627200000,
+      );
+    final oldLookup = Completer<String>();
+    await _mount(tester, repo, addressLookup: (lat, lng) async {
+      if (lat == 22.543) return oldLookup.future;
+      return '新的位置地址';
+    });
+    repo.position = const PetPositionModel(
+      latitude: '23.13',
+      longitude: '113.26',
+      reportTime: 1792627260000,
+    );
+    await tester.tap(find.byIcon(Icons.refresh_rounded));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    oldLookup.complete('旧的位置地址');
+    await tester.pump();
+    expect(find.textContaining('新的位置地址', findRichText: true), findsOneWidget);
+    expect(find.textContaining('旧的位置地址', findRichText: true), findsNothing);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('refresh during address lookup reuses the pending lookup',
+      (tester) async {
+    final repo = _Positions()
+      ..position = const PetPositionModel(
+        latitude: '22.543',
+        longitude: '113.935',
+        reportTime: 1792627200000,
+      );
+    final pending = Completer<String>();
+    var lookups = 0;
+    await _mount(tester, repo, addressLookup: (lat, lng) {
+      lookups++;
+      return pending.future;
+    });
+    await tester.tap(find.byIcon(Icons.refresh_rounded));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(lookups, 1);
+    pending.complete('深圳市南山区');
+    await tester.pump();
+    expect(find.textContaining('深圳市南山区', findRichText: true), findsOneWidget);
+    expect(find.text('正在解析地址...'), findsNothing);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+      'address lookup failure keeps coordinates and can retry on refresh',
+      (tester) async {
+    final repo = _Positions()
+      ..position = const PetPositionModel(
+        latitude: '22.543',
+        longitude: '113.935',
+        reportTime: 1792627200000,
+      );
+    var lookups = 0;
+    await _mount(tester, repo, addressLookup: (lat, lng) async {
+      if (++lookups == 1) throw StateError('test geocoder unavailable');
+      return '深圳市南山区';
+    });
+    expect(find.textContaining('地址暂未解析', findRichText: true), findsOneWidget);
+    expect(find.textContaining('22.543, 113.935', findRichText: true),
+        findsOneWidget);
+    expect(find.byType(MarkerLayer), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byIcon(Icons.refresh_rounded));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(lookups, 2);
+    expect(find.textContaining('深圳市南山区', findRichText: true), findsOneWidget);
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpWidget(const SizedBox());
   });

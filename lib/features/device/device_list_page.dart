@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'controller/device_actions.dart';
+import 'controller/device_entry_guard.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/theme/app_colors.dart';
@@ -98,7 +99,7 @@ class DeviceListPage extends ConsumerWidget {
         itemCount: state.devices.length,
         separatorBuilder: (_, __) => SizedBox(height: 14),
         itemBuilder: (_, i) => _DeviceCard(
-          key: ValueKey(state.devices[i].mac), device: state.devices[i]),
+            key: ValueKey(state.devices[i].mac), device: state.devices[i]),
       ),
     );
   }
@@ -220,6 +221,7 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
 
     return GestureDetector(
       onTap: () async {
+        if (!DeviceEntryGuard.allow(context, device)) return;
         HapticFeedback.selectionClick();
         final deviceType = device.productType;
         await Navigator.push(
@@ -420,7 +422,9 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
                               icon: Icons.link_off_rounded,
                               label: _unbinding ? '解绑中…' : '解绑设备',
                               color: AppColors.statusAlert,
-                              onTap: _unbinding ? null : () => _confirmUnbind(context, ref),
+                              onTap: _unbinding
+                                  ? null
+                                  : () => _confirmUnbind(context, ref),
                             ),
                           ]))),
             ),
@@ -489,11 +493,11 @@ class _DeviceCardState extends ConsumerState<_DeviceCard> {
     }
   }
 
-
   Widget _buildPetRow(BuildContext context) {
     final pet = _pet!;
     return GestureDetector(
       onTap: () async {
+        if (!DeviceEntryGuard.allow(context, widget.device)) return;
         HapticFeedback.selectionClick();
         final deviceType = widget.device.productType;
         await Navigator.push(

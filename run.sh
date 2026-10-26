@@ -5,6 +5,9 @@
 #        ./run.sh --release   （打 Release 包）
 # ════════════════════════════════════════════════
 
+# 与 pubspec.lock 的依赖源保持一致，避免切换源后重新解析版本。
+export PUB_HOSTED_URL="${PUB_HOSTED_URL:-https://pub.flutter-io.cn}"
+
 ADB=~/Library/Android/sdk/platform-tools/adb
 EMULATOR=~/Library/Android/sdk/emulator/emulator
 AVD_NAME="Pixel9_API35"
@@ -82,7 +85,11 @@ fi
 # ── Step 2: 打包 ────────────────────────────────
 echo ""
 echo "▶ [2/3] Flutter 打包 ($BUILD_MODE)..."
-flutter build apk $BUILD_MODE
+if ! flutter pub get --enforce-lockfile; then
+  echo "  ❌ 依赖同步失败，请检查网络或 pubspec.lock"
+  exit 1
+fi
+flutter build apk $BUILD_MODE --no-pub
 
 if [ $? -ne 0 ]; then
   echo "  ❌ 打包失败，请查看上方错误"

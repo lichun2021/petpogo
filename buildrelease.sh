@@ -17,6 +17,9 @@
 
 set -e  # 遇到错误立即退出
 
+# 与 pubspec.lock 的依赖源保持一致，禁止打包时隐式更新依赖。
+export PUB_HOSTED_URL="${PUB_HOSTED_URL:-https://pub.flutter-io.cn}"
+
 # ── 颜色定义 ──────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -111,7 +114,7 @@ mkdir -p "${OUTPUT_DIR}"
 # STEP 1: Flutter pub get
 # ══════════════════════════════════════════════════════════════
 echo -e "${BLUE}${BOLD}▶ [准备] 同步依赖包...${NC}"
-flutter pub get
+flutter pub get --enforce-lockfile
 echo -e "${GREEN}  ✅ 依赖同步完成${NC}"
 echo ""
 
@@ -130,7 +133,7 @@ if [ "$BUILD_APK" = true ]; then
   if [ "$SPLIT_APK" = true ]; then
     # 与 android/app/build.gradle.kts 的 ARM ABI 配置一致，避免 Flutter
     # 等待并不存在的 x86_64 APK，将已成功的构建误判为失败。
-    flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64
+    flutter build apk --release --no-pub --split-per-abi --target-platform android-arm,android-arm64
     for ABI in armeabi-v7a arm64-v8a; do
       ABI_SRC="build/app/outputs/flutter-apk/app-${ABI}-release.apk"
       ABI_DST="${OUTPUT_DIR}/petpogo_v${PKG_VERSION}_${BUILD_TIME}_${ABI}.apk"
@@ -144,7 +147,7 @@ if [ "$BUILD_APK" = true ]; then
       fi
     done
   else
-    flutter build apk --release --target-platform android-arm,android-arm64
+    flutter build apk --release --no-pub --target-platform android-arm,android-arm64
     if [ -f "${APK_SRC}" ]; then
       cp "${APK_SRC}" "${APK_DST}"
       APK_SIZE=$(du -sh "${APK_DST}" | cut -f1)
@@ -163,7 +166,7 @@ fi
 # ══════════════════════════════════════════════════════════════
 if [ "$BUILD_AAB" = true ]; then
   echo -e "${BLUE}${BOLD}▶ [Android] 开始打包 Google Play AAB...${NC}"
-  flutter build appbundle --release
+  flutter build appbundle --release --no-pub
   if [ -f "${AAB_SRC}" ]; then
     cp "${AAB_SRC}" "${AAB_DST}"
     AAB_SIZE=$(du -sh "${AAB_DST}" | cut -f1)
@@ -197,7 +200,7 @@ if [ "$BUILD_IPA" = true ]; then
   echo ""
 
   # 打包 IPA
-  flutter build ipa --release
+  flutter build ipa --release --no-pub
 
   # 查找生成的 IPA（路径因版本而异）
   FOUND_IPA=$(find build/ios/ipa -name "*.ipa" 2>/dev/null | head -1)

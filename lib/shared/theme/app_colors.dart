@@ -101,6 +101,9 @@ class AppColors {
   static Color get statusOnline       => _scheme.statusOnline;
   static Color get statusOnlineStrong => _scheme.statusOnlineStrong;
   static Color get statusOnlineSoft   => _scheme.statusOnlineSoft;
+  /// 硬件顶部栏充电标识，使用高亮绿色。
+  static const Color charging = Color(0xFF86EFAC);
+  static const Color batteryLow = Color(0xFFFFB4AB);
   static Color get statusAlert        => _scheme.statusAlert;
   static Color get statusAlertSoft    => _scheme.statusAlertSoft;
   static Color get statusWarning      => _scheme.statusWarning;

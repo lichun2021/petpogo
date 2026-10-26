@@ -17,22 +17,8 @@ import '../../shared/widgets/app_error_view.dart';
 import '../pet/data/models/pet_peer_models.dart';
 import '../pet/data/repository/pet_peer_repository.dart';
 import 'widgets/pet_navigation_sheet.dart';
+import 'services/pet_location_services.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
-
-// ── 逆地理编码（Nominatim，WGS84 坐标）───────────────────────
-Future<String> _reverseGeocode(double lat, double lng) async {
-  try {
-    final display = await fetchNominatimDisplayName(LatLng(lat, lng));
-    if (display.isNotEmpty) {
-      final parts = display.split(', ');
-      if (parts.length > 1 && parts.last == '中国') parts.removeLast();
-      return parts.take(4).join(' ');
-    }
-  } catch (e) {
-    AppLog.debug('[Location] geocode error: $e');
-  }
-  return '';
-}
 
 // ── 宠物位置页 ────────────────────────────────────────────
 class PetLocationPage extends ConsumerStatefulWidget {
@@ -66,6 +52,8 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
   bool _choosingNavigation = false;
   int _loadGeneration = 0;
   bool _mapReady = false;
+  DateTime? _lastQueryAt;
+  final _addressLookups = <(double, double), Future<String>>{};
 
   late final MapController _mapCtrl;
 
@@ -100,6 +88,15 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
           pos.reportTime > 0 &&
           pos.reportTime < previous.reportTime;
       final displayed = retained ? previous : pos;
+      final sameCoordinates = previous?.hasLocation == true &&
+          displayed.hasLocation &&
+          previous!.lat == displayed.lat &&
+          previous.lng == displayed.lng;
+      final address = displayed.reportedAddress.isNotEmpty
+          ? displayed.reportedAddress
+          : sameCoordinates
+              ? _address
+              : '';
 
       // API 返回的 latitude/longitude 是 WGS84，
       // 高德地图瓦片使用 GCJ02（火星坐标），必须转换否则偏移 ~500m
@@ -113,8 +110,9 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
           _position = displayed;
           _gcjLatLng = gcj;
           _isRefreshing = false;
-          _address = displayed.address;
-          _geocoding = displayed.hasLocation && displayed.address.isEmpty;
+          _lastQueryAt = ref.read(petLocationClockProvider)();
+          _address = address;
+          _geocoding = displayed.hasLocation && address.isEmpty;
         });
         if (gcj != null && _mapReady) {
           _mapCtrl.move(gcj, 16);
@@ -132,15 +130,8 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
           PetToast.show(context, message);
         }
         // API 没带地址 → 用 Nominatim 逆地理编码（WGS84 查询）
-        if (displayed.hasLocation && displayed.address.isEmpty) {
-          _reverseGeocode(displayed.lat, displayed.lng).then((addr) {
-            if (mounted && generation == _loadGeneration) {
-              setState(() {
-                _address = addr;
-                _geocoding = false;
-              });
-            }
-          });
+        if (_geocoding) {
+          _resolveAddress(displayed, generation);
         }
       }
     } catch (e) {
@@ -148,15 +139,53 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
         setState(() {
           _isRefreshing = false;
           _error = e;
+          _lastQueryAt = ref.read(petLocationClockProvider)();
         });
       }
     }
   }
 
-  String get _updateTime {
-    if (_position == null || _position!.reportTime == 0) return '--:--';
-    final dt = DateTime.fromMillisecondsSinceEpoch(_position!.reportTime);
-    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  Future<void> _resolveAddress(
+      PetPositionModel position, int generation) async {
+    final coordinates = (position.lat, position.lng);
+    final lookup = _addressLookups.putIfAbsent(
+        coordinates,
+        () => Future.sync(() =>
+            ref.read(petAddressLookupProvider)(position.lat, position.lng)));
+    String address = '';
+    try {
+      address = (await lookup).trim();
+    } catch (error) {
+      AppLog.debug('[Location] geocode error: $error');
+    } finally {
+      if (identical(_addressLookups[coordinates], lookup)) {
+        _addressLookups.remove(coordinates);
+      }
+    }
+    if (!mounted || generation != _loadGeneration) return;
+    setState(() {
+      _address = address;
+      _geocoding = false;
+    });
+  }
+
+  String get _refreshTime {
+    if (_lastQueryAt == null) return '正在查询';
+    return '${_error == null ? '刷新' : '刷新失败'} ${_formatTime(_lastQueryAt!)}';
+  }
+
+  String get _reportTime {
+    final timestamp = _position?.reportTime ?? 0;
+    if (timestamp <= 0) return '设备上报时间未知';
+    final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    return '设备上报 ${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')} ${_formatTime(date)}';
+  }
+
+  String _formatTime(DateTime date) {
+    return '${date.hour.toString().padLeft(2, '0')}:'
+        '${date.minute.toString().padLeft(2, '0')}:'
+        '${date.second.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -310,7 +339,8 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
                   address: _address,
                   geocoding: _geocoding,
                   error: _error,
-                  updateTime: _updateTime,
+                  refreshTime: _refreshTime,
+                  reportTime: _reportTime,
                   safeBottom: safeBottom,
                   onNavigate: hasLoc ? _startNavigation : null,
                 ))),
@@ -367,7 +397,7 @@ class _PetLocationPageState extends ConsumerState<PetLocationPage> {
 
 // ── 底部信息卡片 ─────────────────────────────────────────
 class _BottomCard extends StatelessWidget {
-  final String petName, petAvatar, updateTime;
+  final String petName, petAvatar, refreshTime, reportTime;
   final String address; // 逆地理编码结果（可能为空）
   final bool geocoding; // 正在解析地址中
   final PetPositionModel? position;
@@ -382,7 +412,8 @@ class _BottomCard extends StatelessWidget {
     required this.address,
     required this.geocoding,
     required this.error,
-    required this.updateTime,
+    required this.refreshTime,
+    required this.reportTime,
     required this.safeBottom,
     this.onNavigate,
   });
@@ -469,7 +500,7 @@ class _BottomCard extends StatelessWidget {
               ),
               _StatBadge(
                 icon: Icons.access_time_rounded,
-                label: updateTime,
+                label: refreshTime,
                 color: Colors.grey.shade600,
               ),
             ]),
@@ -520,33 +551,32 @@ class _BottomCard extends StatelessWidget {
                                 color: AppColors.textPrimary),
                             children: [
                               TextSpan(
-                                  text: address.isNotEmpty
-                                      ? address
-                                      : '${position!.latitude}, ${position!.longitude}'),
-                              if (address.isNotEmpty)
-                                TextSpan(
                                   text:
-                                      '  (${position!.latitude}, ${position!.longitude})',
-                                  style: TextStyle(
-                                    fontFamily: AppFonts.primary,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w400,
-                                    color: AppColors.textTertiary,
-                                  ),
+                                      address.isNotEmpty ? address : '地址暂未解析'),
+                              TextSpan(
+                                text:
+                                    '  (${position!.latitude}, ${position!.longitude})',
+                                style: TextStyle(
+                                  fontFamily: AppFonts.primary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w400,
+                                  color: AppColors.textTertiary,
                                 ),
+                              ),
                             ],
                           ),
                         ),
-                      if (hasLoc) ...[
-                        SizedBox(height: 2),
-                        Text('更新于 $updateTime',
-                            style: TextStyle(
-                                fontFamily: AppFonts.primary,
-                                fontSize: 11,
-                                color: AppColors.textTertiary)),
-                      ],
                     ])),
               ]),
+            if (hasLoc)
+              Padding(
+                padding: const EdgeInsets.only(left: 22, top: 2),
+                child: Text(reportTime,
+                    style: TextStyle(
+                        fontFamily: AppFonts.primary,
+                        fontSize: 11,
+                        color: AppColors.textTertiary)),
+              ),
           ]),
     );
   }
@@ -571,12 +601,13 @@ class _StatBadge extends StatelessWidget {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 12, color: color),
           SizedBox(width: 4),
-          Text(label,
-              style: TextStyle(
-                  fontFamily: AppFonts.primary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: color)),
+          Flexible(
+              child: Text(label,
+                  style: TextStyle(
+                      fontFamily: AppFonts.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: color))),
         ]),
       );
 }

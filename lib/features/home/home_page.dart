@@ -14,6 +14,7 @@ import '../device/data/repository/device_repository.dart';
 import '../device/device_detail_page.dart';
 import '../device/device_list_page.dart';
 import '../device/robot_device_page.dart';
+import '../device/controller/device_entry_guard.dart';
 import '../profile/data/account_overview_provider.dart';
 import 'widgets/ai_image_panel.dart';
 import 'widgets/ai_points_hint.dart';
@@ -732,6 +733,7 @@ class _HomeDeviceCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: () {
+          if (!DeviceEntryGuard.allow(context, device)) return;
           HapticFeedback.selectionClick();
           Navigator.push(
             context,

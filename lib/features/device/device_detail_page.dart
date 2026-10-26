@@ -1,5 +1,4 @@
 import 'package:petpogo_app/shared/widgets/modal_header.dart';
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +17,10 @@ import 'robot_device_page.dart';
 import '../bind_device/select_device_page.dart';
 import '../bind_device/device_wifi_setup_entry.dart';
 import 'data/wifi_setup_capability.dart';
+import 'widgets/hardware_device_header.dart';
+import 'widgets/device_battery_status.dart';
+import 'controller/device_entry_guard.dart';
+import '../../shared/theme/app_tokens.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
 
 // ── 设备详情页 ────────────────────────────────────────────
@@ -37,31 +40,17 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   bool _loading = true;
   String? _error;
   bool? _online; // 实时在线态（按 mac 查，优先于 detail.onlineStatus）
-  Timer? _batteryRefreshTimer;
 
   @override
   void initState() {
     super.initState();
-    _loadAll();
-    _batteryRefreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      final state = WidgetsBinding.instance.lifecycleState;
-      if (mounted && ModalRoute.of(context)?.isCurrent == true &&
-          (state == null || state == AppLifecycleState.resumed)) {
-        ref.invalidate(deviceBatteryProvider(widget.mac));
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _batteryRefreshTimer?.cancel();
-    super.dispose();
+    _loadAll(refreshBattery: false);
   }
 
   /// 在线态：优先实时接口结果，回退 detail.onlineStatus
   bool get _isOnline => _online ?? (_detail?.onlineStatus ?? false);
 
-  Future<void> _loadAll() async {
+  Future<void> _loadAll({bool refreshBattery = true}) async {
     setState(() {
       _loading = true;
       _error = null;
@@ -76,7 +65,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         repo.fetchOnlineState(widget.mac).catchError((_) => false),
       ]);
       if (mounted) {
-        ref.invalidate(deviceBatteryProvider(widget.mac));
+        if (refreshBattery) ref.invalidate(deviceBatteryProvider(widget.mac));
         setState(() {
           _detail = results[0] as DeviceDetailModel;
           _petInfo = results[1] as PetInfoModel;
@@ -98,41 +87,45 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      body: _loading
-          ? Center(
-              child: CircularProgressIndicator(
-                  color: AppColors.primary, strokeWidth: 2.5))
-          : _error != null
-              ? _buildError()
-              : CustomScrollView(slivers: [
-                  _buildAppBar(context),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-                    sliver: SliverList(
-                        delegate: SliverChildListDelegate([
-                      SizedBox(height: 20),
-                      _buildStatusHero(),
-                      SizedBox(height: 20),
-                      // 宠物区块（始终显示：有宠物显示详情，无宠物显示绑定入口）
-                      _buildPetSection(context),
-                      SizedBox(height: 20),
-                      if (_otaInfo != null && _otaInfo!.isUpgrade)
-                        _buildOtaBanner(),
-                      if (_otaInfo != null && _otaInfo!.isUpgrade)
-                        SizedBox(height: 20),
-                      // 今日安全概览（有宠物时显示）
-                      if (_petInfo != null && _petInfo!.petName.isNotEmpty) ...[
-                        _buildSafetyOverview(context),
-                        SizedBox(height: 20),
-                        _buildSafetyScenes(context),
-                        SizedBox(height: 20),
-                      ],
-                      // 互动模块已删除（声光硬件已砍，查看位置/即时轨迹迁移至地图定位页）
-                      // 安全设置模块已删除（立即寻找声光已砍，由地图导航替代；历史轨迹本轮不保留）
-                      _buildActions(context),
-                    ])),
-                  ),
-                ]),
+      body: Column(children: [
+        _buildTopBar(context),
+        Expanded(
+            child: _loading
+                ? Center(
+                    child: CircularProgressIndicator(
+                        color: AppColors.primary, strokeWidth: 2.5))
+                : _error != null
+                    ? _buildError()
+                    : CustomScrollView(slivers: [
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+                          sliver: SliverList(
+                              delegate: SliverChildListDelegate([
+                            SizedBox(height: 20),
+                            _buildDeviceIdentity(),
+                            SizedBox(height: 20),
+                            // 宠物区块（始终显示：有宠物显示详情，无宠物显示绑定入口）
+                            _buildPetSection(context),
+                            SizedBox(height: 20),
+                            if (_otaInfo != null && _otaInfo!.isUpgrade)
+                              _buildOtaBanner(),
+                            if (_otaInfo != null && _otaInfo!.isUpgrade)
+                              SizedBox(height: 20),
+                            // 今日安全概览（有宠物时显示）
+                            if (_petInfo != null &&
+                                _petInfo!.petName.isNotEmpty) ...[
+                              _buildSafetyOverview(context),
+                              SizedBox(height: 20),
+                              _buildSafetyScenes(context),
+                              SizedBox(height: 20),
+                            ],
+                            // 互动模块已删除（声光硬件已砍，查看位置/即时轨迹迁移至地图定位页）
+                            // 安全设置模块已删除（立即寻找声光已砍，由地图导航替代；历史轨迹本轮不保留）
+                            _buildActions(context),
+                          ])),
+                        ),
+                      ])),
+      ]),
     );
   }
 
@@ -153,7 +146,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     ]));
   }
 
-  Widget _buildAppBar(BuildContext context) {
+  Widget _buildTopBar(BuildContext context) {
     final wifiCollars =
         ref.watch(wifiCollarMacsProvider).valueOrNull ?? const <String>{};
     final owned = ref.watch(deviceListProvider).devices.where((device) =>
@@ -162,39 +155,12 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         supportsWifiSetup(device, wifiCollars) &&
         device.isOwner &&
         !device.isShared);
-    return SliverAppBar(
-      pinned: true,
-      backgroundColor: AppColors.surface,
-      surfaceTintColor: Colors.transparent,
-      elevation: 0,
-      leading: IconButton(
-        icon: Icon(Icons.arrow_back_ios_rounded, size: 20),
-        color: AppColors.onSurface,
-        onPressed: () => Navigator.pop(context),
-      ),
-      title: GestureDetector(
-        onTap: () => _showDeviceSwitcher(context),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(
-                _detail?.displayName ?? widget.name,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: AppFonts.primary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            SizedBox(width: 2),
-            Icon(Icons.keyboard_arrow_down_rounded,
-                size: 20, color: AppColors.onSurface),
-          ],
-        ),
-      ),
-      centerTitle: true,
+    return HardwareDeviceHeader(
+      name: _detail?.displayName ?? widget.name,
+      batteryIndicator: DeviceBatteryStatus(mac: widget.mac),
+      online: _loading ? null : _isOnline,
+      onBack: () => Navigator.pop(context),
+      onSwitchDevice: () => _showDeviceSwitcher(context),
       actions: [
         if (owned.isNotEmpty)
           IconButton(
@@ -209,7 +175,6 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
               }),
         IconButton(
           icon: Icon(Icons.add_circle_outline_rounded),
-          color: AppColors.primary,
           tooltip: '添加设备',
           onPressed: () {
             Navigator.push(
@@ -236,6 +201,7 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
         devices: devices,
         currentMac: widget.mac,
         onSelect: (device) {
+          if (!DeviceEntryGuard.allow(context, device)) return;
           Navigator.pop(context);
           if (device.mac == widget.mac) return;
           final isRobot = device.isRobot;
@@ -252,125 +218,42 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
     );
   }
 
-  Widget _buildStatusHero() {
-    final battery = ref.watch(deviceBatteryProvider(widget.mac)).valueOrNull;
-    final online = _isOnline;
-    final deviceName = _detail?.displayName ?? widget.name;
-    return GestureDetector(
-      onTap: () => _showRemarkDialog(context), // 点击卡片任意区域也可编辑
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppColors.brandPrimaryStrong, AppColors.brandPrimary],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-                color: AppColors.primary.withOpacity(0.30),
-                blurRadius: 28,
-                spreadRadius: -6,
-                offset: Offset(0, 10))
-          ],
-        ),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-          // 左侧图标
-          Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                    color: Colors.white.withOpacity(0.2), width: 1.5),
+  Widget _buildDeviceIdentity() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _showRemarkDialog(context),
+        borderRadius: AppRadius.controlRadius,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.x12),
+          child: Row(children: [
+            Icon(Icons.memory_rounded,
+                size: 16, color: AppColors.onSurfaceVariant),
+            const SizedBox(width: AppSpacing.x8),
+            Expanded(
+                child: Tooltip(
+              message: widget.mac,
+              child: Text(
+                '设备码 ${widget.mac}',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontFamily: AppFonts.primary,
+                    fontSize: 11,
+                    color: AppColors.onSurfaceVariant),
               ),
-              child: Icon(Icons.router_rounded, color: Colors.white, size: 32)),
-          SizedBox(width: 16),
-          // 中间信息
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                // 设备名称 + 编辑图标
-                Row(children: [
-                  Flexible(
-                    child: Text(deviceName,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontFamily: AppFonts.primary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            letterSpacing: -0.3)),
-                  ),
-                  SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child:
-                        Icon(Icons.edit_rounded, size: 12, color: Colors.white),
-                  ),
-                ]),
-                SizedBox(height: 5),
-                // 在线状态徽章
-                Row(children: [
-                  Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                          color: online
-                              ? AppColors.statusOnlineSoft
-                              : AppColors.textOnBrand.withValues(alpha: 0.38),
-                          shape: BoxShape.circle)),
-                  SizedBox(width: 5),
-                  Text(online ? '在线' : '离线',
-                      style: TextStyle(
-                          fontFamily: AppFonts.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: online
-                              ? AppColors.statusOnlineSoft
-                              : AppColors.textOnBrand.withValues(alpha: 0.6))),
-                ]),
-                SizedBox(height: 8),
-                // 分行展示，长设备码不与电量争夺横向空间。
-                Row(children: [
-                  const Icon(Icons.battery_std_rounded,
-                      size: 12, color: Colors.white70),
-                  const SizedBox(width: 4),
-                  Flexible(
-                      child: Text(
-                          battery?.known == true
-                              ? '电量 ${battery!.battery}%'
-                              : '电量 -',
-                          style: TextStyle(
-                              fontFamily: AppFonts.primary,
-                              fontSize: 11,
-                              color: Colors.white70))),
-                ]),
-                const SizedBox(height: 6),
-                Tooltip(
-                    message: widget.mac,
-                    child: Text('设备码 ${widget.mac}',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontFamily: AppFonts.primary,
-                            fontSize: 10,
-                            color: Colors.white70))),
-              ])),
-        ]),
+            )),
+            const SizedBox(width: AppSpacing.x8),
+            Tooltip(
+                message: '修改设备名称',
+                child: Icon(Icons.edit_outlined,
+                    size: 18, color: AppColors.primary)),
+          ]),
+        ),
       ),
     );
   }
 
-  // ── 宠物区块：有宠物显示详情 + 编辑/删除，无宠物显示绑定入口 ──
   Widget _buildPetSection(BuildContext context) {
     final hasPet = _petInfo != null && _petInfo!.petName.isNotEmpty;
 
@@ -710,7 +593,8 @@ class _DeviceDetailPageState extends ConsumerState<DeviceDetailPage> {
   }
 
   Future<void> _showRemarkDialog(BuildContext context) async {
-    final ctrl = TextEditingController(text: widget.name);
+    final ctrl =
+        TextEditingController(text: _detail?.displayName ?? widget.name);
     var saving = false;
     String? error;
     await showDialog<void>(

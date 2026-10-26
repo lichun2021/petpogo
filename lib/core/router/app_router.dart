@@ -59,6 +59,7 @@ import '../../features/consultation/data/models/consultation_models.dart';
 import '../../features/health_data/health_data_page.dart';
 import '../../features/device/robot_device_page.dart';
 import '../../features/device/device_detail_page.dart';
+import '../../features/device/device_list_page.dart';
 import '../../features/device/data/repository/device_repository.dart';
 import '../../features/device/data/models/device_model.dart';
 import '../../features/share/share_landing_page.dart';
@@ -472,6 +473,8 @@ class _DeviceDetailWrapper extends ConsumerWidget {
             );
 
     if (device != null) {
+      // 通知可能指向已经离线的设备，保留设备管理入口，避免创建控制页。
+      if (!device.isOnline) return const DeviceListPage();
       return _buildDevicePage(device);
     }
 

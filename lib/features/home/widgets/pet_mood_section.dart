@@ -11,6 +11,7 @@ import '../../device/data/models/device_model.dart';
 import '../../device/data/repository/device_repository.dart';
 import '../../device/device_detail_page.dart';
 import '../../device/device_list_page.dart';
+import '../../device/controller/device_entry_guard.dart';
 import '../../device/robot_device_page.dart';
 import '../../pet_circle/controller/pet_circle_pet_controller.dart';
 import 'package:petpogo_app/shared/theme/app_fonts.dart';
@@ -173,8 +174,9 @@ class _PetMoodSectionState extends ConsumerState<PetMoodSection> {
                       PetToast.show(context, '该宠物未绑定设备');
                       return;
                     }
+                    if (!DeviceEntryGuard.allow(context, device)) return;
                     HapticFeedback.selectionClick();
-                    final isRobot = device.productKey.contains('robot');
+                    final isRobot = device.isRobot;
                     Navigator.push(
                       context,
                       MaterialPageRoute(
